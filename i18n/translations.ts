@@ -38,19 +38,19 @@ export const translations = {
       },
     },
     hero: {
-      title: "FMR WATCH",
-      subtitle: "Farm-to-Market Road Transparency Portal",
+      title: "INFRA WATCH",
+      subtitle: "Agricultural Infrastructure Transparency Portal",
       version: pkg.version || "Beta",
       mainTitle: "TRANSPARENCY PORTAL",
-      mainSubtitle: "Farm-to-Market Road Infrastructure Projects",
+      mainSubtitle: "Agricultural Infrastructure Projects",
       departmentLabel: "Department of Agriculture - Bureau of Agricultural and Fisheries Engineering",
       ctaPrimary: "Explore Projects",
       ctaSecondary: "Learn More",
       ctaReport: "E-Reports",
     },
     gallery: {
-      title: "Farm-to-Market Road Projects",
-      subtitle: "Discover our Farm-to-Market Road projects, documented with geotagged photos randomly selected from the database.",
+      title: "Agricultural Infrastructure Projects",
+      subtitle: "Discover our agricultural infrastructure projects, documented with geotagged photos randomly selected from the database.",
       clickToExpand: "Click to expand",
       projectPhoto: "Project Photo",
       photo: "Photo",
@@ -168,7 +168,7 @@ export const translations = {
     about: {
       title: "About Us",
       subtitle: "Building Trust Through Transparency",
-      description: "FMR Watch is the official transparency portal for Farm-to-Market Road projects in the Philippines. We empower citizens to monitor, report, and engage with infrastructure developments in their communities.",
+      description: "INFRA Watch is the official transparency portal for agricultural infrastructure projects in the Philippines. We empower citizens to monitor, report, and engage with infrastructure developments in their communities.",
       mission: {
         title: "Our Mission",
         desc: "To provide a transparent, accessible, and participatory monitoring system that ensures quality implementation of agricultural infrastructure."
@@ -193,7 +193,7 @@ export const translations = {
       landing: {
         badge: "Community Reporting",
         title: "Reported Issues",
-        description: "Track and monitor issues reported by citizens across FMR projects",
+        description: "Track and monitor issues reported by citizens across infrastructure projects",
         cta: "Report New Issue",
         searchPlaceholder: "Search by description or location...",
         loading: "Loading issues...",
@@ -471,8 +471,8 @@ export const translations = {
     projects: {
       hero: {
         subtitle: "Transparency for Rural Development",
-        title: "FMR WATCH",
-        description: "Monitor and validate Farm-to-Market Road projects across the Philippines",
+        title: "INFRA WATCH",
+        description: "Monitor and validate agricultural infrastructure projects across the Philippines",
       },
       search: {
         title: "Search for a project",
@@ -749,19 +749,19 @@ export const translations = {
       },
     },
     hero: {
-      title: "FMR WATCH",
-      subtitle: "Transparency Portal para sa FMR",
+      title: "INFRA WATCH",
+      subtitle: "Transparency Portal para sa Imprastraktura",
       version: pkg.version || "Beta",
       mainTitle: "TRANSPARENCY PORTAL",
-      mainSubtitle: "Mga Proyekto ng Imprastraktura ng Farm-to-Market Road",
+      mainSubtitle: "Mga Proyekto ng Imprastraktura ng Agrikultura",
       departmentLabel: "Department of Agriculture - Bureau of Agricultural and Fisheries Engineering",
       ctaPrimary: "Galugarin ang mga Proyekto",
       ctaSecondary: "Matuto Pa",
       ctaReport: "E-Ulat",
     },
     gallery: {
-      title: "Mga Proyekto ng Farm-to-Market Road",
-      subtitle: "Tuklasin ang aming mga proyekto ng Farm-to-Market Road, na dokumentado ng mga geotagged na larawan.",
+      title: "Mga Proyekto ng Imprastrakturang Pang-agrikultura",
+      subtitle: "Tuklasin ang aming mga proyekto ng imprastrakturang pang-agrikultura, na dokumentado ng mga geotagged na larawan.",
       clickToExpand: "I-click para palakihin",
       projectPhoto: "Larawan ng Proyekto",
       photo: "Larawan",
@@ -879,7 +879,7 @@ export const translations = {
     about: {
       title: "Tungkol sa Amin",
       subtitle: "Pagtataguyod ng Tiwala sa Pamamagitan ng Transparency",
-      description: "Ang FMR Watch ay ang opisyal na transparency portal para sa mga proyekto ng Farm-to-Market Road sa Pilipinas. Binibigyang-kapangyarihan namin ang mga mamamayan na magmonitor, mag-ulat, at makilahok sa mga pagpapaunlad ng imprastraktura sa kanilang mga komunidad.",
+      description: "Ang INFRA Watch ay ang opisyal na transparency portal para sa mga proyekto ng imprastrakturang pang-agrikultura sa Pilipinas. Binibigyang-kapangyarihan namin ang mga mamamayan na magmonitor, mag-ulat, at makilahok sa mga pagpapaunlad ng imprastraktura sa kanilang mga komunidad.",
       mission: {
         title: "Ang Aming Misyon",
         desc: "Magbigay ng transparent, accessible, at participatory na sistema ng pagsubaybay na tumitiyak sa kalidad ng implementasyon ng imprastraktura."
@@ -905,7 +905,7 @@ export const translations = {
       landing: {
         badge: "Pag-uulat ng Komunidad",
         title: "Mga Iniulat na Isyu",
-        description: "Subaybayan at i-monitor ang mga isyung iniulat ng mga mamamayan sa mga proyektong FMR",
+        description: "Subaybayan at i-monitor ang mga isyung iniulat ng mga mamamayan sa mga proyektong pang-imprastraktura",
         cta: "Mag-ulat ng Bagong Isyu",
         searchPlaceholder: "Maghanap gamit ang paglalarawan o lokasyon...",
         loading: "Kinakarga ang mga isyu...",
@@ -1183,8 +1183,8 @@ export const translations = {
     projects: {
       hero: {
         subtitle: "Transparensiya para sa Pag-unlad ng Kanayunan",
-        title: "FMR WATCH",
-        description: "Subaybayan at i-validate ang mga proyekto ng Farm-to-Market Road sa buong Pilipinas",
+        title: "INFRA WATCH",
+        description: "Subaybayan at i-validate ang mga proyekto ng imprastrakturang pang-agrikultura sa buong Pilipinas",
       },
       search: {
         title: "Maghanap ng proyekto",

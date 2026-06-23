@@ -20,7 +20,6 @@ const navItems = [
   { label: "Home", href: "/", key: "home" },
   { label: "Projects", href: "/projects", key: "projects" },
   { label: "Map", href: "/map", key: "map" },
-  { label: "About", href: "/about", key: "about" },
   { label: "E-Report", href: "/report-issue", key: "report-issue" },
   { label: "Articles & Updates", href: "/articles-and-updates", key: "articles-and-updates", isSecondary: true },
   { label: "FAQ", href: "/faq", key: "faq", isSecondary: true },
