@@ -6,9 +6,9 @@
 
 ## 1. Scope & Focus
 
-Unlike FMR Watch which targets Farm-to-Market Road (FMR) projects, INFRA Watch is dedicated to:
-- **AMEFIP** (Agricultural Machinery, Equipment, Facilities, and Infrastructures Program)
-- **INS** (Irrigation Network Services)
+Unlike FMR Watch which targets Farm-to-Market Road (FMR) projects, INFRA Watch is dedicated to projects under BAFE's AMEFIP umbrella:
+- **Agricultural Machinery, Equipment and Facilities Support Services** (AMSS)
+- **Irrigation Network Services** (INS)
 
 This data is extracted from the ABEMIS database specifically for the fiscal years **2021 to 2026**.
 

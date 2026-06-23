@@ -57,6 +57,8 @@ The interface employs a premium Slate & Emerald theme to symbolize structural de
 
 ## 4. Key UI Components & Shadcn Integrations
 
+We utilize **shadcn/ui** components built on top of **Base UI** (unstyled primitives) for accessible and customizable components.
+
 All components are installed via shadcn/ui:
 ```bash
 bunx shadcn@latest add button card dialog sheet table tabs toast skeleton dropdown-menu input label badge

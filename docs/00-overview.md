@@ -1,13 +1,13 @@
 # INFRA Watch — Overview
 
 > **Infrastructure Network for Fair Reporting and Accountability**
-> A transparency portal for AMEFIP and INS infrastructure projects sourced from ABEMIS (2021–2026)
+> A transparency portal for AMEFIP sub-programs (Machinery, Equipment, Facilities, and Irrigation Network Services) sourced from ABEMIS (2021–2026)
 
 ---
 
 ## 1. What is INFRA Watch?
 
-INFRA Watch is a public transparency and accountability portal that enables citizens to view, track, and provide feedback on infrastructure projects from various government agencies. BAFE is the launching agency, providing data on **AMEFIP** (Agricultural Machinery, Equipment, Facilities, and Infrastructures Program) and **INS** (Irrigation Network Services) projects recorded in **ABEMIS** from fiscal years **2021 to 2026**. The system's architecture is fully multi-agency ready, allowing other government agencies to integrate and display their infrastructure projects in the future.
+INFRA Watch is a public transparency and accountability portal that enables citizens to view, track, and provide feedback on infrastructure projects from various government agencies. BAFE is the launching agency, providing data on projects under the **AMEFIP** (Agricultural Machinery, Equipment, Facilities, and Infrastructures Program) umbrella, specifically focusing on its sub-programs: **Agricultural Machinery, Equipment and Facilities Support Services** and **Irrigation Network Services** (INS), recorded in **ABEMIS** from fiscal years **2021 to 2026**. The system's architecture is fully multi-agency ready, allowing other government agencies to integrate and display their infrastructure projects in the future.
 
 It mirrors the architecture and user-experience patterns established by **FMR Watch** but is scoped to general infrastructure data. Citizens can browse projects, submit feedback, report issues, and access analytics — all through a clean, accessible, bilingual interface.
 
@@ -77,6 +77,7 @@ It mirrors the architecture and user-experience patterns established by **FMR Wa
 | [09-security.md](./09-security.md) | Security measures, audit results, and best practices |
 | [10-project-roadmap.md](./10-project-roadmap.md) | Phased development roadmap and milestones |
 | [11-migration-guide.md](./11-migration-guide.md) | Codebase migration and refactoring steps |
+| [12-ui-ux-mockup-plan.md](./12-ui-ux-mockup-plan.md) | UI/UX layouts, wireframes, and design guidelines |
 
 ---
 
@@ -111,8 +112,9 @@ bun run dev
 | Term | Definition |
 | :--- | :--- |
 | **ABEMIS** | Government budget/project management system (external API) |
-| **AMEFIP** | Agricultural Machinery, Equipment, Facilities, and Infrastructures Program |
-| **INS** | Irrigation Network Services |
+| **AMEFIP** | Agricultural Machinery, Equipment, Facilities, and Infrastructures Program (Umbrella Program) |
+| **AMSS** | Agricultural Machinery, Equipment and Facilities Support Services (Sub-program under AMEFIP) |
+| **INS** | Irrigation Network Services (Sub-program under AMEFIP) |
 | **FMR** | Fundu Munisipal Regulamentar (Municipal Regulatory Fund) |
 | **BAFE** | Government oversight body |
 | **ABC** | Activity Budget Category (ABEMIS classification) |

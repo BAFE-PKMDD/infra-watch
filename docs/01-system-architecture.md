@@ -82,7 +82,7 @@
 
 | Technology | Purpose |
 | :--- | :--- |
-| **shadcn/ui** | Component library (Radix primitives + Tailwind) |
+| **shadcn/ui** | Component library (Base UI primitives + Tailwind) |
 | **Tailwind CSS** | Utility-first CSS framework |
 | **Recharts** | Chart/data visualization library |
 | **Lucide React** | Icon library |
