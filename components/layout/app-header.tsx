@@ -203,7 +203,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                       </button>
                     }
                   />
-                  <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 [--accent-foreground:var(--foreground)]">
                     {translatedNavItems
                       .filter(item => item.isSecondary)
                       .map((item) => (
