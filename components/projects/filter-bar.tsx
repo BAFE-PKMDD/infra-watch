@@ -13,7 +13,7 @@ interface FilterBarProps {
 export const FilterBar = memo(function FilterBar({ filters, options, onFiltersChange }: FilterBarProps) {
   const { t } = useTranslation();
 
-  const selectClassName = "flex-1 min-w-[180px] text-sm px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-slate-700 font-medium cursor-pointer bg-white hover:border-slate-400 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100";
+  const selectClassName = "flex-1 min-w-[180px] text-sm px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-slate-700 font-medium cursor-pointer bg-white hover:border-slate-400 transition-colors dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100";
 
   return (
     <motion.div
@@ -29,8 +29,8 @@ export const FilterBar = memo(function FilterBar({ filters, options, onFiltersCh
             key={option.value}
             onClick={() => onFiltersChange("agency", option.value)}
             className={`px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-200 ${filters.agency === option.value
-                ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                : "bg-white text-slate-600 border-slate-300 hover:border-emerald-400 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:border-emerald-500"
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-white text-slate-600 border-slate-300 hover:border-primary hover:text-primary dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:border-primary"
               }`}
           >
             {option.label}

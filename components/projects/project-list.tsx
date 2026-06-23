@@ -16,7 +16,7 @@ export function ProjectList({ projects }: ProjectListProps) {
       {projects.map((project, index) => (
         <motion.div
           key={project.id}
-          className="p-6 hover:bg-emerald-50/30 transition-colors"
+          className="p-6 hover:bg-primary/5 transition-colors"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.04 * index, ease: "easeOut" }}

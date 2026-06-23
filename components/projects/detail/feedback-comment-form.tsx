@@ -86,7 +86,7 @@ export function FeedbackCommentForm({ feedbackId, onCommentAdded }: FeedbackComm
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         placeholder="Write a comment..."
-        className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400"
+        className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary"
         rows={2}
         disabled={isSubmitting || uploadingFiles}
       />
@@ -160,7 +160,7 @@ export function FeedbackCommentForm({ feedbackId, onCommentAdded }: FeedbackComm
         <Button
           type="submit"
           disabled={isSubmitting || uploadingFiles || !comment.trim()}
-          className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed h-7 px-3 text-xs"
+          className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed h-7 px-3 text-xs"
         >
           <Send className="w-3 h-3" />
           <span>{isSubmitting ? "Posting..." : "Comment"}</span>

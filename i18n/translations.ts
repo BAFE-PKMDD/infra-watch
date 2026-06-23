@@ -7,6 +7,7 @@ export const translations = {
     nav: {
       home: "Home",
       projects: "Projects",
+      map: "GIS Map",
       statistics: "Statistics",
       faq: "FAQ",
       contact: "Contact Us",
@@ -522,6 +523,7 @@ export const translations = {
       title: "Project Detail",
       overview: {
         title: "Project Overview",
+        highlights: "Project Highlights",
         projectTitle: "Title",
         projectTitleTooltip: "Official name of the project",
         projectCode: "Project Code",
@@ -716,6 +718,7 @@ export const translations = {
     nav: {
       home: "Tahanan",
       projects: "Proyekto",
+      map: "Mapa ng GIS",
       statistics: "Istatistika",
       faq: "FAQ",
       contact: "Kontak",
@@ -1232,6 +1235,7 @@ export const translations = {
       title: "Detalye ng Proyekto",
       overview: {
         title: "Pangkalahatang-ideya ng Proyekto",
+        highlights: "Mga Tampok ng Proyekto",
         projectTitle: "Pamagat",
         projectTitleTooltip: "Opisyal na pangalan ng proyekto",
         projectCode: "Code ng Proyekto",

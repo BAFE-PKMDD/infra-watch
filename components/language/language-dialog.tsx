@@ -60,14 +60,14 @@ export function LanguageDialog() {
           <Button
             variant="outline"
             className={`justify-start gap-4 h-16 text-base border-2 transition-all ${selectedLanguage === "en"
-              ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20"
+              ? "border-primary bg-primary/10 dark:bg-primary/20"
               : "border-slate-200 dark:border-slate-800"
               }`}
             onClick={() => setSelectedLanguage("en")}
           >
-            <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedLanguage === "en" ? "border-emerald-600" : "border-slate-300 dark:border-slate-600"
+            <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedLanguage === "en" ? "border-primary" : "border-slate-300 dark:border-slate-600"
               }`}>
-              {selectedLanguage === "en" && <div className="w-3 h-3 rounded-full bg-emerald-600 animate-in zoom-in duration-200" />}
+              {selectedLanguage === "en" && <div className="w-3 h-3 rounded-full bg-primary animate-in zoom-in duration-200" />}
             </div>
             <div className="flex flex-col items-start leading-tight">
               <span className="font-semibold">{t("languageDialog.english")}</span>
@@ -77,14 +77,14 @@ export function LanguageDialog() {
           <Button
             variant="outline"
             className={`justify-start gap-4 h-16 text-base border-2 transition-all ${selectedLanguage === "tl"
-              ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20"
+              ? "border-primary bg-primary/10 dark:bg-primary/20"
               : "border-slate-200 dark:border-slate-800"
               }`}
             onClick={() => setSelectedLanguage("tl")}
           >
-            <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedLanguage === "tl" ? "border-emerald-600" : "border-slate-300 dark:border-slate-600"
+            <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedLanguage === "tl" ? "border-primary" : "border-slate-300 dark:border-slate-600"
               }`}>
-              {selectedLanguage === "tl" && <div className="w-3 h-3 rounded-full bg-emerald-600 animate-in zoom-in duration-200" />}
+              {selectedLanguage === "tl" && <div className="w-3 h-3 rounded-full bg-primary animate-in zoom-in duration-200" />}
             </div>
             <div className="flex flex-col items-start leading-tight">
               <span className="font-semibold">{t("languageDialog.filipino")}</span>
@@ -93,7 +93,7 @@ export function LanguageDialog() {
           </Button>
         </div>
         <DialogFooter>
-          <Button onClick={handleConfirm} className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Button onClick={handleConfirm} className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90 text-primary-foreground">
             {t("languageDialog.confirm")}
           </Button>
         </DialogFooter>

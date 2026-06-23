@@ -110,7 +110,7 @@ export function FeedbackSubmissionForm({
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value as FeedbackCategory)}
-          className="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-slate-700 font-medium cursor-pointer bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+          className="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-slate-700 font-medium cursor-pointer bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
         >
           {categories.map((cat) => (
             <option key={cat.value} value={cat.value}>
@@ -130,7 +130,7 @@ export function FeedbackSubmissionForm({
           onChange={(e) => setComment(e.target.value)}
           placeholder="Share your experience, issues, or thoughts about this infrastructure project..."
           rows={5}
-          className="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-slate-700 font-medium bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+          className="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-slate-700 font-medium bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
         />
         {validationErrors.comment && (
           <p className="text-xs text-rose-500 font-medium">{validationErrors.comment}</p>
@@ -144,7 +144,7 @@ export function FeedbackSubmissionForm({
           id="anonymous"
           checked={isAnonymous}
           onChange={(e) => setIsAnonymous(e.target.checked)}
-          className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+          className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
         />
         <label htmlFor="anonymous" className="text-sm text-slate-700 dark:text-slate-300 font-semibold cursor-pointer">
           Post feedback anonymously
@@ -159,7 +159,7 @@ export function FeedbackSubmissionForm({
             id="agree"
             checked={agreeToTerms}
             onChange={(e) => setAgreeToTerms(e.target.checked)}
-            className="w-4 h-4 mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            className="w-4 h-4 mt-1 rounded border-slate-300 text-primary focus:ring-primary"
           />
           <label htmlFor="agree" className="text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
             I certify that this feedback is based on my first-hand observation and conforms to our community posting guidelines.
@@ -175,7 +175,7 @@ export function FeedbackSubmissionForm({
         <Button
           type="submit"
           disabled={isPending}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
         >
           {isPending ? (
             <>

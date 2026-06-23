@@ -162,7 +162,7 @@ export function FeedbackCommentList({
               key={comment.id}
               className={`p-3 rounded-lg border transition-all ${
                 isHighlighted 
-                  ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/10"
+                  ? "border-primary bg-primary/5 dark:bg-primary/10"
                   : "border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30"
               }`}
             >
@@ -225,7 +225,7 @@ export function FeedbackCommentList({
                   />
                   <div className="flex justify-end gap-2">
                     <Button onClick={handleCancelEdit} size="xs" variant="outline">Cancel</Button>
-                    <Button onClick={() => handleUpdate(comment.id)} size="xs" className="bg-emerald-600 hover:bg-emerald-700 text-white">Save</Button>
+                    <Button onClick={() => handleUpdate(comment.id)} size="xs" className="bg-primary hover:bg-primary/90 text-primary-foreground">Save</Button>
                   </div>
                 </div>
               ) : (
@@ -262,7 +262,7 @@ export function FeedbackCommentList({
                     <button
                       onClick={() => handleVote(comment.id, "helpful")}
                       className={`flex items-center gap-1 hover:text-slate-600 dark:hover:text-slate-300 bg-transparent border-0 cursor-pointer ${
-                        userVote === "helpful" ? "text-emerald-600 dark:text-emerald-400" : ""
+                        userVote === "helpful" ? "text-primary" : ""
                       }`}
                     >
                       <ThumbsUp className="w-3 h-3" /> {counts.helpfulCount}

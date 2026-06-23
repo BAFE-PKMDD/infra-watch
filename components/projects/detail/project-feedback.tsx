@@ -107,8 +107,8 @@ export function ProjectFeedback({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      {/* Header with solid emerald background (no gradients) */}
-      <div className="bg-emerald-600 px-6 py-4 rounded-t-lg">
+      {/* Header with solid primary background (no gradients) */}
+      <div className="bg-primary px-6 py-4 rounded-t-lg">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-xl font-semibold text-white">{t("projectDetail.feedback.title")}</h2>
           {isAuthenticated ? (
@@ -148,7 +148,7 @@ export function ProjectFeedback({
             <Link
               href={`/sign-in`}
             >
-              <Button className="bg-white hover:bg-white/90 text-emerald-600 font-semibold">
+              <Button className="bg-white hover:bg-white/90 text-primary font-semibold">
                 <LogIn className="w-4 h-4 mr-2" />
                 {t("projectDetail.feedback.signIn")}
               </Button>

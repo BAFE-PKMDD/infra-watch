@@ -66,7 +66,7 @@ function SectionCard({ icon, title, children, className = "" }: SectionCardProps
   return (
     <div className={`bg-white dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 p-5 ${className}`}>
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-        <span className="text-emerald-600 dark:text-emerald-400">{icon}</span>
+        <span className="text-primary dark:text-primary">{icon}</span>
         <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
           {title}
         </h3>
@@ -122,8 +122,8 @@ export function ProjectOverview({ project, onShowOnMap }: ProjectOverviewProps) 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      {/* Emerald Card Header */}
-      <div className="bg-emerald-600 text-white px-6 py-4 rounded-t-xl">
+      {/* Primary Card Header */}
+      <div className="bg-primary text-primary-foreground px-6 py-4 rounded-t-xl">
         <h2 className="text-lg font-semibold">
           {t("projectDetail.overview.title")}
         </h2>
@@ -182,9 +182,9 @@ export function ProjectOverview({ project, onShowOnMap }: ProjectOverviewProps) 
               </div>
               <button
                 onClick={onShowOnMap}
-                className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group cursor-pointer border-0 bg-transparent p-0 text-left"
+                className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white hover:text-primary dark:hover:text-primary transition-colors group cursor-pointer border-0 bg-transparent p-0 text-left"
               >
-                <MapPin className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+                <MapPin className="w-3.5 h-3.5 text-slate-400 group-hover:text-primary dark:group-hover:text-primary transition-colors" />
                 <span className="underline decoration-dotted underline-offset-4">{project.location}</span>
               </button>
             </div>
@@ -326,7 +326,7 @@ export function ProjectOverview({ project, onShowOnMap }: ProjectOverviewProps) 
                   {project.commodities.map((commodity, index) => (
                     <span
                       key={index}
-                      className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-medium border border-emerald-200 dark:border-emerald-800"
+                      className="px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20 dark:bg-primary/20 dark:text-primary-foreground/90 dark:border-primary/30"
                     >
                       {commodity}
                     </span>

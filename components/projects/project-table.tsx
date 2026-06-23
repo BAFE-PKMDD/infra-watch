@@ -29,31 +29,31 @@ export function ProjectTable({ projects }: ProjectTableProps) {
         <TableHeader className="bg-slate-50/80 border-b border-slate-200 dark:bg-slate-900/40 dark:border-slate-800">
           <TableRow>
             <TableHead className="px-6 py-4 text-left">
-              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-emerald-600 transition-colors dark:text-slate-100">
+              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-primary transition-colors dark:text-slate-100">
                 Project Name/Code
                 <ChevronDown className="w-4 h-4" />
               </button>
             </TableHead>
             <TableHead className="px-6 py-4 text-left">
-              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-emerald-600 transition-colors dark:text-slate-100">
+              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-primary transition-colors dark:text-slate-100">
                 Location
                 <ChevronDown className="w-4 h-4" />
               </button>
             </TableHead>
             <TableHead className="px-6 py-4 text-left">
-              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-emerald-600 transition-colors dark:text-slate-100">
+              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-primary transition-colors dark:text-slate-100">
                 Implementing Agency
                 <ChevronDown className="w-4 h-4" />
               </button>
             </TableHead>
             <TableHead className="px-6 py-4 text-left">
-              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-emerald-600 transition-colors dark:text-slate-100">
+              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-primary transition-colors dark:text-slate-100">
                 Budget (PHP)
                 <ChevronDown className="w-4 h-4" />
               </button>
             </TableHead>
             <TableHead className="px-6 py-4 text-left">
-              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-emerald-600 transition-colors dark:text-slate-100">
+              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-primary transition-colors dark:text-slate-100">
                 Status
                 <ChevronDown className="w-4 h-4" />
               </button>
@@ -67,11 +67,11 @@ export function ProjectTable({ projects }: ProjectTableProps) {
           {projects.map((project) => (
             <TableRow
               key={project.id}
-              className="hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-colors group cursor-pointer"
+              className="hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors group cursor-pointer"
             >
               <TableCell className="px-6 py-5 whitespace-normal">
                 <Link href={`/projects/${project.id}${queryString ? `?${queryString}` : ""}`} className="block">
-                  <p className="text-sm font-medium text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-2 dark:text-white">
+                  <p className="text-sm font-medium text-slate-900 group-hover:text-primary transition-colors line-clamp-2 dark:text-white">
                     {project.name}
                   </p>
                   <p className="text-xs text-slate-500 mt-1 font-mono dark:text-slate-300">{project.code}</p>
@@ -105,7 +105,7 @@ export function ProjectTable({ projects }: ProjectTableProps) {
                   <Button
                     type="button"
                     onClick={(event) => event.stopPropagation()}
-                    className="px-4 py-2 text-sm font-semibold hover:bg-emerald-600 hover:text-white"
+                    className="px-4 py-2 text-sm font-semibold hover:bg-primary hover:text-primary-foreground"
                   >
                     Feedback
                   </Button>

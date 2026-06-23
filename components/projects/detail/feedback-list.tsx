@@ -49,7 +49,7 @@ const categoryLabels: Record<string, string> = {
 
 const categoryColors: Record<string, string> = {
   quality: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
-  progress: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
+  progress: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400",
   concerns: "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
   general: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400",
 };
@@ -203,7 +203,7 @@ export function FeedbackList({
             key={feedback.id}
             className={`p-6 rounded-lg border transition-all ${
               isHighlighted
-                ? "border-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/10"
+                ? "border-primary bg-primary/5 dark:bg-primary/10"
                 : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
             }`}
           >
@@ -261,7 +261,7 @@ export function FeedbackList({
               <button
                 onClick={() => handleVote(feedback.id, "helpful")}
                 className={`flex items-center gap-1.5 hover:text-slate-600 dark:hover:text-slate-300 bg-transparent border-0 cursor-pointer ${
-                  userVote === "helpful" ? "text-emerald-600 dark:text-emerald-400" : ""
+                  userVote === "helpful" ? "text-primary" : ""
                 }`}
               >
                 <ThumbsUp className="w-4 h-4" />
@@ -281,7 +281,7 @@ export function FeedbackList({
               <button
                 onClick={() => toggleComments(feedback.id)}
                 className={`flex items-center gap-1.5 hover:text-slate-600 dark:hover:text-slate-300 bg-transparent border-0 cursor-pointer ${
-                  isExpanded ? "text-emerald-600 dark:text-emerald-400" : ""
+                  isExpanded ? "text-primary" : ""
                 }`}
               >
                 <MessageSquare className="w-4 h-4" />

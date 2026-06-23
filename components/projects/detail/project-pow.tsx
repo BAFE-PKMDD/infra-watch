@@ -126,7 +126,7 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
       >
-        <div className="bg-emerald-600 text-white px-6 py-4 rounded-t-lg">
+        <div className="bg-primary text-primary-foreground px-6 py-4 rounded-t-lg">
           <h2 className="text-lg font-semibold">{t("projectDetail.sidebar.pow")}</h2>
         </div>
         <div className="p-12">
@@ -153,7 +153,7 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      <div className="bg-emerald-600 text-white px-6 py-4 rounded-t-lg flex items-center justify-between">
+      <div className="bg-primary text-primary-foreground px-6 py-4 rounded-t-lg flex items-center justify-between">
         <h2 className="text-lg font-semibold">
           {t("projectDetail.sidebar.pow")} ({powRelations.length})
         </h2>
@@ -161,7 +161,7 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
 
       <div className="p-6 border-b border-slate-200 dark:border-slate-800">
         <div className="mb-4 flex items-center gap-2">
-          <ChartIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
+          <ChartIcon className="w-5 h-5 text-primary" />
           <h3 className="font-semibold text-slate-900 dark:text-white">
             {t("projectDetail.tabs.pow.sCurveTitle") || "Physical Progress (S-Curve)"}
           </h3>
@@ -172,11 +172,11 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
             {/* Legend */}
             <div className="flex items-center justify-center gap-6 mb-4 text-xs font-bold">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-1 bg-blue-500 rounded" />
+                <span className="w-3 h-1 bg-primary rounded" />
                 <span className="text-slate-600 dark:text-slate-300">{t("projectDetail.tabs.pow.targetProgress")}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-1 bg-emerald-500 rounded" />
+                <span className="w-3 h-1 bg-accent rounded" />
                 <span className="text-slate-600 dark:text-slate-300">{t("projectDetail.tabs.pow.actualProgress")}</span>
               </div>
             </div>
@@ -240,14 +240,14 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
                 <path 
                   d={svgChart.targetLinePath} 
                   fill="none" 
-                  stroke="#3b82f6" 
+                  stroke="var(--primary)" 
                   strokeWidth="2.5" 
                   strokeLinecap="round"
                 />
                 <path 
                   d={svgChart.actualLinePath} 
                   fill="none" 
-                  stroke="#10b981" 
+                  stroke="var(--accent)" 
                   strokeWidth="2.5" 
                   strokeLinecap="round"
                 />
@@ -259,7 +259,7 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
                       cx={p.x} 
                       cy={p.targetY} 
                       r="4" 
-                      fill="#3b82f6" 
+                      fill="var(--primary)" 
                       stroke="#fff" 
                       strokeWidth="1.5"
                     />
@@ -267,7 +267,7 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
                       cx={p.x} 
                       cy={p.actualY} 
                       r="4" 
-                      fill="#10b981" 
+                      fill="var(--accent)" 
                       stroke="#fff" 
                       strokeWidth="1.5"
                     />
@@ -277,12 +277,12 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
                 {/* Gradients */}
                 <defs>
                   <linearGradient id="targetGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3"/>
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0"/>
+                    <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.3"/>
+                    <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.0"/>
                   </linearGradient>
                   <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.3"/>
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0"/>
+                    <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.3"/>
+                    <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.0"/>
                   </linearGradient>
                 </defs>
               </svg>
@@ -302,7 +302,7 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
         >
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-              <List className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
+              <List className="w-5 h-5 text-primary" />
             </div>
             <div className="text-left">
               <h4 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -347,13 +347,13 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
                     return (
                       <div key={pow.id || index} className="relative pl-6 md:pl-8">
                         {/* Timeline Dot */}
-                        <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-white dark:bg-slate-900 border-2 border-emerald-600 dark:border-emerald-500 z-10" />
+                        <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-white dark:bg-slate-900 border-2 border-primary z-10" />
 
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:border-emerald-500/50 transition-all group shadow-none">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:border-primary/50 transition-all group shadow-none">
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                             <div className="flex items-center gap-3">
                               <div className="p-2 bg-white dark:bg-slate-800 rounded shadow-none border border-slate-100 dark:border-slate-700">
-                                <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
+                                <Calendar className="w-4 h-4 text-primary" />
                               </div>
                               <div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -375,12 +375,12 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
                             <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-100 dark:border-slate-800/50">
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-1.5">
-                                  <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
+                                  <TrendingUp className="w-3.5 h-3.5 text-primary" />
                                   <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                                     {t("projectDetail.tabs.pow.targetProgress")}
                                   </span>
                                 </div>
-                                <span className="text-xs font-black text-blue-600 dark:text-blue-400">
+                                <span className="text-xs font-black text-primary">
                                   {cumulativeTarget.toFixed(2)}%
                                 </span>
                               </div>
@@ -389,7 +389,7 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
                                   initial={{ width: 0 }}
                                   animate={{ width: `${cumulativeTarget}%` }}
                                   transition={{ duration: 1, ease: "easeOut" }}
-                                  className="bg-blue-500 h-full rounded-full"
+                                  className="bg-primary h-full rounded-full"
                                 />
                               </div>
                             </div>
@@ -398,12 +398,12 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
                             <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-100 dark:border-slate-800/50">
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-1.5">
-                                  <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                                  <TrendingUp className="w-3.5 h-3.5 text-accent" />
                                   <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                                     {t("projectDetail.tabs.pow.actualProgress")}
                                   </span>
                                 </div>
-                                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                                <span className="text-xs font-black text-accent">
                                   {cumulativeActual.toFixed(2)}%
                                 </span>
                               </div>
@@ -412,7 +412,7 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
                                   initial={{ width: 0 }}
                                   animate={{ width: `${cumulativeActual}%` }}
                                   transition={{ duration: 1, ease: "easeOut" }}
-                                  className="bg-emerald-500 h-full rounded-full"
+                                  className="bg-accent h-full rounded-full"
                                 />
                               </div>
                             </div>
@@ -423,7 +423,7 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
                                   href={pow.attachment_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent/90 transition-colors"
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />
                                   {t("projectDetail.tabs.pow.viewAttachment")}

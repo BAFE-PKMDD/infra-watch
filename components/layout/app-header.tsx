@@ -19,12 +19,10 @@ import { AnimatePresence, motion } from "framer-motion";
 const navItems = [
   { label: "Home", href: "/", key: "home" },
   { label: "Projects", href: "/projects", key: "projects" },
+  { label: "GIS Map", href: "/map", key: "map" },
   { label: "About", href: "/about", key: "about" },
-  { label: "Citizen Feed", href: "/citizen-feed", key: "citizenFeed" },
   { label: "E-Report", href: "/report-issue", key: "report-issue" },
-  { label: "Live", href: "/live", key: "live", isSecondary: true },
   { label: "Articles & Updates", href: "/articles-and-updates", key: "articles-and-updates", isSecondary: true },
-  { label: "Statistics", href: "/statistics", key: "statistics", isSecondary: true },
   { label: "FAQ", href: "/faq", key: "faq", isSecondary: true },
   { label: "Contact Us", href: "/contact", key: "contact", isSecondary: true },
 ] as { label: string; href: string; key: string; requiresAuth?: boolean; isSecondary?: boolean }[];
@@ -128,13 +126,13 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-600 flex items-center justify-center text-white font-bold rounded">
+              <div className="w-10 h-10 bg-primary flex items-center justify-center text-white font-bold rounded">
                 IW
               </div>
               <div className="hidden sm:block">
                 <h1 className="flex items-center text-xl font-extrabold text-slate-900 dark:text-white leading-tight">
                   INFRA WATCH
-                  <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300">
+                  <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-primary/10 text-primary border border-primary/20">
                     AMEFIP
                   </span>
                 </h1>
@@ -180,8 +178,8 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                     className={cn(
                       "text-[13px] lg:text-sm font-bold transition-colors whitespace-nowrap relative",
                       activeItem === item.key
-                        ? "text-emerald-600 dark:text-emerald-300"
-                        : "text-slate-700 hover:text-emerald-600 dark:text-slate-200 dark:hover:text-emerald-300"
+                        ? "text-primary"
+                        : "text-slate-700 hover:text-primary dark:text-slate-200 dark:hover:text-primary"
                     )}
                   >
                     {item.label}
@@ -196,8 +194,8 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                         className={cn(
                           "flex items-center gap-1 text-[13px] lg:text-sm font-bold transition-colors whitespace-nowrap outline-none",
                           translatedNavItems.some(i => i.isSecondary && i.key === activeItem)
-                            ? "text-emerald-600 dark:text-emerald-300"
-                            : "text-slate-700 hover:text-emerald-600 dark:text-slate-200 dark:hover:text-emerald-300"
+                            ? "text-primary"
+                            : "text-slate-700 hover:text-primary dark:text-slate-200 dark:hover:text-primary"
                         )}
                       >
                         {t("nav.more")}
@@ -214,7 +212,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                             href={item.href}
                             className={cn(
                               "w-full cursor-pointer font-bold block py-1",
-                              activeItem === item.key ? "text-emerald-600 dark:text-emerald-300" : "text-slate-700 dark:text-slate-200"
+                              activeItem === item.key ? "text-primary" : "text-slate-700 dark:text-slate-200"
                             )}
                           >
                             {item.label}
@@ -246,7 +244,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                     aria-label="User menu"
                   >
                     <div className="w-9 h-9 flex-shrink-0">
-                      <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-semibold border-2 border-emerald-600">
+                      <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold border-2 border-primary">
                         {getUserInitials(user.name)}
                       </div>
                     </div>
@@ -303,7 +301,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
               ) : (
                 <Link
                   href="/sign-in"
-                  className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+                  className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/95 transition-colors shadow-sm"
                 >
                   {displayActionLabel}
                 </Link>
@@ -337,7 +335,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                     className={cn(
                       "text-base font-medium px-3 py-2 rounded-lg transition-colors",
                       activeItem === item.key
-                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                        ? "bg-primary/10 text-primary"
                         : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
                       "flex items-center justify-between"
                     )}
@@ -349,7 +347,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
             {user ? (
               <div className="space-y-2 border-t border-slate-200 dark:border-slate-800 pt-4">
                 <div className="flex items-center gap-3 px-3 py-2">
-                  <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-semibold border-2 border-emerald-600">
+                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold border-2 border-primary">
                     {getUserInitials(user.name)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -401,7 +399,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
             ) : (
               <Link
                 href="/sign-in"
-                className="block text-center w-full px-4 py-3 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+                className="block text-center w-full px-4 py-3 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/95 transition-colors shadow-sm"
                 onClick={() => setMobileOpen(false)}
               >
                 {displayActionLabel}
