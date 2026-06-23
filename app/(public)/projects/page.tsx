@@ -1,13 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, SlidersHorizontal, Filter, CheckCircle2, Clock, XCircle, Grid, List } from "lucide-react";
+import { 
+  Search, 
+  SlidersHorizontal, 
+  Filter, 
+  Grid, 
+  List,
+  ChevronRight,
+  X
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Mock Projects Data
 const mockProjects = [
@@ -57,6 +64,21 @@ const mockProjects = [
     year: "2025"
   },
   {
+    id: "PRJ-AMSS-2023-018",
+    name: "Rice Processing Center and Milling Warehouse",
+    program: "amss",
+    sector: "Storage Infrastructures",
+    province: "Leyte",
+    municipality: "Abuyog",
+    barangay: "Dingle",
+    budget: 9600000,
+    physicalProgress: 100,
+    financialProgress: 100,
+    status: "completed",
+    contractor: "Leyte Infra Builders",
+    year: "2023"
+  },
+  {
     id: "PRJ-AMSS-2026-002",
     name: "Agricultural Warehouse and Storage Facility",
     program: "amss",
@@ -85,6 +107,21 @@ const mockProjects = [
     status: "suspended",
     contractor: "Samar Drainage Co.",
     year: "2024"
+  },
+  {
+    id: "PRJ-INS-2025-055",
+    name: "Multi-Purpose Irrigation Reservoir",
+    program: "ins",
+    sector: "Irrigation Systems",
+    province: "Cebu",
+    municipality: "Balamban",
+    barangay: "Lias",
+    budget: 8500000,
+    physicalProgress: 50,
+    financialProgress: 45,
+    status: "ongoing",
+    contractor: "Visayas Builders",
+    year: "2025"
   }
 ];
 
@@ -92,13 +129,16 @@ export default function ProjectsCatalog() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeProgram, setActiveProgram] = useState<"all" | "amss" | "ins">("all");
   const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [selectedProvince, setSelectedProvince] = useState<string>("all");
+  const [budgetRange, setBudgetRange] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<Record<string, boolean>>({
     completed: true,
     ongoing: true,
     planned: true,
     suspended: true,
   });
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const toggleStatus = (status: string) => {
     setSelectedStatus(prev => ({
@@ -111,6 +151,8 @@ export default function ProjectsCatalog() {
     setSearchQuery("");
     setActiveProgram("all");
     setSelectedYear("all");
+    setSelectedProvince("all");
+    setBudgetRange("all");
     setSelectedStatus({
       completed: true,
       ongoing: true,
@@ -119,288 +161,413 @@ export default function ProjectsCatalog() {
     });
   };
 
-  const filteredProjects = mockProjects.filter((project) => {
-    const matchesSearch = 
-      project.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      project.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.contractor.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesProgram = activeProgram === "all" || project.program === activeProgram;
-    const matchesYear = selectedYear === "all" || project.year === selectedYear;
-    const matchesStatus = selectedStatus[project.status];
+  const filteredProjects = useMemo(() => {
+    return mockProjects.filter((project) => {
+      const matchesSearch = 
+        project.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        project.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.contractor.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesProgram = activeProgram === "all" || project.program === activeProgram;
+      const matchesYear = selectedYear === "all" || project.year === selectedYear;
+      const matchesProvince = selectedProvince === "all" || project.province === selectedProvince;
+      const matchesStatus = selectedStatus[project.status];
+      
+      const matchesBudget = (() => {
+        if (budgetRange === "all") return true;
+        if (budgetRange === "under-2m") return project.budget < 2000000;
+        if (budgetRange === "2m-10m") return project.budget >= 2000000 && project.budget <= 10000000;
+        if (budgetRange === "over-10m") return project.budget > 10000000;
+        return true;
+      })();
 
-    return matchesSearch && matchesProgram && matchesYear && matchesStatus;
-  });
+      return matchesSearch && matchesProgram && matchesYear && matchesProvince && matchesStatus && matchesBudget;
+    });
+  }, [searchQuery, activeProgram, selectedYear, selectedProvince, selectedStatus, budgetRange]);
+
+  const hasActiveFilters = searchQuery !== "" || 
+    activeProgram !== "all" || 
+    selectedYear !== "all" || 
+    selectedProvince !== "all" || 
+    budgetRange !== "all" ||
+    !Object.values(selectedStatus).every(Boolean);
+
+  const programs = [
+    { id: "all", label: "All Projects" },
+    { id: "ins", label: "INS (Irrigation)" },
+    { id: "amss", label: "AMSS (Machineries)" },
+  ] as const;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12 flex flex-col lg:flex-row gap-8 min-h-screen">
-      {/* Sidebar Filter Panel */}
-      <aside className="w-full lg:w-64 shrink-0">
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm sticky top-24">
-          <CardHeader className="p-5 flex flex-row justify-between items-center border-b border-slate-100 dark:border-slate-800">
-            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
-              <Filter className="w-4 h-4 text-primary" /> Filters
-            </CardTitle>
-            <button 
-              onClick={resetFilters} 
-              className="text-xs text-slate-500 hover:text-primary transition-colors font-semibold"
-            >
-              Reset All
-            </button>
-          </CardHeader>
-          <CardContent className="p-5 space-y-6">
-            {/* Program selection */}
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2.5">Program Category</span>
-              <div className="space-y-1">
-                <Button 
-                  variant={activeProgram === "all" ? "default" : "outline"}
-                  onClick={() => setActiveProgram("all")}
-                  className={`w-full justify-start text-xs font-semibold h-8 ${
-                    activeProgram === "all" ? "bg-primary text-primary-foreground" : "border-slate-200 text-slate-700 dark:border-slate-800 dark:text-slate-350"
-                  }`}
-                >
-                  All Programs
-                </Button>
-                <Button 
-                  variant={activeProgram === "amss" ? "default" : "outline"}
-                  onClick={() => setActiveProgram("amss")}
-                  className={`w-full justify-start text-xs font-semibold h-8 ${
-                    activeProgram === "amss" ? "bg-primary text-primary-foreground" : "border-slate-200 text-slate-700 dark:border-slate-800 dark:text-slate-350"
-                  }`}
-                >
-                  AMSS (Machinery & Warehouses)
-                </Button>
-                <Button 
-                  variant={activeProgram === "ins" ? "default" : "outline"}
-                  onClick={() => setActiveProgram("ins")}
-                  className={`w-full justify-start text-xs font-semibold h-8 ${
-                    activeProgram === "ins" ? "bg-primary text-primary-foreground" : "border-slate-200 text-slate-700 dark:border-slate-800 dark:text-slate-350"
-                  }`}
-                >
-                  INS (Irrigation Services)
-                </Button>
-              </div>
-            </div>
-
-            {/* Status Checkboxes */}
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2.5">Project Status</span>
-              <div className="space-y-2">
-                {Object.keys(selectedStatus).map((status) => (
-                  <label key={status} className="flex items-center gap-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer capitalize">
-                    <input 
-                      type="checkbox" 
-                      checked={selectedStatus[status]} 
-                      onChange={() => toggleStatus(status)}
-                      className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4" 
-                    />
-                    {status}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Year Selector */}
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">Fiscal Year</span>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary"
-              >
-                <option value="all">All Years (2021-2026)</option>
-                <option value="2026">2026</option>
-                <option value="2025">2025</option>
-                <option value="2024">2024</option>
-                <option value="2023">2023</option>
-                <option value="2022">2022</option>
-                <option value="2021">2021</option>
-              </select>
-            </div>
-          </CardContent>
-        </Card>
-      </aside>
-
-      {/* Main Catalog View */}
-      <div className="flex-1 space-y-6">
-        {/* Search Bar & View Mode Toggle */}
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
-          <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input 
-                type="text" 
-                placeholder="Search by project name, ID, or contractor..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-800 rounded-lg pl-10 pr-4 py-2 text-sm"
-              />
-            </div>
-            
-            <div className="flex items-center gap-2 shrink-0">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setViewMode("list")}
-                className={`h-9 px-3 border-slate-200 dark:border-slate-800 ${viewMode === "list" ? "bg-slate-100 dark:bg-slate-800" : ""}`}
-              >
-                <List className="w-4 h-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setViewMode("grid")}
-                className={`h-9 px-3 border-slate-200 dark:border-slate-800 ${viewMode === "grid" ? "bg-slate-100 dark:bg-slate-800" : ""}`}
-              >
-                <Grid className="w-4 h-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Catalog Items */}
-        {viewMode === "list" ? (
-          <div className="space-y-4">
-            {filteredProjects.map((project) => (
-              <Card 
-                key={project.id}
-                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-350 dark:hover:border-slate-700 transition-all rounded-xl overflow-hidden cursor-pointer"
-              >
-                <Link href={`/projects/${project.id}`} className="block p-6">
-                  <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className={`text-[10px] font-extrabold px-2 py-0.5 rounded uppercase ${
-                          project.program === "ins" 
-                            ? "bg-primary/10 text-primary border border-primary/20" 
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                        }`}>
-                          {project.program === "ins" ? "INS Program" : "AMSS Program"}
-                        </Badge>
-                        <span className="text-[10px] text-slate-400 font-mono tracking-tight">{project.id}</span>
-                      </div>
-                      <h3 className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-primary transition-colors">{project.name}</h3>
-                      <p className="text-slate-500 dark:text-slate-400 text-xs mt-1.5 leading-relaxed">
-                        {project.barangay}, {project.municipality}, {project.province} • Budget: ₱{project.budget.toLocaleString()} • Funded: {project.year}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-6 self-start md:self-center shrink-0">
-                      {/* Physical Progress */}
-                      <div className="text-right hidden sm:block">
-                        <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Progress</span>
-                        <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200 mt-0.5 font-mono">{project.physicalProgress}%</p>
-                        <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-1.5 overflow-hidden border border-slate-200 dark:border-slate-700">
-                          <div className="bg-primary h-full rounded-full" style={{ width: `${project.physicalProgress}%` }} />
-                        </div>
-                      </div>
-
-                      {/* Status Badges */}
-                      <div>
-                        {project.status === "completed" && (
-                          <Badge className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border border-emerald-200 dark:border-emerald-900/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Completed
-                          </Badge>
-                        )}
-                        {project.status === "ongoing" && (
-                          <Badge className="bg-amber-50 dark:bg-amber-950/20 text-amber-600 border border-amber-250 dark:border-amber-900/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" /> Ongoing
-                          </Badge>
-                        )}
-                        {project.status === "planned" && (
-                          <Badge className="bg-slate-50 dark:bg-slate-850 text-slate-600 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" /> Planned
-                          </Badge>
-                        )}
-                        {project.status === "suspended" && (
-                          <Badge className="bg-rose-50 dark:bg-rose-950/20 text-rose-600 border border-rose-250 dark:border-rose-900/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
-                            <XCircle className="w-3.5 h-3.5" /> Suspended
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            {filteredProjects.map((project) => (
-              <Card 
-                key={project.id}
-                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-350 dark:hover:border-slate-700 transition-all rounded-xl overflow-hidden cursor-pointer flex flex-col justify-between"
-              >
-                <Link href={`/projects/${project.id}`} className="p-6 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <Badge className={`text-[10px] font-extrabold px-2 py-0.5 rounded uppercase ${
-                        project.program === "ins" 
-                          ? "bg-primary/10 text-primary border border-primary/20" 
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                      }`}>
-                        {project.program === "ins" ? "INS" : "AMSS"}
-                      </Badge>
-                      
-                      <div>
-                        {project.status === "completed" && (
-                          <Badge className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border border-emerald-200 dark:border-emerald-900/30 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                            <CheckCircle2 className="w-3 h-3" /> Completed
-                          </Badge>
-                        )}
-                        {project.status === "ongoing" && (
-                          <Badge className="bg-amber-50 dark:bg-amber-950/20 text-amber-600 border border-amber-250 dark:border-amber-900/30 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                            <Clock className="w-3 h-3" /> Ongoing
-                          </Badge>
-                        )}
-                        {project.status === "planned" && (
-                          <Badge className="bg-slate-50 dark:bg-slate-850 text-slate-600 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                            <Clock className="w-3 h-3" /> Planned
-                          </Badge>
-                        )}
-                        {project.status === "suspended" && (
-                          <Badge className="bg-rose-50 dark:bg-rose-950/20 text-rose-600 border border-rose-250 dark:border-rose-900/30 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                            <XCircle className="w-3 h-3" /> Suspended
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white mb-2 leading-snug">{project.name}</h3>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs mb-4">
-                      {project.barangay}, {project.municipality}, {project.province}
-                    </p>
-                  </div>
-
-                  <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4 space-y-3">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400">Budget:</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-300">₱{project.budget.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400">Progress:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-750 dark:text-slate-250 font-mono">{project.physicalProgress}%</span>
-                        <div className="w-16 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-150 dark:border-slate-750">
-                          <div className="bg-primary h-full" style={{ width: `${project.physicalProgress}%` }} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Empty State */}
-        {filteredProjects.length === 0 && (
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 dark:text-slate-400 text-sm">
-            No projects found matching the selected filters.
-          </Card>
-        )}
+    <div className="max-w-6xl mx-auto px-4 py-12 lg:py-16 min-h-screen font-sans">
+      {/* Elegant Typographic Header */}
+      <div className="mb-12">
+        <h1 className="text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          Projects Catalog
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">
+          Showing {filteredProjects.length} infrastructure {filteredProjects.length === 1 ? 'project' : 'projects'} active in key agricultural programs.
+        </p>
       </div>
+
+      {/* Underlined Navigation Tabs */}
+      <div className="flex border-b border-slate-200/80 dark:border-slate-800/80 mb-8 gap-8 relative overflow-x-auto scrollbar-none">
+        {programs.map((prog) => {
+          const isActive = activeProgram === prog.id;
+          return (
+            <button
+              key={prog.id}
+              onClick={() => setActiveProgram(prog.id)}
+              className={`pb-3.5 text-sm font-bold transition-all relative outline-none cursor-pointer whitespace-nowrap ${
+                isActive 
+                  ? "text-primary font-extrabold" 
+                  : "text-slate-450 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+              }`}
+            >
+              {prog.label}
+              {isActive && (
+                <motion.div
+                  layoutId="activeTabUnderline"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary z-10"
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Minimalism Control Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-8">
+        {/* Borderless Search Input */}
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-450" />
+          <Input 
+            type="text" 
+            placeholder="Search projects..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-50/50 dark:bg-slate-900/40 border-slate-200/60 dark:border-slate-800 rounded-lg pl-10 pr-8 py-2 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 dark:hover:text-white"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Filter Toggle and View Switcher */}
+        <div className="flex items-center gap-4 w-full sm:w-auto justify-end">
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg transition-colors cursor-pointer border ${
+              showAdvanced
+                ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                : "bg-transparent border-slate-200/80 dark:border-slate-800 text-slate-500 hover:text-slate-855 dark:hover:text-white"
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+            Filters
+          </button>
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                viewMode === "list"
+                  ? "bg-slate-100 dark:bg-slate-800 text-primary"
+                  : "text-slate-400 hover:text-slate-700 dark:hover:text-white"
+              }`}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                viewMode === "grid"
+                  ? "bg-slate-100 dark:bg-slate-800 text-primary"
+                  : "text-slate-400 hover:text-slate-700 dark:hover:text-white"
+              }`}
+              title="Grid View"
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Advanced Collapsible Filter Row */}
+      <AnimatePresence>
+        {showAdvanced && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-5 bg-slate-50/30 dark:bg-slate-900/20 rounded-xl border border-slate-200/50 dark:border-slate-800/60 mb-8 text-xs">
+              {/* Province Select */}
+              <div>
+                <label className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">Province</label>
+                <select
+                  value={selectedProvince}
+                  onChange={(e) => setSelectedProvince(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-750 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="all">All Provinces</option>
+                  <option value="Leyte">Leyte</option>
+                  <option value="Cebu">Cebu</option>
+                  <option value="Samar">Samar</option>
+                </select>
+              </div>
+
+              {/* Year Select */}
+              <div>
+                <label className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">Fiscal Year</label>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-755 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="all">All Years</option>
+                  <option value="2026">2026</option>
+                  <option value="2025">2025</option>
+                  <option value="2024">2024</option>
+                  <option value="2023">2023</option>
+                </select>
+              </div>
+
+              {/* Budget Allocation Select */}
+              <div>
+                <label className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">Budget Size</label>
+                <select
+                  value={budgetRange}
+                  onChange={(e) => setBudgetRange(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-755 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="all">All Budgets</option>
+                  <option value="under-2m">Under ₱2M</option>
+                  <option value="2m-10m">₱2M - ₱10M</option>
+                  <option value="over-10m">Over ₱10M</option>
+                </select>
+              </div>
+
+              {/* Status checkboxes */}
+              <div>
+                <label className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">Status Option</label>
+                <div className="flex flex-wrap gap-x-3 gap-y-2 mt-1.5">
+                  {Object.keys(selectedStatus).map((status) => (
+                    <label 
+                      key={status} 
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 cursor-pointer capitalize hover:text-primary transition-colors"
+                    >
+                      <input 
+                        type="checkbox" 
+                        checked={selectedStatus[status]} 
+                        onChange={() => toggleStatus(status)}
+                        className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-3.5 h-3.5" 
+                      />
+                      <span>{status}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main Grid/List Layout */}
+      {viewMode === "grid" ? (
+        <motion.div 
+          layout 
+          className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          <AnimatePresence mode="popLayout">
+            {filteredProjects.map((project) => (
+              <motion.div
+                key={project.id}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.2 }}
+                className="group"
+              >
+                <Card className="relative bg-slate-50/30 hover:bg-white dark:bg-slate-900/30 dark:hover:bg-slate-900/80 border border-slate-200/50 dark:border-slate-800/80 hover:border-slate-300/80 dark:hover:border-slate-700/80 transition-all rounded-2xl overflow-hidden flex flex-col justify-between h-[340px] cursor-pointer hover:shadow-sm">
+                  <Link href={`/projects/${project.id}`} className="p-7 flex-1 flex flex-col justify-between">
+                    <div>
+                      {/* Top Row: Meta & Status Dot */}
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[9px] font-bold text-slate-400 tracking-wider font-mono">
+                          {project.program.toUpperCase()} • {project.id}
+                        </span>
+                        
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            project.status === "completed" ? "bg-emerald-500" :
+                            project.status === "ongoing" ? "bg-amber-500" :
+                            project.status === "planned" ? "bg-slate-400" : "bg-rose-500"
+                          }`} />
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 capitalize">
+                            {project.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Project Title */}
+                      <h3 className="text-base font-extrabold text-slate-900 dark:text-white leading-snug group-hover:text-primary transition-colors line-clamp-2">
+                        {project.name}
+                      </h3>
+                    </div>
+
+                    {/* Metadata Grid */}
+                    <div className="grid grid-cols-2 gap-y-3.5 gap-x-4 text-xs pt-4 border-t border-slate-100 dark:border-slate-850 mt-4">
+                      <div>
+                        <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Location</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-semibold truncate block mt-0.5">{project.barangay}, {project.municipality}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Allocation</span>
+                        <span className="text-slate-900 dark:text-white font-bold block mt-0.5">₱{project.budget.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Contractor</span>
+                        <span className="text-slate-705 dark:text-slate-300 font-semibold truncate block mt-0.5">{project.contractor}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Progress</span>
+                        <span className="text-slate-900 dark:text-white font-bold block mt-0.5 font-mono">{project.physicalProgress}%</span>
+                      </div>
+                    </div>
+                  </Link>
+
+                  {/* Bottom-accent Progress bar (Safety Orange) */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div 
+                      className="bg-accent h-full transition-all duration-700 ease-out" 
+                      style={{ width: `${project.physicalProgress}%` }} 
+                    />
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      ) : (
+        /* List Layout */
+        <motion.div 
+          layout 
+          className="space-y-4"
+        >
+          <AnimatePresence mode="popLayout">
+            {filteredProjects.map((project) => (
+              <motion.div
+                key={project.id}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className="relative bg-slate-50/30 hover:bg-white dark:bg-slate-900/30 dark:hover:bg-slate-900/80 border border-slate-200/50 dark:border-slate-800/80 hover:border-slate-300/80 dark:hover:border-slate-700/80 transition-all rounded-xl overflow-hidden cursor-pointer">
+                  <Link href={`/projects/${project.id}`} className="block p-6">
+                    <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6">
+                      
+                      {/* Left: Program, ID & Title */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className="text-[9px] font-bold text-slate-400 tracking-wider font-mono uppercase">
+                            {project.program.toUpperCase()} • {project.id}
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-mono tracking-tight">• Year: {project.year}</span>
+                        </div>
+                        <h3 className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-primary transition-colors line-clamp-1">
+                          {project.name}
+                        </h3>
+                      </div>
+
+                      {/* Middle: Details in Columns */}
+                      <div className="flex flex-wrap items-center gap-8 shrink-0 text-xs">
+                        <div>
+                          <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Location</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-semibold mt-0.5 block">{project.barangay}, {project.municipality}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Allocation</span>
+                          <span className="text-slate-900 dark:text-white font-bold mt-0.5 block">₱{project.budget.toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Progress</span>
+                          <span className="text-slate-900 dark:text-white font-extrabold mt-0.5 block font-mono">{project.physicalProgress}%</span>
+                        </div>
+                      </div>
+
+                      {/* Right: Status & Chevron */}
+                      <div className="flex items-center justify-between lg:justify-end gap-5 border-t lg:border-t-0 border-slate-100 dark:border-slate-800 pt-3 lg:pt-0 shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            project.status === "completed" ? "bg-emerald-500" :
+                            project.status === "ongoing" ? "bg-amber-500" :
+                            project.status === "planned" ? "bg-slate-400" : "bg-rose-500"
+                          }`} />
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 capitalize">
+                            {project.status}
+                          </span>
+                        </div>
+
+                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      </div>
+
+                    </div>
+                  </Link>
+
+                  {/* Accent Progress Line on Bottom */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-100 dark:bg-slate-850 overflow-hidden">
+                    <div 
+                      className="bg-accent h-full transition-all duration-700 ease-out" 
+                      style={{ width: `${project.physicalProgress}%` }} 
+                    />
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      )}
+
+      {/* Empty State */}
+      {filteredProjects.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full"
+        >
+          <Card className="bg-slate-55/30 dark:bg-slate-900/10 border border-slate-200/50 dark:border-slate-800/80 p-12 text-center flex flex-col items-center justify-center rounded-2xl">
+            <div className="p-3.5 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 mb-3.5">
+              <SlidersHorizontal className="w-6 h-6" />
+            </div>
+            <h4 className="text-base font-extrabold text-slate-800 dark:text-white">No Results Found</h4>
+            <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 max-w-sm">
+              We couldn't find any projects matching your active search filters. Try resetting all inputs.
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={resetFilters}
+              className="mt-5 text-xs font-bold border-slate-200 dark:border-slate-800 dark:hover:bg-slate-800"
+            >
+              Reset Filters
+            </Button>
+          </Card>
+        </motion.div>
+      )}
     </div>
   );
 }
