@@ -7,7 +7,7 @@ export const translations = {
     nav: {
       home: "Home",
       projects: "Projects",
-      map: "GIS Map",
+      map: "Map",
       statistics: "Statistics",
       faq: "FAQ",
       contact: "Contact Us",
@@ -718,7 +718,7 @@ export const translations = {
     nav: {
       home: "Tahanan",
       projects: "Proyekto",
-      map: "Mapa ng GIS",
+      map: "Mapa",
       statistics: "Istatistika",
       faq: "FAQ",
       contact: "Kontak",

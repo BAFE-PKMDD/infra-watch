@@ -19,7 +19,7 @@ import { AnimatePresence, motion } from "framer-motion";
 const navItems = [
   { label: "Home", href: "/", key: "home" },
   { label: "Projects", href: "/projects", key: "projects" },
-  { label: "GIS Map", href: "/map", key: "map" },
+  { label: "Map", href: "/map", key: "map" },
   { label: "About", href: "/about", key: "about" },
   { label: "E-Report", href: "/report-issue", key: "report-issue" },
   { label: "Articles & Updates", href: "/articles-and-updates", key: "articles-and-updates", isSecondary: true },
