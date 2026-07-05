@@ -1,123 +1,151 @@
 "use client";
 
+import { createAuthClient } from "better-auth/react";
+import { adminClient, emailOTPClient } from "better-auth/client/plugins";
+
+import { ac, admin, citizen, moderator } from "@/lib/permissions";
+
 interface AuthResponse {
-  data?: any;
+  data?: unknown;
   error: { message?: string; code?: string } | null;
 }
 
-// Simple client-side mock auth provider for the UI preview
+type AuthMethod<TArgs = unknown> = (args: TArgs) => Promise<AuthResponse>;
+type AuthVariadicMethod = (...args: unknown[]) => Promise<AuthResponse>;
+
+type BaseAuthClient = {
+  getSession: () => Promise<unknown>;
+  useSession: () => unknown;
+  signOut: AuthVariadicMethod;
+  signIn: Record<string, AuthVariadicMethod> & {
+    social: AuthMethod<{ provider: string; callbackURL?: string }>;
+    emailOtp: AuthMethod<{ email: string; otp: string }>;
+  };
+  signUp: Record<string, AuthVariadicMethod> & {
+    email: AuthMethod<{ email: string; password: string; name: string }>;
+  };
+  emailOtp: Record<string, AuthVariadicMethod> & {
+    sendVerificationOtp: AuthMethod<{ email: string; type: string }>;
+    verifyEmail: AuthMethod<{ email: string; otp: string }>;
+    checkVerificationOtp: AuthMethod<{ email: string; type: string; otp: string }>;
+    resetPassword: AuthMethod<{ email: string; otp: string; password: string }>;
+  };
+  forgetPassword?: Record<string, AuthVariadicMethod> & {
+    emailOtp?: AuthMethod<{ email: string }>;
+  };
+  changePassword?: AuthVariadicMethod;
+};
+
+const baseAuthClient = createAuthClient({
+  basePath: "/api/auth",
+  user: {
+    additionalFields: {
+      region: {
+        type: "string",
+      },
+    },
+  },
+  plugins: [
+    adminClient({
+      ac,
+      roles: {
+        admin,
+        moderator,
+        citizen,
+      },
+    }),
+    emailOTPClient(),
+  ],
+}) as unknown as BaseAuthClient;
+
+function setLastUsedLoginMethod(method: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("infra_watch_last_auth_method", method);
+  }
+}
+
+const unsupported = async (feature: string): Promise<AuthResponse> => ({
+  error: {
+    code: "NOT_CONFIGURED",
+    message: `${feature} is not configured yet.`,
+  },
+});
+
 export const authClient = {
+  ...baseAuthClient,
+  getSession: baseAuthClient.getSession,
+  useSession: baseAuthClient.useSession,
+  signOut: baseAuthClient.signOut,
   getLastUsedLoginMethod: (): string | null => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("infra_watch_last_auth_method") || null;
+    if (typeof window === "undefined") {
+      return null;
     }
-    return null;
+
+    return localStorage.getItem("infra_watch_last_auth_method") || null;
   },
   signIn: {
-    social: async ({ provider, callbackURL }: { provider: string; callbackURL?: string }): Promise<AuthResponse> => {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("infra_watch_last_auth_method", "google");
-        // Simulate setting a logged-in user in localStorage
-        const mockUser = {
-          id: "google-mock-user",
-          name: "Juan Dela Cruz",
-          email: "juan.delacruz@gmail.com",
-          role: "citizen"
-        };
-        localStorage.setItem("infra_watch_user", JSON.stringify(mockUser));
-        window.location.href = callbackURL || "/";
-      }
-      return { data: { success: true }, error: null };
+    ...baseAuthClient.signIn,
+    social: async (args: { provider: string; callbackURL?: string }) => {
+      setLastUsedLoginMethod(args.provider);
+      return await baseAuthClient.signIn.social(args);
     },
-    emailOtp: async ({ email, otp }: { email: string; otp: string }): Promise<AuthResponse> => {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("infra_watch_last_auth_method", "otp");
-        const mockUser = {
-          id: "otp-mock-user",
-          name: "Juan Dela Cruz",
-          email: email,
-          role: "citizen"
-        };
-        localStorage.setItem("infra_watch_user", JSON.stringify(mockUser));
-      }
-      return { data: { success: true }, error: null };
-    }
+    emailOtp: async (args: { email: string; otp: string }) => {
+      setLastUsedLoginMethod("otp");
+      return await baseAuthClient.signIn.emailOtp(args);
+    },
   },
   signUp: {
-    email: async ({ email, password, name }: any): Promise<AuthResponse> => {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("infra_watch_last_auth_method", "email");
-      }
-      return {
-        data: {
-          user: {
-            id: "signup-mock-user",
-            name,
-            email,
-            role: "citizen"
-          }
-        },
-        error: null
-      };
-    }
-  },
-  signOut: async (): Promise<AuthResponse> => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("infra_watch_user");
-    }
-    return { error: null };
+    ...baseAuthClient.signUp,
+    email: async (args: { email: string; password: string; name: string }) => {
+      setLastUsedLoginMethod("email");
+      return await baseAuthClient.signUp.email(args);
+    },
   },
   emailOtp: {
-    sendVerificationOtp: async ({ email, type }: { email: string; type: string }): Promise<AuthResponse> => {
-      console.log(`[MOCK OTP] Sent verification OTP code to: ${email} for type: ${type}`);
-      return { error: null };
+    ...baseAuthClient.emailOtp,
+    sendVerificationOtp: async (args: { email: string; type: string }) => {
+      return await baseAuthClient.emailOtp.sendVerificationOtp(args);
     },
-    verifyEmail: async ({ email, otp }: { email: string; otp: string }): Promise<AuthResponse> => {
-      if (typeof window !== "undefined") {
-        const mockUser = {
-          id: "otp-verified-user",
-          name: "Juan Dela Cruz",
-          email: email,
-          role: "citizen"
-        };
-        localStorage.setItem("infra_watch_user", JSON.stringify(mockUser));
-      }
-      return { error: null };
+    verifyEmail: async (args: { email: string; otp: string }) => {
+      return await baseAuthClient.emailOtp.verifyEmail(args);
     },
-    checkVerificationOtp: async ({ email, type, otp }: any): Promise<AuthResponse> => {
-      return { error: null };
+    checkVerificationOtp: async (args: { email: string; type: string; otp: string }) => {
+      return await baseAuthClient.emailOtp.checkVerificationOtp(args);
     },
-    resetPassword: async ({ email, otp, password }: any): Promise<AuthResponse> => {
-      return { error: null };
-    }
+    resetPassword: async (args: { email: string; otp: string; password: string }) => {
+      return await baseAuthClient.emailOtp.resetPassword(args);
+    },
   },
   forgetPassword: {
-    emailOtp: async ({ email }: { email: string }): Promise<AuthResponse> => {
-      console.log(`[MOCK OTP] Sent forget-password OTP code to: ${email}`);
-      return { error: null };
-    }
+    ...baseAuthClient.forgetPassword,
+    emailOtp: async (args: { email: string }) => {
+      if (baseAuthClient.forgetPassword?.emailOtp) {
+        return await baseAuthClient.forgetPassword.emailOtp(args);
+      }
+
+      return await baseAuthClient.emailOtp.sendVerificationOtp({
+        email: args.email,
+        type: "forget-password",
+      });
+    },
   },
   phoneNumber: {
-    sendOtp: async ({ phoneNumber }: any): Promise<AuthResponse> => {
-      return { error: null };
+    sendOtp: async (args?: unknown) => {
+      void args;
+      return unsupported("Phone verification");
     },
-    verify: async ({ phoneNumber, code }: any): Promise<AuthResponse> => {
-      return { error: null };
-    }
+    verify: async (args?: unknown) => {
+      void args;
+      return unsupported("Phone verification");
+    },
   },
-  changePassword: async (): Promise<AuthResponse> => {
-    return { error: null };
-  },
-  useSession: () => {
-    // Basic hook to return mock session
-    if (typeof window !== "undefined") {
-      const userStr = localStorage.getItem("infra_watch_user");
-      if (userStr) {
-        return { data: { user: JSON.parse(userStr) }, isPending: false };
-      }
+  changePassword: async (...args: unknown[]) => {
+    if (baseAuthClient.changePassword) {
+      return await baseAuthClient.changePassword(...args);
     }
-    return { data: null, isPending: false };
-  }
+
+    return unsupported("Password change");
+  },
 };
 
 export const { signIn, signUp, signOut, useSession, emailOtp, phoneNumber, changePassword } = authClient;

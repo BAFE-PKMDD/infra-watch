@@ -8,7 +8,7 @@ import { useTranslation } from "@/i18n";
 export function AppFooter() {
   const { t } = useTranslation();
 
-  const subtitle = t("footer.subtitle")?.replace("FMR", "INFRA") || "Project Monitoring and Citizen Feedback Portal";
+  const subtitle = "Public Transparency and Monitoring Portal";
 
   return (
     <footer className="bg-slate-900 text-white border-t border-slate-800">
@@ -18,9 +18,14 @@ export function AppFooter() {
           {/* About Section */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-primary flex items-center justify-center text-white font-bold rounded">
-                IW
-              </div>
+              <Image
+                src="/infra-watch-logo.png"
+                alt="INFRA Watch logo"
+                width={88}
+                height={59}
+                className="h-11 w-auto flex-shrink-0 rounded bg-white object-contain"
+                unoptimized
+              />
               <div>
                 <h3 className="font-bold text-lg">INFRA WATCH</h3>
                 <p className="text-xs text-slate-400">{subtitle}</p>
@@ -156,7 +161,7 @@ export function AppFooter() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
             <div className="flex items-center gap-4">
               <div className="w-20 h-24 relative flex-shrink-0">
-                <Image src="/ph-seal-logo.svg" alt="Seal of the Republic of the Philippines" fill className="object-contain" quality={100} sizes="80px" />
+                <Image src="/ph-seal-logo.svg" alt="Seal of the Republic of the Philippines" fill className="object-contain" sizes="80px" />
               </div>
               <div>
                 <p className="text-sm font-semibold uppercase tracking-wide">{t("footer.seal.title")}</p>

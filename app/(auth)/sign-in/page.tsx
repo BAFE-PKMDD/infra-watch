@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +26,24 @@ const GoogleIcon = () => (
   </svg>
 );
 
+const getLastAuthMethodSnapshot = () => authClient.getLastUsedLoginMethod();
+const getLastAuthMethodServerSnapshot = () => null;
+
+function subscribeLastAuthMethod(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === "infra_watch_last_auth_method") {
+      onStoreChange();
+    }
+  };
+
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
+
 function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -37,13 +55,11 @@ function SignInContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"email" | "choice" | "password" | "otp">("email");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const lastMethod = authClient.getLastUsedLoginMethod();
+  const lastMethod = useSyncExternalStore(
+    subscribeLastAuthMethod,
+    getLastAuthMethodSnapshot,
+    getLastAuthMethodServerSnapshot,
+  );
 
   const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +81,7 @@ function SignInContent() {
       } else {
         setStep("otp");
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -86,7 +102,7 @@ function SignInContent() {
         await refreshAuth();
         window.location.href = redirect;
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -95,11 +111,15 @@ function SignInContent() {
 
   const handleGoogleSignIn = async () => {
     try {
-      await authClient.signIn.social({
+      const result = await authClient.signIn.social({
         provider: "google",
         callbackURL: redirect,
       });
-    } catch (err) {
+
+      if (result.error) {
+        setError(result.error.message || "Google sign-in is not configured. Add Google OAuth credentials and restart the dev server.");
+      }
+    } catch {
       setError("Failed to sign in with Google");
     }
   };
@@ -135,33 +155,35 @@ function SignInContent() {
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="flex justify-center">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full h-11 rounded-xl text-sm font-semibold relative flex items-center justify-center gap-2 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-850"
-                        onClick={handleGoogleSignIn}
-                      >
-                        <GoogleIcon />
-                        <span className="text-slate-755 dark:text-white">Continue with Google</span>
-                        {mounted && lastMethod === "google" && (
-                          <Badge variant="secondary" className="ml-2 bg-primary/10 text-primary border-none px-2 h-5 text-[10px]">
-                            Last used
-                          </Badge>
-                        )}
-                      </Button>
-                    </div>
+                    <>
+                        <div className="flex justify-center">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full h-11 rounded-xl text-sm font-semibold relative flex items-center justify-center gap-2 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-850"
+                            onClick={handleGoogleSignIn}
+                          >
+                            <GoogleIcon />
+                            <span className="text-slate-755 dark:text-white">Continue with Google</span>
+                            {lastMethod === "google" && (
+                              <Badge variant="secondary" className="ml-2 bg-primary/10 text-primary border-none px-2 h-5 text-[10px]">
+                                Last used
+                              </Badge>
+                            )}
+                          </Button>
+                        </div>
 
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-slate-200 dark:border-slate-700" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-white dark:bg-slate-900 px-3 text-slate-500 dark:text-slate-400">
-                          Or continue with
-                        </span>
-                      </div>
-                    </div>
+                        <div className="relative">
+                          <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-white dark:bg-slate-900 px-3 text-slate-500 dark:text-slate-400">
+                              Or continue with
+                            </span>
+                          </div>
+                        </div>
+                    </>
 
                     <form onSubmit={handleContinue} className="space-y-5">
                       <div className="space-y-1.5">
@@ -218,7 +240,7 @@ function SignInContent() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900 dark:text-white">Sign in with Password</span>
-                            {mounted && lastMethod === "email" && (
+                            {lastMethod === "email" && (
                               <Badge variant="secondary" className="bg-primary/10 text-primary text-xs">
                                 Last used
                               </Badge>
@@ -243,7 +265,7 @@ function SignInContent() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900 dark:text-white">Sign in with Email Code</span>
-                            {mounted && lastMethod === "otp" && (
+                            {lastMethod === "otp" && (
                               <Badge variant="secondary" className="bg-primary/10 text-primary text-xs">
                                 Last used
                               </Badge>

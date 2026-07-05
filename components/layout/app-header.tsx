@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { Menu, Moon, Sun, X, LogOut, LayoutDashboard, MessageSquareDot, Bell, AlertCircle, ChevronDown } from "lucide-react";
+import { Menu, Moon, Sun, X, LogOut, LayoutDashboard, MessageSquareDot, AlertCircle, ChevronDown, ClipboardCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -14,11 +15,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AnimatePresence, motion } from "framer-motion";
 
 const navItems = [
   { label: "Home", href: "/", key: "home" },
   { label: "Projects", href: "/projects", key: "projects" },
+  { label: "Checklists", href: "/checklists", key: "checklists", requiresAuth: true },
   { label: "Map", href: "/map", key: "map" },
   { label: "E-Report", href: "/report-issue", key: "report-issue" },
   { label: "Articles & Updates", href: "/articles-and-updates", key: "articles-and-updates", isSecondary: true },
@@ -40,7 +41,6 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
   const [mounted, setMounted] = useState(false);
   const { user, isLoading, logout } = useAuth();
   const { t } = useTranslation();
-  const [isLiveNow] = useState(false);
 
   const translatedNavItems = navItems.map(item => ({
     ...item,
@@ -69,7 +69,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
   useEffect(() => {
     const initial = resolveTheme();
     syncTheme(initial);
-    setMounted(true);
+    const mountedFrame = window.requestAnimationFrame(() => setMounted(true));
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const handleMediaChange = (event: MediaQueryListEvent) => {
@@ -88,6 +88,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
     window.addEventListener("storage", handleStorage);
 
     return () => {
+      window.cancelAnimationFrame(mountedFrame);
       media.removeEventListener("change", handleMediaChange);
       window.removeEventListener("storage", handleStorage);
     };
@@ -125,24 +126,27 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary flex items-center justify-center text-white font-bold rounded">
-                IW
-              </div>
+              <Image
+                src="/infra-watch-logo.png"
+                alt="INFRA Watch logo"
+                width={96}
+                height={64}
+                className="h-12 w-auto flex-shrink-0 object-contain"
+                priority
+                unoptimized
+              />
               <div className="hidden sm:block">
-                <h1 className="flex items-center text-xl font-extrabold text-slate-900 dark:text-white leading-tight">
+                <h1 className="flex items-center text-2xl font-extrabold leading-none text-slate-900 dark:text-white">
                   INFRA WATCH
-                  <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-primary/10 text-primary border border-primary/20">
-                    AMEFIP
-                  </span>
                 </h1>
-                <p className="text-[9px] text-slate-500 uppercase tracking-widest font-semibold dark:text-slate-400">
-                  Fair Reporting & Accountability Portal
+                <p className="max-w-[260px] truncate text-[10px] uppercase tracking-wide text-slate-600 dark:text-slate-300 lg:max-w-none">
+                  Public Transparency and Monitoring Portal
                 </p>
               </div>
             </Link>
           </div>
 
-          <div className="flex items-center gap-3 md:hidden">
+          <div className="flex items-center gap-3 lg:hidden">
             {user && <NotificationBell />}
             <LanguageToggle />
             <button
@@ -166,10 +170,10 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
             </button>
           </div>
 
-          <nav className="hidden md:flex items-center gap-3">
+          <nav className="hidden lg:flex items-center gap-3">
             <div className="flex items-center gap-4 lg:gap-8">
               {translatedNavItems
-                .filter(item => (!item.requiresAuth || user) && !item.isSecondary)
+                .filter(item => (!item.requiresAuth || user || activeItem === item.key) && !item.isSecondary)
                 .map((item) => (
                   <Link
                     key={item.key}
@@ -269,6 +273,14 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                         </Link>
                       )}
                       <Link
+                        href="/checklists"
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <ClipboardCheck className="w-4 h-4" />
+                        {t("nav.checklists")}
+                      </Link>
+                      <Link
                         href="/my-feedbacks"
                         className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                         onClick={() => setShowUserMenu(false)}
@@ -322,10 +334,10 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
 
         {/* Mobile menu panel */}
         {mobileOpen && (
-          <div className="md:hidden border-t border-slate-200 dark:border-slate-800 pt-4 pb-6 space-y-4">
+          <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 pt-4 pb-6 space-y-4">
             <div className="flex flex-col space-y-3">
               {translatedNavItems
-                .filter(item => !item.requiresAuth || user)
+                .filter(item => !item.requiresAuth || user || activeItem === item.key)
                 .map((item) => (
                   <Link
                     key={item.key}
@@ -368,6 +380,14 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                     {t("nav.dashboard")}
                   </Link>
                 )}
+                <Link
+                  href="/checklists"
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <ClipboardCheck className="w-4 h-4" />
+                  {t("nav.checklists")}
+                </Link>
                 <Link
                   href="/my-feedbacks"
                   className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"

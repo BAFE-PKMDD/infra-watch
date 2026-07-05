@@ -7,6 +7,7 @@ export const translations = {
     nav: {
       home: "Home",
       projects: "Projects",
+      checklists: "Checklists",
       map: "Map",
       statistics: "Statistics",
       faq: "FAQ",
@@ -692,6 +693,7 @@ export const translations = {
         quick: {
           title: "Quick Links",
           projects: "Projects",
+      checklists: "Checklists",
           statistics: "Statistics",
           faq: "FAQ",
           contact: "Contact Us",
@@ -718,6 +720,7 @@ export const translations = {
     nav: {
       home: "Tahanan",
       projects: "Proyekto",
+      checklists: "Mga Checklist",
       map: "Mapa",
       statistics: "Istatistika",
       faq: "FAQ",
@@ -1393,6 +1396,7 @@ export const translations = {
         quick: {
           title: "Mabilis na Links",
           projects: "Mga Proyekto",
+      checklists: "Mga Checklist",
           statistics: "Istatistika",
           faq: "FAQ",
           contact: "Kontak",

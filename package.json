@@ -1,48 +1,62 @@
 {
-  "name": "infra-watch",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "@base-ui/react": "^1.6.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "framer-motion": "^12.40.0",
-    "leaflet": "^1.9.4",
-    "lucide-react": "^1.21.0",
-    "next": "16.2.9",
-    "next-themes": "^0.4.6",
-    "qrcode.react": "^4.2.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-leaflet": "^5.0.0",
-    "shadcn": "^4.11.0",
-    "sonner": "^2.0.7",
-    "tailwind-merge": "^3.6.0",
-    "tw-animate-css": "^1.4.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/leaflet": "^1.9.21",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.9",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  },
-  "ignoreScripts": [
-    "sharp",
-    "unrs-resolver"
-  ],
-  "trustedDependencies": [
-    "sharp",
-    "unrs-resolver"
-  ]
+    "name":  "infra-watch",
+    "version":  "0.1.0",
+    "private":  true,
+    "scripts":  {
+                    "dev":  "next dev",
+                    "build":  "next build",
+                    "start":  "next start",
+                    "lint":  "eslint",
+                    "db:generate":  "drizzle-kit generate",
+                    "db:generate:auth":  "set DRIZZLE_INCLUDE_AUTH=true\u0026\u0026 drizzle-kit generate",
+                    "db:migrate":  "drizzle-kit migrate",
+                    "db:push":  "drizzle-kit push",
+                    "db:studio":  "drizzle-kit studio"
+                },
+    "dependencies":  {
+                         "@base-ui/react":  "^1.6.0",
+                         "@tanstack/react-query":  "^5.90.20",
+                         "better-auth":  "^1.4.18",
+                         "class-variance-authority":  "^0.7.1",
+                         "clsx":  "^2.1.1",
+                         "dotenv":  "^17.2.3",
+                         "drizzle-orm":  "^0.45.1",
+                         "framer-motion":  "^12.40.0",
+                         "leaflet":  "^1.9.4",
+                         "lucide-react":  "^1.21.0",
+                         "next":  "16.2.9",
+                         "next-themes":  "^0.4.6",
+                         "postgres":  "^3.4.8",
+                         "qrcode.react":  "^4.2.0",
+                         "react":  "19.2.4",
+                         "react-dom":  "19.2.4",
+                         "react-leaflet":  "^5.0.0",
+                         "server-only":  "^0.0.1",
+                         "shadcn":  "^4.11.0",
+                         "sonner":  "^2.0.7",
+                         "tailwind-merge":  "^3.6.0",
+                         "tw-animate-css":  "^1.4.0",
+                         "zod":  "^4.3.6"
+                     },
+    "devDependencies":  {
+                            "@tailwindcss/postcss":  "^4",
+                            "@types/leaflet":  "^1.9.21",
+                            "@types/node":  "^20",
+                            "@types/react":  "^19",
+                            "@types/react-dom":  "^19",
+                            "drizzle-kit":  "^0.31.8",
+                            "eslint":  "^9",
+                            "eslint-config-next":  "16.2.9",
+                            "tailwindcss":  "^4",
+                            "tsx":  "^4.21.0",
+                            "typescript":  "^5"
+                        },
+    "ignoreScripts":  [
+                          "sharp",
+                          "unrs-resolver"
+                      ],
+    "trustedDependencies":  [
+                                "sharp",
+                                "unrs-resolver"
+                            ]
 }

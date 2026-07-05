@@ -1,59 +1,87 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
-/**
- * Mock Sign in with email and password
- */
 export const signIn = async (email: string, password: string) => {
-  // Simulating validation and sign in success
-  if (!email || !password) {
+  try {
+    await auth.api.signInEmail({
+      body: {
+        email,
+        password,
+      },
+      headers: await headers(),
+    });
+
+    revalidatePath("/", "layout");
+
+    return {
+      success: true,
+      message: "Signed in successfully.",
+    };
+  } catch (error) {
+    const e = error as Error;
+
     return {
       success: false,
-      message: "Email and password are required.",
+      message: e.message || "Invalid email or password.",
     };
   }
-
-  return {
-    success: true,
-    message: "Signed in successfully.",
-  };
 };
 
-/**
- * Mock Sign up with email and password
- */
 export const signUp = async (user: {
   email: string;
   password: string;
   name: string;
 }) => {
-  if (!user.email || !user.password || !user.name) {
+  try {
+    await auth.api.signUpEmail({
+      body: {
+        email: user.email,
+        password: user.password,
+        name: user.name,
+      },
+    });
+
+    return {
+      success: true,
+      message: "Account created successfully.",
+    };
+  } catch (error) {
+    const e = error as Error;
+
     return {
       success: false,
-      message: "All fields are required.",
+      message: e.message || "An unknown error occurred.",
     };
   }
-
-  return {
-    success: true,
-    message: "Account created successfully.",
-  };
 };
 
-/**
- * Mock Sign out the current user
- */
 export const signOut = async () => {
-  return {
-    success: true,
-    message: "Signed out successfully.",
-  };
+  try {
+    await auth.api.signOut({
+      headers: await headers(),
+    });
+
+    revalidatePath("/", "layout");
+
+    return {
+      success: true,
+      message: "Signed out successfully.",
+    };
+  } catch (error) {
+    const e = error as Error;
+
+    return {
+      success: false,
+      message: e.message || "Failed to sign out.",
+    };
+  }
 };
 
-/**
- * Sign out and redirect to sign-in page
- */
 export const signOutAndRedirect = async () => {
+  await signOut();
   redirect("/sign-in");
 };
