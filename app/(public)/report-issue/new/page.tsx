@@ -1,713 +1,1073 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  ChevronRight, 
-  Camera, 
-  ArrowLeft, 
-  ArrowRight, 
-  ShieldCheck, 
-  HelpCircle,
-  Check,
-  Lock,
-  MapPin,
-  CheckCircle2,
-  ShieldAlert,
-  AlertTriangle,
-  Droplets,
-  X,
-  Search
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
-import { addMockIssue } from "@/lib/issues-mock-store";
+import {
+  ArrowLeft,
+  AlertTriangle,
+  Activity,
+  Banknote,
+  Building2,
+  Calendar,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FileImage,
+  FileText,
+  HelpCircle,
+  Info,
+  Loader2,
+  MapPin,
+  MessageSquare,
+  Search,
+  Trash2,
+  Upload,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 
-const mockProjects = [
-  { id: "PRJ-INS-2025-115", name: "Solar Powered Irrigation Pump System", location: "Abuyog, Leyte" },
-  { id: "PRJ-INS-2023-009", name: "Dingle Diversion Dam Rehabilitation", location: "Abuyog, Leyte" },
-  { id: "PRJ-AMSS-2024-042", name: "Post-Harvest Mechanical Grain Dryer Installation", location: "Balamban, Cebu" },
-  { id: "PRJ-AMSS-2026-002", name: "Agricultural Warehouse and Storage Facility", location: "Basey, Samar" },
-  { id: "PRJ-INS-2024-108", name: "Concrete Drainage and Irrigation Canal", location: "Basey, Samar" },
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { ProjectSearchInput, type SelectedProject } from "@/components/ui/project-search-input";
+import { MediaViewer } from "@/components/ui/media-viewer";
+import { dispatchClientNotification } from "@/lib/client-notifications";
+import { useAuth } from "@/providers/auth-provider";
+import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
+import { getUploadErrorTitle } from "@/lib/upload-errors";
+import { isAllowedClientUploadType, UPLOAD_ACCEPT, uploadKindFromType } from "@/lib/upload-policy";
+import {
+  getBarangays,
+  getMunicipalities,
+  getProvinces,
+  getRegions,
+  type LocationOption,
+} from "@/actions/query/get-location-options";
+
+type FlowPath = "knows-project" | "no-project" | null;
+type StepId = "awareness" | "project-search" | "location" | "match" | "issue-details" | "contact";
+
+type StepDefinition = {
+  id: StepId;
+  label: string;
+  icon: LucideIcon;
+};
+
+type EvidenceItem = {
+  type: "image" | "video";
+  url: string;
+  preview: string;
+  name: string;
+};
+
+type ProjectDetails = {
+  id: string;
+  name: string;
+  code?: string;
+  location?: string;
+  province?: string;
+  city?: string;
+  implementingAgency?: string;
+  budget?: number;
+  status?: string;
+  stage?: string;
+  metadata?: Record<string, any>;
+};
+
+const issueTypes = [
+  { value: "infrastructure", label: "Infrastructure Issues" },
+  { value: "damage", label: "Equipment Damage" },
+  { value: "delay", label: "Construction Delay" },
+  { value: "flooding", label: "Water Leak / Flooding" },
+  { value: "safety", label: "Safety Hazard" },
+  { value: "other", label: "Other" },
 ];
 
-const categories = [
-  { id: "damage", label: "Equipment Damage", desc: "Cracks, leaks, rust, mechanical breakdown", icon: ShieldAlert },
-  { id: "delay", label: "Construction Delay", desc: "Stoppage, unworked site, abandoned materials", icon: AlertTriangle },
-  { id: "flooding", label: "Water Leak / Flooding", desc: "Broken canals, pipeline bursts, overflow", icon: Droplets },
-  { id: "other", label: "Other Anomalies", desc: "General issues, suspect reports, safety hazards", icon: HelpCircle },
-] as const;
+const stepsKnowsProject: StepDefinition[] = [
+  { id: "awareness", label: "Start", icon: HelpCircle },
+  { id: "project-search", label: "Project", icon: Search },
+  { id: "issue-details", label: "Details", icon: FileText },
+  { id: "contact", label: "Submit", icon: User },
+];
 
-export default function ReportIssueNew() {
+const stepsNoProject: StepDefinition[] = [
+  { id: "awareness", label: "Start", icon: HelpCircle },
+  { id: "location", label: "Location", icon: MapPin },
+  { id: "match", label: "Match", icon: Search },
+  { id: "issue-details", label: "Details", icon: FileText },
+  { id: "contact", label: "Submit", icon: User },
+];
+
+const stepVariants = {
+  enter: (direction: number) => ({ x: direction > 0 ? 80 : -80, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction > 0 ? -80 : 80, opacity: 0 }),
+};
+
+export default function ReportIssuePage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Wizard states
-  const [reportStep, setReportStep] = useState(1);
-  const [direction, setDirection] = useState(1); // 1 = forward, -1 = backward
-  const [projectSearch, setProjectSearch] = useState("");
-  const [selectedProject, setSelectedProject] = useState<string>("");
-  const [issueType, setIssueType] = useState("");
-  const [description, setDescription] = useState("");
-  const [reporterName, setReporterName] = useState("");
-  const [reporterPhone, setReporterPhone] = useState("");
-  const [reporterEmail, setReporterEmail] = useState("");
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const { user, isLoading: isSessionLoading } = useAuth();
+  const [currentStep, setCurrentStep] = useState<StepId>("awareness");
+  const [flowPath, setFlowPath] = useState<FlowPath>(null);
+  const [direction, setDirection] = useState(1);
+  const [selectedProject, setSelectedProject] = useState<SelectedProject | null>(null);
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedRegionCode, setSelectedRegionCode] = useState("");
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState("");
+  const [selectedCityCode, setSelectedCityCode] = useState("");
+  const [selectedBarangayCode, setSelectedBarangayCode] = useState("");
 
-  // Detailed location states
-  const [region, setRegion] = useState("Eastern Visayas (Region VIII)");
-  const [province, setProvince] = useState("Leyte");
-  const [city, setCity] = useState("Abuyog");
-  const [barangay, setBarangay] = useState("Bito");
-  const [streetLandmark, setStreetLandmark] = useState("");
-  const [dateNoticed, setDateNoticed] = useState("2026-06-23");
-  const [base64Image, setBase64Image] = useState<string>("");
+  const [form, setForm] = useState({
+    region: "",
+    province: "",
+    city: "",
+    barangay: "",
+    streetLandmark: "",
+    issueType: "",
+    issueDescription: "",
+    dateNoticed: "",
+    contactNumber: "",
+    email: "",
+    isAnonymous: false,
+    confirmAccuracy: false,
+    agreeToTerms: false,
+  });
 
-  // File upload state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  // Project search filtering
-  const filteredProjects = mockProjects.filter(p =>
-    p.name.toLowerCase().includes(projectSearch.toLowerCase()) ||
-    p.id.toLowerCase().includes(projectSearch.toLowerCase()) ||
-    p.location.toLowerCase().includes(projectSearch.toLowerCase())
-  );
-
-  const projectLocationDetails: Record<string, { region: string; province: string; city: string; barangay: string; landmark: string }> = {
-    "Solar Powered Irrigation Pump System": {
-      region: "Eastern Visayas (Region VIII)",
-      province: "Leyte",
-      city: "Abuyog",
-      barangay: "Bito",
-      landmark: "Near the irrigation canal inlet sector A"
-    },
-    "Dingle Diversion Dam Rehabilitation": {
-      region: "Western Visayas (Region VI)",
-      province: "Iloilo",
-      city: "Dingle",
-      barangay: "San Matias",
-      landmark: "Beside the access road near the reservoir entrance"
-    },
-    "Post-Harvest Mechanical Grain Dryer Installation": {
-      region: "Central Visayas (Region VII)",
-      province: "Cebu",
-      city: "Balamban",
-      barangay: "Nangka",
-      landmark: "Main building, processing floor 2"
-    },
-    "Agricultural Warehouse and Storage Facility": {
-      region: "Eastern Visayas (Region VIII)",
-      province: "Samar",
-      city: "Basey",
-      barangay: "Lihid",
-      landmark: "Behind the solar drying pavement"
-    },
-    "Concrete Drainage and Irrigation Canal": {
-      region: "Eastern Visayas (Region VIII)",
-      province: "Samar",
-      city: "Basey",
-      barangay: "Simeon",
-      landmark: "Irrigation canal sector 4, near the rice fields boundary"
+  useEffect(() => {
+    if (!isSessionLoading && !user) {
+      router.push("/sign-in?redirect=/report-issue/new");
     }
+  }, [isSessionLoading, router, user]);
+
+  const { data: regions = [] } = useQuery({
+    queryKey: ["regions"],
+    queryFn: () => getRegions(),
+    staleTime: Infinity,
+  });
+
+  const { data: provinces = [], isFetching: isProvincesLoading } = useQuery({
+    queryKey: ["provinces", selectedRegionCode],
+    queryFn: () => getProvinces(selectedRegionCode),
+    enabled: !!selectedRegionCode,
+    staleTime: Infinity,
+  });
+
+  const { data: municipalities = [], isFetching: isCitiesLoading } = useQuery({
+    queryKey: ["municipalities", selectedProvinceCode],
+    queryFn: () => getMunicipalities(selectedProvinceCode),
+    enabled: !!selectedProvinceCode,
+    staleTime: Infinity,
+  });
+
+  const { data: barangays = [], isFetching: isBarangaysLoading } = useQuery({
+    queryKey: ["barangays", selectedCityCode],
+    queryFn: () => getBarangays(selectedCityCode),
+    enabled: !!selectedCityCode,
+    staleTime: Infinity,
+  });
+
+  const { data: suggestedProjects = [], isFetching: isSuggestionsLoading } = useQuery({
+    queryKey: ["issue-project-suggestions", form.province, form.city],
+    queryFn: async (): Promise<SelectedProject[]> => {
+      const searchTerm = form.city || form.province;
+      if (!searchTerm) return [];
+      const response = await fetch(`/api/projects?search=${encodeURIComponent(searchTerm)}&limit=5`);
+      if (!response.ok) throw new Error("Failed to find nearby projects");
+      const result = await response.json();
+      return (result.data || []).map((project: any) => ({
+        id: project.id,
+        name: project.name,
+        sourceId: project.sourceId,
+        sourceProjectId: project.code,
+        province: project.province,
+        municipality: project.municipality,
+      }));
+    },
+    enabled: currentStep === "match" && !!(form.city || form.province),
+    staleTime: 30000,
+  });
+
+  const activeSteps = useMemo(() => {
+    if (flowPath === "knows-project") return stepsKnowsProject;
+    if (flowPath === "no-project") return stepsNoProject;
+    return [stepsKnowsProject[0]];
+  }, [flowPath]);
+
+  const currentStepIndex = activeSteps.findIndex((step) => step.id === currentStep);
+
+  const setValue = (name: keyof typeof form, value: string | boolean) => {
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleProjectSelect = (projectName: string) => {
-    setSelectedProject(projectName);
-    const loc = projectLocationDetails[projectName] || {
-      region: "Eastern Visayas (Region VIII)",
-      province: "Leyte",
-      city: "Abuyog",
-      barangay: "Bito",
-      landmark: ""
-    };
-    setRegion(loc.region);
-    setProvince(loc.province);
-    setCity(loc.city);
-    setBarangay(loc.barangay);
-    setStreetLandmark(loc.landmark);
-    goToStep(2);
-    toast.success(`Selected: ${projectName}`, {
-      description: "Proceed to Step 2 to locate & upload evidence."
-    });
+  const findLabel = (options: LocationOption[], value: string) => options.find((option) => option.value === value)?.label || "";
+
+  const handleRegionChange = (value: string) => {
+    const label = findLabel(regions, value);
+    setSelectedRegionCode(value);
+    setSelectedProvinceCode("");
+    setSelectedCityCode("");
+    setSelectedBarangayCode("");
+    setForm((prev) => ({
+      ...prev,
+      region: label,
+      province: "",
+      city: "",
+      barangay: "",
+    }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+  const handleProvinceChange = (value: string) => {
+    const label = findLabel(provinces, value);
+    setSelectedProvinceCode(value);
+    setSelectedCityCode("");
+    setSelectedBarangayCode("");
+    setForm((prev) => ({
+      ...prev,
+      province: label,
+      city: "",
+      barangay: "",
+    }));
+  };
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBase64Image(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  const handleCityChange = (value: string) => {
+    const label = findLabel(municipalities, value);
+    setSelectedCityCode(value);
+    setSelectedBarangayCode("");
+    setForm((prev) => ({
+      ...prev,
+      city: label,
+      barangay: "",
+    }));
+  };
 
-      toast.info("Image attached successfully", {
-        description: "GPS location metadata will be parsed upon submission."
-      });
+  const handleBarangayChange = (value: string) => {
+    setSelectedBarangayCode(value);
+    setValue("barangay", findLabel(barangays, value));
+  };
+
+  const goToStep = useCallback((step: StepId, dir = 1) => {
+    setDirection(dir);
+    setCurrentStep(step);
+  }, []);
+
+  const handleProjectSelect = async (project: SelectedProject) => {
+    setSelectedProject(project);
+    setValue("province", project.province || "");
+    setValue("city", project.municipality || "");
+  };
+
+  const handleEvidenceChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    if (evidence.length + files.length > 5) {
+      toast.error("You can attach up to 5 evidence files.");
+      return;
     }
-  };
 
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    setBase64Image("");
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-  };
+    try {
+      setIsUploading(true);
+      const uploaded: EvidenceItem[] = [];
 
-  const triggerFileSelect = () => {
-    fileInputRef.current?.click();
-  };
+      for (const file of files) {
+        const fileType = uploadKindFromType(file.type);
+        if (!fileType || !isAllowedClientUploadType(file.type)) {
+          toast.error(`"${file.name}" is not an allowed image or video type.`);
+          continue;
+        }
 
-  const goToStep = (nextStep: number) => {
-    setDirection(nextStep > reportStep ? 1 : -1);
-    setReportStep(nextStep);
-  };
+        const formData = new FormData();
+        formData.append("file", file);
 
-  const handleIssueSubmit = () => {
-    if (reportStep === 3) {
-      if (!isAnonymous && (!reporterName || !reporterPhone)) {
-        toast.error("Please fill in contact details or select anonymous submission.");
-        return;
+        const response = await fetch("/api/upload?folder=issues", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || "Failed to upload evidence");
+
+        const path = data.path || data.url;
+        uploaded.push({
+          type: fileType,
+          url: path,
+          preview: getFullUrl(path) || URL.createObjectURL(file),
+          name: file.name,
+        });
       }
-      
-      const selectedProjObj = mockProjects.find(p => p.name === selectedProject);
-      const selectedCatObj = categories.find(c => c.id === issueType);
 
-      // Add to mock store
-      const added = addMockIssue({
-        projectName: selectedProject,
-        projectId: selectedProjObj?.id || "PRJ-INS-XX",
-        category: selectedCatObj?.label || "General Issue",
-        description: description,
-        reporter: isAnonymous ? "Anonymous" : `${reporterName} (Verified)`,
-        region,
-        province,
-        city,
-        barangay,
-        streetLandmark,
-        reporterPhone: isAnonymous ? undefined : reporterPhone,
-        reporterEmail: isAnonymous ? undefined : reporterEmail,
-        isAnonymous,
-        dateNoticed: new Date(dateNoticed).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
-        photoUrl: base64Image || undefined
+      setEvidence((prev) => [...prev, ...uploaded]);
+      toast.success("Evidence uploaded");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to upload evidence";
+      toast.error(getUploadErrorTitle(message), {
+        description: message,
+        duration: 6500,
       });
-
-      toast.success("Issue report submitted successfully!", {
-        description: `Tracking ticket ID ${added.id} has been registered.`
-      });
-
-      // Redirect back to feed landing
-      router.push("/report-issue");
+    } finally {
+      setIsUploading(false);
+      event.target.value = "";
     }
   };
 
-  const slideVariants = {
-    enter: (dir: number) => ({
-      x: dir > 0 ? 50 : -50,
-      opacity: 0
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      transition: { duration: 0.25, ease: "easeOut" as const }
+  const removeEvidence = (index: number) => {
+    setEvidence((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const validateIssueDetails = () => {
+    if (!form.issueType) {
+      toast.error("Please select an issue type.");
+      return false;
+    }
+    if (form.issueDescription.trim().length < 20) {
+      toast.error("Description must be at least 20 characters.");
+      return false;
+    }
+    if (!form.dateNoticed) {
+      toast.error("Please provide the date noticed.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!form.contactNumber.trim()) {
+      toast.error("Contact number is required.");
+      return;
+    }
+    if (!form.confirmAccuracy || !form.agreeToTerms) {
+      toast.error("Please confirm accuracy and agree to the terms.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const photoUrls = evidence.filter((item) => item.type === "image").map((item) => item.url);
+      const videoUrls = evidence.filter((item) => item.type === "video").map((item) => item.url);
+
+      const response = await fetch("/api/issues", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: selectedProject?.sourceId || selectedProject?.id || null,
+          region: form.region || "N/A",
+          province: form.province || "N/A",
+          city: form.city || "N/A",
+          barangay: form.barangay || "N/A",
+          streetLandmark: form.streetLandmark || "N/A",
+          issueType: form.issueType,
+          issueDescription: form.issueDescription,
+          dateNoticed: form.dateNoticed,
+          reporterName: form.isAnonymous ? "Anonymous" : user?.name || "Citizen",
+          reporterContact: form.contactNumber,
+          reporterEmail: form.email || null,
+          isAnonymous: form.isAnonymous,
+          photoUrls,
+          videoUrls,
+          documentUrls: [],
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || data.details || "Failed to submit issue");
+
+      toast.success("Issue reported successfully");
+      dispatchClientNotification({
+        type: "issue_created",
+        title: "E-Report submitted",
+        message: data.message || "Your issue report was submitted for review.",
+        metadata: {
+          issueId: data.data?.id,
+          ticketNumber: data.data?.ticketNumber,
+          projectId: selectedProject?.sourceId || selectedProject?.id || null,
+        },
+      });
+      router.push(`/report-issue/${data.data?.id || ""}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to submit issue");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isSessionLoading || !user) {
+    return (
+      <div className="min-h-screen bg-white px-4 py-16 dark:bg-slate-950">
+        <div className="mx-auto max-w-3xl animate-pulse space-y-5">
+          <div className="h-5 w-40 rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-9 w-64 rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-80 rounded-2xl bg-slate-100 dark:bg-slate-900" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white py-8 text-slate-950 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <Link href="/report-issue" className="mb-6 inline-flex items-center gap-2 text-sm text-slate-500 transition-colors hover:text-slate-950 dark:text-slate-400 dark:hover:text-white">
+          <ArrowLeft className="size-4" />
+          Back to Reported Issues
+        </Link>
+
+        <div className="mb-6">
+          <h1 className="mb-1 text-2xl font-bold text-slate-950 dark:text-white">Report an Issue</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Help us improve by reporting issues you&apos;ve noticed in your community</p>
+        </div>
+
+        {flowPath && <StepProgress steps={activeSteps} currentStepIndex={currentStepIndex} />}
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-700 dark:bg-slate-900">
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div key={currentStep} custom={direction} variants={stepVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+              {currentStep === "awareness" && (
+                <div className="space-y-7 text-center">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-950 dark:text-white">Is this issue related to a specific project?</h2>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">This helps us respond to your report faster</p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <ChoiceCard
+                      icon={<Search className="size-7" />}
+                      title="Yes, I know the project"
+                      body="I can search for the project by name or code"
+                      onClick={() => {
+                        setFlowPath("knows-project");
+                        goToStep("project-search");
+                      }}
+                    />
+                    <ChoiceCard
+                      icon={<MapPin className="size-7" />}
+                      title="No, I'm not sure"
+                      body="I'll describe the location and we'll find nearby projects"
+                      onClick={() => {
+                        setFlowPath("no-project");
+                        goToStep("location");
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {currentStep === "project-search" && (
+                <div className="space-y-6">
+                  <StepHeader title="Find the related project" body="Search by project name, code, municipality, or province." />
+                  <ProjectSearchInput value={selectedProject} onSelect={handleProjectSelect} onClear={() => setSelectedProject(null)} autoFocus />
+                  {selectedProject && (
+                    <ProjectSuggestionCard
+                      project={selectedProject}
+                      selected
+                      expanded
+                      onToggle={() => undefined}
+                      onSelect={() => goToStep("issue-details")}
+                      actionLabel="Continue with this Project"
+                    />
+                  )}
+                  <div className="flex items-center justify-between pt-2">
+                    <Button type="button" variant="ghost" onClick={() => { setFlowPath(null); goToStep("awareness", -1); }}>Back</Button>
+                    <Button type="button" onClick={() => goToStep("issue-details")} disabled={!selectedProject} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === "location" && (
+                <div className="space-y-5">
+                  <StepHeader title="Where did you notice the issue?" body="Provide the best location details you know." />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <LocationSelect
+                      label="Region"
+                      required
+                      value={selectedRegionCode}
+                      placeholder="Select region"
+                      options={regions}
+                      onChange={handleRegionChange}
+                    />
+                    <LocationSelect
+                      label="Province"
+                      required
+                      value={selectedProvinceCode}
+                      placeholder={selectedRegionCode ? (isProvincesLoading ? "Loading provinces..." : "Select province") : "Select region first"}
+                      options={provinces}
+                      onChange={handleProvinceChange}
+                      disabled={!selectedRegionCode || isProvincesLoading}
+                    />
+                    <LocationSelect
+                      label="City / Municipality"
+                      required
+                      value={selectedCityCode}
+                      placeholder={selectedProvinceCode ? (isCitiesLoading ? "Loading cities..." : "Select city") : "Select province first"}
+                      options={municipalities}
+                      onChange={handleCityChange}
+                      disabled={!selectedProvinceCode || isCitiesLoading}
+                    />
+                    <LocationSelect
+                      label="Barangay"
+                      required
+                      value={selectedBarangayCode}
+                      placeholder={selectedCityCode ? (isBarangaysLoading ? "Loading barangays..." : "Select barangay") : "Select city first"}
+                      options={barangays}
+                      onChange={handleBarangayChange}
+                      disabled={!selectedCityCode || isBarangaysLoading}
+                    />
+                  </div>
+                  <Field label="Street / Landmark" value={form.streetLandmark} onChange={(value) => setValue("streetLandmark", value)} />
+                  <div className="flex items-center justify-between pt-2">
+                    <Button type="button" variant="ghost" onClick={() => { setFlowPath(null); goToStep("awareness", -1); }}>Back</Button>
+                    <Button type="button" onClick={() => goToStep("match")} disabled={!form.province || !form.city || !form.barangay || !form.streetLandmark} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === "match" && (
+                <div className="space-y-5">
+                  <StepHeader title="Match a nearby project" body="Select the related project if it appears below, or continue without a project match." />
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/60">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Search area</p>
+                    <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{[form.barangay, form.city, form.province].filter(Boolean).join(", ")}</p>
+                  </div>
+
+                  {isSuggestionsLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((item) => (
+                        <div key={item} className="h-20 animate-pulse rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-950" />
+                      ))}
+                    </div>
+                  ) : suggestedProjects.length > 0 ? (
+                    <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+                      {suggestedProjects.map((project) => {
+                        return (
+                          <ProjectSuggestionCard
+                            key={project.id}
+                            project={project}
+                            selected={selectedProject?.id === project.id}
+                            expanded={expandedProjectId === project.id}
+                            onToggle={() => setExpandedProjectId(expandedProjectId === project.id ? null : project.id)}
+                            onSelect={() => {
+                              setSelectedProject(project);
+                              goToStep("issue-details");
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                      <Search className="mx-auto mb-3 size-8 text-slate-500" />
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No nearby project match found</p>
+                      <p className="mt-1 text-xs text-slate-500">You can still continue and submit this report without linking it to a project.</p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-2">
+                    <Button type="button" variant="ghost" onClick={() => goToStep("location", -1)}>Back</Button>
+                    <div className="flex items-center gap-2">
+                      {selectedProject && (
+                        <Button type="button" variant="ghost" onClick={() => setSelectedProject(null)}>Clear Match</Button>
+                      )}
+                      <Button type="button" onClick={() => goToStep("issue-details")} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                        {selectedProject ? "Use Match" : "Continue"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === "issue-details" && (
+                <div className="space-y-5">
+                  <StepHeader title="Issue details" body="Describe what happened and attach photos or videos when available." />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Issue Type <span className="text-red-500 dark:text-red-400">*</span></Label>
+                      <Select value={form.issueType} onValueChange={(value) => value && setValue("issueType", value)}>
+                        <SelectTrigger className="h-10 w-full border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+                          <SelectValue placeholder="Select issue type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {issueTypes.map((type) => <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <DateField value={form.dateNoticed} onChange={(value) => setValue("dateNoticed", value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Description <span className="text-red-500 dark:text-red-400">*</span></Label>
+                      <span className={`text-[11px] font-medium ${form.issueDescription.trim().length >= 20 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-300"}`}>
+                        {form.issueDescription.trim().length >= 20
+                          ? "Minimum met"
+                          : `${20 - form.issueDescription.trim().length} more character${20 - form.issueDescription.trim().length === 1 ? "" : "s"} required`}
+                      </span>
+                    </div>
+                    <Textarea value={form.issueDescription} onChange={(event) => setValue("issueDescription", event.target.value)} placeholder="Provide clear details about the issue..." className="min-h-32 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+                    <p className="text-right text-[11px] text-slate-500">{form.issueDescription.length}/1000</p>
+                  </div>
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-950/70">
+                    <label className="flex cursor-pointer flex-col items-center justify-center gap-2 text-center">
+                      <Upload className="size-7 text-emerald-400" />
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{isUploading ? "Uploading..." : "Upload photos or videos"}</span>
+                      <span className="text-xs text-slate-500">PNG, JPG, WebP, GIF, MP4, MOV, WebM</span>
+                      <input type="file" multiple accept={UPLOAD_ACCEPT} className="hidden" onChange={handleEvidenceChange} disabled={isUploading} />
+                    </label>
+                  </div>
+                  {evidence.length > 0 && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {evidence.map((item, index) => (
+                        <div key={`${item.url}-${index}`} className="group overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+                          <div className="relative aspect-video bg-slate-100 dark:bg-slate-900">
+                            {item.type === "image" ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={item.preview} alt={item.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <video src={item.preview} className="h-full w-full object-cover" controls preload="metadata" />
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeEvidence(index)}
+                              className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-slate-950/85 text-slate-300 transition-colors hover:bg-red-500 hover:text-white"
+                              aria-label={`Remove ${item.name}`}
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2 px-3 py-2">
+                            <FileImage className="size-4 shrink-0 text-emerald-400" />
+                            <span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700 dark:text-slate-300">{item.name}</span>
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase text-slate-500 dark:bg-slate-800">{item.type}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-2">
+                    <Button type="button" variant="ghost" onClick={() => goToStep(flowPath === "knows-project" ? "project-search" : "match", -1)}>Back</Button>
+                    <Button type="button" onClick={() => validateIssueDetails() && goToStep("contact")} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === "contact" && (
+                <div className="space-y-5">
+                  <StepHeader title="Contact and consent" body="Your contact information helps moderators validate the report." />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Contact Number" required value={form.contactNumber} onChange={(value) => setValue("contactNumber", value)} />
+                    <Field label="Email Address (Optional)" type="email" value={form.email} onChange={(value) => setValue("email", value)} />
+                  </div>
+                  <CheckRow checked={form.isAnonymous} onChange={(value) => setValue("isAnonymous", value)} label="Submit as anonymous" />
+                  <CheckRow checked={form.confirmAccuracy} onChange={(value) => setValue("confirmAccuracy", value)} label="I confirm that the information provided is accurate." />
+                  <CheckRow checked={form.agreeToTerms} onChange={(value) => setValue("agreeToTerms", value)} label="I agree to the Terms of Service and Privacy Policy." />
+                  <div className="flex items-center justify-between border-t border-slate-200 pt-5 dark:border-slate-800">
+                    <Button type="button" variant="ghost" onClick={() => goToStep("issue-details", -1)}>Back</Button>
+                    <Button type="button" size="lg" onClick={handleSubmit} disabled={isSubmitting} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
+                      {isSubmitting ? "Submitting..." : "Submit Issue"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; currentStepIndex: number }) {
+  return (
+    <div className="mb-8 w-full">
+      <div className="relative hidden items-center justify-between md:flex">
+        <div className="absolute left-0 right-0 top-5 h-0.5 bg-slate-200 dark:bg-slate-700" />
+        <motion.div
+          className="absolute left-0 top-5 h-0.5 bg-emerald-500"
+          initial={false}
+          animate={{ width: steps.length > 1 ? `${(currentStepIndex / (steps.length - 1)) * 100}%` : "0%" }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
+        />
+
+        {steps.map((step, index) => {
+          const isCompleted = index < currentStepIndex;
+          const isCurrent = index === currentStepIndex;
+          const StepIcon = step.icon;
+
+          return (
+            <div key={step.id} className="relative z-10 flex flex-col items-center gap-2">
+              <motion.div
+                initial={false}
+                animate={{
+                  scale: isCurrent ? 1.1 : 1,
+                  backgroundColor: isCompleted || isCurrent ? "rgb(5 150 105)" : "rgb(241 245 249)",
+                }}
+                transition={{ duration: 0.25 }}
+                className={`flex size-10 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-950 ${isCompleted || isCurrent ? "text-white" : "bg-slate-100 text-slate-500"}`}
+              >
+                {isCompleted ? <Check className="size-4" /> : <StepIcon className="size-4" />}
+              </motion.div>
+              <span className={`max-w-20 text-center text-xs font-medium leading-tight ${isCurrent ? "text-emerald-600 dark:text-emerald-400" : isCompleted ? "text-slate-700 dark:text-slate-300" : "text-slate-500"}`}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-col items-center gap-2 md:hidden">
+        <div className="flex items-center gap-2">
+          {steps.map((step, index) => {
+            const isCompleted = index < currentStepIndex;
+            const isCurrent = index === currentStepIndex;
+            return (
+              <motion.div
+                key={step.id}
+                initial={false}
+                animate={{
+                  width: isCurrent ? 24 : 8,
+                  backgroundColor: isCompleted || isCurrent ? "rgb(5 150 105)" : "rgb(203 213 225)",
+                }}
+                transition={{ duration: 0.3 }}
+                className="h-2 rounded-full"
+              />
+            );
+          })}
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{steps[currentStepIndex]?.label} ({currentStepIndex + 1}/{steps.length})</p>
+      </div>
+    </div>
+  );
+}
+
+function formatBudget(value?: number) {
+  if (!value || value <= 0) return "N/A";
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function extractGeotagUrls(metadata?: Record<string, any>) {
+  const buckets = [
+    metadata?.geotag,
+    metadata?.geotags,
+    metadata?.photos,
+    metadata?.photoUrls,
+    metadata?.validationPhotos,
+    metadata?.completedPhotos,
+    metadata?.validation_photos,
+    metadata?.completed_photos,
+  ];
+  const geotags = buckets.flatMap((bucket) => Array.isArray(bucket) ? bucket : []);
+
+  return geotags
+    .map((tag: any) => typeof tag === "string" ? tag : tag?.url || tag?.photo_url || tag?.image_url || tag?.path)
+    .filter(Boolean)
+    .map((url: string) => getFullUrl(url))
+    .filter(Boolean) as string[];
+}
+
+function ProjectSuggestionCard({
+  project,
+  selected,
+  expanded,
+  onToggle,
+  onSelect,
+  actionLabel = "Select this Project",
+}: {
+  project: SelectedProject;
+  selected: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  onSelect: () => void;
+  actionLabel?: string;
+}) {
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  const { data: details, isFetching } = useQuery<ProjectDetails | null>({
+    queryKey: ["issue-project-detail", project.sourceId || project.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${encodeURIComponent(project.sourceId || project.id)}`);
+      if (!response.ok) return null;
+      const result = await response.json();
+      return result.data;
     },
-    exit: (dir: number) => ({
-      x: dir > 0 ? -50 : 50,
-      opacity: 0,
-      transition: { duration: 0.18, ease: "easeIn" as const }
-    })
+    enabled: expanded,
+    staleTime: 60000,
+  });
+
+  const photoUrls = extractGeotagUrls(details?.metadata);
+  const currentPhoto = photoUrls[carouselIndex];
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`overflow-hidden rounded-xl border bg-white transition-colors dark:bg-slate-950 ${selected ? "border-emerald-500" : "border-slate-200 dark:border-slate-700"}`}>
+      <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 p-3.5 text-left">
+        <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${selected ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>
+          {selected ? <Check className="size-4" /> : <Building2 className="size-5" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-slate-950 dark:text-white">{project.name}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {project.sourceProjectId && <span className="font-mono text-xs text-slate-500">{project.sourceProjectId}</span>}
+            {(details?.stage || details?.status) && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">{details.stage || details.status}</span>}
+          </div>
+        </div>
+        <ChevronDown className={`size-4 shrink-0 text-slate-500 transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div initial={{ height: 0, opacity: 1 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden border-t border-slate-100 dark:border-slate-800">
+            {isFetching ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="size-5 animate-spin text-emerald-500" />
+              </div>
+            ) : (
+              <>
+                {currentPhoto ? (
+                  <div className="relative h-40 w-full overflow-hidden bg-slate-100 dark:bg-slate-900">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewerIndex(carouselIndex);
+                        setViewerOpen(true);
+                      }}
+                      className="absolute inset-0"
+                    >
+                      <Image
+                        src={currentPhoto}
+                        alt={`${project.name} geotagged photo`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 672px"
+                        unoptimized={isLocalMinIO(currentPhoto)}
+                      />
+                    </button>
+
+                    {photoUrls.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setCarouselIndex((previous) => (previous - 1 + photoUrls.length) % photoUrls.length);
+                          }}
+                          className="absolute left-2 top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white hover:bg-black/65"
+                        >
+                          <ChevronLeft className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setCarouselIndex((previous) => (previous + 1) % photoUrls.length);
+                          }}
+                          className="absolute right-2 top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white hover:bg-black/65"
+                        >
+                          <ChevronRight className="size-4" />
+                        </button>
+                        <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1">
+                          {photoUrls.map((_, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setCarouselIndex(index);
+                              }}
+                              className={`size-1.5 rounded-full transition-all ${index === carouselIndex ? "scale-125 bg-white" : "bg-white/50"}`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <MediaViewer
+                      media={photoUrls.map((url) => ({ type: "image" as const, url }))}
+                      initialIndex={viewerIndex}
+                      open={viewerOpen}
+                      onClose={() => setViewerOpen(false)}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-32 items-center justify-center bg-slate-100 text-xs text-slate-500 dark:bg-slate-900">
+                    No geotagged photos available for this project
+                  </div>
+                )}
+
+                <div className="space-y-4 p-4">
+                  <h3 className="text-sm font-bold text-slate-950 dark:text-white">Project Details</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <ProjectDetailItem icon={<MapPin className="size-4" />} label="Location" value={details?.location || [project.municipality, project.province].filter(Boolean).join(", ") || "N/A"} />
+                    <ProjectDetailItem icon={<Building2 className="size-4" />} label="Agency" value={details?.implementingAgency || "BAFE"} />
+                    <ProjectDetailItem icon={<Banknote className="size-4" />} label="Budget" value={formatBudget(details?.budget)} />
+                    <ProjectDetailItem icon={<Activity className="size-4" />} label="Status" value={details?.stage || details?.status || "N/A"} />
+                  </div>
+                </div>
+
+                <div className="space-y-3 border-t border-slate-100 p-4 dark:border-slate-800">
+                  <Link
+                    href={`/projects/${project.sourceId || project.id}?tab=feedback`}
+                    target="_blank"
+                    className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
+                  >
+                    <MessageSquare className="size-4 shrink-0" />
+                    <span className="flex-1">Click here! You might want to visit this project and leave feedback instead</span>
+                    <ExternalLink className="size-3.5 shrink-0" />
+                  </Link>
+                  <Button type="button" onClick={onSelect} className="w-full bg-emerald-600 text-white hover:bg-emerald-700">
+                    <AlertTriangle className="mr-2 size-3.5" />
+                    {actionLabel}
+                  </Button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+function ProjectDetailItem({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <div className="mt-0.5 text-slate-500">{icon}</div>
+      <div className="min-w-0">
+        <p className="text-xs text-slate-500">{label}</p>
+        <p className="break-words text-xs font-semibold text-slate-800 dark:text-slate-200">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function ChoiceCard({ icon, title, body, onClick }: { icon: ReactNode; title: string; body: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm transition-colors hover:border-emerald-500 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:bg-slate-800">
+      <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400">{icon}</div>
+      <h3 className="font-bold text-slate-950 dark:text-white">{title}</h3>
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{body}</p>
+    </button>
+  );
+}
+
+function StepHeader({ title, body }: { title: string; body: string }) {
+  return (
+    <div>
+      <h2 className="text-lg font-bold text-slate-950 dark:text-white">{title}</h2>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{body}</p>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, type = "text", icon, required = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; icon?: ReactNode; required?: boolean }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+        {label} {required && <span className="text-red-500 dark:text-red-400">*</span>}
+      </Label>
+      <div className="relative">
+        {icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">{icon}</div>}
+        <Input type={type} value={value} onChange={(event) => onChange(event.target.value)} className={`h-10 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 ${icon ? "pl-9" : ""}`} />
+      </div>
+    </div>
+  );
+}
+
+function DateField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const openPicker = () => {
+    const input = inputRef.current;
+    if (!input) return;
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+    } else {
+      input.focus();
+    }
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12 lg:py-20 min-h-screen flex flex-col justify-center font-sans">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 w-full">
-        
-        {/* Left Column: Guides (FAQ) */}
-        <div className="lg:col-span-5 hidden lg:flex flex-col justify-between py-2 border-r border-slate-100 dark:border-slate-850/80 pr-10 lg:pr-14">
-          <div>
-            {/* Back Link */}
-            <button
-              onClick={() => router.push("/report-issue")}
-              className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white mb-8 cursor-pointer transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Feed
-            </button>
-
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Report an Issue
-            </h1>
-            <p className="text-sm text-slate-550 dark:text-slate-400 mt-3 leading-relaxed">
-              Help BAFE identify and coordinate repairs for machinery or irrigation network damages. File a quick report to alert engineering moderators.
-            </p>
-
-            <div className="space-y-6 mt-10">
-              <div className="flex gap-4">
-                <div className="p-2.5 bg-primary/5 dark:bg-primary/10 text-primary rounded-xl shrink-0 h-10 w-10 flex items-center justify-center">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Exif Location Extraction</h4>
-                  <p className="text-[11px] text-slate-450 mt-1 leading-relaxed">
-                    Upload photos taken on-site. Our coordination system automatically extracts GPS coordinates to verify the exact location of the damage.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="p-2.5 bg-accent/5 dark:bg-accent/10 text-accent rounded-xl shrink-0 h-10 w-10 flex items-center justify-center">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Secure Privacy Controls</h4>
-                  <p className="text-[11px] text-slate-450 mt-1 leading-relaxed">
-                    Submit anonymously to the public timeline. Your personal identity is encrypted and only visible to authorized BAFE administrators.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="p-2.5 bg-emerald-500/5 dark:bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0 h-10 w-10 flex items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Rapid Response & Moderation</h4>
-                  <p className="text-[11px] text-slate-450 mt-1 leading-relaxed">
-                    Once submitted, our coordination team reviews and updates the project status, alerting the assigned engineering division.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-[10px] text-slate-450 font-bold flex items-center gap-1.5 mt-8">
-            <HelpCircle className="w-3.5 h-3.5 text-slate-400" /> Need assistance? Contact support at support@infra.gov.ph
-          </div>
-        </div>
-
-        {/* Right Column: Wizard Form */}
-        <div className="lg:col-span-7 flex flex-col justify-center">
-          {/* Mobile Back Link and Title */}
-          <div className="lg:hidden mb-6 flex flex-col gap-3">
-            <button
-              onClick={() => router.push("/report-issue")}
-              className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Feed
-            </button>
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Report an Issue</h1>
-              <p className="text-xs text-slate-550 dark:text-slate-400 mt-1">
-                Help BAFE identify and coordinate repairs for machinery or irrigation network damages.
-              </p>
-            </div>
-          </div>
-
-          {/* Stepper HUD */}
-          <div className="relative flex items-center justify-between w-full mb-8 pt-4">
-            <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-0.5 bg-slate-100 dark:bg-slate-800" />
-            <div 
-              className="absolute top-1/2 -translate-y-1/2 left-0 h-0.5 bg-primary transition-all duration-300"
-              style={{ width: `${((reportStep - 1) / 2) * 100}%` }}
-            />
-            
-            {/* Steps nodes */}
-            <div className="relative z-10 flex flex-col items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 text-xs font-bold transition-all ${
-                reportStep >= 1 ? "bg-primary border-primary text-white" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-450"
-              }`}>
-                {reportStep > 1 ? <Check className="w-4.5 h-4.5" /> : 1}
-              </div>
-              <span className={`text-[9px] font-extrabold uppercase tracking-wider mt-2 ${reportStep >= 1 ? "text-slate-800 dark:text-white" : "text-slate-450"}`}>Select Project</span>
-            </div>
-
-            <div className="relative z-10 flex flex-col items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 text-xs font-bold transition-all ${
-                reportStep >= 2 ? "bg-primary border-primary text-white" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-450"
-              }`}>
-                {reportStep > 2 ? <Check className="w-4.5 h-4.5" /> : 2}
-              </div>
-              <span className={`text-[9px] font-extrabold uppercase tracking-wider mt-2 ${reportStep >= 2 ? "text-slate-800 dark:text-white" : "text-slate-455"}`}>Details</span>
-            </div>
-
-            <div className="relative z-10 flex flex-col items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 text-xs font-bold transition-all ${
-                reportStep >= 3 ? "bg-primary border-primary text-white" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-450"
-              }`}>
-                3
-              </div>
-              <span className={`text-[9px] font-extrabold uppercase tracking-wider mt-2 ${reportStep >= 3 ? "text-slate-800 dark:text-white" : "text-slate-455"}`}>Submit</span>
-            </div>
-          </div>
-
-          {/* Wizard Content Card */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200/85 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
-            <CardContent className="p-6 sm:p-8 overflow-hidden min-h-[380px] flex flex-col justify-between">
-              <AnimatePresence mode="wait" custom={direction}>
-                <motion.div
-                  key={reportStep}
-                  custom={direction}
-                  variants={slideVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  className="w-full flex-1 flex flex-col justify-between"
-                >
-                  {/* STEP 1: Select Project */}
-                  {reportStep === 1 && (
-                    <div className="space-y-5 flex-1">
-                      <div>
-                        <Label className="text-xs font-bold text-slate-705 dark:text-slate-300 block mb-2">
-                          1. Select the project with the active issue:
-                        </Label>
-                        <div className="relative">
-                          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-450" />
-                          <Input 
-                            type="text" 
-                            placeholder="Type project name, ID, or location..." 
-                            value={projectSearch}
-                            onChange={(e) => setProjectSearch(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 mt-4 flex-1">
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
-                          Project Suggestions:
-                        </span>
-                        
-                        <div className="space-y-2.5 max-h-[250px] overflow-y-auto pr-1 scrollbar-thin">
-                          {filteredProjects.map((proj) => (
-                            <div 
-                              key={proj.id}
-                              onClick={() => handleProjectSelect(proj.name)}
-                              className="p-4 bg-slate-50/50 hover:bg-white dark:bg-slate-900/50 dark:hover:bg-slate-900/90 border border-slate-200/60 dark:border-slate-808/80 hover:border-primary/40 dark:hover:border-primary/40 rounded-2xl transition-all cursor-pointer flex justify-between items-center group hover:shadow-sm"
-                            >
-                              <div className="min-w-0 flex-1 pr-4">
-                                <span className="text-xs font-bold text-slate-900 dark:text-white block group-hover:text-primary transition-colors truncate">
-                                  {proj.name}
-                                </span>
-                                <p className="text-[10px] text-slate-400 font-medium mt-1 font-mono">{proj.id} • {proj.location}</p>
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-slate-350 group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
-                            </div>
-                          ))}
-                          
-                          {filteredProjects.length === 0 && (
-                            <div className="text-center py-8 text-xs text-slate-450">
-                              No projects found matching &quot;{projectSearch}&quot;
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* STEP 2: Details & Evidence */}
-                  {reportStep === 2 && (
-                    <div className="space-y-5 flex-1">
-                      <div className="bg-primary/5 dark:bg-primary/10 border border-primary/15 rounded-xl px-4 py-3 flex items-center justify-between">
-                        <div className="min-w-0">
-                          <span className="text-[9px] font-extrabold text-primary uppercase tracking-wider block">Selected Project</span>
-                          <span className="text-xs font-bold text-slate-909 dark:text-white truncate block mt-0.5">{selectedProject}</span>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => goToStep(1)}
-                          className="h-7 text-[10px] font-bold px-2 rounded-lg border-slate-200 dark:border-slate-800"
-                        >
-                          Change
-                        </Button>
-                      </div>
-
-                      {/* Visual Category Grid Select */}
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">Issue Category</Label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {categories.map((cat) => {
-                            const isSelected = issueType === cat.id;
-                            const Icon = cat.icon;
-                            return (
-                              <div
-                                key={cat.id}
-                                onClick={() => setIssueType(cat.id)}
-                                className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between h-24 relative overflow-hidden group ${
-                                  isSelected 
-                                    ? "border-primary bg-primary/5 text-primary" 
-                                    : "border-slate-200/80 dark:border-slate-800 bg-slate-50/50 hover:bg-white dark:hover:bg-slate-900/50 hover:border-slate-350 dark:hover:border-slate-700"
-                                }`}
-                              >
-                                <div className="flex items-start justify-between w-full">
-                                  <div className={`p-1.5 rounded-lg transition-colors ${
-                                    isSelected ? "bg-primary/10 text-primary" : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-slate-650 dark:group-hover:text-slate-200"
-                                  }`}>
-                                    <Icon className="w-4 h-4" />
-                                  </div>
-                                  {isSelected && (
-                                    <span className="w-1.5 h-1.5 bg-accent rounded-full" />
-                                  )}
-                                </div>
-                                <div>
-                                  <span className={`text-[11px] font-bold block ${isSelected ? "text-primary" : "text-slate-800 dark:text-slate-200"}`}>{cat.label}</span>
-                                  <span className="text-[9px] text-slate-400 block line-clamp-1 mt-0.5">{cat.desc}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Photo upload */}
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">Upload Evidence & Photo</Label>
-                        <input 
-                          type="file" 
-                          ref={fileInputRef}
-                          onChange={handleFileChange}
-                          accept="image/*"
-                          className="hidden" 
-                        />
-                        
-                        {!previewUrl ? (
-                          <div 
-                            onClick={triggerFileSelect}
-                            className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center bg-slate-50/50 dark:bg-slate-950/20 hover:bg-slate-55 hover:border-primary/40 dark:hover:bg-slate-900/30 transition-all cursor-pointer group"
-                          >
-                            <Camera className="w-7 h-7 mx-auto mb-2 text-slate-450 group-hover:text-primary transition-colors" />
-                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block group-hover:text-primary transition-colors">
-                              Click to upload photo evidence
-                            </span>
-                            <p className="text-[10px] text-slate-450 mt-1 max-w-xs mx-auto leading-relaxed">
-                              Exif GPS coordinates will be extracted automatically to verify coordinates on-site.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-12 h-12 rounded-lg bg-cover bg-center border border-slate-200/80 shrink-0" style={{ backgroundImage: `url(${previewUrl})` }} />
-                              <div className="min-w-0">
-                                <span className="text-xs font-bold text-slate-800 dark:text-white truncate block">{selectedFile?.name}</span>
-                                <span className="text-[9px] text-slate-400 block font-mono">{(selectedFile!.size / 1024).toFixed(1)} KB</span>
-                              </div>
-                            </div>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={handleRemoveFile}
-                              className="h-8 w-8 p-0 text-red-500 border-slate-200 dark:border-slate-800 hover:bg-red-50 dark:hover:bg-red-950/20"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Location details (Barangay and Landmark) */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-bold text-slate-705 dark:text-slate-350">Barangay</Label>
-                          <Input 
-                            type="text" 
-                            value={barangay}
-                            onChange={(e) => setBarangay(e.target.value)}
-                            className="w-full bg-slate-50/50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary font-medium"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-bold text-slate-705 dark:text-slate-350">Date Noticed</Label>
-                          <Input 
-                            type="date" 
-                            value={dateNoticed}
-                            onChange={(e) => setDateNoticed(e.target.value)}
-                            className="w-full bg-slate-50/50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary font-mono text-[11px]"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-slate-705 dark:text-slate-355">Street / Landmark</Label>
-                        <Input 
-                          type="text" 
-                          placeholder="E.g., Near water gate sector 4, close to main highway" 
-                          value={streetLandmark}
-                          onChange={(e) => setStreetLandmark(e.target.value)}
-                          className="w-full bg-slate-50/50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary font-medium"
-                        />
-                      </div>
-
-                      {/* Describe details textarea */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Describe the issue</Label>
-                        <textarea 
-                          placeholder="Provide details regarding what is broken, delayed, or missing..." 
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          className="w-full bg-slate-50/50 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs h-24 outline-none focus:border-primary text-slate-850 dark:text-slate-100"
-                        />
-                      </div>
-
-                      {/* Wizard step navigation footer */}
-                      <div className="flex justify-between pt-4 border-t border-slate-100 dark:border-slate-850 mt-2">
-                        <Button 
-                          variant="outline"
-                          onClick={() => router.push("/report-issue")}
-                          className="border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-405 text-xs font-bold px-4 h-9 rounded-lg"
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          onClick={() => {
-                            if (!issueType || !description) {
-                              toast.error("Please select a category and fill in the description.");
-                              return;
-                            }
-                            goToStep(3);
-                          }}
-                          className="bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-bold px-4 h-9 rounded-lg"
-                        >
-                          Continue <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* STEP 3: Contact Info */}
-                  {reportStep === 3 && (
-                    <div className="space-y-5 flex-1">
-                      <div className="bg-slate-50 dark:bg-slate-850/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-start gap-3">
-                        <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                        <div className="text-[11px] leading-relaxed text-slate-505">
-                          <span className="font-extrabold text-slate-700 dark:text-slate-350 block mb-0.5">Privacy Protected Submission</span>
-                          Your contact details are encrypted and only accessible by authorized engineering division moderators. They are never published publicly.
-                        </div>
-                      </div>
-
-                      {/* Privacy Toggles */}
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-305 block mb-2">Privacy Method</Label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div
-                            onClick={() => setIsAnonymous(true)}
-                            className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between h-28 relative overflow-hidden group ${
-                              isAnonymous
-                                ? "border-accent bg-accent/5 text-accent"
-                                : "border-slate-200 dark:border-slate-800 bg-slate-50/20 hover:border-slate-300 dark:hover:border-slate-700"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className={`text-xs font-bold block ${isAnonymous ? "text-accent" : "text-slate-800 dark:text-slate-200"}`}>Anonymous</span>
-                              <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${isAnonymous ? "border-accent bg-accent text-white" : "border-slate-300"}`}>
-                                {isAnonymous && <span className="w-1 h-1 bg-white rounded-full" />}
-                              </div>
-                            </div>
-                            <p className="text-[9.5px] text-slate-455 leading-normal">
-                              Personal contact details are omitted. Report is pushed to the public ledger anonymously.
-                            </p>
-                          </div>
-
-                          <div
-                            onClick={() => setIsAnonymous(false)}
-                            className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between h-28 relative overflow-hidden group ${
-                              !isAnonymous
-                                ? "border-primary bg-primary/5 text-primary"
-                                : "border-slate-200 dark:border-slate-800 bg-slate-50/20 hover:border-slate-300 dark:hover:border-slate-700"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className={`text-xs font-bold block ${!isAnonymous ? "text-primary" : "text-slate-800 dark:text-slate-200"}`}>Verified Identity</span>
-                              <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${!isAnonymous ? "border-primary bg-primary text-white" : "border-slate-300"}`}>
-                                {!isAnonymous && <span className="w-1 h-1 bg-white rounded-full" />}
-                              </div>
-                            </div>
-                            <p className="text-[9.5px] text-slate-455 leading-normal">
-                              File contact info. Verified submissions undergo faster review pipelines and moderation feedback.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Contact fields inputs */}
-                      <AnimatePresence mode="wait">
-                        {!isAnonymous && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="space-y-4 pt-1 overflow-hidden"
-                          >
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-1.5">
-                                <Label className="text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">Full Name</Label>
-                                <Input 
-                                  type="text" 
-                                  placeholder="Juan Dela Cruz" 
-                                  value={reporterName}
-                                  onChange={(e) => setReporterName(e.target.value)}
-                                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs bg-slate-50/30 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary" 
-                                />
-                              </div>
-                              <div className="space-y-1.5">
-                                <Label className="text-[10px] font-extrabold text-slate-455 uppercase tracking-wider">Mobile Number</Label>
-                                <Input 
-                                  type="text" 
-                                  placeholder="+63 917 123 4567" 
-                                  value={reporterPhone}
-                                  onChange={(e) => setReporterPhone(e.target.value)}
-                                  className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs bg-slate-50/30 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary" 
-                                />
-                              </div>
-                            </div>
-                            <div className="space-y-1.5 mt-3.5">
-                              <Label className="text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">Email Address (Optional)</Label>
-                              <Input 
-                                type="email" 
-                                placeholder="juan.delacruz@example.com" 
-                                value={reporterEmail}
-                                onChange={(e) => setReporterEmail(e.target.value)}
-                                className="w-full border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs bg-slate-50/30 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary" 
-                              />
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      {/* Wizard step navigation footer */}
-                      <div className="flex justify-between pt-6 border-t border-slate-100 dark:border-slate-850 mt-4">
-                        <Button 
-                          variant="outline"
-                          onClick={() => goToStep(2)}
-                          className="border border-slate-200 dark:border-slate-805 text-slate-600 dark:text-slate-400 text-xs font-bold h-9 rounded-lg"
-                        >
-                          Back
-                        </Button>
-                        <Button 
-                          onClick={handleIssueSubmit}
-                          className="bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-bold px-5 h-9 rounded-lg"
-                        >
-                          Submit Issue Report
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </CardContent>
-          </Card>
-        </div>
-
-      </div>
+    <div className="space-y-1.5">
+      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Date Noticed <span className="text-red-500 dark:text-red-400">*</span></Label>
+      <button type="button" onClick={openPicker} className="relative block w-full text-left">
+        <Calendar className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          ref={inputRef}
+          type="date"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onClick={(event) => event.stopPropagation()}
+          className="h-10 border-slate-200 bg-white pl-9 text-slate-900 [color-scheme:light] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100"
+        />
+      </button>
     </div>
+  );
+}
+
+function LocationSelect({
+  label,
+  value,
+  placeholder,
+  options,
+  onChange,
+  disabled = false,
+  required = false,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  options: LocationOption[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  required?: boolean;
+}) {
+  const selectedLabel = options.find((option) => option.value === value)?.label;
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+        {label} {required && <span className="text-red-500 dark:text-red-400">*</span>}
+      </Label>
+      <Select value={value} onValueChange={(nextValue) => nextValue && onChange(nextValue)} disabled={disabled}>
+        <SelectTrigger className="h-10 w-full border-slate-200 bg-white text-slate-900 disabled:cursor-not-allowed disabled:opacity-55 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+          <span className={selectedLabel ? "truncate text-slate-900 dark:text-slate-100" : "truncate text-slate-500"}>
+            {selectedLabel || placeholder}
+          </span>
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function CheckRow({ checked, onChange, label }: { checked: boolean; onChange: (checked: boolean) => void; label: string }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-700 dark:text-slate-300">
+      <Checkbox checked={checked} onCheckedChange={(value) => onChange(value === true)} className="mt-0.5" />
+      <span>{label}</span>
+    </label>
   );
 }

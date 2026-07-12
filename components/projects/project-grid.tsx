@@ -56,28 +56,28 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
           variants={index < 12 ? cardVariants : undefined}
           initial={index >= 12 ? { opacity: 1 } : undefined}
         >
-          <Card className="hover:shadow-lg transition-all hover:-translate-y-1 h-full bg-slate-50/50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800">
+          <Card className="hover:shadow-lg transition-all hover:-translate-y-1 h-full bg-[#121927] border-slate-800">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-start justify-between">
                 <StatusBadge status={project.stage || "Not yet started"} />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-slate-900 mb-2 line-clamp-2 dark:text-white">{project.name}</h3>
-                <p className="text-xs text-slate-500 font-mono mb-4 dark:text-slate-400">{project.code}</p>
+                <h3 className="text-[15px] leading-snug font-bold text-white mb-2 line-clamp-2">{project.name}</h3>
+                <p className="text-[11px] text-slate-400 font-mono mb-4 tracking-wide uppercase">{project.code}</p>
               </div>
               <div className="space-y-3">
                 <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-slate-700 dark:text-slate-200">{project.location}</p>
+                  <MapPin className="w-[18px] h-[18px] text-slate-400 flex-shrink-0" />
+                  <p className="text-sm text-slate-300">{project.location}</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <PhilippinePeso className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(project.budget)}</p>
+                  <PhilippinePeso className="w-[18px] h-[18px] text-slate-400 flex-shrink-0" />
+                  <p className="text-[15px] font-bold text-white">{formatCurrency(project.budget)}</p>
                 </div>
               </div>
               <Link
                 href={`/projects/${project.id}${queryString ? `?${queryString}` : ""}`}
-                className={cn(buttonVariants({ variant: "default", size: "default" }), "w-full text-center")}
+                className={cn(buttonVariants({ variant: "default", size: "default" }), "w-full text-center bg-[#4caf50] hover:bg-[#43a047] text-[#111827] font-semibold tracking-wide border-0 transition-colors")}
               >
                 View Details
               </Link>

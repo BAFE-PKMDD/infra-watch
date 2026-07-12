@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { getAuditContextFromServerAction, logFailedAuthAttempt } from "@/lib/audit";
 
 export const signIn = async (email: string, password: string) => {
   try {
@@ -23,6 +24,13 @@ export const signIn = async (email: string, password: string) => {
     };
   } catch (error) {
     const e = error as Error;
+    await logFailedAuthAttempt({
+      email,
+      method: "email_password",
+      reason: e.message || "Invalid email or password.",
+      requestPath: "/sign-in",
+      context: await getAuditContextFromServerAction({ email }),
+    });
 
     return {
       success: false,

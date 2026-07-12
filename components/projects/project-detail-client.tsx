@@ -47,32 +47,35 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  // Navigate to photos tab
+  // Navigate to photos tab with map view
   const handleShowOnMap = () => {
     setActiveTab("photos");
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", "photos");
+    params.set("photoView", "maps");
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
   // Calculate counts for sidebar
-  const metadata = project.metadata || {};
+  const metadata = project.metadata as any;
   const tabCounts: Partial<Record<ProjectTabKey, number>> = {
-    photos: metadata.geotags?.length || 0,
-    pow: metadata.powRelation?.length || 0,
-    procurement: metadata.procurementRelation?.length || 0,
+    articles: project.articles?.length || 0,
+    photos: metadata?.geotag?.length || 0,
+    documents: metadata?.proposalDocuments?.length || 0,
+    pow: metadata?.powRelation?.length || 0,
+    procurement: metadata?.procurementRelation?.length || 0,
     feedback: project.feedbackCount || 0,
   };
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen pb-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <ProjectHero project={project} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative z-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative">
         <ProjectHighlights project={project} />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1">
             <ProjectSidebar

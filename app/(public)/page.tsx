@@ -29,7 +29,7 @@ export default function LandingPage() {
     {
       num: "02",
       title: "Inspect Site Details",
-      desc: "Review coordinates, physical vs. financial progress, and the official program of works checklist.",
+      desc: "Review coordinates, physical vs. financial progress, and the official program of works.",
     },
     {
       num: "03",

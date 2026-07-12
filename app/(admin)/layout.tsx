@@ -25,7 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="flex min-h-screen">
         <AdminSidebar role={role} />
         <div className="min-w-0 flex-1">
-          <AdminMobileNav />
+          <AdminMobileNav role={role} />
           <main>{children}</main>
         </div>
       </div>

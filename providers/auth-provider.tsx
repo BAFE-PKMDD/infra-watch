@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,7 @@ type AuthUser = {
   id?: string;
   name?: string | null;
   email?: string | null;
+  image?: string | null;
   role?: string | null;
   region?: string | null;
 } & Record<string, unknown>;
@@ -68,3 +69,4 @@ export function useAuth() {
   }
   return context;
 }
+

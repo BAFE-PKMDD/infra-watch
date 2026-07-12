@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { syncAbemisProjects } from "@/lib/abemis/sync";
+import { getAuditContextFromRequest, logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/permissions";
 import { getCurrentUser } from "@/lib/session";
 
@@ -20,6 +21,21 @@ export async function POST(request: NextRequest) {
       triggeredBy: String(user.id),
     });
 
+    await logAudit({
+      tableName: "sync_logs",
+      recordId: result.syncLogId,
+      action: "CREATE",
+      newValues: {
+        syncLogId: result.syncLogId,
+        success: result.success,
+        statistics: result.statistics,
+        duration: result.duration,
+        errors: result.errors,
+      },
+      notes: result.success ? "ABEMIS sync completed" : "ABEMIS sync completed with errors",
+      context: getAuditContextFromRequest(request, user),
+    });
+
     return NextResponse.json(
       {
         success: result.success,
@@ -29,7 +45,7 @@ export async function POST(request: NextRequest) {
         duration: result.duration,
         errors: result.errors,
       },
-      { status: result.success ? 200 : 500 },
+      { status: 200 },
     );
   } catch (error) {
     const status = error instanceof Error && (error as Error & { status?: number }).status ? (error as Error & { status: number }).status : 500;

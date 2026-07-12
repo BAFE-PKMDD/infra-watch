@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, Moon, Sun, X, LogOut, LayoutDashboard, MessageSquareDot, AlertCircle, ChevronDown, ClipboardCheck } from "lucide-react";
+import { Menu, Moon, Sun, X, LogOut, LayoutDashboard, MessageSquareDot, Bell, AlertCircle, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -19,9 +19,11 @@ import {
 const navItems = [
   { label: "Home", href: "/", key: "home" },
   { label: "Projects", href: "/projects", key: "projects" },
-  { label: "Checklists", href: "/checklists", key: "checklists", requiresAuth: true },
-  { label: "Map", href: "/map", key: "map" },
+  { label: "About", href: "/about", key: "about" },
+  { label: "Citizen Feed", href: "/citizen-feed", key: "citizen-feed" },
   { label: "E-Report", href: "/report-issue", key: "report-issue" },
+  { label: "Map", href: "/map", key: "map", isSecondary: true },
+  { label: "Infra Analytics", href: "/infra-analytics", key: "infra-analytics", isSecondary: true },
   { label: "Articles & Updates", href: "/articles-and-updates", key: "articles-and-updates", isSecondary: true },
   { label: "FAQ", href: "/faq", key: "faq", isSecondary: true },
   { label: "Contact Us", href: "/contact", key: "contact", isSecondary: true },
@@ -121,7 +123,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
   }, [showUserMenu]);
 
   return (
-    <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40 dark:bg-slate-900 dark:border-slate-800 transition-all duration-300">
+    <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center gap-3">
@@ -147,7 +149,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
           </div>
 
           <div className="flex items-center gap-3 lg:hidden">
-            {user && <NotificationBell />}
+            {mounted && user && <NotificationBell />}
             <LanguageToggle />
             <button
               type="button"
@@ -155,6 +157,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
               className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
               aria-label="Toggle theme"
               title="Toggle light/dark mode"
+              suppressHydrationWarning
             >
               <Sun className="w-5 h-5 block dark:hidden" />
               <Moon className="w-5 h-5 hidden dark:block" />
@@ -165,6 +168,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
               className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
               aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
               aria-expanded={mobileOpen}
+              suppressHydrationWarning
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -200,17 +204,18 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                             ? "text-primary"
                             : "text-slate-700 hover:text-primary dark:text-slate-200 dark:hover:text-primary"
                         )}
+                        suppressHydrationWarning
                       >
                         {t("nav.more")}
                         <ChevronDown className="w-4 h-4" />
                       </button>
                     }
                   />
-                  <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 [--accent-foreground:var(--foreground)]">
+                  <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 [--accent-foreground:var(--foreground)]">
                     {translatedNavItems
                       .filter(item => item.isSecondary)
                       .map((item) => (
-                        <DropdownMenuItem key={item.key} className="focus:bg-slate-100 dark:focus:bg-slate-800">
+                        <DropdownMenuItem key={item.key} className="focus:bg-slate-100 dark:focus:bg-[#13233c]/60">
                           <Link
                             href={item.href}
                             className={cn(
@@ -229,6 +234,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                   className={cn(
                     "flex items-center gap-1 text-[13px] lg:text-sm font-bold transition-colors whitespace-nowrap outline-none text-slate-700 dark:text-slate-200"
                   )}
+                  suppressHydrationWarning
                 >
                   {t("nav.more")}
                   <ChevronDown className="w-4 h-4" />
@@ -245,16 +251,27 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     aria-label="User menu"
+                    suppressHydrationWarning
                   >
                     <div className="w-9 h-9 flex-shrink-0">
-                      <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold border-2 border-primary">
-                        {getUserInitials(user.name)}
-                      </div>
+                      {user.image ? (
+                        <Image
+                          src={user.image}
+                          alt={user.name || "User"}
+                          width={36}
+                          height={36}
+                          className="w-9 h-9 rounded-full object-cover border-2 border-primary"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold border-2 border-primary">
+                          {getUserInitials(user.name)}
+                        </div>
+                      )}
                     </div>
                   </button>
                   {showUserMenu && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-2 z-50">
-                      <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-700">
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#0d1526] rounded-lg shadow-lg border border-slate-200 dark:border-[#1e3a5f]/30 py-2 z-50">
+                      <div className="px-4 py-2 border-b border-slate-200 dark:border-[#1e3a5f]/20">
                         <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                           {user.name}
                         </p>
@@ -265,7 +282,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                       {user.role !== "citizen" && (
                         <Link
                           href="/dashboard"
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
                           onClick={() => setShowUserMenu(false)}
                         >
                           <LayoutDashboard className="w-4 h-4" />
@@ -273,16 +290,8 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                         </Link>
                       )}
                       <Link
-                        href="/checklists"
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                        onClick={() => setShowUserMenu(false)}
-                      >
-                        <ClipboardCheck className="w-4 h-4" />
-                        {t("nav.checklists")}
-                      </Link>
-                      <Link
                         href="/my-feedbacks"
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
                         onClick={() => setShowUserMenu(false)}
                       >
                         <MessageSquareDot className="w-4 h-4" />
@@ -290,18 +299,29 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                       </Link>
                       <Link
                         href="/my-issues"
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
                         onClick={() => setShowUserMenu(false)}
                       >
                         <AlertCircle className="w-4 h-4" />
                         {t("nav.myReports")}
                       </Link>
+                      {user.role === "citizen" && (
+                        <Link
+                          href="/my-notifications"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <Bell className="w-4 h-4" />
+                          {t("nav.myNotifications")}
+                        </Link>
+                      )}
                       <button
                         onClick={async () => {
                           setShowUserMenu(false);
                           await logout();
                         }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                        suppressHydrationWarning
                       >
                         <LogOut className="w-4 h-4" />
                         {t("nav.signOut")}
@@ -317,13 +337,14 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                   {displayActionLabel}
                 </Link>
               )}
-              {user && <NotificationBell />}
+              {mounted && user && <NotificationBell />}
               <LanguageToggle />
               <button
                 type="button"
                 onClick={toggleTheme}
                 className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
                 aria-label="Toggle theme"
+                suppressHydrationWarning
               >
                 <Sun className="w-5 h-5 block dark:hidden" />
                 <Moon className="w-5 h-5 hidden dark:block" />
@@ -358,9 +379,19 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
             {user ? (
               <div className="space-y-2 border-t border-slate-200 dark:border-slate-800 pt-4">
                 <div className="flex items-center gap-3 px-3 py-2">
-                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold border-2 border-primary">
-                    {getUserInitials(user.name)}
-                  </div>
+                  {user.image ? (
+                    <Image
+                      src={user.image}
+                      alt={user.name || "User"}
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-full object-cover border-2 border-primary"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold border-2 border-primary">
+                      {getUserInitials(user.name)}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                       {user.name}
@@ -381,14 +412,6 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                   </Link>
                 )}
                 <Link
-                  href="/checklists"
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <ClipboardCheck className="w-4 h-4" />
-                  {t("nav.checklists")}
-                </Link>
-                <Link
                   href="/my-feedbacks"
                   className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                   onClick={() => setMobileOpen(false)}
@@ -404,12 +427,23 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                   <AlertCircle className="w-4 h-4" />
                   {t("nav.myReports")}
                 </Link>
+                {user.role === "citizen" && (
+                  <Link
+                    href="/my-notifications"
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <Bell className="w-4 h-4" />
+                    {t("nav.myNotifications")}
+                  </Link>
+                )}
                 <button
                   onClick={async () => {
                     setMobileOpen(false);
                     await logout();
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  suppressHydrationWarning
                 >
                   <LogOut className="w-4 h-4" />
                   {t("nav.signOut")}

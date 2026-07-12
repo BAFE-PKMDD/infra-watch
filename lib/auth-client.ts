@@ -43,6 +43,9 @@ const baseAuthClient = createAuthClient({
       region: {
         type: "string",
       },
+      assignedAgency: {
+        type: "string",
+      },
     },
   },
   plugins: [

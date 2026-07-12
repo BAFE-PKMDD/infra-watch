@@ -46,8 +46,8 @@ export function AppFooter() {
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 flex-shrink-0 text-accent" />
-                <a href="mailto:infrawatch@bafe.da.gov.ph" className="text-slate-300 hover:text-white transition-colors">
-                  infrawatch@bafe.da.gov.ph
+                <a href="mailto:bafe@da.gov.ph" className="text-slate-300 hover:text-white transition-colors">
+                  bafe@da.gov.ph
                 </a>
               </div>
             </div>
@@ -63,8 +63,8 @@ export function AppFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/statistics" className="text-slate-400 hover:text-accent transition-colors">
-                  {t("footer.links.quick.statistics")}
+                <Link href="/infra-analytics" className="text-slate-400 hover:text-accent transition-colors">
+                  {t("nav.infraAnalytics")}
                 </Link>
               </li>
               <li>

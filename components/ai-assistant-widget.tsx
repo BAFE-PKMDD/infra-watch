@@ -1,10 +1,55 @@
-"use client";
+﻿"use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, X, Send, MessageCircle } from "lucide-react";
+import { X, Send } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+
+const botImages = {
+  closed: "/b-bot-close-eye.png",
+  open: "/b-bot-open-eye.png",
+};
+
+function BotFace({
+  className,
+  sizes = "64px",
+  priority = false,
+}: {
+  className?: string;
+  sizes?: string;
+  priority?: boolean;
+}) {
+  return (
+    <span
+      role="img"
+      aria-label="AI Assistant"
+      className={cn(
+        "group/bot-face relative block overflow-hidden rounded-full bg-white select-none transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-110 focus-visible:scale-110",
+        className,
+      )}
+    >
+      <Image
+        src={botImages.closed}
+        alt=""
+        fill
+        sizes={sizes}
+        priority={priority}
+        draggable={false}
+        className="object-contain transition-[opacity,transform] duration-150 ease-out group-hover/bot-face:scale-105 group-hover/bot-face:opacity-0 group-focus-visible/bot-face:scale-105 group-focus-visible/bot-face:opacity-0 group-hover/fab:scale-105 group-hover/fab:opacity-0 group-focus-visible/fab:scale-105 group-focus-visible/fab:opacity-0"
+      />
+      <Image
+        src={botImages.open}
+        alt=""
+        fill
+        sizes={sizes}
+        priority={priority}
+        draggable={false}
+        className="object-contain opacity-0 scale-95 transition-[opacity,transform] duration-150 ease-out group-hover/bot-face:scale-105 group-hover/bot-face:opacity-100 group-focus-visible/bot-face:scale-105 group-focus-visible/bot-face:opacity-100 group-hover/fab:scale-105 group-hover/fab:opacity-100 group-focus-visible/fab:scale-105 group-focus-visible/fab:opacity-100"
+      />
+    </span>
+  );
+}
 
 export function AiAssistantWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -58,8 +103,8 @@ export function AiAssistantWidget() {
 
             {/* Body */}
             <div className="flex flex-col items-center justify-center p-6 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-slate-400 dark:bg-white dark:text-slate-500 overflow-hidden shadow-sm border border-slate-200">
-                <Image src="/b-bot.png" alt="AI Assistant" width={48} height={48} className="object-contain" />
+              <div className="mb-4">
+                <BotFace className="h-16 w-16 border border-slate-200 shadow-sm" sizes="64px" />
               </div>
               <h4 className="mb-2 text-lg font-bold text-slate-800 dark:text-slate-100">
                 Hello! I'm your INFRA Watch AI Assistant
@@ -113,13 +158,13 @@ export function AiAssistantWidget() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.12 }}
             whileTap={{ scale: 0.95 }}
             onClick={toggleOpen}
-            className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-xl border border-slate-200 hover:bg-slate-50 transition-colors p-1"
+            className="group/fab flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-xl border border-slate-200 hover:bg-slate-50 transition-colors p-1"
             aria-label="Open AI Assistant"
           >
-            <Image src="/b-bot.png" alt="AI Assistant" width={56} height={56} className="object-contain rounded-full" />
+            <BotFace className="h-14 w-14" sizes="56px" priority />
           </motion.button>
         )}
       </AnimatePresence>

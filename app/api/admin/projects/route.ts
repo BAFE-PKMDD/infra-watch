@@ -15,15 +15,18 @@ export async function GET(request: NextRequest) {
     requirePermission(user.role as string | null | undefined, "projects", "list");
 
     const params = request.nextUrl.searchParams;
-    const result = await getAdminProjects({
-      search: params.get("search") ?? undefined,
-      status: params.get("status") ?? undefined,
-      program: params.get("program") ?? undefined,
-      region: params.get("region") ?? undefined,
-      province: params.get("province") ?? undefined,
-      page: Number(params.get("page") ?? 1),
-      pageSize: Number(params.get("pageSize") ?? 25),
-    });
+    const result = await getAdminProjects(
+      {
+        search: params.get("search") ?? undefined,
+        status: params.get("status") ?? undefined,
+        program: params.get("program") ?? undefined,
+        region: params.get("region") ?? undefined,
+        province: params.get("province") ?? undefined,
+        page: Number(params.get("page") ?? 1),
+        pageSize: Number(params.get("pageSize") ?? 25),
+      },
+      user,
+    );
 
     return NextResponse.json({
       success: true,

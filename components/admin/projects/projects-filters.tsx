@@ -50,10 +50,9 @@ export function ProjectsFilters({
         className="h-8 rounded-lg border border-slate-200 bg-transparent px-2 text-sm font-semibold dark:border-slate-800"
       >
         <option value="all">All statuses</option>
-        <option value="planned">Planned</option>
-        <option value="ongoing">Ongoing</option>
-        <option value="completed">Completed</option>
-        <option value="suspended">Suspended</option>
+        <option value="Not yet started">Not yet started</option>
+        <option value="On going">On going</option>
+        <option value="Completed">Completed</option>
       </select>
       <Button type="button" variant="outline" onClick={onReset}>
         <X className="size-4" />

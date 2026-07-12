@@ -4,9 +4,11 @@ import type { ReactNode } from "react";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { getAdminProjectStats, getSyncStatistics } from "@/lib/abemis/sync";
+import { getCurrentUser } from "@/lib/session";
 
 export default async function DashboardPage() {
-  const [projectStats, syncStats] = await Promise.all([getAdminProjectStats(), getSyncStatistics()]);
+  const user = await getCurrentUser();
+  const [projectStats, syncStats] = await Promise.all([getAdminProjectStats(user ?? undefined), getSyncStatistics()]);
 
   return (
     <AdminPageWrapper
@@ -31,7 +33,7 @@ export default async function DashboardPage() {
             <div>
               <h2 className="text-base font-extrabold text-slate-950 dark:text-white">ABEMIS Read Model</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Projects are synchronized from ABEMIS and treated as read-only source records. InfraWatch data such as checklists, reports, and feedback attaches to those synced IDs.
+                Projects are synchronized from ABEMIS and treated as read-only source records. InfraWatch data such as reports and feedback attaches to those synced IDs.
               </p>
             </div>
             <Link

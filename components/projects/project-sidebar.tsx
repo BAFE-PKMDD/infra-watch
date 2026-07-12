@@ -1,8 +1,6 @@
-"use client";
-
 import { FileText, Image as ImageIcon, MessageSquare, Video, Package, ListChecks } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useTranslation } from "@/i18n";
 
 import type { ProjectTabKey } from "@/types";
@@ -17,13 +15,14 @@ export function ProjectSidebar({ activeTab, onTabChange, tabCounts = {} }: Proje
   const { t } = useTranslation();
 
   const tabs: { key: ProjectTabKey; label: string; icon: LucideIcon }[] = [
-    { key: "overview", label: t("projectDetail.sidebar.details") || "Details", icon: FileText },
-    { key: "articles", label: t("projectDetail.sidebar.articles") || "Articles & Updates", icon: FileText },
-    { key: "photos", label: t("projectDetail.sidebar.photos") || "Photos", icon: ImageIcon },
-    { key: "videos", label: t("projectDetail.sidebar.videos") || "Videos", icon: Video },
-    { key: "pow", label: t("projectDetail.sidebar.pow") || "Program of Works", icon: Package },
-    { key: "procurement", label: t("projectDetail.sidebar.procurement") || "Procurement Milestones", icon: ListChecks },
-    { key: "feedback", label: t("projectDetail.sidebar.feedback") || "Citizen Feedback", icon: MessageSquare },
+    { key: "overview", label: t("projectDetail.sidebar.details"), icon: FileText },
+    { key: "articles", label: t("projectDetail.sidebar.articles"), icon: FileText },
+    { key: "photos", label: t("projectDetail.sidebar.photos"), icon: ImageIcon },
+    { key: "videos", label: t("projectDetail.sidebar.videos"), icon: Video },
+    // { key: "documents", label: t("projectDetail.sidebar.documents"), icon: FileText },
+    { key: "pow", label: t("projectDetail.sidebar.pow"), icon: Package },
+    { key: "procurement", label: t("projectDetail.sidebar.procurement"), icon: ListChecks },
+    { key: "feedback", label: t("projectDetail.sidebar.feedback"), icon: MessageSquare },
   ];
 
   return (
@@ -43,8 +42,8 @@ export function ProjectSidebar({ activeTab, onTabChange, tabCounts = {} }: Proje
             <motion.button
               key={tab.key}
               onClick={() => onTabChange(tab.key)}
-              className={`flex items-center justify-between px-4 py-3 text-sm font-semibold transition-colors border-l-4 ${isActive
-                ? "bg-primary/5 text-primary border-primary dark:bg-primary/10 dark:text-primary-foreground"
+              className={`flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors border-l-4 ${isActive
+                ? "bg-green-50 text-green-600 border-green-600 dark:bg-emerald-950/40 dark:text-emerald-300"
                 : "text-slate-700 hover:bg-slate-50 border-transparent dark:text-slate-200 dark:hover:bg-slate-800"
                 }`}
               type="button"
@@ -58,7 +57,7 @@ export function ProjectSidebar({ activeTab, onTabChange, tabCounts = {} }: Proje
               </div>
               {count !== undefined && count > 0 && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-green-600 text-white"
                   : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                   }`}>
                   {count}

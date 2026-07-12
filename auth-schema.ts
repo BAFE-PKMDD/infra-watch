@@ -13,6 +13,7 @@ export const user = pgTable("user", {
     .notNull(),
   role: text("role").default("citizen"),
   region: text("region"),
+  assignedAgency: text("assigned_agency"),
   banned: boolean("banned").default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),

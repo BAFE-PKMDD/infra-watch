@@ -73,6 +73,9 @@ export const auth = betterAuth({
   trustedOrigins: [
     "http://localhost:3000",
     "http://localhost:3001",
+    "http://localhost:3101",
+    "http://localhost:3333",
+    "http://localhost:3334",
     "http://localhost:5173",
     process.env.BETTER_AUTH_URL,
   ].filter(Boolean) as string[],
@@ -85,6 +88,12 @@ export const auth = betterAuth({
         input: false,
       },
       region: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        input: false,
+      },
+      assignedAgency: {
         type: "string",
         required: false,
         defaultValue: null,

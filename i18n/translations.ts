@@ -16,14 +16,15 @@ export const translations = {
       signIn: "Sign In",
       signOut: "Sign Out",
       dashboard: "Dashboard",
-      myFeedback: "My Feedback",
-      myReports: "My Reports",
-      myNotifications: "My Notifications",
+      myFeedback: "My Feedbacks",
+      myReports: "My Issues",
+      myNotifications: "Notifications",
       about: "About",
       more: "More",
       live: "Live",
       citizenFeed: "Citizen Feed",
       articlesAndUpdates: "Articles & Updates",
+      infraAnalytics: "Infra Analytics",
     },
     languageDialog: {
       title: "Choose Your Language",
@@ -165,6 +166,25 @@ export const translations = {
       completedProjects: "Completed Projects",
       lengthCompleted: "Length Completed",
       nationalSummary: "National Summary"
+    },
+    infraAnalytics: {
+      title: "Status of Infrastructure Projects Funded Under AMEFIP",
+      asOf: "As of",
+      target: "Target",
+      preImplementation: "Under Pre-implementation",
+      procurement: "Under Procurement",
+      construction: "Under Construction",
+      completed: "Completed",
+      turnedOver: "Turned-over",
+      viewBreakdown: "View Breakdown",
+      charts: {
+        regionalTitle: "Regional Target and Turned-over Projects",
+        bannerTitle: "Turned-over Projects per Banner Program",
+        yAxisLabel: "Operating Unit (RFOs)",
+        xAxisLabel: "Banner Program",
+        targetLegend: "Target",
+        turnedOverLegend: "Turned-over"
+      }
     },
     about: {
       title: "About Us",
@@ -729,14 +749,15 @@ export const translations = {
       signIn: "Mag-sign In",
       signOut: "Mag-sign Out",
       dashboard: "Dashboard",
-      myFeedback: "Aking Feedback",
-      myReports: "Aking mga Ulat",
-      myNotifications: "Aking mga Abiso",
+      myFeedback: "Aking mga Feedback",
+      myReports: "Aking mga Isyu",
+      myNotifications: "Mga Abiso",
       about: "Tungkol",
       more: "Higit Pa",
       live: "Live",
       citizenFeed: "Citizen Feed",
       articlesAndUpdates: "Mga Artikulo at Update",
+      infraAnalytics: "Analitika ng Infra",
     },
     languageDialog: {
       title: "Piliin ang Iyong Wika",
@@ -878,6 +899,25 @@ export const translations = {
       completedProjects: "Mga Tapos na Proyekto",
       lengthCompleted: "Haba na Natapos",
       nationalSummary: "Pambansang Buod"
+    },
+    infraAnalytics: {
+      title: "Katayuan ng mga Proyekto ng Imprastraktura na Pinondohan sa ilalim ng AMEFIP",
+      asOf: "Kasalukuyan noong",
+      target: "Target",
+      preImplementation: "Nasa Pre-implementasyon",
+      procurement: "Nasa Pagkuha (Procurement)",
+      construction: "Kasalukuyang Itinatayo",
+      completed: "Tapos na",
+      turnedOver: "Nai-turn over",
+      viewBreakdown: "Tingnan ang Detalye",
+      charts: {
+        regionalTitle: "Target at Nai-turn over na mga Proyekto kada Rehiyon",
+        bannerTitle: "Nai-turn over na mga Proyekto kada Banner Program",
+        yAxisLabel: "Operating Unit (RFOs)",
+        xAxisLabel: "Banner Program",
+        targetLegend: "Target",
+        turnedOverLegend: "Nai-turn over"
+      }
     },
     about: {
       title: "Tungkol sa Amin",
