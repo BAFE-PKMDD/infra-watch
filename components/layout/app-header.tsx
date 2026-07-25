@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, Moon, Sun, X, LogOut, LayoutDashboard, MessageSquareDot, Bell, AlertCircle, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
@@ -23,6 +24,7 @@ const navItems = [
   { label: "Citizen Feed", href: "/citizen-feed", key: "citizen-feed" },
   { label: "E-Report", href: "/report-issue", key: "report-issue" },
   { label: "Map", href: "/map", key: "map", isSecondary: true },
+  { label: "Evidence Map", href: "/evidence-map", key: "evidence-map", isSecondary: true },
   { label: "Infra Analytics", href: "/infra-analytics", key: "infra-analytics", isSecondary: true },
   { label: "Articles & Updates", href: "/articles-and-updates", key: "articles-and-updates", isSecondary: true },
   { label: "FAQ", href: "/faq", key: "faq", isSecondary: true },
@@ -37,12 +39,18 @@ interface AppHeaderProps {
   actionLabel?: string;
 }
 
-export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) {
+export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
   const { user, isLoading, logout } = useAuth();
   const { t } = useTranslation();
+  const resolvedActiveItem = activeItem ?? navItems.find((item) => (
+    item.href === "/"
+      ? pathname === "/"
+      : pathname === item.href || pathname.startsWith(`${item.href}/`)
+  ))?.key ?? "home";
 
   const translatedNavItems = navItems.map(item => ({
     ...item,
@@ -177,14 +185,14 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
           <nav className="hidden lg:flex items-center gap-3">
             <div className="flex items-center gap-4 lg:gap-8">
               {translatedNavItems
-                .filter(item => (!item.requiresAuth || user || activeItem === item.key) && !item.isSecondary)
+                .filter(item => (!item.requiresAuth || user || resolvedActiveItem === item.key) && !item.isSecondary)
                 .map((item) => (
                   <Link
                     key={item.key}
                     href={item.href}
                     className={cn(
                       "text-[13px] lg:text-sm font-bold transition-colors whitespace-nowrap relative",
-                      activeItem === item.key
+                      resolvedActiveItem === item.key
                         ? "text-primary"
                         : "text-slate-700 hover:text-primary dark:text-slate-200 dark:hover:text-primary"
                     )}
@@ -200,7 +208,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                       <button
                         className={cn(
                           "flex items-center gap-1 text-[13px] lg:text-sm font-bold transition-colors whitespace-nowrap outline-none",
-                          translatedNavItems.some(i => i.isSecondary && i.key === activeItem)
+                          translatedNavItems.some(i => i.isSecondary && i.key === resolvedActiveItem)
                             ? "text-primary"
                             : "text-slate-700 hover:text-primary dark:text-slate-200 dark:hover:text-primary"
                         )}
@@ -220,7 +228,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                             href={item.href}
                             className={cn(
                               "w-full cursor-pointer font-bold block py-1",
-                              activeItem === item.key ? "text-primary" : "text-slate-700 dark:text-slate-200"
+                              resolvedActiveItem === item.key ? "text-primary" : "text-slate-700 dark:text-slate-200"
                             )}
                           >
                             {item.label}
@@ -358,7 +366,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
           <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 pt-4 pb-6 space-y-4">
             <div className="flex flex-col space-y-3">
               {translatedNavItems
-                .filter(item => !item.requiresAuth || user || activeItem === item.key)
+                .filter(item => !item.requiresAuth || user || resolvedActiveItem === item.key)
                 .map((item) => (
                   <Link
                     key={item.key}
@@ -366,7 +374,7 @@ export function AppHeader({ activeItem = "home", actionLabel }: AppHeaderProps) 
                     onClick={() => setMobileOpen(false)}
                     className={cn(
                       "text-base font-medium px-3 py-2 rounded-lg transition-colors",
-                      activeItem === item.key
+                      resolvedActiveItem === item.key
                         ? "bg-primary/10 text-primary"
                         : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
                       "flex items-center justify-between"

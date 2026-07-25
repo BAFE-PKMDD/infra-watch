@@ -22,6 +22,7 @@ export * from "@/types/feedback.types";
 export * from "@/types/article.types";
 
 // Issue types
+export * from "@/types/geo-evidence.types";
 export * from "@/types/issues.types";
 
 // API types

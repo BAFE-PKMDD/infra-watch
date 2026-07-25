@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Star, Loader2, Upload, X, Video as VideoIcon } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Star, Loader2, X, Video as VideoIcon } from "lucide-react";
 import Image from "next/image";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -25,14 +25,18 @@ import { dispatchClientNotification } from "@/lib/client-notifications";
 import { cn } from "@/lib/utils";
 import { getFileUrl } from "@/lib/minio-url";
 import { getUploadErrorTitle } from "@/lib/upload-errors";
-import { isAllowedClientUploadType, UPLOAD_ACCEPT, uploadKindFromType } from "@/lib/upload-policy";
 import { toast } from "sonner";
 import { useTranslation } from "@/i18n";
 import type { FeedbackCategory, FeedbackMedia } from "@/types/feedback.types";
+import {
+  GeoEvidenceUpload,
+  type GeoEvidenceReadyItem,
+} from "@/components/shared/geo-evidence-upload";
 
 interface FeedbackSubmissionFormProps {
   projectId: string;
   onSuccess?: () => void;
+  onBusyChange?: (busy: boolean) => void;
   editMode?: boolean;
   initialData?: {
     id: string;
@@ -62,6 +66,7 @@ interface FeedbackFormData {
 export function FeedbackSubmissionForm({
   projectId,
   onSuccess,
+  onBusyChange,
   editMode = false,
   initialData,
 }: FeedbackSubmissionFormProps) {
@@ -71,9 +76,13 @@ export function FeedbackSubmissionForm({
   const [comment, setComment] = useState(initialData?.comment || "");
   const [isAnonymous, setIsAnonymous] = useState(initialData?.isAnonymous || false);
   const [media, setMedia] = useState<FeedbackMedia[]>(initialData?.media || []);
+  const [pendingEvidence, setPendingEvidence] = useState<GeoEvidenceReadyItem[]>([]);
+  const [evidenceInputKey, setEvidenceInputKey] = useState(0);
+  const [isProcessingMedia, setIsProcessingMedia] = useState(false);
+  const [isCommitting, setIsCommitting] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(editMode); // Auto-agree in edit mode
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const commitRef = useRef(false);
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
@@ -89,12 +98,13 @@ export function FeedbackSubmissionForm({
         credentials: 'include', // Include authentication cookies
       });
 
+      const result = await response.json().catch(() => null) as { error?: string; path?: string } | null;
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
+        throw new Error(result?.error || `Upload failed (${response.status})`);
       }
+      if (!result?.path) throw new Error("The upload completed without a file path.");
 
-      return response.json();
+      return result as { path: string };
     },
   });
 
@@ -121,12 +131,12 @@ export function FeedbackSubmissionForm({
         }),
       });
 
+      const result = await response.json().catch(() => null) as { error?: string; data?: { id?: string } } | null;
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to ${editMode ? 'update' : 'submit'} feedback`);
+        throw new Error(result?.error || `Failed to ${editMode ? 'update' : 'submit'} feedback`);
       }
 
-      return response.json();
+      return result;
     },
     onSuccess: (result) => {
       // Invalidate and refetch feedback
@@ -156,6 +166,8 @@ export function FeedbackSubmissionForm({
       setCategory("general");
       setIsAnonymous(false);
       setMedia([]);
+      setPendingEvidence([]);
+      setEvidenceInputKey((key) => key + 1);
       setAgreeToTerms(false);
       setValidationErrors({});
 
@@ -169,70 +181,21 @@ export function FeedbackSubmissionForm({
     },
   });
 
-  const handleFileUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+  const handleEvidenceReady = useCallback((items: GeoEvidenceReadyItem[]) => {
+    setPendingEvidence(items);
+  }, []);
 
-    // Check if adding these files would exceed the limit
-    if (media.length + files.length > 5) {
-      setValidationErrors({ media: `Maximum 5 media files allowed. You can add ${5 - media.length} more.` });
-      return;
-    }
-
-    const uploadedMedia: FeedbackMedia[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const fileType = uploadKindFromType(file.type);
-
-      if (!fileType || !isAllowedClientUploadType(file.type)) {
-        setValidationErrors({ media: `File "${file.name}" is not an image or video` });
-        continue;
-      }
-
-      // Validate file size (5MB for images, 50MB for videos)
-      const maxSize = fileType === 'video' ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
-      if (file.size > maxSize) {
-        const maxSizeMB = fileType === 'video' ? '50MB' : '5MB';
-        setValidationErrors({ media: `${fileType === 'video' ? 'Video' : 'Image'} "${file.name}" exceeds ${maxSizeMB} limit` });
-        continue;
-      }
-
-      try {
-        const result = await uploadMutation.mutateAsync(file);
-        uploadedMedia.push({
-          type: fileType,
-          url: result.path,
-        });
-      } catch (err) {
-        const message = err instanceof Error
-          ? err.message
-          : "Upload blocked. Please choose a valid image or video.";
-        setValidationErrors({ media: message });
-        toast.error(getUploadErrorTitle(message), {
-          description: message,
-          duration: 6500,
-        });
-        break;
-      }
-    }
-
-    if (uploadedMedia.length > 0) {
-      setMedia((current) => [...current, ...uploadedMedia]);
-      const { media: _, ...rest } = validationErrors;
-      setValidationErrors(rest);
-    }
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
+  const handleEvidenceProcessingChange = useCallback((processing: boolean) => {
+    setIsProcessingMedia(processing);
+  }, []);
 
   const removeMedia = (index: number) => {
-    setMedia(media.filter((_, i) => i !== index));
+    setMedia((current) => current.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (commitRef.current) return;
 
     // Clear previous errors
     setValidationErrors({});
@@ -248,23 +211,83 @@ export function FeedbackSubmissionForm({
       errors.agreement = "You must agree to the Terms of Service and Privacy Policy";
     }
 
+    if (isProcessingMedia) {
+      errors.media = "Please wait while the location metadata is being processed.";
+    }
+
+    if (media.length + pendingEvidence.length > 5) {
+      errors.media = "Maximum 5 media files allowed.";
+    }
+
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       return;
     }
 
-    // Submit feedback
-    submitMutation.mutate({
-      rating: rating || undefined,
-      comment,
-      category,
-      isAnonymous,
-      media,
-    });
+    commitRef.current = true;
+    setIsCommitting(true);
+    onBusyChange?.(true);
+
+    try {
+      let uploadedMedia = media;
+      for (const [index, item] of pendingEvidence.entries()) {
+        try {
+          const result = await uploadMutation.mutateAsync(item.file);
+          uploadedMedia = [...uploadedMedia, {
+            type: item.type,
+            url: result.path,
+            ...(typeof item.lat === "number" && typeof item.lon === "number"
+              ? { lat: item.lat, lon: item.lon }
+              : {}),
+            ...(typeof item.accuracy === "number" ? { accuracy: item.accuracy } : {}),
+            ...(item.type === "video" && item.track && item.track.length > 0
+              ? { track: item.track }
+              : {}),
+          }];
+        } catch (error) {
+          const message = error instanceof Error
+            ? error.message
+            : "Upload blocked. Please choose a valid image or video.";
+          setMedia(uploadedMedia);
+          setPendingEvidence(pendingEvidence.slice(index));
+          setEvidenceInputKey((key) => key + 1);
+          setValidationErrors({ media: message });
+          toast.error(getUploadErrorTitle(message), {
+            description: message,
+            duration: 6500,
+          });
+          return;
+        }
+      }
+
+      if (pendingEvidence.length > 0) {
+        setMedia(uploadedMedia);
+        setPendingEvidence([]);
+        setEvidenceInputKey((key) => key + 1);
+      }
+
+      // Submit feedback after every local capture has a durable object URL.
+      try {
+        await submitMutation.mutateAsync({
+          rating: rating || undefined,
+          comment,
+          category,
+          isAnonymous,
+          media: uploadedMedia,
+        });
+      } catch {
+        // The mutation's onError callback renders the server message in the form.
+      }
+    } finally {
+      commitRef.current = false;
+      setIsCommitting(false);
+      onBusyChange?.(false);
+    }
   };
 
-  const isSubmitting = submitMutation.isPending;
-  const isUploading = uploadMutation.isPending;
+  const isSubmitting = isCommitting || submitMutation.isPending;
+  const isUploading = uploadMutation.isPending || isProcessingMedia;
+  const formBusy = isSubmitting || isUploading;
   const characterCount = comment.length;
   const maxCharacters = 1000;
 
@@ -273,7 +296,11 @@ export function FeedbackSubmissionForm({
       {/* Category */}
       <Field>
         <FieldLabel htmlFor="category">Category *</FieldLabel>
-        <Select value={category} onValueChange={(value) => setCategory(value as FeedbackCategory)}>
+        <Select
+          value={category}
+          disabled={formBusy}
+          onValueChange={(value) => setCategory(value as FeedbackCategory)}
+        >
           <SelectTrigger id="category" className="h-11">
             <SelectValue />
           </SelectTrigger>
@@ -306,22 +333,35 @@ export function FeedbackSubmissionForm({
           onChange={(e) => {
             setComment(e.target.value);
             if (validationErrors.comment) {
-              const { comment: _, ...rest } = validationErrors;
-              setValidationErrors(rest);
+              setValidationErrors((current) => {
+                const next = { ...current };
+                delete next.comment;
+                return next;
+              });
             }
           }}
           placeholder="Share your thoughts about this project..."
           rows={5}
           maxLength={maxCharacters}
           className="resize-none"
-          disabled={isSubmitting}
+          disabled={formBusy}
         />
         <FieldError errors={validationErrors.comment} />
       </Field>
 
       {/* Media Upload */}
       <Field>
-        <FieldLabel>Attach Images or Videos (Optional)</FieldLabel>
+        <div className="mb-2 flex items-end justify-between gap-3">
+          <div>
+            <FieldLabel>Evidence attachments (Optional)</FieldLabel>
+            <FieldDescription className="mt-1">
+              Upload existing media or capture a new geotagged photo or GeoVideo.
+            </FieldDescription>
+          </div>
+          <span className="shrink-0 text-[11px] font-bold tabular-nums text-slate-500">
+            {media.length + pendingEvidence.length}/5
+          </span>
+        </div>
 
         {media.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
@@ -346,7 +386,7 @@ export function FeedbackSubmissionForm({
                         controls
                         muted
                       />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30">
                         <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
                           <VideoIcon className="w-6 h-6 text-slate-700" />
                         </div>
@@ -357,7 +397,8 @@ export function FeedbackSubmissionForm({
                 <button
                   type="button"
                   onClick={() => removeMedia(index)}
-                  className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+                  disabled={formBusy}
+                  className="absolute -top-2 -right-2 flex size-8 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Remove media"
                 >
                   <X className="w-4 h-4" />
@@ -367,41 +408,21 @@ export function FeedbackSubmissionForm({
           </div>
         )}
 
-        <div
-          onClick={() => !isUploading && fileInputRef.current?.click()}
-          className={cn(
-            "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all",
-            isUploading
-              ? "border-green-300 bg-green-50 dark:bg-green-950/20 cursor-not-allowed"
-              : "border-slate-200 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-500 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-          )}
-        >
-          {isUploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
-              <p className="text-sm font-medium text-green-700 dark:text-green-400">Uploading...</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-1">
-                <Upload className="w-6 h-6 text-slate-600 dark:text-slate-400" />
-              </div>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Click to upload images or videos</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                PNG, JPG, WebP, GIF (max 5MB) • MP4, MOV, WebM (max 50MB)
-              </p>
-            </div>
-          )}
-        </div>
-        <input
-        ref={fileInputRef}
-        type="file"
-        accept={UPLOAD_ACCEPT}
-        multiple
-        onChange={(e) => handleFileUpload(e.target.files)}
-        className="hidden"
-        disabled={isUploading}
-      />
+        <GeoEvidenceUpload
+          key={evidenceInputKey}
+          compact
+          initialItems={pendingEvidence}
+          maxFiles={Math.max(5 - media.length, 0)}
+          disabled={formBusy}
+          onEvidenceReady={handleEvidenceReady}
+          onProcessingChange={handleEvidenceProcessingChange}
+        />
+        {uploadMutation.isPending ? (
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300" aria-live="polite">
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            Uploading evidence securely&hellip;
+          </div>
+        ) : null}
         <FieldError errors={validationErrors.media} />
       </Field>
 
@@ -416,7 +437,8 @@ export function FeedbackSubmissionForm({
               onClick={() => setRating(star === rating ? 0 : star)}
               onMouseEnter={() => setHoverRating(star)}
               onMouseLeave={() => setHoverRating(0)}
-              className="transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 rounded"
+              disabled={formBusy}
+              className="rounded transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
             >
               <Star
@@ -446,11 +468,15 @@ export function FeedbackSubmissionForm({
           <Checkbox
             id="agreement"
             checked={agreeToTerms}
+            disabled={formBusy}
             onCheckedChange={(checked) => {
               setAgreeToTerms(checked as boolean);
               if (checked && validationErrors.agreement) {
-                const { agreement: _, ...rest } = validationErrors;
-                setValidationErrors(rest);
+                setValidationErrors((current) => {
+                  const next = { ...current };
+                  delete next.agreement;
+                  return next;
+                });
               }
             }}
             className="mt-0.5"
@@ -493,6 +519,7 @@ export function FeedbackSubmissionForm({
           <Checkbox
             id="anonymous"
             checked={isAnonymous}
+            disabled={formBusy}
             onCheckedChange={(checked) => setIsAnonymous(checked as boolean)}
             className="mt-0.5"
           />
@@ -523,14 +550,14 @@ export function FeedbackSubmissionForm({
       {/* Submit Button */}
       <Button
         type="submit"
-        disabled={isSubmitting || isUploading || !comment.trim() || !agreeToTerms || characterCount > maxCharacters}
+        disabled={formBusy || !comment.trim() || !agreeToTerms || characterCount > maxCharacters}
         className="w-full h-11 text-base font-medium"
         size="lg"
       >
-        {isSubmitting ? (
+        {formBusy ? (
           <>
             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Submitting Feedback...
+            Saving Feedback...
           </>
         ) : (
           "Submit Feedback"

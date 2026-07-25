@@ -15,16 +15,18 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
-import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
 import { AppFooter } from "@/components/layout/app-footer";
 import { AppHeader } from "@/components/layout/app-header";
+import { EvidenceLocationMap } from "@/components/shared/evidence-location-map";
+import { GeoVideoPlayer } from "@/components/shared/geo-video-player";
+import { IssueEvidenceGallery } from "@/components/shared/issue-evidence-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getFullUrl } from "@/lib/minio-url";
 import { useAuth } from "@/providers/auth-provider";
+import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
 
 type IssueStatus = "pending" | "reviewing" | "resolved" | "closed";
 
@@ -58,6 +60,9 @@ interface IssueDetail {
   photoUrls: string[];
   videoUrls: string[];
   documentUrls: string[];
+  evidence: StoredIssueEvidenceItem[];
+  geoVideoTrack: GeoTrackPoint[] | null;
+  geoVideoUrl: string | null;
   reporterName: string;
   createdAt: string;
   updatedAt: string;
@@ -247,34 +252,24 @@ export default function MyIssueDetailPage() {
             </div>
           </div>
 
-          {issue.photoUrls.length > 0 && (
-            <div className="mt-4">
-              <h3 className="mb-3 font-semibold text-slate-900 dark:text-white">Evidence Photos</h3>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                {issue.photoUrls.map((url, index) => {
-                  const fullUrl = getFullUrl(url);
-                  if (!fullUrl) return null;
-
-                  return (
-                    <div
-                      key={`${url}-${index}`}
-                      className="relative aspect-square overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700"
-                    >
-                      <Image
-                        src={fullUrl}
-                        alt={`Evidence ${index + 1}`}
-                        fill
-                        sizes="(max-width: 768px) 50vw, 25vw"
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-700">
+            <h3 className="mb-3 font-semibold text-slate-900 dark:text-white">Evidence media</h3>
+            <IssueEvidenceGallery evidence={issue.evidence} photoUrls={issue.photoUrls} videoUrls={issue.videoUrls} />
+          </div>
         </motion.div>
+
+        {issue.evidence?.some((item) => typeof item.lat === "number" && typeof item.lon === "number") || issue.geoVideoTrack?.length ? (
+          <div className="mb-6 space-y-6">
+            <EvidenceLocationMap
+              evidence={issue.evidence}
+              geoVideoTrack={issue.geoVideoTrack}
+              geoVideoUrl={issue.geoVideoUrl}
+            />
+            {issue.geoVideoTrack?.length && issue.geoVideoUrl ? (
+              <GeoVideoPlayer url={issue.geoVideoUrl} track={issue.geoVideoTrack} name="Your reported GeoVideo" />
+            ) : null}
+          </div>
+        ) : null}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

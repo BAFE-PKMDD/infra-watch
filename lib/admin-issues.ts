@@ -80,7 +80,11 @@ export async function getIssueByIdOrTicket(id: string) {
       municipality: issues.municipality,
       barangay: issues.barangay,
       landmark: issues.landmark,
+      latitude: issues.latitude,
+      longitude: issues.longitude,
       evidence: issues.evidence,
+      geoVideoTrack: issues.geoVideoTrack,
+      geoVideoUrl: issues.geoVideoUrl,
       resolvedAt: issues.resolvedAt,
       createdAt: issues.createdAt,
       updatedAt: issues.updatedAt,
@@ -94,7 +98,13 @@ export async function getIssueByIdOrTicket(id: string) {
   return row ?? null;
 }
 
-export function formatAdminIssue(row: NonNullable<Awaited<ReturnType<typeof getIssueByIdOrTicket>>>) {
+type AdminIssueRow = NonNullable<Awaited<ReturnType<typeof getIssueByIdOrTicket>>>;
+type AdminIssueRowWithOptionalGeo = Omit<
+  AdminIssueRow,
+  'latitude' | 'longitude' | 'geoVideoTrack' | 'geoVideoUrl'
+> & Partial<Pick<AdminIssueRow, 'latitude' | 'longitude' | 'geoVideoTrack' | 'geoVideoUrl'>>;
+
+export function formatAdminIssue(row: AdminIssueRowWithOptionalGeo) {
   const evidence = Array.isArray(row.evidence) ? row.evidence : [];
 
   return {
@@ -112,11 +122,16 @@ export function formatAdminIssue(row: NonNullable<Awaited<ReturnType<typeof getI
     city: row.municipality ?? "",
     barangay: row.barangay ?? "",
     streetLandmark: row.landmark ?? "",
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
     reporterUserId: row.reporterUserId,
     reporterName: row.isAnonymous ? "Anonymous" : row.reporterName || "Citizen",
     reporterContact: row.isAnonymous ? null : row.reporterContact,
     reporterEmail: row.isAnonymous ? null : row.reporterEmail,
     isAnonymous: row.isAnonymous,
+    evidence,
+    geoVideoTrack: row.geoVideoTrack ?? null,
+    geoVideoUrl: row.geoVideoUrl ?? null,
     photoUrls: evidence.filter((item) => item.type === "image").map((item) => item.url),
     videoUrls: evidence.filter((item) => item.type === "video").map((item) => item.url),
     documentUrls: evidence.filter((item) => item.type === "document").map((item) => item.url),

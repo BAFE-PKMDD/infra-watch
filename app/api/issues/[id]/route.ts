@@ -46,6 +46,8 @@ export async function GET(
       latitude: issues.latitude,
       longitude: issues.longitude,
       evidence: issues.evidence,
+      geoVideoTrack: issues.geoVideoTrack,
+      geoVideoUrl: issues.geoVideoUrl,
       resolvedAt: issues.resolvedAt,
       createdAt: issues.createdAt,
       updatedAt: issues.updatedAt,

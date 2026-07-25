@@ -318,15 +318,17 @@ export function FeedbackCommentList({
                     {/* Edit/Delete Menu - Only show for own comments */}
                     {isOwnComment && !isEditing && (
                       <DropdownMenu>
-                        <DropdownMenuTrigger>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 w-5 p-0"
-                          >
-                            <MoreVertical className="h-3 w-3" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0"
+                            />
+                          }
+                        >
+                          <MoreVertical className="h-3 w-3" />
+                          <span className="sr-only">Open menu</span>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem

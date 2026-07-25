@@ -11,6 +11,8 @@ import {
   uuid,
   customType,
 } from "drizzle-orm/pg-core";
+import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
+import type { FeedbackMedia } from "@/types/feedback.types";
 
 // PostGIS geometry type for spatial data
 const geometry = customType<{ data: string | null; driverData: string | null }>({
@@ -108,7 +110,7 @@ export const feedback = pgTable(
     rating: integer("rating"),
     comment: text("comment"),
     category: text("category"),
-    media: jsonb("media").$type<Array<{ type: "image" | "video"; url: string; caption?: string }>>().default([]),
+    media: jsonb("media").$type<FeedbackMedia[]>().default([]),
     isAnonymous: boolean("is_anonymous").notNull().default(false),
     helpfulCount: integer("helpful_count").notNull().default(0),
     status: text("status").notNull().default("pending"),
@@ -149,7 +151,9 @@ export const issues = pgTable(
     landmark: text("landmark"),
     latitude: real("latitude"),
     longitude: real("longitude"),
-    evidence: jsonb("evidence").$type<Array<{ type: "image" | "video" | "document"; url: string; name?: string }>>().default([]),
+    evidence: jsonb("evidence").$type<StoredIssueEvidenceItem[]>().default([]),
+    geoVideoTrack: jsonb("geo_video_track").$type<GeoTrackPoint[]>(),
+    geoVideoUrl: text("geo_video_url"),
     assignedTo: text("assigned_to"),
     resolvedAt: timestamp("resolved_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),

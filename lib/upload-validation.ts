@@ -11,7 +11,7 @@ import {
 
 const MAX_HEADER_BYTES = 64;
 const MAX_IMAGE_SIZE = Number(process.env.MAX_IMAGE_SIZE || 5 * 1024 * 1024);
-const MAX_VIDEO_SIZE = Number(process.env.MAX_VIDEO_SIZE || 50 * 1024 * 1024);
+const MAX_VIDEO_SIZE = Number(process.env.MAX_VIDEO_SIZE || 100 * 1024 * 1024);
 
 function parseAllowedTypes(envName: string, defaults: readonly string[]) {
   const configured = process.env[envName]

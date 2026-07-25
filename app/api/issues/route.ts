@@ -9,8 +9,202 @@ import { assertCleanText, assertSafeImageUpload } from "@/lib/services/content-m
 import { getClientUploadErrorMessage } from "@/lib/upload-errors";
 import { validateUploadFile } from "@/lib/upload-validation";
 import { and, count, desc, eq, gte, ilike, lte, or } from "drizzle-orm";
+import { z } from 'zod';
+import type { GeoTrackPoint, StoredIssueEvidenceItem } from '@/types/geo-evidence.types';
 
 export const runtime = "nodejs";
+
+const MAX_ISSUE_EVIDENCE = 5;
+const MAX_GEO_TRACK_POINTS = 10_000;
+const MAX_TRACK_TIME_SECONDS = 7 * 24 * 60 * 60;
+
+const mediaPathSchema = z.string().trim().min(1, 'Evidence URL is required.').max(2048, 'Evidence URL is too long.');
+const optionalLatitudeSchema = z.preprocess(
+  (value) => value === null ? undefined : value,
+  z.number().finite().min(-90, 'Latitude must be at least -90.').max(90, 'Latitude must be at most 90.').optional(),
+);
+const optionalLongitudeSchema = z.preprocess(
+  (value) => value === null ? undefined : value,
+  z.number().finite().min(-180, 'Longitude must be at least -180.').max(180, 'Longitude must be at most 180.').optional(),
+);
+const optionalAccuracySchema = z.preprocess(
+  (value) => value === null ? undefined : value,
+  z.number().finite().nonnegative('Accuracy cannot be negative.').optional(),
+);
+
+const geoTrackPointSchema = z.object({
+  lat: z.number().finite().min(-90).max(90),
+  lon: z.number().finite().min(-180).max(180),
+  accuracy: optionalAccuracySchema,
+  timeSeconds: z.preprocess(
+    (value) => value === null ? undefined : value,
+    z.number().finite().min(0).max(MAX_TRACK_TIME_SECONDS).optional(),
+  ),
+}).strict();
+
+const geoTrackSchema = z.array(geoTrackPointSchema)
+  .max(MAX_GEO_TRACK_POINTS, `A video track cannot contain more than ${MAX_GEO_TRACK_POINTS} points.`)
+  .superRefine((track, context) => {
+    let previousTime = -Infinity;
+
+    track.forEach((point, index) => {
+      if (point.timeSeconds === undefined) return;
+      if (point.timeSeconds < previousTime) {
+        context.addIssue({
+          code: 'custom',
+          path: [index, 'timeSeconds'],
+          message: 'Video track timestamps must be in nondecreasing order.',
+        });
+      }
+      previousTime = point.timeSeconds;
+    });
+  });
+
+const canonicalEvidenceItemSchema = z.object({
+  type: z.enum(['image', 'video']),
+  url: mediaPathSchema,
+  name: z.string().trim().min(1).max(255).optional(),
+  lat: optionalLatitudeSchema,
+  lon: optionalLongitudeSchema,
+  accuracy: optionalAccuracySchema,
+  track: z.preprocess(
+    (value) => value === null ? undefined : value,
+    geoTrackSchema.optional(),
+  ),
+}).strict().superRefine((item, context) => {
+  const hasLat = item.lat !== undefined;
+  const hasLon = item.lon !== undefined;
+
+  if (hasLat !== hasLon) {
+    context.addIssue({
+      code: 'custom',
+      path: hasLat ? ['lon'] : ['lat'],
+      message: 'Latitude and longitude must be provided together.',
+    });
+  }
+
+  if (item.accuracy !== undefined && (!hasLat || !hasLon)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['accuracy'],
+      message: 'Accuracy requires both latitude and longitude.',
+    });
+  }
+
+  if (item.type !== 'video' && item.track && item.track.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['track'],
+      message: 'Only video evidence can include a geographic track.',
+    });
+  }
+});
+
+const issueEvidencePayloadSchema = z.object({
+  evidence: z.array(canonicalEvidenceItemSchema)
+    .max(MAX_ISSUE_EVIDENCE, `You can attach up to ${MAX_ISSUE_EVIDENCE} evidence files.`)
+    .optional(),
+  photoUrls: z.array(mediaPathSchema).max(MAX_ISSUE_EVIDENCE).optional(),
+  videoUrls: z.array(mediaPathSchema).max(MAX_ISSUE_EVIDENCE).optional(),
+  documentUrls: z.array(mediaPathSchema).max(MAX_ISSUE_EVIDENCE).optional(),
+  geoVideoTrack: z.preprocess(
+    (value) => value === null ? undefined : value,
+    geoTrackSchema.optional(),
+  ),
+  geoVideoUrl: z.preprocess(
+    (value) => value === null || value === '' ? undefined : value,
+    mediaPathSchema.optional(),
+  ),
+}).passthrough().superRefine((payload, context) => {
+  if (payload.evidence === undefined) {
+    const legacyEvidenceCount = (payload.photoUrls?.length ?? 0) + (payload.videoUrls?.length ?? 0);
+    if (legacyEvidenceCount > MAX_ISSUE_EVIDENCE) {
+      context.addIssue({
+        code: 'custom',
+        path: ['photoUrls'],
+        message: `You can attach up to ${MAX_ISSUE_EVIDENCE} evidence files.`,
+      });
+    }
+  }
+
+  if ((payload.documentUrls?.length ?? 0) > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['documentUrls'],
+      message: 'Document evidence is not allowed. Only images and videos can be attached.',
+    });
+  }
+
+  const hasTopLevelTrack = (payload.geoVideoTrack?.length ?? 0) > 0;
+  const hasTopLevelUrl = Boolean(payload.geoVideoUrl);
+  if (hasTopLevelTrack !== hasTopLevelUrl) {
+    context.addIssue({
+      code: 'custom',
+      path: hasTopLevelTrack ? ['geoVideoUrl'] : ['geoVideoTrack'],
+      message: 'A geographic video track and its video URL must be provided together.',
+    });
+  }
+
+  if (hasTopLevelTrack && payload.geoVideoUrl) {
+    const videoUrls = payload.evidence === undefined
+      ? payload.videoUrls ?? []
+      : payload.evidence.filter((item) => item.type === 'video').map((item) => item.url);
+
+    if (!videoUrls.includes(payload.geoVideoUrl)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['geoVideoUrl'],
+        message: 'The geographic video URL must match an attached video.',
+      });
+    }
+  }
+});
+
+type CanonicalEvidenceItem = z.infer<typeof canonicalEvidenceItemSchema>;
+
+function parseIssueEvidencePayload(body: unknown):
+  | { success: true; evidence: StoredIssueEvidenceItem[]; geoVideoTrack: GeoTrackPoint[] | null; geoVideoUrl: string | null }
+  | { success: false; error: string } {
+  const parsed = issueEvidencePayloadSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? 'Invalid evidence payload.',
+    };
+  }
+
+  const inputEvidence: CanonicalEvidenceItem[] = parsed.data.evidence ?? [
+    ...(parsed.data.photoUrls ?? []).map((url) => ({ type: 'image' as const, url })),
+    ...(parsed.data.videoUrls ?? []).map((url) => ({ type: 'video' as const, url })),
+  ];
+  const firstTrackedVideo = inputEvidence.find(
+    (item) => item.type === 'video' && item.track && item.track.length > 0,
+  );
+  const evidence = inputEvidence.map(({ track, ...item }): StoredIssueEvidenceItem => {
+    const firstTrackPoint = item.type === 'video' ? track?.[0] : undefined;
+    const usesTrackLocation = item.lat === undefined && firstTrackPoint !== undefined;
+
+    return {
+      ...item,
+      lat: item.lat ?? firstTrackPoint?.lat,
+      lon: item.lon ?? firstTrackPoint?.lon,
+      accuracy: item.accuracy ?? (usesTrackLocation ? firstTrackPoint?.accuracy : undefined),
+    };
+  });
+  const geoVideoTrack = firstTrackedVideo?.track?.length
+    ? firstTrackedVideo.track
+    : parsed.data.geoVideoTrack?.length
+      ? parsed.data.geoVideoTrack
+      : null;
+  const geoVideoUrl = firstTrackedVideo?.track?.length
+    ? firstTrackedVideo.url
+    : geoVideoTrack
+      ? parsed.data.geoVideoUrl ?? null
+      : null;
+
+  return { success: true, evidence, geoVideoTrack, geoVideoUrl };
+}
 
 type IssueRow = typeof issues.$inferSelect;
 
@@ -50,7 +244,7 @@ function formatIssue(row: {
   municipality: string | null;
   barangay: string | null;
   landmark: string | null;
-  evidence: Array<{ type: "image" | "video" | "document"; url: string; name?: string }> | null;
+  evidence: StoredIssueEvidenceItem[] | null;
   resolvedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -183,6 +377,7 @@ function toIssueAuditValues(issue: IssueRow): Record<string, unknown> {
     municipality: issue.municipality,
     barangay: issue.barangay,
     evidenceCount: evidence.length,
+    hasGeoVideo: Boolean(issue.geoVideoUrl && issue.geoVideoTrack?.length),
     createdAt: issue.createdAt,
   };
 }
@@ -309,14 +504,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: "Contact number is required." }, { status: 400 });
       }
 
-      if (Array.isArray(body.documentUrls) && body.documentUrls.length > 0) {
-        return NextResponse.json({ success: false, error: "Document evidence is not allowed. Only images and videos can be attached." }, { status: 400 });
+      const evidencePayload = parseIssueEvidencePayload(body);
+      if (!evidencePayload.success) {
+        return NextResponse.json({ success: false, error: evidencePayload.error }, { status: 400 });
       }
 
-      const evidence = [
-        ...(Array.isArray(body.photoUrls) ? body.photoUrls.map((url: string) => ({ type: "image" as const, url })) : []),
-        ...(Array.isArray(body.videoUrls) ? body.videoUrls.map((url: string) => ({ type: "video" as const, url })) : []),
-      ];
+      const { evidence, geoVideoTrack, geoVideoUrl } = evidencePayload;
       const ticketNumber = `INFRA-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
 
       const [created] = await db
@@ -339,6 +532,8 @@ export async function POST(request: NextRequest) {
           barangay: body.barangay || null,
           landmark: body.streetLandmark || body.landmark || null,
           evidence,
+          geoVideoTrack,
+          geoVideoUrl,
         })
         .returning();
 

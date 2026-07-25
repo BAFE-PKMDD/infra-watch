@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,16 +19,12 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  FileImage,
   FileText,
   HelpCircle,
-  Info,
   Loader2,
   MapPin,
   MessageSquare,
   Search,
-  Trash2,
-  Upload,
   User,
   type LucideIcon,
 } from "lucide-react";
@@ -47,11 +43,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ProjectSearchInput, type SelectedProject } from "@/components/ui/project-search-input";
 import { MediaViewer } from "@/components/ui/media-viewer";
+import { GeoEvidenceUpload, type GeoEvidenceReadyItem } from "@/components/shared/geo-evidence-upload";
+import type { IssueEvidenceItem } from "@/types/geo-evidence.types";
 import { dispatchClientNotification } from "@/lib/client-notifications";
 import { useAuth } from "@/providers/auth-provider";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
 import { getUploadErrorTitle } from "@/lib/upload-errors";
-import { isAllowedClientUploadType, UPLOAD_ACCEPT, uploadKindFromType } from "@/lib/upload-policy";
 import {
   getBarangays,
   getMunicipalities,
@@ -69,13 +66,6 @@ type StepDefinition = {
   icon: LucideIcon;
 };
 
-type EvidenceItem = {
-  type: "image" | "video";
-  url: string;
-  preview: string;
-  name: string;
-};
-
 type ProjectDetails = {
   id: string;
   name: string;
@@ -87,7 +77,7 @@ type ProjectDetails = {
   budget?: number;
   status?: string;
   stage?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 };
 
 const issueTypes = [
@@ -128,8 +118,8 @@ export default function ReportIssuePage() {
   const [direction, setDirection] = useState(1);
   const [selectedProject, setSelectedProject] = useState<SelectedProject | null>(null);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
-  const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const [evidence, setEvidence] = useState<GeoEvidenceReadyItem[]>([]);
+  const [isEvidenceProcessing, setIsEvidenceProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedRegionCode, setSelectedRegionCode] = useState("");
   const [selectedProvinceCode, setSelectedProvinceCode] = useState("");
@@ -193,7 +183,7 @@ export default function ReportIssuePage() {
       const response = await fetch(`/api/projects?search=${encodeURIComponent(searchTerm)}&limit=5`);
       if (!response.ok) throw new Error("Failed to find nearby projects");
       const result = await response.json();
-      return (result.data || []).map((project: any) => ({
+      return ((result.data || []) as Array<{ id: string; name: string; sourceId?: string; code?: string; province?: string; municipality?: string }>).map((project) => ({
         id: project.id,
         name: project.name,
         sourceId: project.sourceId,
@@ -275,62 +265,12 @@ export default function ReportIssuePage() {
     setValue("city", project.municipality || "");
   };
 
-  const handleEvidenceChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-    if (evidence.length + files.length > 5) {
-      toast.error("You can attach up to 5 evidence files.");
-      return;
-    }
+  const handleEvidenceReady = useCallback((items: GeoEvidenceReadyItem[]) => setEvidence(items), []);
 
-    try {
-      setIsUploading(true);
-      const uploaded: EvidenceItem[] = [];
-
-      for (const file of files) {
-        const fileType = uploadKindFromType(file.type);
-        if (!fileType || !isAllowedClientUploadType(file.type)) {
-          toast.error(`"${file.name}" is not an allowed image or video type.`);
-          continue;
-        }
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const response = await fetch("/api/upload?folder=issues", {
-          method: "POST",
-          body: formData,
-          credentials: "include",
-        });
-        const data = await response.json();
-        if (!response.ok || !data.success) throw new Error(data.error || "Failed to upload evidence");
-
-        const path = data.path || data.url;
-        uploaded.push({
-          type: fileType,
-          url: path,
-          preview: getFullUrl(path) || URL.createObjectURL(file),
-          name: file.name,
-        });
-      }
-
-      setEvidence((prev) => [...prev, ...uploaded]);
-      toast.success("Evidence uploaded");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to upload evidence";
-      toast.error(getUploadErrorTitle(message), {
-        description: message,
-        duration: 6500,
-      });
-    } finally {
-      setIsUploading(false);
-      event.target.value = "";
-    }
-  };
-
-  const removeEvidence = (index: number) => {
-    setEvidence((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
-  };
+  const handleEvidenceProcessingChange = useCallback(
+    (processing: boolean) => setIsEvidenceProcessing(processing),
+    [],
+  );
 
   const validateIssueDetails = () => {
     if (!form.issueType) {
@@ -357,11 +297,42 @@ export default function ReportIssuePage() {
       toast.error("Please confirm accuracy and agree to the terms.");
       return;
     }
+    if (isEvidenceProcessing) {
+      toast.error("Please wait for location metadata to finish processing.");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
-      const photoUrls = evidence.filter((item) => item.type === "image").map((item) => item.url);
-      const videoUrls = evidence.filter((item) => item.type === "video").map((item) => item.url);
+      const uploadedEvidence: IssueEvidenceItem[] = [];
+
+      // Upload sequentially to avoid buffering several large videos at once on the server.
+      for (const item of evidence) {
+        const uploadData = new FormData();
+        uploadData.append("file", item.file);
+        const uploadResponse = await fetch("/api/upload?folder=issue-evidence", {
+          method: "POST",
+          body: uploadData,
+          credentials: "include",
+        });
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok || !uploadResult.success) {
+          throw new Error(uploadResult.error || "Failed to upload " + item.file.name);
+        }
+
+        const uploadedItem: IssueEvidenceItem = {
+          type: item.type,
+          url: uploadResult.path || uploadResult.url,
+          name: item.file.name,
+        };
+        if (typeof item.lat === "number" && typeof item.lon === "number") {
+          uploadedItem.lat = item.lat;
+          uploadedItem.lon = item.lon;
+        }
+        if (typeof item.accuracy === "number") uploadedItem.accuracy = item.accuracy;
+        if (item.track && item.track.length > 0) uploadedItem.track = item.track;
+        uploadedEvidence.push(uploadedItem);
+      }
 
       const response = await fetch("/api/issues", {
         method: "POST",
@@ -380,8 +351,7 @@ export default function ReportIssuePage() {
           reporterContact: form.contactNumber,
           reporterEmail: form.email || null,
           isAnonymous: form.isAnonymous,
-          photoUrls,
-          videoUrls,
+          evidence: uploadedEvidence,
           documentUrls: [],
         }),
       });
@@ -400,9 +370,10 @@ export default function ReportIssuePage() {
           projectId: selectedProject?.sourceId || selectedProject?.id || null,
         },
       });
-      router.push(`/report-issue/${data.data?.id || ""}`);
+      router.push("/report-issue/" + (data.data?.id || ""));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to submit issue");
+      const message = error instanceof Error ? error.message : "Failed to submit issue";
+      toast.error(getUploadErrorTitle(message), { description: message, duration: 6500 });
     } finally {
       setIsSubmitting(false);
     }
@@ -619,46 +590,16 @@ export default function ReportIssuePage() {
                     <Textarea value={form.issueDescription} onChange={(event) => setValue("issueDescription", event.target.value)} placeholder="Provide clear details about the issue..." className="min-h-32 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
                     <p className="text-right text-[11px] text-slate-500">{form.issueDescription.length}/1000</p>
                   </div>
-                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-950/70">
-                    <label className="flex cursor-pointer flex-col items-center justify-center gap-2 text-center">
-                      <Upload className="size-7 text-emerald-400" />
-                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{isUploading ? "Uploading..." : "Upload photos or videos"}</span>
-                      <span className="text-xs text-slate-500">PNG, JPG, WebP, GIF, MP4, MOV, WebM</span>
-                      <input type="file" multiple accept={UPLOAD_ACCEPT} className="hidden" onChange={handleEvidenceChange} disabled={isUploading} />
-                    </label>
-                  </div>
-                  {evidence.length > 0 && (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {evidence.map((item, index) => (
-                        <div key={`${item.url}-${index}`} className="group overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
-                          <div className="relative aspect-video bg-slate-100 dark:bg-slate-900">
-                            {item.type === "image" ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={item.preview} alt={item.name} className="h-full w-full object-cover" />
-                            ) : (
-                              <video src={item.preview} className="h-full w-full object-cover" controls preload="metadata" />
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => removeEvidence(index)}
-                              className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-slate-950/85 text-slate-300 transition-colors hover:bg-red-500 hover:text-white"
-                              aria-label={`Remove ${item.name}`}
-                            >
-                              <Trash2 className="size-4" />
-                            </button>
-                          </div>
-                          <div className="flex items-center gap-2 px-3 py-2">
-                            <FileImage className="size-4 shrink-0 text-emerald-400" />
-                            <span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700 dark:text-slate-300">{item.name}</span>
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase text-slate-500 dark:bg-slate-800">{item.type}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <GeoEvidenceUpload
+                    maxFiles={5}
+                    disabled={isSubmitting}
+                    initialItems={evidence}
+                    onEvidenceReady={handleEvidenceReady}
+                    onProcessingChange={handleEvidenceProcessingChange}
+                  />
                   <div className="flex items-center justify-between pt-2">
                     <Button type="button" variant="ghost" onClick={() => goToStep(flowPath === "knows-project" ? "project-search" : "match", -1)}>Back</Button>
-                    <Button type="button" onClick={() => validateIssueDetails() && goToStep("contact")} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                    <Button type="button" disabled={isEvidenceProcessing} onClick={() => validateIssueDetails() && goToStep("contact")} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
                   </div>
                 </div>
               )}
@@ -675,8 +616,8 @@ export default function ReportIssuePage() {
                   <CheckRow checked={form.agreeToTerms} onChange={(value) => setValue("agreeToTerms", value)} label="I agree to the Terms of Service and Privacy Policy." />
                   <div className="flex items-center justify-between border-t border-slate-200 pt-5 dark:border-slate-800">
                     <Button type="button" variant="ghost" onClick={() => goToStep("issue-details", -1)}>Back</Button>
-                    <Button type="button" size="lg" onClick={handleSubmit} disabled={isSubmitting} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
-                      {isSubmitting ? "Submitting..." : "Submit Issue"}
+                    <Button type="button" size="lg" onClick={handleSubmit} disabled={isSubmitting || isEvidenceProcessing} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
+                      {isSubmitting ? "Uploading & submitting..." : "Submit Issue"}
                     </Button>
                   </div>
                 </div>
@@ -761,7 +702,7 @@ function formatBudget(value?: number) {
   }).format(value);
 }
 
-function extractGeotagUrls(metadata?: Record<string, any>) {
+function extractGeotagUrls(metadata?: Record<string, unknown>) {
   const buckets = [
     metadata?.geotag,
     metadata?.geotags,
@@ -775,10 +716,16 @@ function extractGeotagUrls(metadata?: Record<string, any>) {
   const geotags = buckets.flatMap((bucket) => Array.isArray(bucket) ? bucket : []);
 
   return geotags
-    .map((tag: any) => typeof tag === "string" ? tag : tag?.url || tag?.photo_url || tag?.image_url || tag?.path)
-    .filter(Boolean)
+    .map((tag): string | null => {
+      if (typeof tag === "string") return tag;
+      if (!tag || typeof tag !== "object") return null;
+      const record = tag as Record<string, unknown>;
+      const candidate = record.url ?? record.photo_url ?? record.image_url ?? record.path;
+      return typeof candidate === "string" ? candidate : null;
+    })
+    .filter((url): url is string => Boolean(url))
     .map((url: string) => getFullUrl(url))
-    .filter(Boolean) as string[];
+    .filter((url): url is string => Boolean(url));
 }
 
 function ProjectSuggestionCard({

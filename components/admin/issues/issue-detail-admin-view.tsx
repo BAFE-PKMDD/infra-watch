@@ -23,6 +23,8 @@ import {
 import { toast } from "sonner";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
+import { EvidenceLocationMap } from "@/components/shared/evidence-location-map";
+import { GeoVideoPlayer } from "@/components/shared/geo-video-player";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,6 +32,7 @@ import { MediaViewer } from "@/components/ui/media-viewer";
 import { Textarea } from "@/components/ui/textarea";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
 import { cn } from "@/lib/utils";
+import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
 
 type AdminIssueStatus = "pending" | "reviewing" | "resolved" | "closed";
 
@@ -73,6 +76,9 @@ type AdminIssueDetail = {
   photoUrls: string[];
   videoUrls: string[];
   documentUrls: string[];
+  evidence: StoredIssueEvidenceItem[];
+  geoVideoTrack: GeoTrackPoint[] | null;
+  geoVideoUrl: string | null;
   createdAt: string;
   updatedAt: string;
   dateNoticed: string;
@@ -149,11 +155,25 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
 
   const issue = data?.data;
 
-  const media = useMemo(() => {
+  const media = useMemo<Array<StoredIssueEvidenceItem & { type: "image" | "video"; evidenceIndex: number }>>(() => {
     if (!issue) return [];
+    const storedMedia: Array<StoredIssueEvidenceItem & { type: "image" | "video"; evidenceIndex: number }> = [];
+    if (Array.isArray(issue.evidence)) {
+      issue.evidence.forEach((item, evidenceIndex) => {
+        if (item.type === "image" || item.type === "video") {
+          storedMedia.push({ ...item, type: item.type, evidenceIndex });
+        }
+      });
+    }
+    if (storedMedia.length > 0) return storedMedia;
+
     return [
-      ...issue.photoUrls.map((url) => ({ type: "image" as const, url })),
-      ...issue.videoUrls.map((url) => ({ type: "video" as const, url })),
+      ...issue.photoUrls.map((url, evidenceIndex) => ({ type: "image" as const, url, evidenceIndex })),
+      ...issue.videoUrls.map((url, index) => ({
+        type: "video" as const,
+        url,
+        evidenceIndex: issue.photoUrls.length + index,
+      })),
     ];
   }, [issue]);
 
@@ -267,6 +287,7 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                                 <button
                                   type="button"
                                   key={`${item.url}-${index}`}
+                                  id={`evidence-${item.evidenceIndex}`}
                                   className="group relative aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-left dark:border-slate-700 dark:bg-slate-950"
                                   onClick={() => setViewingMedia(index)}
                                 >
@@ -284,6 +305,12 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                                       <Play className="size-8" />
                                     </div>
                                   )}
+                                  {typeof item.lat === "number" && typeof item.lon === "number" ? (
+                                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-slate-950/80 px-2 py-1 text-[10px] font-bold text-white backdrop-blur">
+                                      <MapPin className="size-3 text-emerald-300" />
+                                      {item.lat.toFixed(5)}, {item.lon.toFixed(5)}
+                                    </span>
+                                  ) : null}
                                 </button>
                               );
                             })}
@@ -309,6 +336,15 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                       </div>
                     )}
                   </InfoCard>
+
+                  <EvidenceLocationMap
+                    evidence={issue.evidence}
+                    geoVideoTrack={issue.geoVideoTrack}
+                    geoVideoUrl={issue.geoVideoUrl}
+                  />
+                  {issue.geoVideoTrack?.length && issue.geoVideoUrl ? (
+                    <GeoVideoPlayer url={issue.geoVideoUrl} track={issue.geoVideoTrack} name="Reported GeoVideo" />
+                  ) : null}
 
                   <InfoCard title={`Responses (${issue.responses.length})`} icon={<MessageSquare className="size-4" />}>
                     {issue.responses.length === 0 ? (

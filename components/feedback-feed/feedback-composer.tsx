@@ -38,6 +38,36 @@ const CATEGORIES: { value: FeedbackCategory; label: string; icon: LucideIcon }[]
 const MAX_MEDIA = 5;
 const MAX_CHARACTERS = 2000;
 
+async function extractFeedbackGeo(
+  file: File,
+  fileType: FeedbackMedia["type"],
+): Promise<Partial<Pick<FeedbackMedia, "lat" | "lon" | "accuracy" | "track">>> {
+  try {
+    if (fileType === "video") {
+      const { extractGPSFromVideoFile } = await import("@/lib/geo-video-parser");
+      const result = await extractGPSFromVideoFile(file);
+      const firstPoint = result.track[0];
+
+      if (!result.hasGeoData || !firstPoint) return {};
+
+      return {
+        lat: firstPoint.lat,
+        lon: firstPoint.lon,
+        ...(firstPoint.accuracy !== undefined ? { accuracy: firstPoint.accuracy } : {}),
+        track: result.track,
+      };
+    }
+
+    const { extractGPSFromPhoto } = await import("@/lib/geo-photo-parser");
+    const result = await extractGPSFromPhoto(file);
+    return result.hasGeoData && result.lat !== null && result.lon !== null
+      ? { lat: result.lat, lon: result.lon }
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 function getInitials(name: string): string {
   return name
     .split(" ")
@@ -64,6 +94,7 @@ export function FeedbackComposer() {
   const [hoverRating, setHoverRating] = useState(0);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [media, setMedia] = useState<FeedbackMedia[]>([]);
+  const [isProcessingMedia, setIsProcessingMedia] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // File upload mutation
@@ -153,38 +184,51 @@ export function FeedbackComposer() {
     }
 
     const uploaded: FeedbackMedia[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const fileType = uploadKindFromType(file.type);
+    setIsProcessingMedia(true);
 
-      if (!fileType || !isAllowedClientUploadType(file.type)) {
-        toast.error(`"${file.name}" is not a supported file type`);
-        continue;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileType = uploadKindFromType(file.type);
+
+        if (!fileType || !isAllowedClientUploadType(file.type)) {
+          toast.error(`"${file.name}" is not a supported file type`);
+          continue;
+        }
+
+        const maxSize = fileType === "video" ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+          toast.error(`"${file.name}" exceeds ${fileType === "video" ? "100MB" : "5MB"} limit`);
+          continue;
+        }
+
+        try {
+          const [result, geo] = await Promise.all([
+            uploadMutation.mutateAsync(file),
+            extractFeedbackGeo(file, fileType),
+          ]);
+          uploaded.push({ type: fileType, url: result.path, ...geo });
+        } catch (error) {
+          const message = error instanceof Error
+            ? error.message
+            : "Upload blocked. Please choose a valid image or video.";
+          toast.error(getUploadErrorTitle(message), {
+            description: message,
+            duration: 6500,
+          });
+          break;
+        }
       }
 
-      const maxSize = fileType === "video" ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
-      if (file.size > maxSize) {
-        toast.error(`"${file.name}" exceeds ${fileType === "video" ? "50MB" : "5MB"} limit`);
-        continue;
+      if (uploaded.length > 0) {
+        setMedia((prev) => [...prev, ...uploaded]);
       }
+    } finally {
+      setIsProcessingMedia(false);
 
-      try {
-        const result = await uploadMutation.mutateAsync(file);
-        uploaded.push({ type: fileType, url: result.path });
-      } catch (error) {
-        const message = error instanceof Error
-          ? error.message
-          : "Upload blocked. Please choose a valid image or video.";
-        toast.error(getUploadErrorTitle(message), {
-          description: message,
-          duration: 6500,
-        });
-        break;
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
       }
-    }
-
-    if (uploaded.length > 0) {
-      setMedia((prev) => [...prev, ...uploaded]);
     }
   };
 
@@ -210,7 +254,7 @@ export function FeedbackComposer() {
   };
 
   const isSubmitting = submitMutation.isPending;
-  const isUploading = uploadMutation.isPending;
+  const isUploading = uploadMutation.isPending || isProcessingMedia;
   const canSubmit = !!selectedProject && comment.trim().length > 0 && !isSubmitting && !isUploading;
 
   // Non-authenticated prompt

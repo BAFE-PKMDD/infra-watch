@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["nsfwjs", "@tensorflow/tfjs-node", "sharp"],
   images: {
+    qualities: [70, 75, 80, 85, 90],
     remotePatterns: [
       {
         protocol: "https",
@@ -35,3 +36,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+

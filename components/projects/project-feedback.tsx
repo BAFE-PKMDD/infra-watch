@@ -12,6 +12,7 @@ import { FeedbackSkeleton } from "./feedback-skeleton";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/i18n";
 import { useNotifications } from "@/providers/notification-provider";
+import type { FeedbackCategory, FeedbackMedia } from "@/types/feedback.types";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,21 @@ interface ProjectFeedbackProps {
   highlightCommentId?: string;
 }
 
+interface EditableFeedback {
+  id: string;
+  rating?: number | null;
+  comment: string;
+  category: FeedbackCategory;
+  isAnonymous: boolean;
+  media?: FeedbackMedia[];
+}
+
+type FeedbackEditCandidate = Omit<EditableFeedback, "category"> & { category: string };
+
+function isFeedbackCategory(value: string): value is FeedbackCategory {
+  return ["quality", "progress", "concerns", "general"].includes(value);
+}
+
 export function ProjectFeedback({
   projectId,
   highlightFeedbackId,
@@ -45,7 +61,8 @@ export function ProjectFeedback({
   const { t } = useTranslation();
   const { isAuthenticated, isLoading: isCheckingAuth } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingFeedback, setEditingFeedback] = useState<any>(null);
+  const [isFeedbackSaving, setIsFeedbackSaving] = useState(false);
+  const [editingFeedback, setEditingFeedback] = useState<EditableFeedback | null>(null);
   const [deletingFeedbackId, setDeletingFeedbackId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { notifications } = useNotifications();
@@ -110,13 +127,15 @@ export function ProjectFeedback({
   });
 
   const handleFeedbackSuccess = () => {
+    setIsFeedbackSaving(false);
     setIsModalOpen(false);
     setEditingFeedback(null);
     refetch();
   };
 
-  const handleEdit = (feedback: any) => {
-    setEditingFeedback(feedback);
+  const handleEdit = (feedback: FeedbackEditCandidate) => {
+    if (!isFeedbackCategory(feedback.category)) return;
+    setEditingFeedback({ ...feedback, category: feedback.category });
     setIsModalOpen(true);
   };
 
@@ -152,6 +171,7 @@ export function ProjectFeedback({
           <h2 className="text-xl font-semibold text-white">{t("projectDetail.feedback.title")}</h2>
           {isAuthenticated ? (
             <Dialog open={isModalOpen} onOpenChange={(open) => {
+              if (!open && isFeedbackSaving) return;
               setIsModalOpen(open);
               if (!open) setEditingFeedback(null);
             }}>
@@ -166,7 +186,7 @@ export function ProjectFeedback({
                 <MessageSquarePlus className="w-4 h-4 mr-2" />
                 {t("projectDetail.feedback.share")}
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
                 <DialogHeader>
                   <DialogTitle>{editingFeedback ? t("projectDetail.feedback.edit") : t("projectDetail.feedback.share")}</DialogTitle>
                   <DialogDescription>
@@ -178,8 +198,9 @@ export function ProjectFeedback({
                 <FeedbackSubmissionForm
                   projectId={projectId}
                   onSuccess={handleFeedbackSuccess}
+                  onBusyChange={setIsFeedbackSaving}
                   editMode={!!editingFeedback}
-                  initialData={editingFeedback}
+                  initialData={editingFeedback ?? undefined}
                 />
               </DialogContent>
             </Dialog>

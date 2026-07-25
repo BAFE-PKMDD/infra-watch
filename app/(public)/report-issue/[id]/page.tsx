@@ -1,13 +1,11 @@
 "use client";
 
-import { use, useMemo, useState, type ReactNode } from "react";
+import { use, useMemo, type ReactNode } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowLeft,
-  Building2,
   Calendar,
   CheckCircle2,
   Clock,
@@ -18,14 +16,16 @@ import {
   Phone,
   TriangleAlert,
   User,
-  X,
   XCircle,
 } from "lucide-react";
 
+import { EvidenceLocationMap } from "@/components/shared/evidence-location-map";
+import { GeoVideoPlayer } from "@/components/shared/geo-video-player";
+import { IssueEvidenceGallery } from "@/components/shared/issue-evidence-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
+import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -60,6 +60,9 @@ type IssueDetails = {
   streetLandmark: string;
   photoUrls: string[];
   videoUrls: string[];
+  evidence: StoredIssueEvidenceItem[];
+  geoVideoTrack: GeoTrackPoint[] | null;
+  geoVideoUrl: string | null;
   date?: string;
   dateNoticed?: string;
   createdAt: string;
@@ -98,7 +101,6 @@ function formatDate(value?: string | null) {
 
 export default function IssueDetailPage({ params }: PageProps) {
   const { id } = use(params);
-  const [zoomImage, setZoomImage] = useState<string | null>(null);
   const { data: issue, isLoading, isError } = useQuery({
     queryKey: ["issue", id],
     queryFn: () => fetchIssue(id),
@@ -141,16 +143,6 @@ export default function IssueDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white px-4 py-10 text-slate-950 sm:px-6 lg:px-8 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
-      {zoomImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-6" onClick={() => setZoomImage(null)}>
-          <div className="relative h-full max-h-[90vh] w-full max-w-5xl">
-            <Image src={zoomImage} alt="Evidence" fill className="object-contain" unoptimized={isLocalMinIO(zoomImage)} />
-            <Button type="button" size="icon" className="absolute right-2 top-2 rounded-full bg-slate-900/80" onClick={(event) => { event.stopPropagation(); setZoomImage(null); }}>
-              <X className="size-4" />
-            </Button>
-          </div>
-        </div>
-      )}
 
       <div className="mx-auto max-w-6xl">
         <Link href="/report-issue" className="mb-8 inline-flex items-center gap-2 text-sm text-slate-500 transition-colors hover:text-slate-950 dark:text-slate-400 dark:hover:text-white">
@@ -193,27 +185,17 @@ export default function IssueDetailPage({ params }: PageProps) {
               <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-slate-950 dark:text-white">
                 <FileImage className="size-4 text-emerald-400" /> Evidence
               </h2>
-              {issue.photoUrls.length === 0 && issue.videoUrls.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700">No evidence files attached</div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-                  {issue.photoUrls.map((url) => {
-                    const fullUrl = getFullUrl(url);
-                    if (!fullUrl) return null;
-                    return (
-                      <button key={url} type="button" onClick={() => setZoomImage(fullUrl)} className="relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
-                        <Image src={fullUrl} alt="Issue evidence" fill className="object-cover transition-transform hover:scale-105" unoptimized={isLocalMinIO(fullUrl)} />
-                      </button>
-                    );
-                  })}
-                  {issue.videoUrls.map((url) => {
-                    const fullUrl = getFullUrl(url);
-                    if (!fullUrl) return null;
-                    return <video key={url} src={fullUrl} controls className="aspect-square rounded-lg border border-slate-200 bg-slate-50 object-cover dark:border-slate-700 dark:bg-slate-950" />;
-                  })}
-                </div>
-              )}
+              <IssueEvidenceGallery evidence={issue.evidence} photoUrls={issue.photoUrls} videoUrls={issue.videoUrls} />
             </Card>
+
+            <EvidenceLocationMap
+              evidence={issue.evidence}
+              geoVideoTrack={issue.geoVideoTrack}
+              geoVideoUrl={issue.geoVideoUrl}
+            />
+            {issue.geoVideoTrack?.length && issue.geoVideoUrl ? (
+              <GeoVideoPlayer url={issue.geoVideoUrl} track={issue.geoVideoTrack} name="Reported GeoVideo" />
+            ) : null}
 
             {issue.project && (
               <Card className="rounded-xl border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">

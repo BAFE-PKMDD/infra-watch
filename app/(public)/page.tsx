@@ -81,8 +81,9 @@ export default function LandingPage() {
               alt=""
               fill
               className="object-contain object-left-bottom grayscale-[0.5] contrast-[1.2] brightness-[0.7] mix-blend-overlay -scale-x-100"
-              priority
+              loading="eager"
               quality={70}
+              sizes="(min-width: 1024px) 55vw, (min-width: 768px) 50vw, (min-width: 640px) 45vw, 1px"
             />
           </motion.div>
 
@@ -104,8 +105,9 @@ export default function LandingPage() {
               alt=""
               fill
               className="object-cover object-left-top grayscale-[0.5] contrast-[1.15] brightness-[0.75] mix-blend-overlay -scale-x-100"
-              priority
+              loading="eager"
               quality={70}
+              sizes="(min-width: 1024px) 50vw, (min-width: 768px) 45vw, (min-width: 640px) 40vw, 1px"
             />
           </motion.div>
 
@@ -127,8 +129,9 @@ export default function LandingPage() {
               alt=""
               fill
               className="object-cover object-right-bottom grayscale-[0.5] contrast-[1.2] brightness-[0.7] mix-blend-overlay"
-              priority
+              loading="eager"
               quality={90}
+              sizes="(min-width: 1024px) 55vw, (min-width: 768px) 50vw, (min-width: 640px) 45vw, 1px"
             />
           </motion.div>
 
@@ -150,8 +153,9 @@ export default function LandingPage() {
               alt=""
               fill
               className="object-cover object-right-top grayscale-[0.5] contrast-[1.15] brightness-[0.75] mix-blend-overlay"
-              priority
+              loading="eager"
               quality={70}
+              sizes="(min-width: 1024px) 50vw, (min-width: 768px) 45vw, (min-width: 640px) 40vw, 1px"
             />
           </motion.div>
 

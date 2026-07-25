@@ -407,15 +407,17 @@ export function FeedbackList({
                   {/* Edit/Delete Menu - Only show for own feedback */}
                   {isOwnFeedback && (
                     <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                        >
-                          <MoreVertical className="h-3.5 w-3.5" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                          />
+                        }
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" />
+                        <span className="sr-only">Open menu</span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
