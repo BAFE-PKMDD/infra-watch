@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   serverExternalPackages: ["nsfwjs", "@tensorflow/tfjs-node", "sharp"],
   images: {
     remotePatterns: [
