@@ -1,8 +1,8 @@
 # Managerial Dashboard KPI Definitions
 
-**Version:** 1.0 (managerial v1 implementation baseline)  
-**Approved baseline:** 2026-08-09, via approval to execute the Infrastructure Analytics Managerial Dashboard plan  
-**Reporting timezone:** Asia/Manila  
+**Version:** 1.0 (managerial v1 implementation baseline)
+**Approved baseline:** 2026-08-09, via approval to execute the Infrastructure Analytics Managerial Dashboard plan
+**Reporting timezone:** Asia/Manila
 **Owners for final source-contract confirmation:** InfraWatch product owner and ABEMIS data owner
 
 ## Purpose and decision scope

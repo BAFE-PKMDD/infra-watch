@@ -48,3 +48,17 @@ test("derives public scope copy from data instead of hardcoding AMEFIP FY 2026",
   assert.equal(result.data?.scopeLabel, "AMEFIP · FY 2025");
   assert.notEqual(result.data?.scopeLabel, "AMEFIP FY 2026");
 });
+
+test("caps long banner-program charts while preserving Unknown and all totals", () => {
+  const rows = Array.from({ length: 14 }, (_, index) => ({
+    ...row,
+    bannerProgram: index === 13 ? null : `Program ${index + 1}`,
+  }));
+  const result = aggregateInfraAnalyticsRows(rows);
+  const banners = result.data?.bannerStats ?? [];
+
+  assert.ok(banners.length <= 11);
+  assert.ok(banners.some((item) => item.program === "Unknown"));
+  assert.ok(banners.some((item) => item.program === "Other"));
+  assert.equal(banners.reduce((sum, item) => sum + item.target, 0), rows.length);
+});

@@ -109,9 +109,11 @@ export function aggregateInfraAnalyticsRows(
       regionalStats: [...regionalCounts.entries()]
         .map(([region, value]) => ({ region, ...value }))
         .sort((a, b) => a.region.localeCompare(b.region, undefined, { numeric: true })),
-      bannerStats: [...bannerCounts.entries()]
-        .map(([program, value]) => ({ program, ...value }))
-        .sort((a, b) => b.target - a.target || a.program.localeCompare(b.program)),
+      bannerStats: limitBannerStats(
+        [...bannerCounts.entries()]
+          .map(([program, value]) => ({ program, ...value }))
+          .sort((a, b) => b.target - a.target || a.program.localeCompare(b.program)),
+      ),
     },
   };
 }
@@ -214,4 +216,22 @@ function buildScopeLabel(rows: InfraAnalyticsRow[]) {
 
 function uniqueKnown(values: Array<string | null>) {
   return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])].sort();
+}
+
+function limitBannerStats(items: BannerStat[], maximum = 11): BannerStat[] {
+  if (items.length <= maximum) return items;
+  const unknown = items.find((item) => item.program === "Unknown");
+  const known = items.filter((item) => item.program !== "Unknown");
+  const keepCount = maximum - (unknown ? 1 : 0) - 1;
+  const kept = known.slice(0, keepCount);
+  const remainder = known.slice(keepCount);
+  const other = remainder.reduce<BannerStat>(
+    (aggregate, item) => ({
+      program: "Other",
+      target: aggregate.target + item.target,
+      turnedOver: aggregate.turnedOver + item.turnedOver,
+    }),
+    { program: "Other", target: 0, turnedOver: 0 },
+  );
+  return [...kept, ...(unknown ? [unknown] : []), other];
 }
