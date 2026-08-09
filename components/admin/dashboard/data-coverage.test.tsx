@@ -11,6 +11,7 @@ test("shows assessed denominators and distinguishes unavailable financial data",
       coverage: {
         total: 10,
         withBudget: 8,
+        withApprovedBudgetForContract: 5,
         withSchedule: 7,
         withPhysicalProgress: 6,
         withFinancialData: 0,
@@ -18,6 +19,7 @@ test("shows assessed denominators and distinguishes unavailable financial data",
     }),
   );
   assert.match(html, /8 of 10/);
+  assert.match(html, /5 of 10/);
   assert.match(html, /7 of 10/);
   assert.match(html, /6 of 10/);
   assert.match(html, /Financial data unavailable/);

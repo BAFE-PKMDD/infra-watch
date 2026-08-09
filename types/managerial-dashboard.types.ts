@@ -37,6 +37,7 @@ export type ManagerialDashboardData = {
   coverage: {
     total: number;
     withBudget: number;
+    withApprovedBudgetForContract: number;
     withSchedule: number;
     withPhysicalProgress: number;
     withFinancialData: number;

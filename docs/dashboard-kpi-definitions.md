@@ -9,7 +9,7 @@
 
 The Infrastructure Analytics Dashboard supports authorized managers who need to assess portfolio delivery, compare programs and locations, and identify projects requiring intervention. Every metric is calculated from projects visible to the signed-in user after server-side authorization scope and validated dashboard filters are applied.
 
-The dashboard is a managerial view of the local ABEMIS read model. Browser refreshes do not make ABEMIS real-time. The UI must say **Data as of …** and expose freshness and coverage.
+The dashboard is a managerial view of the local ABEMIS read model. Browser refreshes do not make ABEMIS real-time. The UI labels ingestion currency as **Last successful sync …** and exposes freshness and coverage; it must not call that local timestamp the upstream source's “Data as of” time.
 
 ## Shared rules
 
@@ -51,7 +51,7 @@ The v1 section is therefore named **Budget Oversight** and may show allocated bu
 
 - `physicalProgress` is inferred from the sum of ABEMIS POW `actual` values and clamped to 0–100 by the current transformer.
 - `financialProgress` is inferred from the sum of ABEMIS POW `target` values. Its financial meaning is unconfirmed, so v1 must not label it disbursement, expenditure, or financial utilization.
-- Because the schema currently defaults progress to zero, the dashboard cannot always distinguish a source-provided zero from a missing POW value. v1 exposes physical-progress coverage conservatively; source-contract/schema work is required for perfect missingness.
+- Because the schema currently defaults progress to zero, the dashboard separately requires valid POW-row evidence before treating `physicalProgress` as reported. A reported zero remains assessable; missing, null, or blank POW values are not assessed.
 
 ## Rules-based schedule health
 
@@ -78,6 +78,7 @@ Each response reports:
 
 - total scoped projects;
 - projects with non-null allocated budget;
+- projects with non-null Approved Budget for Contract;
 - projects with valid schedule dates;
 - projects with trusted physical-progress evidence to the extent current source fields permit;
 - projects with validated financial data (zero in v1 until source confirmation).
@@ -90,14 +91,14 @@ Rates and risk statements show assessed counts or coverage where missing data ca
 - `latestSyncStatus`: latest project sync status.
 - **Fresh:** latest successful sync is no more than **26 hours** old.
 - **Stale:** latest successful sync is more than 26 hours old.
-- **Failed:** latest attempt failed; retain and label the last successful data timestamp.
+- **Failed:** latest attempt failed; retain and label the last successful sync timestamp.
 - **Never synced:** no successful sync timestamp exists.
 
 The 26-hour threshold reflects the documented nightly 02:00 Asia/Manila schedule and provides a two-hour tolerance.
 
 ## Filter contract
 
-Supported filters are program, funding year, region, province, project type, canonical/raw project status as exposed by scoped options, and schedule health. Values are trimmed and length-limited; funding year is a bounded four-digit year. Province is a narrowing filter only and is never trusted as authorization scope. Changing region clears province in the client.
+Supported filters are program, funding year, region, province, project type, canonical/raw project status as exposed by scoped options, and schedule health. Values are trimmed and length-limited; funding year is either a bounded four-digit year or the explicit `Unknown` sentinel. Every `Unknown` dimension filter maps to null-or-blank database values. Province is a narrowing filter only and is never trusted as authorization scope. Changing region clears province in the client. Malformed shared URLs show an explicit error and never widen to an unfiltered portfolio.
 
 ## Data-quality and security requirements
 

@@ -1,14 +1,42 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { and } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 import {
   aggregateManagerialDashboardRows,
+  buildDashboardConditions,
   buildDashboardConditionDescriptors,
   comparePriorityProjects,
   enforceDashboardRowLimit,
   hasReportedPhysicalProgress,
+  sumCurrency,
   type DashboardProjectRow,
 } from "./managerial-dashboard-query";
+
+test("translates Unknown dimension filters to null-or-blank SQL predicates", () => {
+  const condition = and(
+    ...buildDashboardConditions(
+      {
+        program: "Unknown",
+        year: "Unknown",
+        region: "Unknown",
+        province: "Unknown",
+        projectType: "Unknown",
+      },
+      { role: "admin" },
+    ),
+  );
+  const query = new PgDialect().sqlToQuery(condition!);
+  assert.equal((query.sql.match(/is null/g) ?? []).length, 5);
+  assert.equal((query.sql.match(/btrim/g) ?? []).length, 5);
+  assert.deepEqual(query.params, []);
+});
+
+test("sums decimal currency through integer cent arithmetic", () => {
+  assert.equal(sumCurrency(["0.10", "0.20", null]), 0.3);
+  assert.equal(sumCurrency(["900719925474.09", "0.01"]), 900719925474.1);
+});
 
 const baseRow: DashboardProjectRow = {
   projectId: "p-1",
@@ -86,14 +114,36 @@ test("counts null budget separately while retaining a known zero", () => {
   const data = aggregateManagerialDashboardRows(
     [
       { ...baseRow, projectId: "zero", allocatedBudget: "0" },
-      { ...baseRow, projectId: "missing", allocatedBudget: null },
+      { ...baseRow, projectId: "missing", allocatedBudget: null, approvedBudgetForContract: null },
     ],
     {},
     "2026-08-10",
   );
   assert.equal(data.coverage.total, 2);
   assert.equal(data.coverage.withBudget, 1);
+  assert.equal(data.coverage.withApprovedBudgetForContract, 1);
   assert.equal(data.kpis.allocatedBudget, 0);
+});
+
+test("counts due-soon risks before the priority-project limit is applied", () => {
+  const delayedRows = Array.from({ length: 10 }, (_, index) => ({
+    ...baseRow,
+    projectId: `delayed-${index}`,
+    targetCompletionDate: new Date("2026-08-01T00:00:00+08:00"),
+  }));
+  const dueSoon = {
+    ...baseRow,
+    projectId: "due-soon-outside-top-ten",
+    physicalProgress: 10,
+    targetCompletionDate: new Date("2026-08-20T00:00:00+08:00"),
+  };
+  const data = aggregateManagerialDashboardRows(
+    [...delayedRows, dueSoon],
+    {},
+    "2026-08-10",
+  );
+  assert.equal(data.priorityProjects.length, 10);
+  assert.ok(data.insights.some((insight) => /1 priority project is due within 30 days/.test(insight.detail)));
 });
 
 test("priority ordering favors delayed, then larger deficit, then budget exposure", () => {

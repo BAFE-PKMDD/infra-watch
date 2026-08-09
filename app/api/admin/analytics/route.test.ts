@@ -15,6 +15,7 @@ const emptyData = {
   coverage: {
     total: 0,
     withBudget: 0,
+    withApprovedBudgetForContract: 0,
     withSchedule: 0,
     withPhysicalProgress: 0,
     withFinancialData: 0,
@@ -102,10 +103,10 @@ test("passes a scoped moderator and validated filters to the service", async () 
       serviceCall = { filters, user };
       return emptyData;
     },
-  })(request("?year=2026&health=atRisk"));
+  })(request("?year=Unknown&region=Unknown&health=atRisk"));
   assert.equal(response.status, 200);
   assert.deepEqual(serviceCall, {
-    filters: { year: "2026", health: "atRisk" },
+    filters: { year: "Unknown", region: "Unknown", health: "atRisk" },
     user: moderator,
   });
 });

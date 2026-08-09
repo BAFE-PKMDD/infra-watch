@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 
 import { mapInternalToPublicStage } from "@/constants/stage-mapping";
 import { db } from "@/lib/db";
@@ -109,13 +109,20 @@ export function buildDashboardConditions(
   user: ScopedUser,
 ): SQL[] {
   const conditions = [...getProjectScopeConditions(user)];
-  if (filters.program) conditions.push(eq(projects.program, filters.program));
-  if (filters.year) conditions.push(eq(projects.yearFunded, filters.year));
-  if (filters.region) conditions.push(ilike(projects.region, filters.region));
-  if (filters.province) conditions.push(ilike(projects.province, filters.province));
-  if (filters.projectType) conditions.push(ilike(projects.projectType, filters.projectType));
+  if (filters.program) conditions.push(dimensionCondition(projects.program, filters.program, false));
+  if (filters.year) conditions.push(dimensionCondition(projects.yearFunded, filters.year, false));
+  if (filters.region) conditions.push(dimensionCondition(projects.region, filters.region, true));
+  if (filters.province) conditions.push(dimensionCondition(projects.province, filters.province, true));
+  if (filters.projectType) conditions.push(dimensionCondition(projects.projectType, filters.projectType, true));
   // Canonical status and schedule health use shared domain classifiers after retrieval.
   return conditions;
+}
+
+function dimensionCondition(column: AnyColumn, value: string, caseInsensitive: boolean): SQL {
+  if (value === UNKNOWN) {
+    return or(isNull(column), sql`btrim(${column}) = ''`)!;
+  }
+  return caseInsensitive ? ilike(column, value) : eq(column, value);
 }
 
 export function aggregateManagerialDashboardRows(
@@ -181,6 +188,9 @@ export function aggregateManagerialDashboardRows(
   const coverage = {
     total: rows.length,
     withBudget: rows.filter((row) => row.allocatedBudget !== null).length,
+    withApprovedBudgetForContract: rows.filter(
+      (row) => row.approvedBudgetForContract !== null,
+    ).length,
     withSchedule: rows.filter(
       (row) =>
         row.startDate !== null &&
@@ -259,7 +269,14 @@ export function aggregateManagerialDashboardRows(
       ) as ProjectStatusFilter[],
     },
   };
-  data.insights = generateInsights(data);
+  const dueSoonCount = rows.filter(
+    (row) =>
+      row.health === "atRisk" &&
+      row.daysToTarget !== null &&
+      row.daysToTarget >= 0 &&
+      row.daysToTarget <= 30,
+  ).length;
+  data.insights = generateInsights(data, dueSoonCount);
   return data;
 }
 
@@ -404,6 +421,7 @@ export function comparePriorityProjects(
 
 function generateInsights(
   data: ManagerialDashboardData,
+  dueSoon: number,
 ): ManagerialDashboardData["insights"] {
   const insights: ManagerialDashboardData["insights"] = [];
   const exposedBudget = data.scheduleHealth
@@ -433,12 +451,6 @@ function generateInsights(
     });
   }
 
-  const dueSoon = data.priorityProjects.filter(
-    (project) =>
-      project.daysToTarget !== null &&
-      project.daysToTarget >= 0 &&
-      project.daysToTarget <= 30,
-  ).length;
   if (dueSoon > 0) {
     insights.push({
       severity: "warning",
@@ -498,8 +510,22 @@ function toNumber(value: string | number | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+export function sumCurrency(values: Array<string | number | null | undefined>) {
+  const totalCents = values.reduce<bigint>((total, value) => {
+    if (value === null || value === undefined) return total;
+    const normalized = String(value).trim().replace(/,/g, "");
+    const match = normalized.match(/^(-?)(\d+)(?:\.(\d+))?$/);
+    if (!match) return total;
+    const sign = match[1] === "-" ? BigInt(-1) : BigInt(1);
+    const fraction = (match[3] ?? "").padEnd(3, "0");
+    const roundedCents = BigInt(fraction.slice(0, 2)) + (Number(fraction[2]) >= 5 ? BigInt(1) : BigInt(0));
+    return total + sign * (BigInt(match[2]) * BigInt(100) + roundedCents);
+  }, BigInt(0));
+  return Number(totalCents) / 100;
+}
+
 function sum(values: Array<string | number | null | undefined>) {
-  return values.reduce<number>((total, value) => total + (toNumber(value) ?? 0), 0);
+  return sumCurrency(values);
 }
 
 function safePercentage(numerator: number, denominator: number) {

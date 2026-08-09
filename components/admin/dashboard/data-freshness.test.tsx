@@ -21,7 +21,8 @@ test("renders fresh, stale, failed, and never-synced states truthfully", () => {
   assert.match(fresh, /Fresh/);
   assert.match(stale, /Stale/);
   assert.match(failed, /Latest sync failed/);
-  assert.match(failed, /Last successful data/);
+  assert.match(failed, /Last successful sync/);
+  assert.doesNotMatch(fresh, /Data as of/);
   assert.match(never, /Never synced/);
   assert.doesNotMatch(fresh, /Live/);
 });

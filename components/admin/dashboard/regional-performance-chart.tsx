@@ -17,16 +17,16 @@ export function RegionalPerformanceChart({ data, onSelect }: { data: ManagerialD
     <ChartPanel title="Regional performance ranking" description="Completion, delayed, and at-risk rates with project counts for context." summary={summary}>
       {chartData.length === 0 ? <ChartEmptyState /> : (
         <>
-          <ChartContainer config={{ completionRate: { label: "Completion", color: "#16a34a" }, delayedRate: { label: "Delayed", color: "#dc2626" }, atRiskRate: { label: "At risk", color: "#d97706" } }} className="h-72 w-full aspect-auto" aria-label="Regional completion, delayed, and at-risk rates">
-            <BarChart data={chartData} margin={{ left: 0, right: 8 }}>
-              <CartesianGrid vertical={false} />
-              <XAxis dataKey="region" tickLine={false} axisLine={false} />
-              <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+          <ChartContainer config={{ completionRate: { label: "Completion", color: "#16a34a" }, delayedRate: { label: "Delayed", color: "#dc2626" }, atRiskRate: { label: "At risk", color: "#d97706" } }} className="w-full aspect-auto" style={{ height: Math.max(288, chartData.length * 42) }} aria-label="Regional completion, delayed, and at-risk rates">
+            <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 12 }}>
+              <CartesianGrid horizontal={false} />
+              <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+              <YAxis type="category" dataKey="region" width={100} tickLine={false} axisLine={false} />
               <ChartTooltip content={<ChartTooltipContent formatter={(value, name, item) => <span>{Number(value).toFixed(1)}% ({String(name) === "completionRate" ? item.payload?.completed : String(name) === "delayedRate" ? item.payload?.delayed : item.payload?.atRisk} of {item.payload?.total})</span>} />} />
               <Legend />
-              <Bar dataKey="completionRate" fill="var(--color-completionRate)" radius={[4, 4, 0, 0]} onClick={(entry) => onSelect(String(entry.payload?.region ?? ""))} />
-              <Bar dataKey="delayedRate" fill="var(--color-delayedRate)" radius={[4, 4, 0, 0]} onClick={(entry) => onSelect(String(entry.payload?.region ?? ""))} />
-              <Bar dataKey="atRiskRate" fill="var(--color-atRiskRate)" radius={[4, 4, 0, 0]} onClick={(entry) => onSelect(String(entry.payload?.region ?? ""))} />
+              <Bar dataKey="completionRate" fill="var(--color-completionRate)" radius={[0, 4, 4, 0]} onClick={(entry) => onSelect(String(entry.payload?.region ?? ""))} />
+              <Bar dataKey="delayedRate" fill="var(--color-delayedRate)" radius={[0, 4, 4, 0]} onClick={(entry) => onSelect(String(entry.payload?.region ?? ""))} />
+              <Bar dataKey="atRiskRate" fill="var(--color-atRiskRate)" radius={[0, 4, 4, 0]} onClick={(entry) => onSelect(String(entry.payload?.region ?? ""))} />
             </BarChart>
           </ChartContainer>
           <div className="mt-3 flex flex-wrap gap-2" aria-label="Filter by region">

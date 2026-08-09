@@ -3,7 +3,7 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { ProjectTypeBudgetChart, limitProjectTypes } from "./project-type-budget-chart";
+import { ProjectTypeBudgetChart, limitProjectTypes, selectProjectType } from "./project-type-budget-chart";
 import { ProgressVarianceChart } from "./progress-variance-chart";
 import { RegionalPerformanceChart } from "./regional-performance-chart";
 import { ScheduleHealthChart, selectScheduleHealth } from "./schedule-health-chart";
@@ -57,6 +57,14 @@ test("schedule-health selection calls the shared filter callback", () => {
   let selected: string | undefined;
   selectScheduleHealth((health) => { selected = health; }, "atRisk");
   assert.equal(selected, "atRisk");
+});
+
+test("synthetic Other totals cannot be applied as a literal project-type filter", () => {
+  let selected: string | undefined;
+  selectProjectType((projectType) => { selected = projectType; }, "Other");
+  assert.equal(selected, undefined);
+  selectProjectType((projectType) => { selected = projectType; }, "Road");
+  assert.equal(selected, "Road");
 });
 
 test("limits long project-type lists while preserving totals in Other and Unknown", () => {

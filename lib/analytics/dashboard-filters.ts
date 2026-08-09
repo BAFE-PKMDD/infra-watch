@@ -9,6 +9,7 @@ import {
 const MAX_FILTER_LENGTH = 100;
 const MIN_FUNDING_YEAR = 1900;
 const MAX_FUNDING_YEAR = 2200;
+export const UNKNOWN_FILTER_VALUE = "Unknown";
 
 const optionalText = z.preprocess(
   normalizeOptionalValue,
@@ -17,14 +18,16 @@ const optionalText = z.preprocess(
 
 const optionalYear = z.preprocess(
   normalizeOptionalValue,
-  z
-    .string()
-    .regex(/^\d{4}$/, "year must be a four-digit value")
-    .refine((value) => {
-      const year = Number(value);
-      return year >= MIN_FUNDING_YEAR && year <= MAX_FUNDING_YEAR;
-    }, "year is outside the supported range")
-    .optional(),
+  z.union([
+    z.literal(UNKNOWN_FILTER_VALUE),
+    z
+      .string()
+      .regex(/^\d{4}$/, "year must be a four-digit value")
+      .refine((value) => {
+        const year = Number(value);
+        return year >= MIN_FUNDING_YEAR && year <= MAX_FUNDING_YEAR;
+      }, "year is outside the supported range"),
+  ]).optional(),
 );
 
 const optionalStatus = z.preprocess(
@@ -69,6 +72,16 @@ export function parseManagerialDashboardFilters(
   return Object.fromEntries(
     Object.entries(parsed).filter(([, value]) => value !== undefined),
   ) as ManagerialDashboardFilters;
+}
+
+export function tryParseManagerialDashboardFilters(
+  searchParams: URLSearchParams,
+): ManagerialDashboardFilters | null {
+  try {
+    return parseManagerialDashboardFilters(searchParams);
+  } catch {
+    return null;
+  }
 }
 
 export function serializeManagerialDashboardFilters(

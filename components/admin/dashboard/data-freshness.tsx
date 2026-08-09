@@ -33,7 +33,7 @@ export function DataFreshness({
       </span>
       {timestamp && (
         <span>
-          {failed ? "Last successful data" : "Data as of"} {timestamp}
+          Last successful sync {timestamp}
         </span>
       )}
       {!timestamp && <span>No successful ABEMIS project synchronization is recorded.</span>}

@@ -31,6 +31,7 @@ test("renders six truthful executive KPIs without expenditure claims", () => {
       coverage: {
         total: 42,
         withBudget: 40,
+        withApprovedBudgetForContract: 0,
         withSchedule: 35,
         withPhysicalProgress: 36,
         withFinancialData: 0,
@@ -46,4 +47,6 @@ test("renders six truthful executive KPIs without expenditure claims", () => {
     "At-risk projects",
   ]) assert.match(html, new RegExp(label));
   assert.doesNotMatch(html, /spent|disbursed|expenditure|utilization/i);
+  assert.match(html, /Unavailable/);
+  assert.match(html, /Definition:/);
 });

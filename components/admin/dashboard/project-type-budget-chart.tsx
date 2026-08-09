@@ -9,6 +9,10 @@ import { formatDashboardCurrency } from "./executive-kpis";
 
 type ProjectTypeRow = ManagerialDashboardData["projectTypes"][number];
 
+export function selectProjectType(onSelect: (projectType: string) => void, projectType: string) {
+  if (projectType !== "Other") onSelect(projectType);
+}
+
 export function limitProjectTypes(data: ProjectTypeRow[], limit = 8): ProjectTypeRow[] {
   if (data.length <= limit) return data;
   const unknown = data.find((item) => item.projectType === "Unknown");
@@ -38,11 +42,11 @@ export function ProjectTypeBudgetChart({ data, onSelect }: { data: ManagerialDas
               <XAxis type="number" tickFormatter={(value) => `₱${Math.round(Number(value) / 1_000_000)}M`} />
               <YAxis type="category" dataKey="projectType" width={110} tickLine={false} axisLine={false} />
               <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatDashboardCurrency(Number(value))} />} />
-              <Bar dataKey="allocatedBudget" fill="var(--color-allocatedBudget)" radius={[0, 5, 5, 0]} onClick={(entry) => onSelect((entry.payload as ProjectTypeRow).projectType)} />
+              <Bar dataKey="allocatedBudget" fill="var(--color-allocatedBudget)" radius={[0, 5, 5, 0]} onClick={(entry) => selectProjectType(onSelect, (entry.payload as ProjectTypeRow).projectType)} />
             </BarChart>
           </ChartContainer>
           <div className="mt-3 flex flex-wrap gap-2" aria-label="Filter by project type">
-            {chartData.filter((item) => item.projectType !== "Other").map((item) => <button key={item.projectType} type="button" data-filter-value={item.projectType} onClick={() => onSelect(item.projectType)} className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700 hover:border-primary hover:text-primary dark:border-slate-700 dark:text-slate-200">{item.projectType}</button>)}
+            {chartData.filter((item) => item.projectType !== "Other").map((item) => <button key={item.projectType} type="button" data-filter-value={item.projectType} onClick={() => selectProjectType(onSelect, item.projectType)} className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700 hover:border-primary hover:text-primary dark:border-slate-700 dark:text-slate-200">{item.projectType}</button>)}
           </div>
         </>
       )}

@@ -29,14 +29,16 @@ export function KpiCard({
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-wide text-slate-500 dark:text-slate-400" title={definition}>
+        <p className="text-xs font-extrabold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           {label}
-          <span className="sr-only">. Definition: {definition}</span>
         </p>
         {icon && <span aria-hidden="true" className="text-primary">{icon}</span>}
       </div>
       <p className={cn("mt-3 text-2xl font-extrabold tabular-nums text-slate-950 dark:text-white", tone === "critical" && "text-red-700 dark:text-red-300", tone === "warning" && "text-amber-700 dark:text-amber-300")}>{value}</p>
       {detail && <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{detail}</p>}
+      <p className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+        <span className="font-bold">Definition:</span> {definition}
+      </p>
     </article>
   );
 }

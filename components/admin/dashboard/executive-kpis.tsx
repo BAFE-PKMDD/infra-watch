@@ -28,13 +28,14 @@ export function ExecutiveKpis({
 }) {
   const budgetCoverage = coverage.total > 0 ? (coverage.withBudget / coverage.total) * 100 : 0;
   const scheduleCoverage = coverage.total > 0 ? (coverage.withSchedule / coverage.total) * 100 : 0;
+  const abcCoverage = coverage.total > 0 ? (coverage.withApprovedBudgetForContract / coverage.total) * 100 : 0;
   return (
     <section aria-labelledby="executive-kpis-heading">
       <h2 id="executive-kpis-heading" className="sr-only">Executive portfolio indicators</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard label="Projects monitored" value={formatDashboardCount(kpis.totalProjects)} definition="Count of projects in the signed-in user's authorized scope after dashboard filters." icon={<FolderKanban className="size-4" />} />
         <KpiCard label="Allocated budget" value={formatDashboardCurrency(kpis.allocatedBudget)} definition="Sum of non-null ABEMIS allocated amounts. This metric represents allocation only." detail={`${formatDashboardPercentage(budgetCoverage)} budget coverage`} icon={<Banknote className="size-4" />} />
-        <KpiCard label="Approved Budget for Contract" value={formatDashboardCurrency(kpis.approvedBudgetForContract)} definition="Sum of Approved Budget for Contract (ABC). ABC is a procurement ceiling, not an awarded contract amount." icon={<CircleDollarSign className="size-4" />} />
+        <KpiCard label="Approved Budget for Contract" value={coverage.withApprovedBudgetForContract === 0 ? "Unavailable" : formatDashboardCurrency(kpis.approvedBudgetForContract)} definition="Sum of non-null Approved Budget for Contract (ABC) values. ABC is a procurement ceiling, not an awarded contract amount." detail={`${formatDashboardPercentage(abcCoverage)} ABC coverage`} icon={<CircleDollarSign className="size-4" />} />
         <KpiCard label="Completion rate" value={formatDashboardPercentage(kpis.completionRate)} definition="Canonically completed projects divided by all status-assessed projects in scope." icon={<CheckCircle2 className="size-4" />} />
         <KpiCard label="Delayed projects" value={formatDashboardCount(kpis.delayedProjects)} definition="Incomplete projects whose target completion date is before the dashboard as-of date." detail={`${formatDashboardPercentage(scheduleCoverage)} schedule coverage`} tone="critical" icon={<AlertTriangle className="size-4" />} />
         <KpiCard label="At-risk projects" value={formatDashboardCount(kpis.atRiskProjects)} definition="Active assessable projects meeting the transparent schedule-deficit or due-soon rule." tone="warning" icon={<Gauge className="size-4" />} />

@@ -7,7 +7,7 @@ import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/auth-provider";
-import { parseManagerialDashboardFilters } from "@/lib/analytics/dashboard-filters";
+import { tryParseManagerialDashboardFilters } from "@/lib/analytics/dashboard-filters";
 import { useManagerialDashboard } from "@/hooks/use-managerial-dashboard";
 import type { ManagerialDashboardFilters } from "@/types/managerial-dashboard.types";
 import { DataCoverage } from "./data-coverage";
@@ -28,8 +28,12 @@ export function ManagerialDashboardClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const filters = useMemo(() => safeParseFilters(searchParams), [searchParams]);
-  const query = useManagerialDashboard(filters, user?.id);
+  const parsedFilters = useMemo(
+    () => tryParseManagerialDashboardFilters(new URLSearchParams(searchParams.toString())),
+    [searchParams],
+  );
+  const filters = parsedFilters ?? {};
+  const query = useManagerialDashboard(filters, parsedFilters ? user?.id : undefined);
 
   function updateFilters(next: ManagerialDashboardFilters) {
     const params = dashboardFiltersToSearchParams(next);
@@ -44,6 +48,17 @@ export function ManagerialDashboardClient() {
     updateFilters(next);
   }
 
+  if (!parsedFilters) {
+    return (
+      <div className="space-y-3">
+        <DashboardState
+          state="error"
+          message="The dashboard URL contains an invalid filter. Reset the filters before loading analytics."
+        />
+        <Button variant="outline" onClick={() => updateFilters({})}>Reset invalid filters</Button>
+      </div>
+    );
+  }
   if (query.isPending && !query.data) return <DashboardSkeleton />;
   if (!query.data) {
     return (
@@ -103,13 +118,3 @@ export function ManagerialDashboardClient() {
     </div>
   );
 }
-
-function safeParseFilters(searchParams: ReadonlyURLSearchParamsLike) {
-  try {
-    return parseManagerialDashboardFilters(new URLSearchParams(searchParams.toString()));
-  } catch {
-    return {};
-  }
-}
-
-type ReadonlyURLSearchParamsLike = { toString(): string };

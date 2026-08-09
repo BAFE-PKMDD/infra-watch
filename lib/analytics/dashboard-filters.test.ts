@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseManagerialDashboardFilters } from "./dashboard-filters";
+import {
+  parseManagerialDashboardFilters,
+  tryParseManagerialDashboardFilters,
+} from "./dashboard-filters";
 
 test("normalizes all and blank filter values to undefined", () => {
   assert.deepEqual(
@@ -58,6 +61,17 @@ test("accepts only bounded four-digit funding years", () => {
   assert.equal(
     parseManagerialDashboardFilters(new URLSearchParams({ year: "2026" })).year,
     "2026",
+  );
+  assert.equal(
+    parseManagerialDashboardFilters(new URLSearchParams({ year: "Unknown" })).year,
+    "Unknown",
+  );
+});
+
+test("reports a malformed shared URL instead of widening it to an empty filter set", () => {
+  assert.equal(
+    tryParseManagerialDashboardFilters(new URLSearchParams({ region: "Region VIII", health: "invalid" })),
+    null,
   );
 });
 

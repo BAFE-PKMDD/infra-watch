@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   aggregateInfraAnalyticsRows,
   getInfraAnalyticsData,
+  MAX_PUBLIC_ANALYTICS_ROWS,
   type InfraAnalyticsRow,
 } from "./analytics.query";
 
@@ -29,6 +30,12 @@ test("returns unavailable when the live query fails", async () => {
     },
     () => undefined,
   );
+  assert.deepEqual(result, { status: "unavailable", data: null });
+});
+
+test("does not silently aggregate an oversized public portfolio", async () => {
+  const oversized = Array.from({ length: MAX_PUBLIC_ANALYTICS_ROWS + 1 }, () => row);
+  const result = await getInfraAnalyticsData(async () => oversized, () => undefined);
   assert.deepEqual(result, { status: "unavailable", data: null });
 });
 
@@ -61,4 +68,10 @@ test("caps long banner-program charts while preserving Unknown and all totals", 
   assert.ok(banners.some((item) => item.program === "Unknown"));
   assert.ok(banners.some((item) => item.program === "Other"));
   assert.equal(banners.reduce((sum, item) => sum + item.target, 0), rows.length);
+});
+
+test("uses the shared canonical status mapping for Inventory", () => {
+  const result = aggregateInfraAnalyticsRows([{ ...row, status: "Inventory", stage: null }]);
+  assert.equal(result.data?.stages.completed.count, 1);
+  assert.equal(result.data?.stages.preImplementation.count, 0);
 });

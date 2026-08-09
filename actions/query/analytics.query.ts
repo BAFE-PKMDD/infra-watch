@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
+import { mapInternalToPublicStage } from "@/constants/stage-mapping";
 
 export interface StageStat {
   labelKey: string;
@@ -49,10 +50,14 @@ export type InfraAnalyticsRow = {
 };
 
 type QueryRows = () => Promise<InfraAnalyticsRow[]>;
+export const MAX_PUBLIC_ANALYTICS_ROWS = 30_000;
 
 export function aggregateInfraAnalyticsRows(
   rows: InfraAnalyticsRow[],
 ): InfraAnalyticsResult {
+  if (rows.length > MAX_PUBLIC_ANALYTICS_ROWS) {
+    throw new Error("Public analytics scope exceeds the safe aggregation limit");
+  }
   if (rows.length === 0) return { status: "empty", data: null };
 
   const stageKeys = [
@@ -141,7 +146,8 @@ async function queryInfraAnalyticsRows(): Promise<InfraAnalyticsRow[]> {
       yearFunded: projects.yearFunded,
       lastSyncedAt: projects.lastSyncedAt,
     })
-    .from(projects);
+    .from(projects)
+    .limit(MAX_PUBLIC_ANALYTICS_ROWS + 1);
 }
 
 function getProjectStage(
@@ -149,15 +155,16 @@ function getProjectStage(
   stage: string | null,
 ): "preImplementation" | "procurement" | "construction" | "completed" | "turnedOver" {
   const normalizedStage = (stage ?? "").toLowerCase();
-  const normalizedStatus = status.toLowerCase();
   if (normalizedStage.includes("turn") || normalizedStage.includes("over")) return "turnedOver";
-  if (normalizedStatus === "completed" || normalizedStage.includes("complete")) return "completed";
-  if (
-    normalizedStage.includes("construction") ||
-    normalizedStatus === "ongoing" ||
-    normalizedStage.includes("implement")
-  ) return "construction";
   if (normalizedStage.includes("procure")) return "procurement";
+  const publicStatus = mapInternalToPublicStage(status);
+  const publicStage = mapInternalToPublicStage(stage);
+  if (publicStatus === "Completed" || publicStage === "Completed") return "completed";
+  if (
+    publicStatus === "On going" ||
+    publicStage === "On going" ||
+    normalizedStage.includes("construction")
+  ) return "construction";
   return "preImplementation";
 }
 
