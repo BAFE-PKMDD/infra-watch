@@ -9,9 +9,12 @@ import { Button } from "@/components/ui/button";
 import { parseManagerialDashboardFilters } from "@/lib/analytics/dashboard-filters";
 import { useManagerialDashboard } from "@/hooks/use-managerial-dashboard";
 import type { ManagerialDashboardFilters } from "@/types/managerial-dashboard.types";
+import { DataCoverage } from "./data-coverage";
+import { DataFreshness } from "./data-freshness";
 import { DashboardFilters, dashboardFiltersToSearchParams } from "./dashboard-filters";
 import { DashboardSkeleton } from "./dashboard-skeleton";
 import { DashboardState } from "./dashboard-state";
+import { ExecutiveKpis } from "./executive-kpis";
 
 export function ManagerialDashboardClient() {
   const router = useRouter();
@@ -43,16 +46,7 @@ export function ManagerialDashboardClient() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-slate-600 dark:text-slate-300">
-          <span className="font-bold text-slate-900 dark:text-white">Data as of </span>
-          {data.freshness.lastSuccessfulSyncAt
-            ? new Intl.DateTimeFormat("en-PH", {
-                dateStyle: "medium",
-                timeStyle: "short",
-                timeZone: "Asia/Manila",
-              }).format(new Date(data.freshness.lastSuccessfulSyncAt))
-            : "Never synced"}
-        </div>
+        <DataFreshness freshness={data.freshness} />
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => query.refetch()} disabled={query.isFetching}>
             <RefreshCw className={query.isFetching ? "animate-spin motion-reduce:animate-none" : ""} />
@@ -70,9 +64,10 @@ export function ManagerialDashboardClient() {
       {data.kpis.totalProjects === 0 ? (
         <DashboardState state="empty" />
       ) : (
-        <section aria-label="Dashboard analytics" className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          Portfolio analytics loaded for {data.kpis.totalProjects.toLocaleString("en-PH")} projects.
-        </section>
+        <>
+          <ExecutiveKpis kpis={data.kpis} coverage={data.coverage} />
+          <DataCoverage coverage={data.coverage} />
+        </>
       )}
     </div>
   );
