@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   CircleAlert,
   FolderKanban,
   Home,
@@ -27,7 +26,7 @@ const menu = [
   {
     label: "Main",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, resource: "dashboard", action: "view" },
+      { label: "Analytics", href: "/dashboard", icon: LayoutDashboard, resource: "analytics", action: "view" },
       { label: "Projects", href: "/admin-projects", icon: FolderKanban, resource: "projects", action: "list" },
       { label: "Feedbacks", href: "/feedbacks", icon: MessageSquare, resource: "feedback", action: "list" },
       { label: "Reported Issues", href: "/issues", icon: CircleAlert, resource: "issues", action: "list" },
@@ -38,7 +37,6 @@ const menu = [
     items: [
       { label: "ABEMIS Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view" },
       { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view" },
-      { label: "Analytics", href: "/dashboard#analytics", icon: BarChart3, resource: "analytics", action: "view" },
       { label: "User Management", href: "/user-management", icon: Users, resource: "user", action: "list" },
     ],
   },

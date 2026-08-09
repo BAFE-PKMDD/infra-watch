@@ -8,7 +8,7 @@ import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, resource: "dashboard", action: "view" },
+  { label: "Analytics", href: "/dashboard", icon: LayoutDashboard, resource: "analytics", action: "view" },
   { label: "Projects", href: "/admin-projects", icon: FolderKanban, resource: "projects", action: "list" },
   { label: "Feedbacks", href: "/feedbacks", icon: MessageSquare, resource: "feedback", action: "list" },
   { label: "Issues", href: "/issues", icon: CircleAlert, resource: "issues", action: "list" },

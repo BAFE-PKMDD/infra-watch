@@ -75,7 +75,17 @@ export function serializeManagerialDashboardFilters(
   filters: ManagerialDashboardFilters,
 ): URLSearchParams {
   const searchParams = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) {
+  const keys: Array<keyof ManagerialDashboardFilters> = [
+    "program",
+    "year",
+    "region",
+    "province",
+    "projectType",
+    "status",
+    "health",
+  ];
+  for (const key of keys) {
+    const value = filters[key];
     if (value) searchParams.set(key, value);
   }
   return searchParams;
