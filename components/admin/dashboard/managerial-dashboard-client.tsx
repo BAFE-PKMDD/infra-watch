@@ -11,10 +11,14 @@ import { useManagerialDashboard } from "@/hooks/use-managerial-dashboard";
 import type { ManagerialDashboardFilters } from "@/types/managerial-dashboard.types";
 import { DataCoverage } from "./data-coverage";
 import { DataFreshness } from "./data-freshness";
-import { DashboardFilters, dashboardFiltersToSearchParams } from "./dashboard-filters";
+import { DashboardFilters, dashboardFiltersToSearchParams, mergeDashboardFilter } from "./dashboard-filters";
 import { DashboardSkeleton } from "./dashboard-skeleton";
 import { DashboardState } from "./dashboard-state";
 import { ExecutiveKpis } from "./executive-kpis";
+import { ProgressVarianceChart } from "./progress-variance-chart";
+import { ProjectTypeBudgetChart } from "./project-type-budget-chart";
+import { RegionalPerformanceChart } from "./regional-performance-chart";
+import { ScheduleHealthChart } from "./schedule-health-chart";
 
 export function ManagerialDashboardClient() {
   const router = useRouter();
@@ -67,6 +71,12 @@ export function ManagerialDashboardClient() {
         <>
           <ExecutiveKpis kpis={data.kpis} coverage={data.coverage} />
           <DataCoverage coverage={data.coverage} />
+          <section aria-label="Portfolio analytics" className="grid gap-4 lg:grid-cols-2">
+            <ScheduleHealthChart data={data.scheduleHealth} onSelect={(health) => updateFilters(mergeDashboardFilter(filters, "health", health))} />
+            <ProjectTypeBudgetChart data={data.projectTypes} onSelect={(projectType) => updateFilters(mergeDashboardFilter(filters, "projectType", projectType))} />
+            <RegionalPerformanceChart data={data.regions} onSelect={(region) => updateFilters(mergeDashboardFilter(filters, "region", region))} />
+            <ProgressVarianceChart data={data.progressVariance} />
+          </section>
         </>
       )}
     </div>
