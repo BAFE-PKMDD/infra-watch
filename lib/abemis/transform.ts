@@ -52,6 +52,23 @@ function inferProgram(project: AbemisProject) {
   return "AMEFIP";
 }
 
+function normalizeProjectType(value: string | null | undefined) {
+  return (value ?? "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[-\u2010-\u2015]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * InfraWatch excludes Farm-to-Market Road records because those are owned by
+ * the separate FMR Watch application.
+ */
+export function isInfraWatchProject(project: Pick<AbemisProject, "project_type">) {
+  return normalizeProjectType(project.project_type) !== "farm to market road";
+}
+
 function inferStartDate(project: AbemisProject) {
   const ntp = project.procurementRelation?.find((row) =>
     row.milestone?.toLowerCase().includes("notice to proceed"),

@@ -13,6 +13,7 @@ until bun -e "const postgres=require('postgres');const sql=postgres(process.env.
 done
 
 if [ "${RUN_DB_MIGRATIONS:-true}" = "true" ]; then
+  bun scripts/prepare-migrations.ts
   echo "Applying database migrations..."
   bun run drizzle-kit migrate
 fi

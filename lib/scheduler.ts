@@ -5,6 +5,7 @@
 
 import cron from "node-cron";
 import { syncAbemisProjects } from "./abemis/sync";
+import { purgeExpiredChatHistory } from "./chat-history";
 
 let isSchedulerInitialized = false;
 
@@ -71,6 +72,25 @@ export function initScheduler() {
       timezone: "Asia/Manila",
       name: "abemis-sync",
     }
+  );
+
+  cron.schedule(
+    "15 3 * * *",
+    async () => {
+      try {
+        const deleted = await purgeExpiredChatHistory();
+        console.log(`[Scheduler] Deleted ${deleted} expired AI chat history records.`);
+      } catch (error) {
+        console.error(
+          "[Scheduler] AI chat history retention cleanup failed:",
+          error instanceof Error ? error.name : "UnknownError",
+        );
+      }
+    },
+    {
+      timezone: "Asia/Manila",
+      name: "ai-chat-history-retention",
+    },
   );
 
   isSchedulerInitialized = true;

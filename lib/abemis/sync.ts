@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { projects, syncLogs } from "@/lib/db/schema";
 import { fetchInfraProjects } from "./client";
-import { transformAbemisProject } from "./transform";
+import { isInfraWatchProject, transformAbemisProject } from "./transform";
 import { eq, sql, or, ilike, and, inArray } from "drizzle-orm";
 import { getProjectScopeConditions, type ScopedUser } from "@/lib/scope";
 
@@ -53,8 +53,9 @@ export async function syncAbemisProjects(
         throw new Error("Failed to fetch projects from ABEMIS API");
       }
 
-      const rawProjects = response.data;
-      const totalCount = response.pagination?.total_count || rawProjects.length;
+      const sourceProjects = response.data;
+      const rawProjects = sourceProjects.filter(isInfraWatchProject);
+      const totalCount = response.pagination?.total_count || sourceProjects.length;
       
       onProgress?.(
         totalProcessed, 
@@ -62,7 +63,7 @@ export async function syncAbemisProjects(
         `Processing page ${page} of ${response.pagination?.total_pages || '?'}`
       );
 
-      if (rawProjects.length === 0) {
+      if (sourceProjects.length === 0) {
         hasMore = false;
         break;
       }

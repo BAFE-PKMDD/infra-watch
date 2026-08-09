@@ -8,6 +8,34 @@
       "when": 1784973691634,
       "tag": "0000_colossal_talkback",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786206254933,
+      "tag": "0001_add_ai_chat_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786207066618,
+      "tag": "0002_add_ai_chat_rate_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786274929539,
+      "tag": "0003_bumpy_ravenous",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786276888396,
+      "tag": "0004_add_chat_owner_key",
+      "breakpoints": true
     }
   ]
 }

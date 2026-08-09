@@ -49,6 +49,19 @@ Populate `.env.production`. A local InfraWatch file derived from FMR Watch is al
 - All application/auth URLs use `https://infrawatch.bafe.gov.ph`.
 - MinIO uses the shared production endpoint and the `infra-watch` bucket.
 - `DOCKER_NETWORK` matches the network containing `postgres18`.
+- `AI_PROVIDER=google`, `AI_MODEL=gemini-flash-latest`, and `GEMINI_API_KEY`
+  contains the rotated production credential.
+- `CHAT_RATE_LIMIT_SECRET` is a unique high-entropy production secret.
+- `CHAT_TRUST_PROXY=true`. This is required for public anonymous chat and is safe
+  only with the checked-in Nginx configuration, which replaces client-supplied
+  forwarding headers with the canonical client IP.
+
+For an existing InfraWatch database, take a verified backup and inspect
+`drizzle.__drizzle_migrations` before the first deployment. If application tables
+exist but the journal is absent, set `BASELINE_EXISTING_DATABASE=true` for one
+deployment only. Startup verifies tables, columns, defaults, keys, constraints,
+and indexes against the committed Drizzle snapshots before recording a baseline.
+Return the setting to `false` immediately after migrations succeed.
 
 For Google sign-in, register this callback in the Google Cloud OAuth client:
 
@@ -90,6 +103,9 @@ docker inspect --format '{{json .State.Health}}' infra-watch
 ```
 
 Check sign-in, project browsing, feedback moderation, a MinIO upload, and one ABEMIS synchronization.
+Also send one anonymous chatbot request through the public HTTPS URL. A `503`
+response stating that anonymous chat is unavailable means `CHAT_TRUST_PROXY` or
+the trusted Nginx forwarding headers are not configured correctly.
 
 ## Updates
 

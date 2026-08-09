@@ -17,16 +17,16 @@ ARG NEXT_PUBLIC_MINIO_ENDPOINT=storage.bafe.online
 ARG NEXT_PUBLIC_MINIO_BUCKET=infra-watch
 ARG NEXT_PUBLIC_MINIO_USE_SSL=true
 
-ENV DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build \
-    BETTER_AUTH_SECRET=build-only-secret-that-is-never-used-at-runtime \
-    BETTER_AUTH_URL=${NEXT_PUBLIC_APP_URL} \
-    NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL} \
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL} \
     NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL} \
     NEXT_PUBLIC_MINIO_ENDPOINT=${NEXT_PUBLIC_MINIO_ENDPOINT} \
     NEXT_PUBLIC_MINIO_BUCKET=${NEXT_PUBLIC_MINIO_BUCKET} \
     NEXT_PUBLIC_MINIO_USE_SSL=${NEXT_PUBLIC_MINIO_USE_SSL}
 
-RUN bun run build
+RUN DATABASE_URL=postgresql://build:unused@127.0.0.1:5432/build \
+    BETTER_AUTH_SECRET="$(bun -e 'console.log(crypto.randomUUID() + crypto.randomUUID())')" \
+    BETTER_AUTH_URL=${NEXT_PUBLIC_APP_URL} \
+    bun run build
 
 FROM base AS runner
 ENV NODE_ENV=production \
@@ -46,6 +46,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.confi
 COPY --from=builder --chown=nextjs:nodejs /app/auth-schema.ts ./auth-schema.ts
 COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/docker/start.sh ./start.sh
 
 RUN chmod +x /app/start.sh

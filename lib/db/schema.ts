@@ -240,6 +240,60 @@ export const auditLogs = pgTable(
   }),
 );
 
+export const chatHistory = pgTable(
+  "ai_chat_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id").notNull(),
+    ownerKey: text("owner_key").notNull(),
+    userId: text("user_id"),
+    userMessage: text("user_message").notNull(),
+    assistantMessage: text("assistant_message"),
+    status: text("status").notNull().default("processing"),
+    provider: text("provider").notNull(),
+    model: text("model"),
+    toolNames: jsonb("tool_names").$type<string[]>().default([]),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    totalTokens: integer("total_tokens"),
+    durationMs: integer("duration_ms"),
+    finishReason: text("finish_reason"),
+    errorCode: text("error_code"),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    conversationIdIdx: index("ai_chat_history_conversation_id_idx").on(
+      table.conversationId,
+    ),
+    ownerConversationIdx: index("ai_chat_history_owner_conversation_idx").on(
+      table.ownerKey,
+      table.conversationId,
+    ),
+    userIdIdx: index("ai_chat_history_user_id_idx").on(table.userId),
+    statusIdx: index("ai_chat_history_status_idx").on(table.status),
+    createdAtIdx: index("ai_chat_history_created_at_idx").on(table.createdAt),
+    expiresAtIdx: index("ai_chat_history_expires_at_idx").on(table.expiresAt),
+  }),
+);
+
+export const chatRateLimits = pgTable(
+  "ai_chat_rate_limits",
+  {
+    key: text("key").primaryKey(),
+    windowStartedAt: timestamp("window_started_at", { mode: "date" }).notNull(),
+    requestCount: integer("request_count").notNull().default(1),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    updatedAtIdx: index("ai_chat_rate_limits_updated_at_idx").on(table.updatedAt),
+  }),
+);
+
 
 export const psgcLocations = pgTable("psgc_locations", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -292,3 +346,5 @@ export type PsgcLocation = typeof psgcLocations.$inferSelect;
 export type NewPsgcLocation = typeof psgcLocations.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
+export type ChatHistory = typeof chatHistory.$inferSelect;
+export type NewChatHistory = typeof chatHistory.$inferInsert;
