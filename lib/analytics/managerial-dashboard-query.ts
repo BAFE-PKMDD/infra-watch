@@ -17,6 +17,18 @@ const STALE_AFTER_HOURS = 26;
 const PRIORITY_LIMIT = 10;
 const VARIANCE_LIMIT = 50;
 const REGIONAL_INSIGHT_MINIMUM = 5;
+export const MAX_DASHBOARD_ROWS = 30_000;
+
+export class DashboardScopeTooLargeError extends Error {
+  constructor() {
+    super(`Dashboard scope exceeds ${MAX_DASHBOARD_ROWS.toLocaleString()} projects; narrow the filters and try again.`);
+    this.name = "DashboardScopeTooLargeError";
+  }
+}
+
+export function enforceDashboardRowLimit(rowCount: number) {
+  if (rowCount > MAX_DASHBOARD_ROWS) throw new DashboardScopeTooLargeError();
+}
 
 export type DashboardProjectRow = {
   projectId: string;
@@ -30,6 +42,7 @@ export type DashboardProjectRow = {
   allocatedBudget: string | number | null;
   approvedBudgetForContract: string | number | null;
   physicalProgress: number | null;
+  hasPhysicalProgressEvidence: boolean;
   startDate: Date | string | null;
   targetCompletionDate: Date | string | null;
   actualCompletionDate: Date | string | null;
@@ -146,6 +159,7 @@ export function aggregateManagerialDashboardRows(
       return {
         region,
         total: groupedRows.length,
+        assessed: groupedRows.filter((row) => row.health !== "notAssessed").length,
         completed: regionCompleted,
         delayed: groupedRows.filter((row) => row.health === "delayed").length,
         atRisk: groupedRows.filter((row) => row.health === "atRisk").length,
@@ -174,13 +188,7 @@ export function aggregateManagerialDashboardRows(
         row.reasonCode !== "missingSchedule" &&
         row.reasonCode !== "invalidSchedule",
     ).length,
-    withPhysicalProgress: rows.filter(
-      (row) =>
-        row.physicalProgress !== null &&
-        Number.isFinite(row.physicalProgress) &&
-        row.physicalProgress >= 0 &&
-        row.physicalProgress <= 100,
-    ).length,
+    withPhysicalProgress: rows.filter((row) => row.physicalProgress !== null).length,
     withFinancialData: 0,
   };
 
@@ -212,9 +220,11 @@ export function aggregateManagerialDashboardRows(
       atRiskProjects: atRisk,
     },
     scheduleHealth,
-    regions: regions.sort(
-      (a, b) => b.delayed / Math.max(b.total, 1) - a.delayed / Math.max(a.total, 1),
-    ),
+    regions: regions.sort((a, b) => {
+      const byDelayRate =
+        b.delayed / Math.max(b.assessed, 1) - a.delayed / Math.max(a.assessed, 1);
+      return byDelayRate || a.region.localeCompare(b.region);
+    }),
     projectTypes: projectTypes.sort(
       (a, b) => b.allocatedBudget - a.allocatedBudget || a.projectType.localeCompare(b.projectType),
     ),
@@ -275,13 +285,15 @@ export async function getManagerialDashboardData(
         allocatedBudget: projects.budget,
         approvedBudgetForContract: projects.abc,
         physicalProgress: projects.physicalProgress,
+        metadata: projects.metadata,
         startDate: projects.startDate,
         targetCompletionDate: projects.targetCompletionDate,
         actualCompletionDate: projects.actualCompletionDate,
         lastSyncedAt: projects.lastSyncedAt,
       })
       .from(projects)
-      .where(where),
+      .where(where)
+      .limit(MAX_DASHBOARD_ROWS + 1),
     db
       .select({ status: syncLogs.status })
       .from(syncLogs)
@@ -298,25 +310,34 @@ export async function getManagerialDashboardData(
       .limit(1),
   ]);
 
-  return aggregateManagerialDashboardRows(rows, filters, asOf, {
+  enforceDashboardRowLimit(rows.length);
+
+  const dashboardRows: DashboardProjectRow[] = rows.map(({ metadata, ...row }) => ({
+    ...row,
+    hasPhysicalProgressEvidence: hasReportedPhysicalProgress(metadata),
+  }));
+
+  return aggregateManagerialDashboardRows(dashboardRows, filters, asOf, {
     lastSuccessfulSyncAt: latestSuccessfulRows[0]?.completedAt ?? null,
     latestSyncStatus: latestSyncRows[0]?.status ?? null,
   });
 }
 
 function enrichRow(row: DashboardProjectRow, asOf: string): EnrichedRow {
+  const physicalProgress = row.hasPhysicalProgressEvidence ? row.physicalProgress : null;
   const health = classifyScheduleHealth(
     {
       status: row.status,
       startDate: row.startDate,
       targetCompletionDate: row.targetCompletionDate,
       actualCompletionDate: row.actualCompletionDate,
-      physicalProgress: row.physicalProgress,
+      physicalProgress,
     },
     asOf,
   );
   return {
     ...row,
+    physicalProgress,
     canonicalStatus: canonicalStatus(row.status),
     health: health.health,
     expectedProgress: health.expectedProgress,
@@ -370,9 +391,15 @@ export function comparePriorityProjects(
   const healthRank = (health: ScheduleHealth) => (health === "delayed" ? 0 : 1);
   const byHealth = healthRank(a.health) - healthRank(b.health);
   if (byHealth !== 0) return byHealth;
+  if (a.health === "delayed" && b.health === "delayed") {
+    const byOverdueDays = Math.abs(b.daysToTarget ?? 0) - Math.abs(a.daysToTarget ?? 0);
+    if (byOverdueDays !== 0) return byOverdueDays;
+  }
   const byDeficit = (a.scheduleVariance ?? 0) - (b.scheduleVariance ?? 0);
   if (byDeficit !== 0) return byDeficit;
-  return (b.allocatedBudget ?? 0) - (a.allocatedBudget ?? 0);
+  const byBudget = (b.allocatedBudget ?? 0) - (a.allocatedBudget ?? 0);
+  if (byBudget !== 0) return byBudget;
+  return a.projectId.localeCompare(b.projectId);
 }
 
 function generateInsights(
@@ -391,13 +418,17 @@ function generateInsights(
   }
 
   const regionalBottleneck = data.regions
-    .filter((region) => region.total >= REGIONAL_INSIGHT_MINIMUM && region.delayed > 0)
-    .sort((a, b) => b.delayed / b.total - a.delayed / a.total)[0];
+    .filter((region) => region.assessed >= REGIONAL_INSIGHT_MINIMUM && region.delayed > 0)
+    .sort(
+      (a, b) =>
+        b.delayed / b.assessed - a.delayed / a.assessed ||
+        a.region.localeCompare(b.region),
+    )[0];
   if (regionalBottleneck) {
     insights.push({
       severity: "warning",
       title: `${regionalBottleneck.region} has the highest delayed-project rate`,
-      detail: `${regionalBottleneck.delayed} of ${regionalBottleneck.total} projects are delayed.`,
+      detail: `${regionalBottleneck.delayed} of ${regionalBottleneck.assessed} assessed projects are delayed.`,
       filter: { region: regionalBottleneck.region, health: "delayed" },
     });
   }
@@ -440,6 +471,18 @@ function groupRows<T>(rows: T[], key: (row: T) => string): Array<[string, T[]]> 
 function normalizedLabel(value: string | null | undefined) {
   const trimmed = value?.trim();
   return trimmed || UNKNOWN;
+}
+
+export function hasReportedPhysicalProgress(metadata: unknown): boolean {
+  if (!metadata || typeof metadata !== "object") return false;
+  const rows = (metadata as { powRelation?: unknown }).powRelation;
+  if (!Array.isArray(rows)) return false;
+  return rows.some((row) => {
+    if (!row || typeof row !== "object") return false;
+    const actual = (row as { actual?: unknown }).actual;
+    if (actual === null || actual === undefined || actual === "") return false;
+    return Number.isFinite(Number(String(actual).replace(/,/g, "")));
+  });
 }
 
 function uniqueSorted(values: Array<string | null>, descending = false) {

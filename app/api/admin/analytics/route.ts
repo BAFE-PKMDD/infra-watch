@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { parseManagerialDashboardFilters } from "@/lib/analytics/dashboard-filters";
-import { getManagerialDashboardData } from "@/lib/analytics/managerial-dashboard-query";
+import {
+  DashboardScopeTooLargeError,
+  getManagerialDashboardData,
+} from "@/lib/analytics/managerial-dashboard-query";
 import { hasPermission } from "@/lib/permissions";
 import type { ScopedUser } from "@/lib/scope";
 import { getCurrentUser } from "@/lib/session";
@@ -56,6 +59,12 @@ export function createAnalyticsGetHandler(
         return NextResponse.json(
           { error: "Invalid dashboard filters" },
           { status: 400, headers: { "Cache-Control": "private, no-store" } },
+        );
+      }
+      if (error instanceof DashboardScopeTooLargeError) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 422, headers: { "Cache-Control": "private, no-store" } },
         );
       }
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { DashboardScopeTooLargeError } from "@/lib/analytics/managerial-dashboard-query";
 import { createAnalyticsGetHandler } from "./route";
 
 const emptyData = {
@@ -121,4 +122,16 @@ test("returns a generic 500 without SQL, secrets, or stack details", async () =>
   const body = await response.text();
   assert.match(body, /Unable to load dashboard analytics/);
   assert.doesNotMatch(body, /password|secret|select|projects/i);
+});
+
+test("asks managers to narrow an oversized scope without returning partial totals", async () => {
+  const response = await createAnalyticsGetHandler({
+    getCurrentUser: async () => ({ id: "admin", role: "admin" }),
+    canViewAnalytics: () => true,
+    getDashboardData: async () => {
+      throw new DashboardScopeTooLargeError();
+    },
+  })(request());
+  assert.equal(response.status, 422);
+  assert.match(await response.text(), /narrow the filters/i);
 });

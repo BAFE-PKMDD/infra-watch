@@ -53,6 +53,7 @@ export type ManagerialDashboardData = {
   regions: Array<{
     region: string;
     total: number;
+    assessed: number;
     completed: number;
     delayed: number;
     atRisk: number;

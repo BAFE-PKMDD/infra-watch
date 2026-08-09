@@ -5,6 +5,8 @@ import {
   aggregateManagerialDashboardRows,
   buildDashboardConditionDescriptors,
   comparePriorityProjects,
+  enforceDashboardRowLimit,
+  hasReportedPhysicalProgress,
   type DashboardProjectRow,
 } from "./managerial-dashboard-query";
 
@@ -20,6 +22,7 @@ const baseRow: DashboardProjectRow = {
   allocatedBudget: "1000000.00",
   approvedBudgetForContract: 900000,
   physicalProgress: 50,
+  hasPhysicalProgressEvidence: true,
   startDate: new Date("2026-07-01T00:00:00+08:00"),
   targetCompletionDate: new Date("2026-09-08T00:00:00+08:00"),
   actualCompletionDate: null,
@@ -187,4 +190,64 @@ test("breaks tied priority severity by larger allocated budget", () => {
     "2026-08-10",
   );
   assert.deepEqual(data.priorityProjects.map((project) => project.projectId), ["large", "small"]);
+});
+
+test("does not assess or count progress when ABEMIS has no progress evidence", () => {
+  const data = aggregateManagerialDashboardRows(
+    [{ ...baseRow, physicalProgress: 0, hasPhysicalProgressEvidence: false }],
+    {},
+    "2026-08-10",
+  );
+  assert.equal(data.coverage.withPhysicalProgress, 0);
+  assert.equal(data.scheduleHealth.find((item) => item.key === "notAssessed")?.count, 1);
+  assert.equal(data.kpis.atRiskProjects, 0);
+});
+
+test("accepts a reported zero but rejects absent or blank POW progress evidence", () => {
+  assert.equal(hasReportedPhysicalProgress({ powRelation: [{ actual: "0" }] }), true);
+  assert.equal(hasReportedPhysicalProgress({ powRelation: [{ actual: "" }] }), false);
+  assert.equal(hasReportedPhysicalProgress({ powRelation: [] }), false);
+  assert.equal(hasReportedPhysicalProgress(null), false);
+});
+
+test("rejects oversized dashboard scopes instead of silently truncating totals", () => {
+  assert.throws(() => enforceDashboardRowLimit(30_001), /narrow/i);
+  assert.doesNotThrow(() => enforceDashboardRowLimit(30_000));
+});
+
+test("regional delay rates use assessed projects and remain deterministic on ties", () => {
+  const rows = [
+    ...Array.from({ length: 5 }, (_, index) => ({
+      ...baseRow,
+      projectId: `b-${index}`,
+      region: "Beta",
+      targetCompletionDate: "2026-08-01",
+    })),
+    ...Array.from({ length: 5 }, (_, index) => ({
+      ...baseRow,
+      projectId: `a-${index}`,
+      region: "Alpha",
+      targetCompletionDate: "2026-08-01",
+    })),
+    { ...baseRow, projectId: "a-missing", region: "Alpha", hasPhysicalProgressEvidence: false },
+  ];
+  const data = aggregateManagerialDashboardRows(rows, {}, "2026-08-10");
+  assert.equal(data.regions.find((item) => item.region === "Alpha")?.assessed, 5);
+  assert.equal(
+    data.insights.find((item) => item.title.includes("highest delayed"))?.filter?.region,
+    "Alpha",
+  );
+});
+
+test("priority ordering uses overdue days before stable project identity", () => {
+  const data = aggregateManagerialDashboardRows(
+    [
+      { ...baseRow, projectId: "z", targetCompletionDate: "2026-08-01" },
+      { ...baseRow, projectId: "a", targetCompletionDate: "2026-07-20" },
+      { ...baseRow, projectId: "b", targetCompletionDate: "2026-07-20" },
+    ],
+    {},
+    "2026-08-10",
+  );
+  assert.deepEqual(data.priorityProjects.map((item) => item.projectId), ["a", "b", "z"]);
 });

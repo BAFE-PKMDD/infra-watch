@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { serializeManagerialDashboardFilters } from "@/lib/analytics/dashboard-filters";
 import type {
@@ -6,9 +6,10 @@ import type {
   ManagerialDashboardFilters,
 } from "@/types/managerial-dashboard.types";
 
-export function dashboardQueryKey(filters: ManagerialDashboardFilters) {
+export function dashboardQueryKey(filters: ManagerialDashboardFilters, viewerKey: string) {
   return [
     "managerial-dashboard",
+    viewerKey,
     serializeManagerialDashboardFilters(filters).toString(),
   ] as const;
 }
@@ -22,23 +23,29 @@ export async function fetchManagerialDashboard(
     signal,
     cache: "no-store",
   });
-  if (!response.ok) {
-    throw new Error("Unable to load dashboard analytics");
-  }
   const payload = (await response.json()) as {
-    success: boolean;
+    success?: boolean;
     data?: ManagerialDashboardData;
+    error?: string;
   };
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Unable to load dashboard analytics");
+  }
   if (!payload.success || !payload.data) {
     throw new Error("Dashboard analytics response is unavailable");
   }
   return payload.data;
 }
 
-export function useManagerialDashboard(filters: ManagerialDashboardFilters) {
+export function useManagerialDashboard(
+  filters: ManagerialDashboardFilters,
+  viewerKey: string | undefined,
+) {
   return useQuery({
-    queryKey: dashboardQueryKey(filters),
+    queryKey: dashboardQueryKey(filters, viewerKey ?? "signed-out"),
     queryFn: ({ signal }) => fetchManagerialDashboard(filters, signal),
+    enabled: Boolean(viewerKey),
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,

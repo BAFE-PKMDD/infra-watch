@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/providers/auth-provider";
 import { parseManagerialDashboardFilters } from "@/lib/analytics/dashboard-filters";
 import { useManagerialDashboard } from "@/hooks/use-managerial-dashboard";
 import type { ManagerialDashboardFilters } from "@/types/managerial-dashboard.types";
@@ -23,11 +24,12 @@ import { RegionalPerformanceChart } from "./regional-performance-chart";
 import { ScheduleHealthChart } from "./schedule-health-chart";
 
 export function ManagerialDashboardClient() {
+  const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const filters = useMemo(() => safeParseFilters(searchParams), [searchParams]);
-  const query = useManagerialDashboard(filters);
+  const query = useManagerialDashboard(filters, user?.id);
 
   function updateFilters(next: ManagerialDashboardFilters) {
     const params = dashboardFiltersToSearchParams(next);
@@ -42,11 +44,14 @@ export function ManagerialDashboardClient() {
     updateFilters(next);
   }
 
-  if (query.isPending) return <DashboardSkeleton />;
-  if (query.isError || !query.data) {
+  if (query.isPending && !query.data) return <DashboardSkeleton />;
+  if (!query.data) {
     return (
       <div className="space-y-3">
-        <DashboardState state="error" />
+        <DashboardState
+          state="error"
+          message={query.error instanceof Error ? query.error.message : undefined}
+        />
         <Button variant="outline" onClick={() => query.refetch()}>
           <RefreshCw /> Retry
         </Button>
@@ -56,7 +61,7 @@ export function ManagerialDashboardClient() {
 
   const data = query.data;
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" aria-busy={query.isFetching}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <DataFreshness freshness={data.freshness} />
         <div className="flex items-center gap-2">
@@ -71,6 +76,12 @@ export function ManagerialDashboardClient() {
       </div>
 
       {data.freshness.isStale && <DashboardState state="stale" />}
+      {query.isRefetchError && <DashboardState state="refreshError" />}
+      {query.isPlaceholderData && (
+        <div role="status" aria-live="polite" className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          Updating dashboard filters…
+        </div>
+      )}
       <DashboardFilters filters={filters} options={data.filterOptions} onChange={updateFilters} />
 
       {data.kpis.totalProjects === 0 ? (

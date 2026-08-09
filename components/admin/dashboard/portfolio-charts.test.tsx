@@ -22,7 +22,7 @@ test("renders accessible titles, summaries, and keyboard filter alternatives", (
     onSelect: () => undefined,
   }));
   const regions = renderToStaticMarkup(createElement(RegionalPerformanceChart, {
-    data: [{ region: "Region VIII", total: 10, completed: 4, delayed: 2, atRisk: 1, completionRate: 40, allocatedBudget: 10_000 }],
+    data: [{ region: "Region VIII", total: 10, assessed: 8, completed: 4, delayed: 2, atRisk: 1, completionRate: 40, allocatedBudget: 10_000 }],
     onSelect: () => undefined,
   }));
   const variance = renderToStaticMarkup(createElement(ProgressVarianceChart, {

@@ -9,8 +9,8 @@ import { ChartEmptyState, ChartPanel } from "./chart-panel";
 export function RegionalPerformanceChart({ data, onSelect }: { data: ManagerialDashboardData["regions"]; onSelect: (region: string) => void }) {
   const chartData = data.map((item) => ({
     ...item,
-    delayedRate: item.total > 0 ? (item.delayed / item.total) * 100 : 0,
-    atRiskRate: item.total > 0 ? (item.atRisk / item.total) * 100 : 0,
+    delayedRate: item.assessed > 0 ? (item.delayed / item.assessed) * 100 : 0,
+    atRiskRate: item.assessed > 0 ? (item.atRisk / item.assessed) * 100 : 0,
   }));
   const summary = chartData.length > 0 ? chartData.map((item) => `${item.region}: ${item.completionRate.toFixed(1)}% complete, ${item.completed} completed of ${item.total}, ${item.delayed} delayed, ${item.atRisk} at risk`).join("; ") : "No regional performance data available.";
   return (
