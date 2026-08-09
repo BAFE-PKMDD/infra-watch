@@ -57,7 +57,7 @@ test("caps long banner-program charts while preserving Unknown and all totals", 
   const result = aggregateInfraAnalyticsRows(rows);
   const banners = result.data?.bannerStats ?? [];
 
-  assert.ok(banners.length <= 11);
+  assert.ok(banners.length <= 8);
   assert.ok(banners.some((item) => item.program === "Unknown"));
   assert.ok(banners.some((item) => item.program === "Other"));
   assert.equal(banners.reduce((sum, item) => sum + item.target, 0), rows.length);

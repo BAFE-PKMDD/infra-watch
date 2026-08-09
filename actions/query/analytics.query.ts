@@ -218,7 +218,7 @@ function uniqueKnown(values: Array<string | null>) {
   return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])].sort();
 }
 
-function limitBannerStats(items: BannerStat[], maximum = 11): BannerStat[] {
+function limitBannerStats(items: BannerStat[], maximum = 8): BannerStat[] {
   if (items.length <= maximum) return items;
   const unknown = items.find((item) => item.program === "Unknown");
   const known = items.filter((item) => item.program !== "Unknown");
