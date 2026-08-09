@@ -162,11 +162,11 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="relative border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer overflow-hidden"
+            className="relative border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm transition-all flex flex-col justify-between group overflow-hidden"
           >
             <div className="absolute top-0 left-0 right-0 h-1 bg-slate-900 dark:bg-white" />
             <div>
-              <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-4">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-300 mb-4">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider">
                   {t("infraAnalytics.target")}
                 </span>
@@ -176,9 +176,8 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
                 {data.totalTarget}
               </h3>
             </div>
-            <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 group-hover:text-primary transition-colors">
-              <span>{t("infraAnalytics.viewBreakdown")}</span>
-              <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform" />
+            <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300 group-hover:text-primary transition-colors">
+              <span>Portfolio total</span>
             </div>
           </motion.div>
 
@@ -190,13 +189,22 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: (idx + 1) * 0.05 }}
               onClick={() => setActiveStageDetails(activeStageDetails === card.key ? null : card.key)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setActiveStageDetails(activeStageDetails === card.key ? null : card.key);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-expanded={activeStageDetails === card.key}
               className={`relative border rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer overflow-hidden bg-white dark:bg-slate-900 ${
                 activeStageDetails === card.key ? "ring-2 ring-primary border-transparent" : "border-slate-250 dark:border-slate-850"
               }`}
             >
               <div className={`absolute top-0 left-0 right-0 h-1 ${card.accentClass}`} />
               <div>
-                <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-4">
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-300 mb-4">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider truncate mr-1">
                     {card.label}
                   </span>
@@ -206,7 +214,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
                   {card.value}
                 </h3>
               </div>
-              <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500">
+              <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300">
                 <span className="group-hover:text-primary transition-colors">
                   {card.count} {t("infraAnalytics.target").toLowerCase()}
                 </span>
@@ -307,7 +315,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
               </div>
             </div>
             
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal mt-4">
+            <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-normal mt-4">
               * Note: Operating Unit (RFOS) represents regional field offices responsible for validating local agricultural budgets.
             </p>
           </div>
@@ -376,7 +384,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
               </div>
             </div>
             
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal mt-4">
+            <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-normal mt-4">
               * Note: High Value Crops and Organic Agriculture are banner initiatives monitored under national targets.
             </p>
           </div>
