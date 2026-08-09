@@ -3,6 +3,8 @@ const CHAT_HISTORY_STATUSES = new Set([
   "completed",
   "refused",
   "failed",
+  "aborted",
+  "timed_out",
 ]);
 
 function parsePositiveInteger(value: string | null, fallback: number) {

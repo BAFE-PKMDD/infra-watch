@@ -20,3 +20,12 @@ test("accepts supported chat history analysis filters", () => {
     { page: 2, limit: 25, status: "completed", provider: "google" },
   );
 });
+
+test("accepts aborted and timed-out history filters", () => {
+  for (const status of ["aborted", "timed_out"]) {
+    assert.equal(
+      parseChatHistoryQuery(new URLSearchParams(`status=${status}`)).status,
+      status,
+    );
+  }
+});

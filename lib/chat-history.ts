@@ -138,6 +138,12 @@ export async function completeChatHistoryTurn(
     .where(eq(chatHistory.id, id));
 }
 
+export function getChatHistoryFailureStatus(errorCode: string) {
+  if (errorCode === "request_aborted") return "aborted" as const;
+  if (errorCode === "response_timeout") return "timed_out" as const;
+  return "failed" as const;
+}
+
 export async function failChatHistoryTurn(
   id: string,
   errorCode: string,
@@ -146,7 +152,7 @@ export async function failChatHistoryTurn(
   await db
     .update(chatHistory)
     .set({
-      status: "failed",
+      status: getChatHistoryFailureStatus(errorCode),
       errorCode,
       durationMs,
       updatedAt: new Date(),

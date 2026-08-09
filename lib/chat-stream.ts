@@ -37,12 +37,14 @@ export function createChatResponseStream({
   onError,
   onFinally,
   onCancel,
+  onComplete,
 }: {
   textStream: AsyncIterable<string>;
   terminalState: ChatStreamTerminalState;
   onError?: (error: unknown) => void;
   onFinally?: () => void;
   onCancel?: () => void;
+  onComplete?: (emittedText: string) => void | Promise<void>;
 }) {
   const encoder = new TextEncoder();
   let iterator: AsyncIterator<string> | null = null;
@@ -50,8 +52,9 @@ export function createChatResponseStream({
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
-      let emittedText = false;
+      let emittedText = "";
       let emittedTerminalNotice = false;
+      let completedText: string | null = null;
       const enqueueTerminalNotice = (notice: string) => {
         controller.enqueue(
           encoder.encode(emittedText ? `\n\n${notice}` : notice),
@@ -64,7 +67,7 @@ export function createChatResponseStream({
         while (!cancelled) {
           const { done, value: chunk } = await iterator.next();
           if (done || cancelled) break;
-          if (chunk) emittedText = true;
+          emittedText += chunk;
           controller.enqueue(encoder.encode(chunk));
         }
 
@@ -78,6 +81,7 @@ export function createChatResponseStream({
         ) {
           enqueueTerminalNotice(GENERIC_CHAT_ERROR);
         }
+        completedText = emittedText;
       } catch (error) {
         if (!cancelled && !terminalState.shouldSuppressFallbackNotice()) {
           onError?.(error);
@@ -89,7 +93,18 @@ export function createChatResponseStream({
         }
       } finally {
         onFinally?.();
-        if (!cancelled) controller.close();
+        if (!cancelled) {
+          controller.close();
+          try {
+            const completion =
+              completedText === null ? undefined : onComplete?.(completedText);
+            if (completion) {
+              void completion.catch((error) => onError?.(error));
+            }
+          } catch (error) {
+            onError?.(error);
+          }
+        }
       }
     },
     async cancel() {

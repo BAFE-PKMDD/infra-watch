@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { projects, syncLogs } from "@/lib/db/schema";
+import { aggregateProjectStatusCounts } from "@/lib/project-status-statistics";
 import { fetchInfraProjects } from "./client";
 import { isInfraWatchProject, transformAbemisProject } from "./transform";
 import { eq, sql, or, ilike, and, inArray } from "drizzle-orm";
@@ -329,25 +330,27 @@ export async function getAdminProjectStats(user?: ScopedUser) {
   const conditions = user ? getProjectScopeConditions(user) : [];
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const [stats] = await db
-    .select({
-      total: sql`count(*)`,
-      totalBudget: sql`coalesce(sum(${projects.budget}), 0)::text`,
-      ongoing: sql`count(*) filter (where ${projects.status} = 'ongoing')::int`,
-      completed: sql`count(*) filter (where ${projects.status} = 'completed')::int`,
-      planned: sql`count(*) filter (where ${projects.status} = 'planned')::int`,
-      suspended: sql`count(*) filter (where ${projects.status} = 'suspended')::int`,
-    })
-    .from(projects)
-    .where(whereClause);
+  const [[budgetStats], statusRows] = await Promise.all([
+    db
+      .select({
+        totalBudget: sql`coalesce(sum(${projects.budget}), 0)::text`,
+      })
+      .from(projects)
+      .where(whereClause),
+    db
+      .select({
+        status: projects.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(projects)
+      .where(whereClause)
+      .groupBy(projects.status),
+  ]);
+  const statusStats = aggregateProjectStatusCounts(statusRows);
 
   return {
-    total: Number(stats?.total ?? 0),
-    totalBudget: Number(stats?.totalBudget ?? 0),
-    ongoing: Number(stats?.ongoing ?? 0),
-    completed: Number(stats?.completed ?? 0),
-    planned: Number(stats?.planned ?? 0),
-    suspended: Number(stats?.suspended ?? 0),
+    ...statusStats,
+    totalBudget: Number(budgetStats?.totalBudget ?? 0),
   };
 }
 

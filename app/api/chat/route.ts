@@ -9,6 +9,7 @@ import {
   getServerOwnedChatHistory,
   startChatHistoryTurn,
 } from "@/lib/chat-history";
+import { createChatHistoryLifecycle } from "@/lib/chat-history-lifecycle";
 import {
   CHAT_SCOPE_INSTRUCTION,
   getChatPolicyRefusal,
@@ -286,13 +287,35 @@ export async function POST(request: NextRequest) {
       ...(await getServerOwnedChatHistory({ conversationId, ownerKey, userId })),
       { role: "user" as const, content: message },
     ];
-    let historySettled = false;
+    type CompletionMetadata = {
+      modelId: string;
+      toolNames: string[];
+      inputTokens?: number;
+      outputTokens?: number;
+      totalTokens?: number;
+      finishReason: string;
+    };
+    let resolveCompletionMetadata!: (value: CompletionMetadata | null) => void;
+    const completionMetadata = new Promise<CompletionMetadata | null>((resolve) => {
+      resolveCompletionMetadata = resolve;
+    });
+    const historyLifecycle = createChatHistoryLifecycle({
+      onWriteError: (error) => {
+        logChatError(requestId, "history_write_failed", error);
+      },
+    });
+    const settleHistoryFailure = (errorCode: string) =>
+      historyLifecycle.settleTerminal(async () => {
+        if (!historyId) return;
+        await failChatHistoryTurn(historyId, errorCode, Date.now() - startedAt);
+      });
     const terminalState = createChatStreamTerminalState();
     const timeoutController = new AbortController();
     const timeoutId = setTimeout(() => {
       terminalState.markTimeout(
         "The response timed out before it could finish. Please try again.",
       );
+      void settleHistoryFailure("response_timeout");
       timeoutController.abort();
     }, getChatResponseTimeoutMs());
 
@@ -309,69 +332,35 @@ export async function POST(request: NextRequest) {
         timeoutController.signal,
       ]),
       onEnd: async ({
-        text,
         usage,
         toolCalls,
         finishReason,
         model: completedModel,
       }) => {
         clearTimeout(timeoutId);
-        if (historySettled || !historyId) return;
-        historySettled = true;
-
-        try {
-          if (!text.trim()) {
-            await failChatHistoryTurn(
-              historyId,
-              "empty_provider_response",
-              Date.now() - startedAt,
-            );
-            return;
-          }
-          await completeChatHistoryTurn(historyId, {
-            assistantMessage: text,
-            model: completedModel.modelId,
-            toolNames: [...new Set(toolCalls.map((call) => call.toolName))],
-            inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens,
-            totalTokens: usage.totalTokens,
-            durationMs: Date.now() - startedAt,
-            finishReason,
-          });
-        } catch (error) {
-          logChatError(requestId, "history_complete_failed", error);
-        }
+        resolveCompletionMetadata({
+          modelId: completedModel.modelId,
+          toolNames: [...new Set(toolCalls.map((call) => call.toolName))],
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          totalTokens: usage.totalTokens,
+          finishReason,
+        });
       },
       onError: async ({ error }) => {
+        resolveCompletionMetadata(null);
         terminalState.markProviderError();
         clearTimeout(timeoutId);
-        if (historySettled || !historyId) return;
-        historySettled = true;
-        try {
-          await failChatHistoryTurn(
-            historyId,
-            "provider_stream_failed",
-            Date.now() - startedAt,
-          );
-        } catch (historyError) {
-          logChatError(requestId, "history_fail_update_failed", historyError);
-        }
+        void settleHistoryFailure("provider_stream_failed");
         logChatError(requestId, "provider_stream_failed", error);
       },
       onAbort: async () => {
+        resolveCompletionMetadata(null);
         clearTimeout(timeoutId);
         if (request.signal.aborted) terminalState.markRequestAborted();
-        if (historySettled || !historyId) return;
-        historySettled = true;
-        try {
-          await failChatHistoryTurn(
-            historyId,
-            terminalState.getNotice() ? "response_timeout" : "request_aborted",
-            Date.now() - startedAt,
-          );
-        } catch (error) {
-          logChatError(requestId, "history_abort_update_failed", error);
-        }
+        void settleHistoryFailure(
+          terminalState.getNotice() ? "response_timeout" : "request_aborted",
+        );
       },
     });
 
@@ -383,7 +372,37 @@ export async function POST(request: NextRequest) {
       },
       onCancel: () => {
         terminalState.markRequestAborted();
+        void settleHistoryFailure("request_aborted");
         timeoutController.abort();
+      },
+      onComplete: async (emittedText) => {
+        const metadata = await completionMetadata;
+        const completedHistoryId = historyId;
+        if (
+          !metadata ||
+          historyLifecycle.isInvalidated() ||
+          !completedHistoryId ||
+          request.signal.aborted ||
+          timeoutController.signal.aborted
+        ) {
+          return;
+        }
+        if (!emittedText.trim()) {
+          void settleHistoryFailure("empty_provider_response");
+          return;
+        }
+        historyLifecycle.beginCompletion(async () => {
+          await completeChatHistoryTurn(completedHistoryId, {
+            assistantMessage: emittedText,
+            model: metadata.modelId,
+            toolNames: metadata.toolNames,
+            inputTokens: metadata.inputTokens,
+            outputTokens: metadata.outputTokens,
+            totalTokens: metadata.totalTokens,
+            durationMs: Date.now() - startedAt,
+            finishReason: metadata.finishReason,
+          });
+        });
       },
       onFinally: () => clearTimeout(timeoutId),
     });

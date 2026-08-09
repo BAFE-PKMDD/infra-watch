@@ -37,10 +37,7 @@ export function isProjectHref(href: string | undefined): href is string {
 
   try {
     const identifier = decodeURIComponent(encodedIdentifier);
-    return (
-      isSafeProjectIdentifier(identifier) &&
-      `/projects/${encodeURIComponent(identifier)}` === href
-    );
+    return getProjectHref(identifier) === href;
   } catch {
     return false;
   }

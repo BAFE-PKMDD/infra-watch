@@ -38,6 +38,7 @@ test("recognizes only local project overview links", () => {
   assert.equal(isProjectHref("/projects/1997-R4B-OCM-INFRA-PR-STWxSx-00076"), true);
   assert.equal(isProjectHref("/projects/2018-R7-CEB-INFRA-N%2FA-RFO-00052"), true);
   assert.equal(isProjectHref("/projects/17102"), true);
+  assert.equal(isProjectHref("/projects/not-a-real-project"), false);
   assert.equal(isProjectHref("https://example.com/projects/123"), false);
   assert.equal(isProjectHref("/projects/../admin-projects"), false);
   assert.equal(isProjectHref("/projects/..%2Fadmin-projects"), false);

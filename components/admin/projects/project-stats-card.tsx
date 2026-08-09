@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, Database, PauseCircle, WalletCards } from "lucide-react";
+import { CheckCircle2, CircleDashed, Clock3, Database, PauseCircle, WalletCards } from "lucide-react";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-PH", {
@@ -23,13 +23,14 @@ export function ProjectStatsCard({
   const items = [
     { label: "Projects", value: statistics.total.toLocaleString(), icon: Database },
     { label: "Budget", value: formatCurrency(statistics.totalBudget), icon: WalletCards },
+    { label: "Not Yet Started", value: statistics.planned.toLocaleString(), icon: CircleDashed },
     { label: "Ongoing", value: statistics.ongoing.toLocaleString(), icon: Clock3 },
     { label: "Completed", value: statistics.completed.toLocaleString(), icon: CheckCircle2 },
     { label: "Suspended", value: statistics.suspended.toLocaleString(), icon: PauseCircle },
   ];
 
   return (
-    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
       {items.map((item) => {
         const Icon = item.icon;
 

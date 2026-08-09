@@ -83,11 +83,62 @@ test("does not synthesize a provider error when a cancelled stream throws", asyn
   assert.equal(await readTextStream(responseStream), "");
 });
 
+test("reports the exact text emitted to the client", async () => {
+  const terminalState = createChatStreamTerminalState();
+  let completedText: string | null = null;
+  const responseStream = createChatResponseStream({
+    textStream: (async function* () {
+      yield "Tool-step preamble. ";
+      yield "Final answer.";
+    })(),
+    terminalState,
+    onComplete: (text) => {
+      completedText = text;
+    },
+  });
+
+  const visibleText = await readTextStream(responseStream);
+
+  assert.equal(visibleText, "Tool-step preamble. Final answer.");
+  assert.equal(completedText, visibleText);
+});
+
+test("does not keep the response open while completion persistence is pending", async () => {
+  const terminalState = createChatStreamTerminalState();
+  let releaseCompletion!: () => void;
+  const completionGate = new Promise<void>((resolve) => {
+    releaseCompletion = resolve;
+  });
+  const responseStream = createChatResponseStream({
+    textStream: (async function* () {
+      yield "Complete answer.";
+    })(),
+    terminalState,
+    onComplete: () => completionGate,
+  });
+  const reader = responseStream.getReader();
+
+  assert.equal(
+    new TextDecoder().decode((await reader.read()).value),
+    "Complete answer.",
+  );
+  const closeResult = await Promise.race([
+    reader.read().then(({ done }) => (done ? "closed" : "open")),
+    new Promise<string>((resolve) =>
+      setTimeout(() => resolve("blocked"), 25),
+    ),
+  ]);
+  releaseCompletion();
+
+  assert.equal(closeResult, "closed");
+});
+
 test("cancels upstream generation when the response reader is cancelled", async () => {
   const terminalState = createChatStreamTerminalState();
   let cancelled = false;
   let iteratorReturned = false;
   let emittedAfterCancellation = false;
+  let completed = false;
   let step = 0;
   const textStream: AsyncIterable<string> = {
     [Symbol.asyncIterator]() {
@@ -114,6 +165,9 @@ test("cancels upstream generation when the response reader is cancelled", async 
     onCancel: () => {
       cancelled = true;
     },
+    onComplete: () => {
+      completed = true;
+    },
   });
   const reader = responseStream.getReader();
 
@@ -124,4 +178,5 @@ test("cancels upstream generation when the response reader is cancelled", async 
   assert.equal(cancelled, true);
   assert.equal(iteratorReturned, true);
   assert.equal(emittedAfterCancellation, false);
+  assert.equal(completed, false);
 });

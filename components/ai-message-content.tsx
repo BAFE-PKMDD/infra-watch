@@ -231,14 +231,12 @@ export function AiMessageContent({
                 <ArrowUpRight className="ml-0.5 inline h-3 w-3" aria-hidden="true" />
               </Link>
             ) : (
-              <a
-                href={href}
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900 dark:text-blue-300"
+              <span
+                className="font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 dark:text-slate-300"
+                title="External link omitted"
               >
                 {children}
-              </a>
+              </span>
             ),
           table: ({ children }) => (
             <div
