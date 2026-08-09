@@ -14,8 +14,10 @@ import { DataFreshness } from "./data-freshness";
 import { DashboardFilters, dashboardFiltersToSearchParams, mergeDashboardFilter } from "./dashboard-filters";
 import { DashboardSkeleton } from "./dashboard-skeleton";
 import { DashboardState } from "./dashboard-state";
+import { ExecutiveInsights } from "./executive-insights";
 import { ExecutiveKpis } from "./executive-kpis";
 import { ProgressVarianceChart } from "./progress-variance-chart";
+import { PriorityProjectsTable } from "./priority-projects-table";
 import { ProjectTypeBudgetChart } from "./project-type-budget-chart";
 import { RegionalPerformanceChart } from "./regional-performance-chart";
 import { ScheduleHealthChart } from "./schedule-health-chart";
@@ -32,6 +34,12 @@ export function ManagerialDashboardClient() {
     router.replace(params.size > 0 ? `${pathname}?${params.toString()}` : pathname, {
       scroll: false,
     });
+  }
+
+  function applyPartialFilters(partial: Partial<ManagerialDashboardFilters>) {
+    const next = { ...filters, ...partial };
+    if (partial.region && partial.region !== filters.region) delete next.province;
+    updateFilters(next);
   }
 
   if (query.isPending) return <DashboardSkeleton />;
@@ -70,6 +78,7 @@ export function ManagerialDashboardClient() {
       ) : (
         <>
           <ExecutiveKpis kpis={data.kpis} coverage={data.coverage} />
+          <ExecutiveInsights insights={data.insights} onApplyFilter={applyPartialFilters} />
           <DataCoverage coverage={data.coverage} />
           <section aria-label="Portfolio analytics" className="grid gap-4 lg:grid-cols-2">
             <ScheduleHealthChart data={data.scheduleHealth} onSelect={(health) => updateFilters(mergeDashboardFilter(filters, "health", health))} />
@@ -77,6 +86,7 @@ export function ManagerialDashboardClient() {
             <RegionalPerformanceChart data={data.regions} onSelect={(region) => updateFilters(mergeDashboardFilter(filters, "region", region))} />
             <ProgressVarianceChart data={data.progressVariance} />
           </section>
+          <PriorityProjectsTable projects={data.priorityProjects} />
         </>
       )}
     </div>

@@ -136,3 +136,55 @@ test("applies canonical status and schedule-health filters without widening scop
   assert.equal(data.kpis.totalProjects, 1);
   assert.equal(data.priorityProjects.length, 0);
 });
+
+test("does not invent an alert when no project is delayed or at risk", () => {
+  const data = aggregateManagerialDashboardRows(
+    [{ ...baseRow, targetCompletionDate: new Date("2026-10-31T00:00:00+08:00"), physicalProgress: 60 }],
+    {},
+    "2026-08-10",
+  );
+  assert.equal(data.insights.some((insight) => /exposure|delayed/i.test(insight.title)), false);
+});
+
+test("surfaces high-value delayed allocation as a critical insight", () => {
+  const data = aggregateManagerialDashboardRows(
+    [{ ...baseRow, allocatedBudget: "50000000", targetCompletionDate: new Date("2026-08-01T00:00:00+08:00") }],
+    {},
+    "2026-08-10",
+  );
+  assert.equal(data.insights[0]?.severity, "critical");
+  assert.match(data.insights[0]?.detail ?? "", /50,000,000/);
+});
+
+test("does not name a regional bottleneck below the five-project sample minimum", () => {
+  const rows = Array.from({ length: 4 }, (_, index) => ({
+    ...baseRow,
+    projectId: `delayed-${index}`,
+    targetCompletionDate: new Date("2026-08-01T00:00:00+08:00"),
+  }));
+  const data = aggregateManagerialDashboardRows(rows, {}, "2026-08-10");
+  assert.equal(data.insights.some((insight) => /highest delayed-project rate/i.test(insight.title)), false);
+});
+
+test("warns when priority projects are due within 30 days", () => {
+  const data = aggregateManagerialDashboardRows([baseRow], {}, "2026-08-10");
+  assert.equal(data.insights.some((insight) => /approaching target dates/i.test(insight.title)), true);
+});
+
+test("warns when schedule coverage is materially incomplete", () => {
+  const rows = Array.from({ length: 5 }, (_, index) => ({ ...baseRow, projectId: `missing-${index}`, startDate: null }));
+  const data = aggregateManagerialDashboardRows(rows, {}, "2026-08-10");
+  assert.equal(data.insights.some((insight) => /coverage is limited/i.test(insight.title)), true);
+});
+
+test("breaks tied priority severity by larger allocated budget", () => {
+  const data = aggregateManagerialDashboardRows(
+    [
+      { ...baseRow, projectId: "small", physicalProgress: 20, allocatedBudget: "100" },
+      { ...baseRow, projectId: "large", physicalProgress: 20, allocatedBudget: "1000" },
+    ],
+    {},
+    "2026-08-10",
+  );
+  assert.deepEqual(data.priorityProjects.map((project) => project.projectId), ["large", "small"]);
+});
