@@ -24,11 +24,21 @@ function clampProgress(value: number | null) {
 }
 
 function inferProgress(project: AbemisProject, key: "actual" | "target") {
-  const powRows = project.powRelation ?? [];
+  const powRows = getPowRows(project);
   if (powRows.length === 0) return 0;
 
   const total = powRows.reduce((sum, row) => sum + (parseNumber(row[key]) ?? 0), 0);
   return clampProgress(total);
+}
+
+function getPowRows(project: AbemisProject) {
+  if (project.powRelation?.length) return project.powRelation;
+  return project.pow_relation ?? project.powRelation ?? [];
+}
+
+function getProcurementRows(project: AbemisProject) {
+  if (project.procurementRelation?.length) return project.procurementRelation;
+  return project.procurement_relation ?? project.procurementRelation ?? [];
 }
 
 function mapStatus(statusValue: string | null | undefined) {
@@ -70,7 +80,7 @@ export function isInfraWatchProject(project: Pick<AbemisProject, "project_type">
 }
 
 function inferStartDate(project: AbemisProject) {
-  const ntp = project.procurementRelation?.find((row) =>
+  const ntp = getProcurementRows(project).find((row) =>
     row.milestone?.toLowerCase().includes("notice to proceed"),
   );
 
@@ -161,8 +171,8 @@ export function transformAbemisProject(project: AbemisProject) {
     metadata: {
       geotag: project.geotag ?? [],
       proposalDocuments: project.proposalDocuments ?? project.proposal_documents ?? [],
-      powRelation: project.powRelation ?? project.pow_relation ?? [],
-      procurementRelation: project.procurementRelation ?? project.procurement_relation ?? [],
+      powRelation: getPowRows(project),
+      procurementRelation: getProcurementRows(project),
       kmllink: project.kmllink ?? project.kml_link,
     },
     commodities: [],
