@@ -4,7 +4,7 @@ import { InfraAnalyticsClient } from "./infra-analytics-client";
 export const revalidate = 300; // Cache and revalidate statistics every 5 minutes
 
 export default async function InfraAnalyticsPage() {
-  const data = await getInfraAnalyticsData();
+  const result = await getInfraAnalyticsData();
 
-  return <InfraAnalyticsClient initialData={data} />;
+  return <InfraAnalyticsClient initialResult={result} />;
 }
