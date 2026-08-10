@@ -110,8 +110,24 @@ export function migrationRequiresDataEffectVerification(migrationSql: string) {
   const executableSql = migrationSql
     .replaceAll(/\/\*[\s\S]*?\*\//g, " ")
     .replaceAll(/--[^\r\n]*/g, " ");
-  return /\b(?:insert\s+into|update|delete\s+from|merge\s+into|truncate)\b/i.test(
+  return /(?:^|;)\s*(?:insert\s+into|update\b|delete\s+from|merge\s+into|truncate(?:\s+table)?\b)/im.test(
     executableSql,
+  );
+}
+
+const SCHEMA_GUARANTEED_DATA_MIGRATIONS = new Set([
+  // 0004 backfills owner_key immediately before SET NOT NULL. Snapshot
+  // verification of that constraint proves the backfill completed.
+  "0004_add_chat_owner_key",
+]);
+
+export function migrationNeedsOperatorVerification(
+  tag: string,
+  migrationSql: string,
+) {
+  return (
+    migrationRequiresDataEffectVerification(migrationSql) &&
+    !SCHEMA_GUARANTEED_DATA_MIGRATIONS.has(tag)
   );
 }
 
@@ -397,7 +413,7 @@ async function main() {
         path.join(migrationsDirectory, `${entry.tag}.sql`),
         "utf8",
       );
-      if (migrationRequiresDataEffectVerification(migration)) break;
+      if (migrationNeedsOperatorVerification(entry.tag, migration)) break;
 
       const tableNames = [...migration.matchAll(/CREATE TABLE "([^"]+)"/g)].map(
         (match) => match[1],
