@@ -1,0 +1,1 @@
+CREATE INDEX "project_metric_snapshots_capture_date_idx" ON "project_metric_snapshots" USING btree ("capture_date");

@@ -1,6 +1,5 @@
 "use client";
 
-
 import { ArrowRight, BookOpen, Download } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";

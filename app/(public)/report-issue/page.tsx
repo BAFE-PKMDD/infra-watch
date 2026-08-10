@@ -113,6 +113,7 @@ export default function IssuesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
+
   const { data, isLoading } = useQuery({
     queryKey: ["issues", debouncedSearchQuery, statusFilter, startDate, endDate, currentPage],
     queryFn: () => {
@@ -134,10 +135,6 @@ export default function IssuesPage() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 300, behavior: "smooth" });
-  };
-
-  const resetPageForFilterChange = () => {
-    if (currentPage !== 1) setCurrentPage(1);
   };
 
   return (
@@ -179,7 +176,7 @@ export default function IssuesPage() {
                 value={searchQuery}
                 onChange={(event) => {
                   setSearchQuery(event.target.value);
-                  resetPageForFilterChange();
+                  setCurrentPage(1);
                 }}
                 className="h-10 border-slate-200 bg-white pl-9 text-slate-900 placeholder:text-slate-400 focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100"
               />
@@ -193,7 +190,7 @@ export default function IssuesPage() {
                   value={startDate}
                   onChange={(event) => {
                     setStartDate(event.target.value);
-                    resetPageForFilterChange();
+                    setCurrentPage(1);
                   }}
                   className="h-10 border-slate-200 bg-white pl-9 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 />
@@ -205,19 +202,17 @@ export default function IssuesPage() {
                   value={endDate}
                   onChange={(event) => {
                     setEndDate(event.target.value);
-                    resetPageForFilterChange();
+                    setCurrentPage(1);
                   }}
                   className="h-10 border-slate-200 bg-white pl-9 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 />
               </div>
-              <Select
-                value={statusFilter}
-                onValueChange={(value) => {
-                  if (!value) return;
+              <Select value={statusFilter} onValueChange={(value) => {
+                if (value) {
                   setStatusFilter(value as IssueStatus | "all");
-                  resetPageForFilterChange();
-                }}
-              >
+                  setCurrentPage(1);
+                }
+              }}>
                 <SelectTrigger className="h-10 w-full border-slate-200 bg-white text-slate-900 sm:w-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                   <div className="flex items-center gap-2">
                     <Filter className="size-3.5 text-slate-400" />

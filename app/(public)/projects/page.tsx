@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { 
   Search, 
   Filter, 
@@ -10,6 +9,7 @@ import {
   List,
   Map as MapIcon,
   Download,
+
   ChevronDown,
   MapPin,
   X,
@@ -29,12 +29,7 @@ import { getRegions, getProvinces, getMunicipalities, getBarangays } from "@/act
 import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
 
-const GISMapCanvas = dynamic(() => import("@/components/map/gis-map-canvas"), { 
-  ssr: false,
-  loading: () => <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-slate-50 dark:bg-slate-900"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>
-});
-
-type MapPin = {
+type CatalogMapPin = {
   id: string;
   name: string;
   lat: number;
@@ -50,28 +45,23 @@ type GeotagPhoto = {
   url?: string;
 };
 
-function fallbackCoordinateOffset(projectId: string, axis: "lat" | "lng") {
-  const value = `${projectId}:${axis}`;
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
-  }
-  return hash / 0xffffffff - 0.5;
+function randomCoordinateFallback(base: number) {
+  return base + (Math.random() - 0.5) * 5;
 }
 
 function getGeotagPhotos(metadata: unknown): GeotagPhoto[] {
-  if (!metadata || typeof metadata !== "object" || !("geotag" in metadata)) return [];
-  const geotag = metadata.geotag;
+  if (!metadata || typeof metadata !== "object") return [];
+  const geotag = (metadata as Record<string, unknown>).geotag;
   if (!Array.isArray(geotag)) return [];
-
-  return geotag.flatMap((item) => {
-    if (!item || typeof item !== "object") return [];
-    const photoUrl = "photo_url" in item && typeof item.photo_url === "string" ? item.photo_url : undefined;
-    const url = "url" in item && typeof item.url === "string" ? item.url : undefined;
-    return photoUrl || url ? [{ photo_url: photoUrl, url }] : [];
-  });
+  return geotag.filter(
+    (photo): photo is GeotagPhoto => Boolean(photo) && typeof photo === "object",
+  );
 }
 
+const GISMapCanvas = dynamic(() => import("@/components/map/gis-map-canvas"), { 
+  ssr: false,
+  loading: () => <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-slate-50 dark:bg-slate-900"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>
+});
 export default function ProjectsCatalog() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeProgram, setActiveProgram] = useState<"all" | "amss" | "ins">("all");
@@ -83,7 +73,7 @@ export default function ProjectsCatalog() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "grid" | "map">("list");
   const { theme } = useTheme();
-  const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
+  const [selectedPin, setSelectedPin] = useState<CatalogMapPin | null>(null);
 
   const { ref, inView } = useInView();
 
@@ -160,8 +150,8 @@ export default function ProjectsCatalog() {
     return allMapPins.map(p => ({
       id: p.id,
       name: p.name,
-      lat: p.latitude || 12.8797 + fallbackCoordinateOffset(p.id, "lat") * 5,
-      lng: p.longitude || 121.7740 + fallbackCoordinateOffset(p.id, "lng") * 5,
+      lat: p.latitude || randomCoordinateFallback(12.8797),
+      lng: p.longitude || randomCoordinateFallback(121.7740),
       status: mapInternalToPublicStage(p.status).toLowerCase().replace(" ", ""),
       type: p.program,
       desc: `${p.barangay}, ${p.municipality}`,
@@ -679,9 +669,10 @@ export default function ProjectsCatalog() {
                   {(() => {
                     const projectDetails = allMapPins.find((p) => p.id === selectedPin.id);
                     if (!projectDetails) return null;
-                    const geotags = getGeotagPhotos(projectDetails.metadata);
-                    const geotagUrl = geotags[0]?.photo_url || geotags[0]?.url;
-                    const previewImageUrl = geotagUrl || "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80";
+                    const geotagPhotos = getGeotagPhotos(projectDetails.metadata);
+                    const firstPhotoUrl = geotagPhotos[0]?.photo_url
+                      || geotagPhotos[0]?.url
+                      || "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80";
                     return (
                       <>
                         <div className="flex-1 overflow-y-auto p-5 pb-24 relative">
@@ -782,24 +773,24 @@ export default function ProjectsCatalog() {
                           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
                             <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
                             <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                              GEOTAGGED PHOTOS ({geotags.length})
+                              GEOTAGGED PHOTOS ({geotagPhotos.length})
                             </span>
                           </div>
                           <div className="p-4 bg-white dark:bg-slate-900">
-                            {geotags.length > 0 ? (
+                            {geotagPhotos.length > 0 ? (
                               <a 
-                                href={previewImageUrl}
+                                href={firstPhotoUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="block w-28 h-28 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden relative cursor-pointer hover:opacity-90 transition-opacity"
                               >
-                                <Image
-                                  src={previewImageUrl}
+                                {/* External geotag hosts are source-controlled data,
+                                    so they cannot be exhaustively allowlisted for next/image. */}
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={firstPhotoUrl}
                                   alt="Geotagged Photo"
-                                  fill
-                                  sizes="112px"
-                                  unoptimized
-                                  className="object-cover"
+                                  className="h-full w-full object-cover"
                                 />
                               </a>
                             ) : (

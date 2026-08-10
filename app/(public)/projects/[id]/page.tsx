@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ProjectDetailClient } from "@/components/projects/project-detail-client";
 import { getPublicProjectById } from "@/actions/query/public-projects.query";
+import type { ProjectDetail } from "@/types";
 
 // In Next.js App Router, dynamic params are available via the params prop.
 export default async function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,5 +27,5 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
     );
   }
 
-  return <ProjectDetailClient project={project} />;
+  return <ProjectDetailClient project={project as ProjectDetail} />;
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "project_metric_snapshots" ALTER COLUMN "physical_progress" DROP NOT NULL;

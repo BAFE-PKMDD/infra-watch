@@ -106,6 +106,15 @@ export function getMigrationBaselineState(tablePresence: boolean[]) {
   return "partial" as const;
 }
 
+export function migrationRequiresDataEffectVerification(migrationSql: string) {
+  const executableSql = migrationSql
+    .replaceAll(/\/\*[\s\S]*?\*\//g, " ")
+    .replaceAll(/--[^\r\n]*/g, " ");
+  return /\b(?:insert\s+into|update|delete\s+from|merge\s+into|truncate)\b/i.test(
+    executableSql,
+  );
+}
+
 export async function findSnapshotMismatches(
   sql: SqlClient,
   snapshot: MigrationSnapshot,
@@ -388,6 +397,8 @@ async function main() {
         path.join(migrationsDirectory, `${entry.tag}.sql`),
         "utf8",
       );
+      if (migrationRequiresDataEffectVerification(migration)) break;
+
       const tableNames = [...migration.matchAll(/CREATE TABLE "([^"]+)"/g)].map(
         (match) => match[1],
       );

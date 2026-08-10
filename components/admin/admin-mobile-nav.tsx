@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleAlert, FolderKanban, LayoutDashboard, MessageSquare, RefreshCw, ScrollText, Users } from "lucide-react";
+import { CircleAlert, FileText, FolderKanban, LayoutDashboard, MessageSquare, RefreshCw, ScrollText, Users } from "lucide-react";
 
 import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, resource: "dashboard", action: "view" },
+  { label: "Analytics", href: "/dashboard", icon: LayoutDashboard, resource: "analytics", action: "view" },
+  { label: "Brief", href: "/executive-brief", icon: FileText, resource: "analytics", action: "view" },
   { label: "Projects", href: "/admin-projects", icon: FolderKanban, resource: "projects", action: "list" },
   { label: "Feedbacks", href: "/feedbacks", icon: MessageSquare, resource: "feedback", action: "list" },
   { label: "Issues", href: "/issues", icon: CircleAlert, resource: "issues", action: "list" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
@@ -35,6 +35,7 @@ const defaultCenter: [number, number] = [10.74, 124.79]; // Visayas center
 const defaultZoom = 8.5;
 
 export default function GISMapPage() {
+
   const { resolvedTheme } = useTheme();
 
   const [selectedProject, setSelectedProject] = useState<typeof mapProjects[0] | null>(null);

@@ -17,17 +17,6 @@ export type PublicProjectFilters = {
   pageParam?: number;
 };
 
-type ProjectMetadata = Record<string, unknown>;
-
-function getPhotoUrl(tag: unknown): string | undefined {
-  if (!tag || typeof tag !== "object") return undefined;
-
-  const record = tag as Record<string, unknown>;
-  if (typeof record.photo_url === "string") return record.photo_url;
-  if (typeof record.url === "string") return record.url;
-  return undefined;
-}
-
 export async function getPublicProjects({
   searchQuery,
   program,
@@ -236,7 +225,7 @@ export async function getPublicProjectById(id: string) {
     if (!row) return null;
 
     // We parse metadata or provide empty defaults for the rich UI
-    const metadata = (row.metadata as ProjectMetadata | null) || {};
+    const metadata = (row.metadata as Record<string, unknown> | null) || {};
 
     const coordinates = row.latitude && row.longitude ? `${row.latitude}, ${row.longitude}` : undefined;
 
@@ -261,7 +250,17 @@ export async function getPublicProjectById(id: string) {
         financial: row.financialProgress || 0,
       },
       photos: Array.isArray(metadata.geotag)
-        ? metadata.geotag.map(getPhotoUrl).filter((url): url is string => Boolean(url))
+        ? metadata.geotag
+          .map((tag) => {
+            if (!tag || typeof tag !== "object") return undefined;
+            const photo = tag as Record<string, unknown>;
+            return typeof photo.photo_url === "string"
+              ? photo.photo_url
+              : typeof photo.url === "string"
+                ? photo.url
+                : undefined;
+          })
+          .filter((url): url is string => Boolean(url))
         : [],
       updates: [],
       completionDate: row.targetCompletionDate ? new Date(row.targetCompletionDate).toLocaleDateString() : "Unknown",

@@ -6,13 +6,28 @@ import { Loader2, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { emailOtp } from "@/lib/auth-client";
-import { shouldRunOtpTimer } from "@/lib/ui-lifecycle";
 
 interface OTPVerificationFormProps {
   identifier: string; // email or phone
   type?: "email-verification" | "sign-in" | "forget-password" | "phone-verification";
   onSuccess: (code?: string) => void;
   onBack?: () => void;
+}
+
+export type OtpTimerState = {
+  expiresAt: number;
+  generation: number;
+};
+
+export function resetOtpTimerState(
+  state: OtpTimerState,
+  now: number,
+  seconds: number,
+): OtpTimerState {
+  return {
+    expiresAt: now + seconds * 1_000,
+    generation: state.generation + 1,
+  };
 }
 
 export function OTPVerificationForm({
@@ -28,33 +43,33 @@ export function OTPVerificationForm({
   const [success, setSuccess] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [timer, setTimer] = useState(180); // 3 minutes countdown
-  const expiresAtRef = useRef<number | null>(null);
+  const [timerState, setTimerState] = useState<OtpTimerState>(() => ({
+    expiresAt: Date.now() + 180 * 1_000,
+    generation: 0,
+  }));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Update expiration time when code is sent/resent
   const resetTimer = (seconds: number = 180) => {
-    expiresAtRef.current = Date.now() + seconds * 1000;
+    setTimerState((state) => resetOtpTimerState(state, Date.now(), seconds));
     setTimer(seconds);
   };
 
   // Timer for OTP validity
   useEffect(() => {
-    if (!shouldRunOtpTimer(success)) return;
-
-    if (expiresAtRef.current === null) {
-      expiresAtRef.current = Date.now() + 180 * 1000;
-    }
+    if (success) return;
 
     const interval = setInterval(() => {
-      const expiresAt = expiresAtRef.current;
-      if (expiresAt === null) return;
-
-      const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+      const remaining = Math.max(
+        0,
+        Math.floor((timerState.expiresAt - Date.now()) / 1000),
+      );
       setTimer(remaining);
+      if (remaining === 0) clearInterval(interval);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [success]);
+  }, [success, timerState.expiresAt, timerState.generation]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -87,25 +102,19 @@ export function OTPVerificationForm({
           newOtp[index + i] = digit;
         }
       });
-      setOtp(newOtp);
       const nextIndex = Math.min(index + pastedDigits.length, 5);
       inputRefs.current[nextIndex]?.focus();
-      const code = newOtp.join("");
-      if (code.length === 6 && !isVerifying && timer > 0) {
-        void handleVerify(code);
+    } else {
+      newOtp[index] = value;
+      setError(null);
+
+      // Move to next input
+      if (value && index < 5) {
+        inputRefs.current[index + 1]?.focus();
       }
-      return;
     }
 
-    newOtp[index] = value;
     setOtp(newOtp);
-    setError(null);
-
-    // Move to next input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
     const code = newOtp.join("");
     if (code.length === 6 && !isVerifying && timer > 0) {
       void handleVerify(code);

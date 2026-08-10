@@ -39,6 +39,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
 
   // Update URL when tab changes
   const handleTabChange = (tab: ProjectTabKey) => {
+
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
     router.push(`?${params.toString()}`, { scroll: false });
@@ -46,6 +47,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
 
   // Navigate to photos tab with map view
   const handleShowOnMap = () => {
+
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", "photos");
     params.set("photoView", "maps");

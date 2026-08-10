@@ -52,7 +52,6 @@ export function ProjectPhotos({ projectId, geotags, projectCoordinates, kmlLink 
     .map((tag) => `${tag.id ?? ""}:${tag.url ?? ""}:${tag.category ?? ""}`)
     .join("|");
 
-  // A changed photo collection invalidates any selected entity or filtered subset.
   useEffect(() => {
     const reset = window.setTimeout(() => {
       setSelectedPhotos(null);
@@ -199,6 +198,7 @@ export function ProjectPhotos({ projectId, geotags, projectCoordinates, kmlLink 
             <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm rounded-lg p-1">
               <button
                 onClick={() => {
+
                   const params = new URLSearchParams(searchParams.toString());
                   params.set("photoView", "grid");
                   router.push(`?${params.toString()}`, { scroll: false });
@@ -213,6 +213,7 @@ export function ProjectPhotos({ projectId, geotags, projectCoordinates, kmlLink 
               </button>
               <button
                 onClick={() => {
+
                   const params = new URLSearchParams(searchParams.toString());
                   params.set("photoView", "maps");
                   router.push(`?${params.toString()}`, { scroll: false });

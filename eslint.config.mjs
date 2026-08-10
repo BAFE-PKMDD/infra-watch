@@ -33,6 +33,20 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // One-off CommonJS database and repository maintenance utilities.
+    "add_env.js",
+    "append.js",
+    "append_schema.js",
+    "create_psgc.js",
+    "drop_all.js",
+    "drop_checklists.js",
+    "drop_feedback.js",
+    "enable_postgis.js",
+    "patch.js",
+    "query.js",
+    "reset_db.js",
+    "restore.js",
+    "truncate.js",
   ]),
 ]);
 

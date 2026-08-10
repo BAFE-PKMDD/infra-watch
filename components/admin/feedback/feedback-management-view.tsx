@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { MediaViewer } from "@/components/ui/media-viewer";
 import { Textarea } from "@/components/ui/textarea";
 import { getFullUrl } from "@/lib/minio-url";
+import { isTrustedImagePreviewUrl } from "@/lib/image-preview-policy";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -215,7 +216,7 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
   });
 
   const stats = statsData?.data ?? initialData.stats;
-  const feedbacks = useMemo(() => feedbackData?.data ?? [], [feedbackData]);
+  const feedbacks = useMemo(() => feedbackData?.data ?? [], [feedbackData?.data]);
   const pagination = feedbackData?.pagination ?? initialData.pagination;
   const selectedFeedback = useMemo(
     () => feedbacks.find((item) => item.id === selectedFeedbackId) ?? null,
@@ -687,15 +688,19 @@ function FeedbackDetailSheet({
                       className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-left dark:border-slate-800 dark:bg-slate-900"
                       onClick={() => onViewMedia(feedback, index)}
                     >
-                      {item.type === "image" && src ? (
+                      {item.type === "image" && src && isTrustedImagePreviewUrl(src) ? (
                         <Image
                           src={src}
                           alt={item.caption || "Feedback attachment"}
                           fill
-                          sizes="200px"
-                          unoptimized
+                          sizes="(max-width: 640px) 50vw, 280px"
                           className="object-cover transition-transform group-hover:scale-105"
                         />
+                      ) : item.type === "image" ? (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center text-slate-600 dark:text-slate-300">
+                          <ImageIcon className="size-8" />
+                          <span className="text-xs font-semibold">Preview unavailable for this legacy origin</span>
+                        </div>
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-slate-950 text-white">
                           <Video className="size-8" />

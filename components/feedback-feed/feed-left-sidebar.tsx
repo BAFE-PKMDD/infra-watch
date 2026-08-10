@@ -6,7 +6,6 @@ import {
   Home,
   FolderKanban,
   AlertTriangle,
-
   Info,
   MessageSquare,
   Bell,

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Mail, User, Loader2, AlertCircle } from "lucide-react";
 
@@ -17,6 +18,7 @@ import { OTPVerificationForm } from "@/components/auth/otp-verification-form";
 type Step = "form" | "otp";
 
 export default function SignUpPage() {
+
   const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

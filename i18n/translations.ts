@@ -169,7 +169,7 @@ export const translations = {
       nationalSummary: "National Summary"
     },
     infraAnalytics: {
-      title: "Status of Infrastructure Projects Funded Under AMEFIP",
+      title: "Status of Infrastructure Projects",
       asOf: "As of",
       target: "Target",
       preImplementation: "Under Pre-implementation",
@@ -903,7 +903,7 @@ export const translations = {
       nationalSummary: "Pambansang Buod"
     },
     infraAnalytics: {
-      title: "Katayuan ng mga Proyekto ng Imprastraktura na Pinondohan sa ilalim ng AMEFIP",
+      title: "Katayuan ng mga Proyekto ng Imprastraktura",
       asOf: "Kasalukuyan noong",
       target: "Target",
       preImplementation: "Nasa Pre-implementasyon",

@@ -31,17 +31,11 @@ interface ProjectShareButtonProps {
   projectName: string;
 }
 
-const subscribeToHydration = () => () => undefined;
-const getClientHydrationSnapshot = () => true;
-const getServerHydrationSnapshot = () => false;
+const subscribeToHydration = () => () => {};
 
 export function ProjectShareButton({ projectId }: ProjectShareButtonProps) {
   const [copied, setCopied] = useState(false);
-  const mounted = useSyncExternalStore(
-    subscribeToHydration,
-    getClientHydrationSnapshot,
-    getServerHydrationSnapshot,
-  );
+  const mounted = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const shareUrl = mounted ? `${window.location.origin}/projects/${projectId}` : "";
 
   // Don't render dropdown until mounted on client to avoid hydration mismatch

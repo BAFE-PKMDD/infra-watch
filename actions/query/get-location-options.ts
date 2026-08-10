@@ -15,6 +15,7 @@ export type LocationOption = {
 // Cache helpers
 const CACHE_TTL = 3600; // 1 hour
 
+
 /**
  * Get all available regions
  */

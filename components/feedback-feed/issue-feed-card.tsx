@@ -43,6 +43,7 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
 
   const displayName = item.isAnonymous ? "Anonymous Citizen" : item.reporterName;
 
+
   // Build media items for the viewer
   const allMedia: { url: string; type: "image" | "video"; caption?: string }[] = [
     ...(item.photoUrls || []).map((url) => ({

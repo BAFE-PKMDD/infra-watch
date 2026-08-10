@@ -5,12 +5,34 @@ import test from "node:test";
 import {
   findSnapshotMismatches,
   getMigrationBaselineState,
+  migrationRequiresDataEffectVerification,
 } from "./prepare-migrations";
 
 const migrationMetaUrl = new URL("../drizzle/meta/", import.meta.url);
 
 test("index-only migrations are verified against their snapshot", () => {
   assert.equal(getMigrationBaselineState([]), "verify-snapshot");
+});
+
+test("data-changing migrations are never auto-baselined from schema shape", () => {
+  assert.equal(
+    migrationRequiresDataEffectVerification(
+      'UPDATE "snapshots" SET "region" = "projects"."region" FROM "projects";',
+    ),
+    true,
+  );
+  assert.equal(
+    migrationRequiresDataEffectVerification(
+      'DELETE FROM "snapshots" USING "snapshots" AS "newer";',
+    ),
+    true,
+  );
+  assert.equal(
+    migrationRequiresDataEffectVerification(
+      'CREATE INDEX "snapshot_date_idx" ON "snapshots" ("capture_date");',
+    ),
+    false,
+  );
 });
 
 test("rate-limit index snapshot contains no unrelated schema changes", async () => {

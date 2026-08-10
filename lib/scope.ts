@@ -11,8 +11,19 @@ export type ScopedUser = {
 
 type ScopeResult = { allowed: true } | { allowed: false; reason: string };
 
+function normalizedAssignment(value: string | null | undefined) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+export function hasAssignedModeratorScope(user: ScopedUser) {
+  return user.role !== "moderator" || Boolean(
+    normalizedAssignment(user.region) || normalizedAssignment(user.assignedAgency),
+  );
+}
+
 function isScopedModerator(user: ScopedUser) {
-  return user.role === "moderator" && (Boolean(user.region) || Boolean(user.assignedAgency));
+  return user.role === "moderator" && hasAssignedModeratorScope(user);
 }
 
 function projectRegionCondition(region: string): SQL {
@@ -31,14 +42,20 @@ export function getProjectScopeConditions(user: ScopedUser): SQL[] {
     return [];
   }
 
-  const conditions: SQL[] = [];
-
-  if (user.region) {
-    conditions.push(projectRegionCondition(user.region));
+  if (!hasAssignedModeratorScope(user)) {
+    return [sql`false`];
   }
 
-  if (user.assignedAgency) {
-    conditions.push(projectAgencyCondition(user.assignedAgency));
+  const conditions: SQL[] = [];
+  const region = normalizedAssignment(user.region);
+  const assignedAgency = normalizedAssignment(user.assignedAgency);
+
+  if (region) {
+    conditions.push(projectRegionCondition(region));
+  }
+
+  if (assignedAgency) {
+    conditions.push(projectAgencyCondition(assignedAgency));
   }
 
   return conditions;
@@ -52,8 +69,8 @@ export async function checkModeratorScope(
     return { allowed: true };
   }
 
-  if (!isScopedModerator(user)) {
-    return { allowed: true };
+  if (!hasAssignedModeratorScope(user)) {
+    return { allowed: false, reason: "Moderator scope is not assigned" };
   }
 
   const projectIdentityConditions = [
@@ -93,6 +110,10 @@ async function getRegionNames(regionCode: string) {
 }
 
 export async function getIssueScopeCondition(user: ScopedUser): Promise<SQL | undefined> {
+  if (user.role === "moderator" && !hasAssignedModeratorScope(user)) {
+    return sql`false`;
+  }
+
   if (!isScopedModerator(user)) {
     return undefined;
   }
@@ -140,6 +161,10 @@ export async function checkIssueScope(
   user: ScopedUser,
   issue: { projectId?: string | null; region?: string | null },
 ): Promise<ScopeResult> {
+  if (user.role === "moderator" && !hasAssignedModeratorScope(user)) {
+    return { allowed: false, reason: "Moderator scope is not assigned" };
+  }
+
   if (!isScopedModerator(user)) {
     return { allowed: true };
   }

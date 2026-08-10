@@ -17,10 +17,10 @@ async function UsersData({
   limit: number;
 }) {
   const offset = (page - 1) * limit;
+  let result;
 
-  const result = await (async () => {
-    try {
-      return await Promise.all([
+  try {
+    result = await Promise.all([
       getAllUsers({
         search,
         role,
@@ -30,42 +30,37 @@ async function UsersData({
       }),
       getUserStats(),
       getRegions(),
-      ]);
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("Forbidden")) {
-        return null;
-      }
+    ]);
 
-      throw error;
-    }
-  })();
-
-  if (!result) {
-    return (
-      <div className="flex flex-col h-full items-center justify-center p-6">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 max-w-md">
-          <h2 className="text-lg font-semibold text-red-900 dark:text-red-200 mb-2">
-            Access Denied
-          </h2>
-          <p className="text-sm text-red-700 dark:text-red-300">
-            You don&apos;t have permission to access user management.
-          </p>
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Forbidden")) {
+      return (
+        <div className="flex flex-col h-full items-center justify-center p-6">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 max-w-md">
+            <h2 className="text-lg font-semibold text-red-900 dark:text-red-200 mb-2">
+              Access Denied
+            </h2>
+            <p className="text-sm text-red-700 dark:text-red-300">
+              You don&apos;t have permission to access user management.
+            </p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+
+    throw error;
   }
 
   const [usersData, stats, regions] = result;
-
   return (
-      <UserManagementClient
-        initialUsers={usersData.users}
-        stats={stats}
-        total={usersData.total}
-        currentPage={page}
-        limit={limit}
-        regions={regions}
-      />
+    <UserManagementClient
+      initialUsers={usersData.users}
+      stats={stats}
+      total={usersData.total}
+      currentPage={page}
+      limit={limit}
+      regions={regions}
+    />
   );
 }
 

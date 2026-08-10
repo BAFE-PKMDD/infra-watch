@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
+import { isTrustedImagePreviewUrl } from "@/lib/image-preview-policy";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 
@@ -234,10 +235,10 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
             className="relative w-full h-full flex items-center justify-center p-2"
             onClick={(e) => e.stopPropagation()}
           >
-            {currentMedia && currentMedia.type === 'image' ? (
+            {currentMedia && currentMedia.type === 'image' && isTrustedImagePreviewUrl(fullUrl) ? (
               <div className="relative w-full h-full shadow-2xl">
                 <Image
-                  src={fullUrl || '/placeholder-image.jpg'}
+                  src={fullUrl!}
                   alt={`Media ${currentIndex + 1}`}
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -245,6 +246,11 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
                   priority
                   unoptimized={isLocalMinIO(fullUrl)}
                 />
+              </div>
+            ) : currentMedia && currentMedia.type === 'image' ? (
+              <div className="max-w-md rounded-xl border border-white/20 bg-black/60 p-6 text-center text-white">
+                <p className="font-semibold">Preview unavailable for this legacy origin</p>
+                <p className="mt-2 text-sm text-white/70">The attachment host is not approved for inline image loading.</p>
               </div>
             ) : currentMedia && currentMedia.type === 'video' ? (
               <div className="w-full h-full flex items-center justify-center">

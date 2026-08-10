@@ -17,6 +17,7 @@ interface ProjectProcurementProps {
 export function ProjectProcurement({ procurementRelations, isActive }: ProjectProcurementProps) {
   const { t, language } = useTranslation();
 
+
   // Sort relations by actual date from lowest to highest
   const sortedMilestones = useMemo(() => {
     if (!procurementRelations || procurementRelations.length === 0) return [];

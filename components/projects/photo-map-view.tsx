@@ -9,6 +9,7 @@ import { GeoJSON, MapContainer, Marker, Popup, TileLayer, useMap } from "react-l
 import { PhotoMarker } from "./photo-marker";
 import { useExtractExif } from "@/hooks/use-extract-exif";
 import { useKmlLoader } from "@/hooks/use-kml-loader";
+
 import { GeoTag } from "@/types/photo.types";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +63,7 @@ export function PhotoMapView({
 }: PhotoMapViewProps) {
   const [hasAnimated, setHasAnimated] = useState(false);
   const [, setIsAnimating] = useState(false);
-  const [mapReady, setMapReady] = useState(false);
+
 
   // Extract EXIF coordinates from photos
   const { geotags: extractedGeotags, loading: extractingExif } = useExtractExif({
@@ -77,14 +78,8 @@ export function PhotoMapView({
     (tag) => tag.latitude && tag.longitude && !isNaN(parseFloat(tag.latitude)) && !isNaN(parseFloat(tag.longitude))
   );
 
-  // Only load map components on client side
-  useEffect(() => {
-    const timeout = window.setTimeout(() => setMapReady(true), 0);
-    return () => window.clearTimeout(timeout);
-  }, []);
-
   // Show loading state while extracting EXIF or loading map
-  if (!mapReady || extractingExif || loadingKml) {
+  if (extractingExif || loadingKml) {
     return (
       <div
         className={cn("relative w-full rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center bg-transparent overflow-hidden")}
@@ -114,6 +109,7 @@ export function PhotoMapView({
     onPhotoClick={onPhotoClick}
     hasAnimated={hasAnimated}
     setHasAnimated={setHasAnimated}
+
     setIsAnimating={setIsAnimating}
     geoJsonData={geoJsonData}
     kmlLink={kmlLink}

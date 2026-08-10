@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "@/i18n";
 import { 
@@ -24,52 +24,60 @@ import {
   Tooltip as ReTooltip,
   Legend as ReLegend
 } from "recharts";
-import type { TooltipContentProps } from "recharts";
-import type { InfraAnalyticsData } from "@/actions/query/analytics.query";
+import type { InfraAnalyticsResult } from "@/actions/query/analytics.query";
 
-interface ClientProps {
-  initialData: InfraAnalyticsData;
+type TooltipItem = {
+  dataKey?: string | number;
+  color?: string;
+  name?: React.ReactNode;
+  value?: React.ReactNode;
+};
+
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipItem[]; label?: React.ReactNode }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-slate-900 dark:bg-slate-800 text-white rounded-xl p-3.5 text-xs shadow-xl border border-slate-850 dark:border-slate-700/60 pointer-events-none">
+      <p className="font-extrabold text-slate-200 border-b border-slate-800 dark:border-slate-700/80 pb-1.5 mb-2 text-[11px] uppercase tracking-wider">{label}</p>
+      <div className="space-y-1.5">
+        {payload.map((item, index) => (
+          <div key={`${String(item.dataKey)}-${index}`} className="flex items-center justify-between gap-6">
+            <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+              {item.name}:
+            </span>
+            <span className="font-mono font-extrabold text-white">{item.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-const subscribeToClientEnvironment = () => () => undefined;
-const getClientSnapshot = () => true;
-const getServerSnapshot = () => false;
+interface ClientProps {
+  initialResult: InfraAnalyticsResult;
+}
 
-function CustomTooltip({ active, payload, label }: TooltipContentProps) {
-  if (active && payload.length) {
+export function InfraAnalyticsClient({ initialResult }: ClientProps) {
+  const { t } = useTranslation();
+  const [result] = useState<InfraAnalyticsResult>(initialResult);
+  const [activeStageDetails, setActiveStageDetails] = useState<string | null>(null);
+
+  if (!result.data) {
     return (
-      <div className="bg-slate-900 dark:bg-slate-800 text-white rounded-xl p-3.5 text-xs shadow-xl border border-slate-850 dark:border-slate-700/60 pointer-events-none">
-        <p className="font-extrabold text-slate-200 border-b border-slate-800 dark:border-slate-700/80 pb-1.5 mb-2 text-[11px] uppercase tracking-wider">
-          {label}
-        </p>
-        <div className="space-y-1.5">
-          {payload.map((item) => (
-            <div key={String(item.dataKey ?? item.name ?? "series")} className="flex items-center justify-between gap-6">
-              <span className="flex items-center gap-1.5 text-slate-400 font-medium">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                {item.name}:
-              </span>
-              <span className="font-mono font-extrabold text-white">
-                {item.value}
-              </span>
-            </div>
-          ))}
+      <div className="min-h-screen bg-slate-50 px-4 py-16 dark:bg-slate-950">
+        <div role={result.status === "unavailable" ? "alert" : "status"} className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h1 className="text-2xl font-extrabold text-slate-950 dark:text-white">Infrastructure Analytics</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            {result.status === "empty"
+              ? "No infrastructure project data is currently available. Statistics will appear after a successful synchronization."
+              : "Infrastructure analytics are temporarily unavailable. No reference or estimated figures are being shown."}
+          </p>
         </div>
       </div>
     );
   }
-  return null;
-}
 
-export function InfraAnalyticsClient({ initialData }: ClientProps) {
-  const { t } = useTranslation();
-  const [data] = useState<InfraAnalyticsData>(initialData);
-  const mounted = useSyncExternalStore(
-    subscribeToClientEnvironment,
-    getClientSnapshot,
-    getServerSnapshot,
-  );
-  const [activeStageDetails, setActiveStageDetails] = useState<string | null>(null);
+  const data = result.data;
 
   const stageCards = [
     {
@@ -126,7 +134,7 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-200/80 dark:border-slate-800/80 pb-6 gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              <span className="h-2 w-2 rounded-full bg-primary" />
               <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-450 dark:text-slate-500">
                 BAFE Monitoring System
               </span>
@@ -142,7 +150,7 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
           <div className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 px-3.5 shadow-sm hover:shadow transition-shadow">
             <TrendingUp className="w-4 h-4 text-primary" />
             <span className="text-xs font-bold text-slate-700 dark:text-slate-350">
-              AMEFIP FY 2026
+              {data.scopeLabel}
             </span>
           </div>
         </div>
@@ -154,11 +162,11 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="relative border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer overflow-hidden"
+            className="relative border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm transition-all flex flex-col justify-between group overflow-hidden"
           >
             <div className="absolute top-0 left-0 right-0 h-1 bg-slate-900 dark:bg-white" />
             <div>
-              <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-4">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-300 mb-4">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider">
                   {t("infraAnalytics.target")}
                 </span>
@@ -168,9 +176,8 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
                 {data.totalTarget}
               </h3>
             </div>
-            <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 group-hover:text-primary transition-colors">
-              <span>{t("infraAnalytics.viewBreakdown")}</span>
-              <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform" />
+            <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300 group-hover:text-primary transition-colors">
+              <span>Portfolio total</span>
             </div>
           </motion.div>
 
@@ -182,13 +189,22 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: (idx + 1) * 0.05 }}
               onClick={() => setActiveStageDetails(activeStageDetails === card.key ? null : card.key)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setActiveStageDetails(activeStageDetails === card.key ? null : card.key);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-expanded={activeStageDetails === card.key}
               className={`relative border rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer overflow-hidden bg-white dark:bg-slate-900 ${
                 activeStageDetails === card.key ? "ring-2 ring-primary border-transparent" : "border-slate-250 dark:border-slate-850"
               }`}
             >
               <div className={`absolute top-0 left-0 right-0 h-1 ${card.accentClass}`} />
               <div>
-                <div className="flex items-center justify-between text-slate-400 dark:text-slate-500 mb-4">
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-300 mb-4">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider truncate mr-1">
                     {card.label}
                   </span>
@@ -198,7 +214,7 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
                   {card.value}
                 </h3>
               </div>
-              <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500">
+              <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300">
                 <span className="group-hover:text-primary transition-colors">
                   {card.count} {t("infraAnalytics.target").toLowerCase()}
                 </span>
@@ -254,8 +270,7 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
 
               {/* Graphic Chart Wrapper */}
               <div className="relative w-full h-[320px]">
-                {mounted ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 760, height: 320 }}>
                     <ReBarChart
                       data={data.regionalStats}
                       margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -273,7 +288,7 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
                         axisLine={false} 
                         tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: "bold" }}
                       />
-                      <ReTooltip content={CustomTooltip} cursor={{ fill: "rgba(148, 163, 184, 0.05)" }} />
+                      <ReTooltip content={<CustomTooltip />} cursor={{ fill: "rgba(148, 163, 184, 0.05)" }} />
                       <ReLegend 
                         verticalAlign="top" 
                         align="right" 
@@ -297,15 +312,10 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
                       />
                     </ReBarChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-slate-50/50 dark:bg-slate-900/50 rounded-xl animate-pulse">
-                    <span className="text-xs text-slate-400">Loading Regional Chart...</span>
-                  </div>
-                )}
               </div>
             </div>
             
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal mt-4">
+            <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-normal mt-4">
               * Note: Operating Unit (RFOS) represents regional field offices responsible for validating local agricultural budgets.
             </p>
           </div>
@@ -324,8 +334,7 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
 
               {/* Graphic Chart Wrapper */}
               <div className="relative w-full h-[320px]">
-                {mounted ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 760, height: 320 }}>
                     <ReBarChart
                       data={data.bannerStats}
                       layout="vertical"
@@ -348,7 +357,7 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
                         width={90}
                         className="dark:fill-slate-300"
                       />
-                      <ReTooltip content={CustomTooltip} cursor={{ fill: "rgba(148, 163, 184, 0.05)" }} />
+                      <ReTooltip content={<CustomTooltip />} cursor={{ fill: "rgba(148, 163, 184, 0.05)" }} />
                       <ReLegend 
                         verticalAlign="top" 
                         align="right" 
@@ -372,15 +381,10 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
                       />
                     </ReBarChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-slate-50/50 dark:bg-slate-900/50 rounded-xl animate-pulse">
-                    <span className="text-xs text-slate-400">Loading Banner Program Chart...</span>
-                  </div>
-                )}
               </div>
             </div>
             
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal mt-4">
+            <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-normal mt-4">
               * Note: High Value Crops and Organic Agriculture are banner initiatives monitored under national targets.
             </p>
           </div>

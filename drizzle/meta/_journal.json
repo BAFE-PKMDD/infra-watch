@@ -36,6 +36,48 @@
       "when": 1786276888396,
       "tag": "0004_add_chat_owner_key",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786306287403,
+      "tag": "0005_quick_scream",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786307677054,
+      "tag": "0006_perfect_silver_samurai",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786308673103,
+      "tag": "0007_bouncy_mauler",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786314848300,
+      "tag": "0008_stormy_lifeguard",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786317757718,
+      "tag": "0009_classy_randall",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786367164939,
+      "tag": "0010_optimal_firestar",
+      "breakpoints": true
     }
   ]
 }

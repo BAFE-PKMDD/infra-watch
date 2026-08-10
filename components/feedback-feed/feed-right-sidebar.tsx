@@ -18,7 +18,6 @@ import type {
 import { getFeedSidebarData } from "@/actions/query/community-stats.query";
 import { ProjectPreviewSheet } from "@/components/feedback-feed/project-preview-sheet";
 
-
 function timeAgo(date: Date): string {
   const now = new Date();
   const diff = now.getTime() - new Date(date).getTime();

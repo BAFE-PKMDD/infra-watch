@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useState, useRef, useSyncExternalStore } from "react";
 import { Download, Eye, X, Share2, HelpCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
@@ -21,9 +21,7 @@ interface ProjectHighlightsProps {
   project: ProjectDetail;
 }
 
-const subscribeToHydration = () => () => undefined;
-const getClientHydrationSnapshot = () => true;
-const getServerHydrationSnapshot = () => false;
+const subscribeToHydration = () => () => {};
 
 interface HighlightFieldProps {
   label: string;
@@ -64,13 +62,10 @@ export function ProjectHighlights({ project }: ProjectHighlightsProps) {
   const projectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/projects/${project.id}`;
 
   // Track if component is mounted to avoid hydration mismatch
-  const isMounted = useSyncExternalStore(
-    subscribeToHydration,
-    getClientHydrationSnapshot,
-    getServerHydrationSnapshot,
-  );
+  const isMounted = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const [showQRZoom, setShowQRZoom] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
+
 
   const handleDownloadQR = async () => {
     if (!qrRef.current) return;

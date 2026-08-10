@@ -297,7 +297,10 @@ export function PhotoGridView({ geotags, onPhotoClick }: PhotoGridViewProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSelectedCategory(null)}
+                onClick={() => {
+                  setVisibleCount(PHOTOS_PER_PAGE);
+                  setSelectedCategory(null);
+                }}
                 className="hover:bg-slate-100 dark:hover:bg-slate-800 gap-1 pl-2 pr-3 rounded-full"
               >
                 <ChevronLeft className="w-5 h-5" />

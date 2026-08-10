@@ -7,7 +7,6 @@ import { QueryProvider } from "@/providers/query-provider";
 import { NotificationProvider } from "@/providers/notification-provider";
 import { LanguageDialog } from "@/components/language/language-dialog";
 import { Toaster } from "@/components/ui/sonner";
-import { AiAssistantWidget } from "@/components/ai-assistant-widget";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -46,7 +45,6 @@ export default function RootLayout({
               <LanguageProvider>
               <LanguageDialog />
               {children}
-              <AiAssistantWidget />
               <Toaster />
               </LanguageProvider>
             </NotificationProvider>

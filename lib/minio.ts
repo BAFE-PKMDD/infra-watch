@@ -6,21 +6,26 @@ export { getFileUrl, getFullUrl, isFullUrl } from "./minio-url";
 
 const bucketName = process.env.MINIO_BUCKET_NAME || "infra-watch";
 
-type MinioCorsClient = {
-  setBucketCors: (bucket: string, configuration: {
-    CORSRules: Array<{
-      AllowedHeaders: string[];
-      AllowedMethods: string[];
-      AllowedOrigins: string[];
-      ExposeHeaders: string[];
-      MaxAgeSeconds: number;
-    }>;
-  }) => Promise<void>;
+type BucketCorsConfiguration = {
+  CORSRules: Array<{
+    AllowedHeaders: string[];
+    AllowedMethods: string[];
+    AllowedOrigins: string[];
+    ExposeHeaders: string[];
+    MaxAgeSeconds: number;
+  }>;
 };
 
-function isWebReadableStream(value: unknown): value is ReadableStream {
-  if (!value || typeof value !== "object") return false;
-  return typeof (value as { getReader?: unknown }).getReader === "function";
+type MinioClientWithCors = Minio.Client & {
+  setBucketCors(bucket: string, configuration: BucketCorsConfiguration): Promise<void>;
+};
+
+function isWebReadableStream(value: unknown): value is ReadableStream<Uint8Array> {
+  if (typeof value !== "object" || value === null || !("getReader" in value)) {
+    return false;
+  }
+
+  return typeof value.getReader === "function";
 }
 
 const minioConfig: Minio.ClientOptions = {
@@ -57,7 +62,7 @@ export async function ensureBucketExists(): Promise<void> {
   await minioClient.setBucketPolicy(bucketName, JSON.stringify(policy));
 
   try {
-    await (minioClient as Minio.Client & MinioCorsClient).setBucketCors(bucketName, {
+    await (minioClient as MinioClientWithCors).setBucketCors(bucketName, {
       CORSRules: [
         {
           AllowedHeaders: ["*"],
@@ -91,7 +96,7 @@ export async function uploadFile(
     stream = content;
   } else if (isWebReadableStream(content)) {
     stream = Readable.fromWeb(
-      content as unknown as Parameters<typeof Readable.fromWeb>[0],
+      content as unknown as import("stream/web").ReadableStream<Uint8Array>,
     );
   } else {
     throw new Error("Invalid upload content");

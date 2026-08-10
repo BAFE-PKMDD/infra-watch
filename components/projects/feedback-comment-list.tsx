@@ -390,6 +390,7 @@ export function FeedbackCommentList({
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                         {comment.media.map((item, index) => {
                           const mediaUrl = getFullUrl(item.url);
+
                           return (
                             <motion.div
                               key={index}

@@ -13,7 +13,6 @@ export async function getUserVotes(
   _feedbackIds: string[],
 ): Promise<{ success: true; data: Record<string, VoteType> }> {
   void _feedbackIds;
-
   return {
     success: true,
     data: {},
@@ -30,7 +29,6 @@ export async function getFeedbackVoters(
   };
 }> {
   void _feedbackId;
-
   return {
     success: true,
     data: {

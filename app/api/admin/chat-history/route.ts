@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { chatHistory } from "@/lib/db/schema";
+import { getChatHistoryVisibilityCondition } from "@/lib/chat-history-access";
 import { parseChatHistoryQuery } from "@/lib/chat-history-query";
 import { requireAdminOrModerator } from "@/lib/session";
 
@@ -10,13 +11,14 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdminOrModerator();
+    const user = await requireAdminOrModerator();
 
     const { page, limit, status, provider } = parseChatHistoryQuery(
       request.nextUrl.searchParams,
     );
     const filter = and(
       gt(chatHistory.expiresAt, new Date()),
+      getChatHistoryVisibilityCondition({ role: user.role, userId: user.id }),
       status ? eq(chatHistory.status, status) : undefined,
       provider ? eq(chatHistory.provider, provider) : undefined,
     );

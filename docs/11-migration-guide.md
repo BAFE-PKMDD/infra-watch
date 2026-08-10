@@ -82,7 +82,7 @@ Once the files are copied, follow this sequence of edits to convert the domain f
   ```env
   DATABASE_URL=postgresql://user:password@localhost:5432/infra_watch
   ABEMIS_BASE_URL=http://localhost:8080
-  ABEMIS_API_KEY=ifCLaZ-KRPeASuViMvY44EtFERTtr92Y2CS98R52A3KtqtxbKIOqoY34Yot76Hg5
+  ABEMIS_API_KEY=replace-with-your-abemis-api-key
   ```
 - Seed the database:
   ```bash
