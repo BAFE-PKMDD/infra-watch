@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { Compass, Search, ZoomIn, ZoomOut, Maximize } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useTranslation } from "@/i18n";
+
 
 // Dynamically import Leaflet Map Component with SSR disabled
 const GISMapCanvas = dynamic(
@@ -35,7 +35,6 @@ const defaultCenter: [number, number] = [10.74, 124.79]; // Visayas center
 const defaultZoom = 8.5;
 
 export default function GISMapPage() {
-  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
 
   const [selectedProject, setSelectedProject] = useState<typeof mapProjects[0] | null>(null);

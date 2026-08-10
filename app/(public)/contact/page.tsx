@@ -39,7 +39,7 @@ export default function ContactPage() {
         } else {
           setErrorMessage(result.message || "Failed to send message. Please try again.");
         }
-      } catch (error) {
+      } catch {
         setErrorMessage("An error occurred while sending your message.");
       }
     }
@@ -322,9 +322,8 @@ export default function ContactPage() {
                         <Clock className="w-4 h-4" />
                         <span>{t("contact.form.responseInfo")}</span>
                       </div>
-                      <form.Subscribe
-                        selector={(state) => [state.isSubmitting]}
-                        children={([isSubmitting]) => (
+                      <form.Subscribe selector={(state) => [state.isSubmitting]}>
+                        {([isSubmitting]) => (
                           <Button
                             type="submit"
                             className="inline-flex items-center gap-2 px-4 py-2 min-w-[140px] justify-center bg-blue-700 hover:bg-blue-800 text-white"
@@ -334,7 +333,7 @@ export default function ContactPage() {
                             {isSubmitting ? t("contact.form.sending") : t("contact.form.submit")}
                           </Button>
                         )}
-                      />
+                      </form.Subscribe>
                     </div>
                   </form>
                 </motion.div>

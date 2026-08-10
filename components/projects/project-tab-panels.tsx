@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 import { ProjectEmptyState } from "@/components/projects/project-empty-state";
 import { ProjectOverview } from "@/components/projects/project-overview";
-import { ProjectUpdates } from "@/components/projects/project-updates";
+
 import { ProjectPhotos } from "@/components/projects/project-photos";
 import { ProjectDocuments } from "@/components/projects/project-documents";
 import { ProjectPow } from "@/components/projects/project-pow";
@@ -54,7 +54,10 @@ export function ProjectTabPanels({ activeTab, project, onShowOnMap }: ProjectTab
 
   // Mark tab as visited when it becomes active
   React.useEffect(() => {
-    setVisitedTabs((prev) => new Set(prev).add(activeTab));
+    const timeout = window.setTimeout(() => {
+      setVisitedTabs((prev) => new Set(prev).add(activeTab));
+    }, 0);
+    return () => window.clearTimeout(timeout);
   }, [activeTab]);
 
   return (

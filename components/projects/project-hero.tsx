@@ -16,15 +16,19 @@ interface ProjectHeroProps {
   project: ProjectDetail;
 }
 
+interface HeroProjectMetadata {
+  geotag?: Array<{ url?: string | null }>;
+}
+
 export function ProjectHero({ project }: ProjectHeroProps) {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const queryString = searchParams.toString();
   // Extract all images from geotags
-  const metadata = project.metadata as any;
+  const metadata = project.metadata as HeroProjectMetadata | null | undefined;
   const projectImages = (metadata?.geotag || [])
-    .map((tag: any) => tag.url)
-    .filter(Boolean);
+    .map((tag) => tag.url)
+    .filter((url): url is string => Boolean(url));
 
   // Fallback if no images
   const images = projectImages.length > 0 ? projectImages : ["/hero/main-background.png", "/hero/top_left.jpg", "/hero/lower_right.jpg"];

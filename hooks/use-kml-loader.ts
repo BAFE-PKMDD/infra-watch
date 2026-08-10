@@ -1,22 +1,25 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 import { kml } from "@tmcw/togeojson";
+
+type KmlGeoJson = ReturnType<typeof kml>;
 
 interface UseKmlLoaderProps {
   projectId?: string;
 }
 
 export function useKmlLoader({ projectId }: UseKmlLoaderProps) {
-  const [geoJsonData, setGeoJsonData] = useState<any>(null);
+  const [geoJsonData, setGeoJsonData] = useState<KmlGeoJson | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projectId) {
-      setGeoJsonData(null);
       return;
     }
+
+    let cancelled = false;
 
     const loadKml = async () => {
       setLoading(true);
@@ -27,7 +30,9 @@ export function useKmlLoader({ projectId }: UseKmlLoaderProps) {
         const response = await fetch(proxyUrl);
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+          const errorData = (await response.json().catch(() => ({}))) as {
+            error?: string;
+          };
           throw new Error(errorData.error || `Failed to fetch KML: ${response.statusText}`);
         }
 
@@ -39,29 +44,43 @@ export function useKmlLoader({ projectId }: UseKmlLoaderProps) {
         const converted = kml(kmlDom);
 
         // Sanitize: Only keep LineString and MultiLineString features
-        if (converted && converted.type === 'FeatureCollection') {
-          converted.features = converted.features.filter((feature: any) =>
-            feature.geometry?.type === 'LineString' ||
-            feature.geometry?.type === 'MultiLineString'
+        if (converted.type === "FeatureCollection") {
+          converted.features = converted.features.filter(
+            (feature) =>
+              feature.geometry?.type === "LineString" ||
+              feature.geometry?.type === "MultiLineString",
           );
         }
 
-        setGeoJsonData(converted);
-      } catch (err) {
+        if (!cancelled) {
+          setGeoJsonData(converted);
+        }
+      } catch (caughtError) {
+        if (cancelled) return;
+
         // Silently handle "not found" cases if they aren't critical
-        if (err instanceof Error && err.message.includes('not found')) {
+        if (caughtError instanceof Error && caughtError.message.includes("not found")) {
           setGeoJsonData(null);
         } else {
-          console.error("Error loading KML:", err);
-          setError(err instanceof Error ? err.message : "Error loading KML");
+          console.error("Error loading KML:", caughtError);
+          setError(caughtError instanceof Error ? caughtError.message : "Error loading KML");
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
-    loadKml();
+    void loadKml();
+    return () => {
+      cancelled = true;
+    };
   }, [projectId]);
 
-  return { geoJsonData, loading, error };
+  return {
+    geoJsonData: projectId ? geoJsonData : null,
+    loading: projectId ? loading : false,
+    error: projectId ? error : null,
+  };
 }

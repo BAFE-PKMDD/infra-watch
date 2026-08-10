@@ -44,7 +44,7 @@ function ForgetPasswordContent() {
       } else {
         setStep("otp");
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -78,7 +78,7 @@ function ForgetPasswordContent() {
       } else {
         router.push("/sign-in?reset=success");
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);

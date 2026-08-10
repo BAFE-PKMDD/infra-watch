@@ -2,6 +2,8 @@
  * API request/response type definitions
  */
 
+import type { ProjectDisplayItem } from "./ui.types";
+
 // Generic API response wrapper
 export interface ApiResponse<T = unknown> {
   success: boolean;
@@ -204,7 +206,7 @@ export interface ProjectsQueryParams {
  */
 export interface ProjectsApiResponse {
   success: boolean;
-  data: any[]; // ProjectDisplayItem[]
+  data: ProjectDisplayItem[];
   pagination: {
     page: number;
     limit: number;

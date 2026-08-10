@@ -20,9 +20,7 @@ const SPRING_STIFFNESS = 260;
 const SPRING_DAMPING = 20;
 const PHOTO_CARD_WIDTH = 600;
 const PHOTO_CARD_HEIGHT = 450;
-const ANIMATION_DURATION_LONG = 700;
-const ANIMATION_DURATION_NORMAL = 500;
-const ANIMATION_DURATION_FAST = 300;
+
 const FOLDER_STIFFNESS = 300;
 const FOLDER_DAMPING = 20;
 const COVER_PHOTO_STALE_DURATION = 1.5;
@@ -67,7 +65,6 @@ function PhotoCard({ tag, index, onPhotoClick, filteredPhotos }: {
   filteredPhotos: GeoTag[];
 }) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const { t } = useTranslation();
 
   return (
     <motion.div
@@ -185,10 +182,6 @@ export function PhotoGridView({ geotags, onPhotoClick }: PhotoGridViewProps) {
   // Pagination state
   const [visibleCount, setVisibleCount] = useState(PHOTOS_PER_PAGE);
 
-  // Reset visible count when category changes
-  useEffect(() => {
-    setVisibleCount(PHOTOS_PER_PAGE);
-  }, [selectedCategory]);
 
   const categoryOrder: { key: CategoryKey, labelKey: string, color: string, gradient: string }[] = [
     { key: "validation", labelKey: "projectDetail.tabs.photos.categories.validation", color: "text-blue-500", gradient: "from-blue-500/20 to-blue-900/40" },
@@ -220,7 +213,7 @@ export function PhotoGridView({ geotags, onPhotoClick }: PhotoGridViewProps) {
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {categoryOrder.map(({ key, labelKey, color, gradient }) => {
+              {categoryOrder.map(({ key, labelKey, gradient }) => {
                 const photos = groupedPhotos[key];
                 if (photos.length === 0) return null;
 
@@ -231,7 +224,10 @@ export function PhotoGridView({ geotags, onPhotoClick }: PhotoGridViewProps) {
                   <motion.div
                     key={key}
                     layoutId={`folder-${key}`}
-                    onClick={() => setSelectedCategory(key)}
+                    onClick={() => {
+                      setVisibleCount(PHOTOS_PER_PAGE);
+                      setSelectedCategory(key);
+                    }}
                     className="group relative cursor-pointer"
                     whileHover={{ scale: 1.02 }}
                     transition={{ type: "spring", stiffness: FOLDER_STIFFNESS, damping: FOLDER_DAMPING }}

@@ -179,7 +179,7 @@ export async function moderateImageBuffer(buffer: Buffer): Promise<ImageModerati
     return { isNSFW: false, predictions: [] };
   }
 
-  let imageTensor: { dispose?: () => void } | null = null;
+  let imageTensor: { dispose: () => void } | null = null;
 
   try {
     const nsfwModel = await getNSFWModel();
@@ -190,9 +190,13 @@ export async function moderateImageBuffer(buffer: Buffer): Promise<ImageModerati
     const sharp = (await import("sharp")).default;
 
     const pngBuffer = await sharp(buffer).png().toBuffer();
-    imageTensor = tf.node.decodeImage(pngBuffer, 3);
+    const decodedImage = tf.node.decodeImage(
+      pngBuffer,
+      3,
+    ) as import("@tensorflow/tfjs").Tensor3D;
+    imageTensor = decodedImage;
 
-    const predictions = await nsfwModel.classify(imageTensor as any);
+    const predictions = await nsfwModel.classify(decodedImage);
     const flagged = findFlaggedPrediction(predictions);
 
     return {

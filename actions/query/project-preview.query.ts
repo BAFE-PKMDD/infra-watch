@@ -54,7 +54,7 @@ export async function getProjectPreview(
     };
   }
 
-  const metadata = (row.metadata as Record<string, any> | null) ?? {};
+  const metadata = (row.metadata as Record<string, unknown> | null) ?? {};
   const projectIdForUrl = row.abemisId || row.projectCode || row.id;
   const projectLength = row.proposedLength
     ? `${row.proposedLength}${row.quantityUnit ? ` ${row.quantityUnit}` : ""}`

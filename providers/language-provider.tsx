@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { Language } from "@/i18n/translations";
+import React, { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
+import type { Language } from "@/i18n/translations";
 
 interface LanguageContextType {
   language: Language;
@@ -11,31 +11,45 @@ interface LanguageContextType {
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LANGUAGE_STORAGE_KEY = "language";
+const LANGUAGE_CHANGE_EVENT = "infra-watch-language-change";
+
+function getStoredLanguage(): Language {
+  const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  return stored === "en" || stored === "tl" ? stored : "en";
+}
+
+function getServerLanguage(): Language {
+  return "en";
+}
+
+function subscribeToLanguage(onStoreChange: () => void) {
+  const handleChange = () => onStoreChange();
+  window.addEventListener("storage", handleChange);
+  window.addEventListener(LANGUAGE_CHANGE_EVENT, handleChange);
+  return () => {
+    window.removeEventListener("storage", handleChange);
+    window.removeEventListener(LANGUAGE_CHANGE_EVENT, handleChange);
+  };
+}
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("en");
+  const language = useSyncExternalStore(
+    subscribeToLanguage,
+    getStoredLanguage,
+    getServerLanguage,
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("language") as Language;
-    if (stored === "en" || stored === "tl") {
-      setLanguageState(stored);
-    }
-    setMounted(true);
-  }, []);
 
   const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    localStorage.setItem("language", lang);
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
     document.documentElement.lang = lang;
+    window.dispatchEvent(new Event(LANGUAGE_CHANGE_EVENT));
   };
 
   useEffect(() => {
-    if (mounted) {
-      document.documentElement.lang = language;
-    }
-  }, [language, mounted]);
+    document.documentElement.lang = language;
+  }, [language]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, isDialogOpen, setIsDialogOpen }}>

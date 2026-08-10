@@ -21,7 +21,7 @@ for (let i = lines.length - 1; i >= 0; i--) {
           }
        }
     }
-  } catch (e) {
+  } catch {
   }
 }
 console.log('Not found');

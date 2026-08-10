@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Search,
@@ -79,7 +79,6 @@ export function FeedbackFeedClient() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-    isError,
   } = useInfiniteQuery({
     queryKey: ["activity-feed", debouncedSearch, typeFilter, sort],
     queryFn: async ({ pageParam = 1 }) => {

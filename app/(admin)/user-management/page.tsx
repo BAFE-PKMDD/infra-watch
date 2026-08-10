@@ -18,8 +18,9 @@ async function UsersData({
 }) {
   const offset = (page - 1) * limit;
 
-  try {
-    const [usersData, stats, regions] = await Promise.all([
+  const result = await (async () => {
+    try {
+      return await Promise.all([
       getAllUsers({
         search,
         role,
@@ -29,9 +30,34 @@ async function UsersData({
       }),
       getUserStats(),
       getRegions(),
-    ]);
+      ]);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Forbidden")) {
+        return null;
+      }
 
+      throw error;
+    }
+  })();
+
+  if (!result) {
     return (
+      <div className="flex flex-col h-full items-center justify-center p-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 max-w-md">
+          <h2 className="text-lg font-semibold text-red-900 dark:text-red-200 mb-2">
+            Access Denied
+          </h2>
+          <p className="text-sm text-red-700 dark:text-red-300">
+            You don&apos;t have permission to access user management.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const [usersData, stats, regions] = result;
+
+  return (
       <UserManagementClient
         initialUsers={usersData.users}
         stats={stats}
@@ -40,25 +66,7 @@ async function UsersData({
         limit={limit}
         regions={regions}
       />
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return (
-        <div className="flex flex-col h-full items-center justify-center p-6">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 max-w-md">
-            <h2 className="text-lg font-semibold text-red-900 dark:text-red-200 mb-2">
-              Access Denied
-            </h2>
-            <p className="text-sm text-red-700 dark:text-red-300">
-              You don't have permission to access user management.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    throw error;
-  }
+  );
 }
 
 export default async function UserManagementPage(props: {

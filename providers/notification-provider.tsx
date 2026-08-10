@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode, useEffect, useMemo } from "react";
+import { createContext, useCallback, useContext, ReactNode, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/providers/auth-provider";
 import { toast } from "sonner";
@@ -58,7 +58,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     [notificationsData],
   );
 
-  const handleIncomingNotification = (notification: Notification) => {
+  const handleIncomingNotification = useCallback((notification: Notification) => {
     const currentNotifications = queryClient.getQueryData<Notification[]>(["notifications"]) || [];
     const notificationKey = `${notification.type}:${String(
       notification.metadata?.feedbackId ||
@@ -93,7 +93,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       description: notification.message,
       duration: 6000,
     });
-  };
+  }, [queryClient]);
 
   // Setup SSE connection for realtime feedback/E-Report notifications.
   useEffect(() => {
@@ -113,7 +113,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     return () => {
       source.close();
     };
-  }, [isLoggedIn, queryClient]);
+  }, [handleIncomingNotification, isLoggedIn, queryClient]);
 
   useEffect(() => {
     const listener = (event: Event) => {
@@ -122,7 +122,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener("infra-watch-notification", listener);
     return () => window.removeEventListener("infra-watch-notification", listener);
-  }, [queryClient]);
+  }, [handleIncomingNotification]);
 
 
   // Mark notification as read mutation
