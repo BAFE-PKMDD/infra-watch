@@ -28,6 +28,15 @@ export interface SelectedProject {
   municipality?: string;
 }
 
+interface ProjectsApiItem {
+  id: string;
+  name: string;
+  code?: string;
+  sourceId?: string;
+  province?: string;
+  municipality?: string;
+}
+
 interface ProjectSearchInputProps {
   /** Currently selected project, or null */
   value: SelectedProject | null;
@@ -71,9 +80,9 @@ export function ProjectSearchInput({
       `/api/projects?search=${encodeURIComponent(query)}`
     );
     if (!response.ok) throw new Error("Failed to search projects");
-    const result = await response.json();
+    const result = (await response.json()) as { data?: ProjectsApiItem[] };
 
-    return (result.data || []).map((p: any) => ({
+    return (result.data || []).map((p) => ({
       id: p.id,
       name: p.name,
       sourceProjectId: p.code,

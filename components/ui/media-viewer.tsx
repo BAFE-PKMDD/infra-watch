@@ -2,7 +2,7 @@
 
 import { X, ChevronLeft, ChevronRight, Download, Share2 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
 import { motion, AnimatePresence } from "motion/react";
@@ -20,18 +20,29 @@ interface MediaViewerProps {
   onClose: () => void;
 }
 
+const subscribeToMount = () => () => undefined;
+const getClientMountSnapshot = () => true;
+const getServerMountSnapshot = () => false;
+
 export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeToMount,
+    getClientMountSnapshot,
+    getServerMountSnapshot,
+  );
+  const [lastReset, setLastReset] = useState({ open, initialIndex });
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  if (lastReset.open !== open || lastReset.initialIndex !== initialIndex) {
+    setLastReset({ open, initialIndex });
+    if (open) {
+      setCurrentIndex(initialIndex);
+    }
+  }
 
   useEffect(() => {
     if (open) {
-      setCurrentIndex(initialIndex);
       // Lock scroll when open
       document.body.style.overflow = 'hidden';
     } else {
@@ -40,7 +51,17 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
     return () => {
       document.body.style.overflow = '';
     };
-  }, [open, initialIndex]);
+  }, [open]);
+
+  const goToNext = useCallback(() => {
+    if (media.length <= 1) return;
+    setCurrentIndex((prev) => (prev + 1) % media.length);
+  }, [media.length]);
+
+  const goToPrevious = useCallback(() => {
+    if (media.length <= 1) return;
+    setCurrentIndex((prev) => (prev - 1 + media.length) % media.length);
+  }, [media.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -62,17 +83,7 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, currentIndex, media, onClose]);
-
-  const goToNext = () => {
-    if (media.length <= 1) return;
-    setCurrentIndex((prev) => (prev + 1) % media.length);
-  };
-
-  const goToPrevious = () => {
-    if (media.length <= 1) return;
-    setCurrentIndex((prev) => (prev - 1 + media.length) % media.length);
-  };
+  }, [open, onClose, goToNext, goToPrevious]);
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();

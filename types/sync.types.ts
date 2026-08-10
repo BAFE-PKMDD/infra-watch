@@ -58,7 +58,7 @@ export interface SyncTriggerResponse {
   workflowId?: string;
   run?: {
     workflowId: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   syncLogId?: string;
   statistics?: {

@@ -26,5 +26,5 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
     );
   }
 
-  return <ProjectDetailClient project={project as any} />;
+  return <ProjectDetailClient project={project} />;
 }

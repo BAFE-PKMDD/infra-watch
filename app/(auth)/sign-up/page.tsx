@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Mail, User, Loader2, AlertCircle } from "lucide-react";
 
@@ -18,7 +17,6 @@ import { OTPVerificationForm } from "@/components/auth/otp-verification-form";
 type Step = "form" | "otp";
 
 export default function SignUpPage() {
-  const router = useRouter();
   const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -54,7 +52,7 @@ export default function SignUpPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleBlur = (field: string) => {
+  const handleBlur = () => {
     validate();
   };
 
@@ -131,7 +129,7 @@ export default function SignUpPage() {
                               setName(e.target.value);
                               if (errors.name) setErrors(prev => ({ ...prev, name: "" }));
                             }}
-                            onBlur={() => handleBlur("name")}
+                            onBlur={handleBlur}
                             required
                           />
                         </div>
@@ -157,7 +155,7 @@ export default function SignUpPage() {
                               setEmail(e.target.value);
                               if (errors.email) setErrors(prev => ({ ...prev, email: "" }));
                             }}
-                            onBlur={() => handleBlur("email")}
+                            onBlur={handleBlur}
                             required
                           />
                         </div>
@@ -183,7 +181,7 @@ export default function SignUpPage() {
                               setPassword(e.target.value);
                               if (errors.password) setErrors(prev => ({ ...prev, password: "" }));
                             }}
-                            onBlur={() => handleBlur("password")}
+                            onBlur={handleBlur}
                             required
                           />
                         </div>
@@ -209,7 +207,7 @@ export default function SignUpPage() {
                               setConfirmPassword(e.target.value);
                               if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: "" }));
                             }}
-                            onBlur={() => handleBlur("confirmPassword")}
+                            onBlur={handleBlur}
                             required
                           />
                         </div>

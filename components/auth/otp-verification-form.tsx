@@ -6,6 +6,7 @@ import { Loader2, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { emailOtp } from "@/lib/auth-client";
+import { shouldRunOtpTimer } from "@/lib/ui-lifecycle";
 
 interface OTPVerificationFormProps {
   identifier: string; // email or phone
@@ -26,31 +27,34 @@ export function OTPVerificationForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [expiresAt, setExpiresAt] = useState<number>(Date.now() + 180 * 1000);
   const [timer, setTimer] = useState(180); // 3 minutes countdown
+  const expiresAtRef = useRef<number | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Update expiration time when code is sent/resent
   const resetTimer = (seconds: number = 180) => {
-    setExpiresAt(Date.now() + seconds * 1000);
+    expiresAtRef.current = Date.now() + seconds * 1000;
     setTimer(seconds);
   };
 
   // Timer for OTP validity
   useEffect(() => {
-    if (success) return;
+    if (!shouldRunOtpTimer(success)) return;
+
+    if (expiresAtRef.current === null) {
+      expiresAtRef.current = Date.now() + 180 * 1000;
+    }
 
     const interval = setInterval(() => {
+      const expiresAt = expiresAtRef.current;
+      if (expiresAt === null) return;
+
       const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
       setTimer(remaining);
-
-      if (remaining === 0) {
-        clearInterval(interval);
-      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [expiresAt, success]);
+  }, [success]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -69,15 +73,6 @@ export function OTPVerificationForm({
       .padStart(2, "0")}`;
   };
 
-  // Auto-submit when all digits are entered
-  useEffect(() => {
-    const code = otp.join("");
-    if (code.length === 6 && !isVerifying && timer > 0) {
-      handleVerify(code);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otp]);
-
   const handleChange = (index: number, value: string) => {
     // Only accept digits
     if (value && !/^\d+$/.test(value)) return;
@@ -95,6 +90,10 @@ export function OTPVerificationForm({
       setOtp(newOtp);
       const nextIndex = Math.min(index + pastedDigits.length, 5);
       inputRefs.current[nextIndex]?.focus();
+      const code = newOtp.join("");
+      if (code.length === 6 && !isVerifying && timer > 0) {
+        void handleVerify(code);
+      }
       return;
     }
 
@@ -106,6 +105,11 @@ export function OTPVerificationForm({
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
+
+    const code = newOtp.join("");
+    if (code.length === 6 && !isVerifying && timer > 0) {
+      void handleVerify(code);
+    }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -114,7 +118,7 @@ export function OTPVerificationForm({
     }
   };
 
-  const handleVerify = async (code: string) => {
+  async function handleVerify(code: string) {
     if (timer === 0) {
       setError("This code has expired. Please request a new one.");
       return;
@@ -163,14 +167,14 @@ export function OTPVerificationForm({
       setTimeout(() => {
         onSuccess(code);
       }, 1500);
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred. Please try again.");
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
       setIsVerifying(false);
     }
-  };
+  }
 
   const handleResend = async () => {
     setIsResending(true);

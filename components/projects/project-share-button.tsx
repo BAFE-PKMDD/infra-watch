@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Share2, Link as LinkIcon, Check } from "lucide-react";
 
 const FacebookIcon = ({ className }: { className?: string }) => (
@@ -31,16 +31,18 @@ interface ProjectShareButtonProps {
   projectName: string;
 }
 
-export function ProjectShareButton({ projectId, projectName }: ProjectShareButtonProps) {
-  const [copied, setCopied] = useState(false);
-  const [shareUrl, setShareUrl] = useState("");
-  const [mounted, setMounted] = useState(false);
+const subscribeToHydration = () => () => undefined;
+const getClientHydrationSnapshot = () => true;
+const getServerHydrationSnapshot = () => false;
 
-  // Set share URL on client side only to avoid hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-    setShareUrl(`${window.location.origin}/projects/${projectId}`);
-  }, [projectId]);
+export function ProjectShareButton({ projectId }: ProjectShareButtonProps) {
+  const [copied, setCopied] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
+  );
+  const shareUrl = mounted ? `${window.location.origin}/projects/${projectId}` : "";
 
   // Don't render dropdown until mounted on client to avoid hydration mismatch
   if (!mounted) {

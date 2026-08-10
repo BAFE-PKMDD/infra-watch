@@ -3,23 +3,16 @@
 import React, { useState } from "react";
 import { 
   Search, 
-  MapPin, 
   SlidersHorizontal, 
-  Layers, 
   MessageSquare, 
   Share2, 
-  FileText, 
   Camera, 
   ChevronRight, 
   Globe, 
-  Activity, 
-  TrendingUp, 
   Filter,
   CheckCircle2,
   Clock,
-  AlertTriangle,
   XCircle,
-  Menu,
   ChevronDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,10 +22,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Toaster } from "@/components/ui/sonner";
@@ -48,7 +41,7 @@ export default function MockupPortal() {
   const [searchQuery, setSearchQuery] = useState("");
   const [beforeAfterPosition, setBeforeAfterPosition] = useState(50);
   const [selectedLanguage, setSelectedLanguage] = useState<"en" | "tet" | "pt">("en");
-  const [reportedIssueType, setReportedIssueType] = useState("damage");
+  const [, setReportedIssueType] = useState("damage");
   const [reportStep, setReportStep] = useState(1);
   const [feedbackRating, setFeedbackRating] = useState<number | null>(null);
 

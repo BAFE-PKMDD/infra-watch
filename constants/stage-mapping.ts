@@ -53,6 +53,6 @@ export function mapInternalToPublicStage(stage?: string | null): PublicStage {
  */
 export function mapPublicToInternalStages(publicStage: string): string[] {
   return Object.entries(STAGE_MAPPING)
-    .filter(([_, value]) => value === publicStage)
-    .map(([key, _]) => key);
+    .filter(([, value]) => value === publicStage)
+    .map(([key]) => key);
 }

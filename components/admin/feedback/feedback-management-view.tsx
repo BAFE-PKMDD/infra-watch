@@ -49,6 +49,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -214,7 +215,7 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
   });
 
   const stats = statsData?.data ?? initialData.stats;
-  const feedbacks = feedbackData?.data ?? [];
+  const feedbacks = useMemo(() => feedbackData?.data ?? [], [feedbackData]);
   const pagination = feedbackData?.pagination ?? initialData.pagination;
   const selectedFeedback = useMemo(
     () => feedbacks.find((item) => item.id === selectedFeedbackId) ?? null,
@@ -687,7 +688,14 @@ function FeedbackDetailSheet({
                       onClick={() => onViewMedia(feedback, index)}
                     >
                       {item.type === "image" && src ? (
-                        <img src={src} alt={item.caption || "Feedback attachment"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                        <Image
+                          src={src}
+                          alt={item.caption || "Feedback attachment"}
+                          fill
+                          sizes="200px"
+                          unoptimized
+                          className="object-cover transition-transform group-hover:scale-105"
+                        />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-slate-950 text-white">
                           <Video className="size-8" />

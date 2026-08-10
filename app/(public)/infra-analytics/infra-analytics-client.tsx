@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "@/i18n";
 import { 
@@ -24,22 +24,52 @@ import {
   Tooltip as ReTooltip,
   Legend as ReLegend
 } from "recharts";
+import type { TooltipContentProps } from "recharts";
 import type { InfraAnalyticsData } from "@/actions/query/analytics.query";
 
 interface ClientProps {
   initialData: InfraAnalyticsData;
 }
 
+const subscribeToClientEnvironment = () => () => undefined;
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+function CustomTooltip({ active, payload, label }: TooltipContentProps) {
+  if (active && payload.length) {
+    return (
+      <div className="bg-slate-900 dark:bg-slate-800 text-white rounded-xl p-3.5 text-xs shadow-xl border border-slate-850 dark:border-slate-700/60 pointer-events-none">
+        <p className="font-extrabold text-slate-200 border-b border-slate-800 dark:border-slate-700/80 pb-1.5 mb-2 text-[11px] uppercase tracking-wider">
+          {label}
+        </p>
+        <div className="space-y-1.5">
+          {payload.map((item) => (
+            <div key={String(item.dataKey ?? item.name ?? "series")} className="flex items-center justify-between gap-6">
+              <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                {item.name}:
+              </span>
+              <span className="font-mono font-extrabold text-white">
+                {item.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
 export function InfraAnalyticsClient({ initialData }: ClientProps) {
   const { t } = useTranslation();
   const [data] = useState<InfraAnalyticsData>(initialData);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeToClientEnvironment,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
   const [activeStageDetails, setActiveStageDetails] = useState<string | null>(null);
-
-  // Avoid hydration mismatch by waiting for client-side mounting
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const stageCards = [
     {
@@ -84,32 +114,6 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
     },
   ];
 
-  // Custom Styled Tooltip Component for Recharts
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-slate-900 dark:bg-slate-800 text-white rounded-xl p-3.5 text-xs shadow-xl border border-slate-850 dark:border-slate-700/60 pointer-events-none">
-          <p className="font-extrabold text-slate-200 border-b border-slate-800 dark:border-slate-700/80 pb-1.5 mb-2 text-[11px] uppercase tracking-wider">
-            {label}
-          </p>
-          <div className="space-y-1.5">
-            {payload.map((item: any) => (
-              <div key={item.dataKey} className="flex items-center justify-between gap-6">
-                <span className="flex items-center gap-1.5 text-slate-400 font-medium">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                  {item.name}:
-                </span>
-                <span className="font-mono font-extrabold text-white">
-                  {item.value}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans transition-all duration-300">
@@ -269,7 +273,7 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
                         axisLine={false} 
                         tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: "bold" }}
                       />
-                      <ReTooltip content={<CustomTooltip />} cursor={{ fill: "rgba(148, 163, 184, 0.05)" }} />
+                      <ReTooltip content={CustomTooltip} cursor={{ fill: "rgba(148, 163, 184, 0.05)" }} />
                       <ReLegend 
                         verticalAlign="top" 
                         align="right" 
@@ -344,7 +348,7 @@ export function InfraAnalyticsClient({ initialData }: ClientProps) {
                         width={90}
                         className="dark:fill-slate-300"
                       />
-                      <ReTooltip content={<CustomTooltip />} cursor={{ fill: "rgba(148, 163, 184, 0.05)" }} />
+                      <ReTooltip content={CustomTooltip} cursor={{ fill: "rgba(148, 163, 184, 0.05)" }} />
                       <ReLegend 
                         verticalAlign="top" 
                         align="right" 

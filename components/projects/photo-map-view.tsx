@@ -1,11 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
+import L from "leaflet";
+import { GeoJSON, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { PhotoMarker } from "./photo-marker";
 import { useExtractExif } from "@/hooks/use-extract-exif";
 import { useKmlLoader } from "@/hooks/use-kml-loader";
-import { useMapLayers } from "@/hooks/use-map-layers";
 import { GeoTag } from "@/types/photo.types";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +28,7 @@ const INITIAL_ZOOM = 6;
 const MAP_HEIGHT = "600px";
 const FLY_DURATION = 1.5;
 const FLY_EASE_LINEARITY = 0.25;
-const MAP_PADDING = [50, 50];
+const MAP_PADDING: [number, number] = [50, 50];
 const MAX_FLY_ZOOM = 16;
 const BOUNDS_PADDING = 0.2;
 const ANIMATION_TIMEOUT = 300;
@@ -58,22 +61,16 @@ export function PhotoMapView({
   kmlLink,
 }: PhotoMapViewProps) {
   const [hasAnimated, setHasAnimated] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [, setIsAnimating] = useState(false);
   const [mapReady, setMapReady] = useState(false);
 
   // Extract EXIF coordinates from photos
-  const { geotags: extractedGeotags, loading: extractingExif, progress } = useExtractExif({
+  const { geotags: extractedGeotags, loading: extractingExif } = useExtractExif({
     geotags,
     projectId,
   });
 
   const { geoJsonData, loading: loadingKml } = useKmlLoader({ projectId });
-  const {
-    layers: mapLayers,
-    loading: loadingLayers,
-    visibleLayers,
-    toggleLayer,
-  } = useMapLayers();
 
   // Use extracted geotags or fall back to original
   const validGeotags = extractedGeotags.filter(
@@ -82,7 +79,8 @@ export function PhotoMapView({
 
   // Only load map components on client side
   useEffect(() => {
-    setMapReady(true);
+    const timeout = window.setTimeout(() => setMapReady(true), 0);
+    return () => window.clearTimeout(timeout);
   }, []);
 
   // Show loading state while extracting EXIF or loading map
@@ -116,14 +114,9 @@ export function PhotoMapView({
     onPhotoClick={onPhotoClick}
     hasAnimated={hasAnimated}
     setHasAnimated={setHasAnimated}
-    isAnimating={isAnimating}
     setIsAnimating={setIsAnimating}
     geoJsonData={geoJsonData}
     kmlLink={kmlLink}
-    mapLayers={mapLayers}
-    visibleLayers={visibleLayers}
-    toggleLayer={toggleLayer}
-    loadingLayers={loadingLayers}
   />;
 }
 
@@ -142,11 +135,9 @@ function MapAnimator({
   setIsAnimating: (value: boolean) => void;
   projectCoordinates?: string;
   validGeotags: GeoTag[];
-  geoJsonData: any;
+  geoJsonData: React.ComponentProps<typeof GeoJSON>["data"] | null;
   kmlLink?: string;
 }) {
-  const { useMap } = require("react-leaflet");
-  const L = require("leaflet");
   const map = useMap();
 
   useEffect(() => {
@@ -240,14 +231,9 @@ function MapContent({
   onPhotoClick,
   hasAnimated,
   setHasAnimated,
-  isAnimating,
   setIsAnimating,
   geoJsonData,
   kmlLink,
-  mapLayers,
-  visibleLayers,
-  toggleLayer,
-  loadingLayers,
 }: {
   geotags: GeoTag[];
   validGeotags: GeoTag[];
@@ -256,17 +242,10 @@ function MapContent({
   onPhotoClick: (tag: GeoTag, index: number) => void;
   hasAnimated: boolean;
   setHasAnimated: (value: boolean) => void;
-  isAnimating: boolean;
   setIsAnimating: (value: boolean) => void;
-  geoJsonData: any;
+  geoJsonData: React.ComponentProps<typeof GeoJSON>["data"] | null;
   kmlLink?: string;
-  mapLayers: any[];
-  visibleLayers: Set<string>;
-  toggleLayer: (id: string) => void;
-  loadingLayers: boolean;
 }) {
-  const { MapContainer, TileLayer, GeoJSON } = require("react-leaflet");
-  const { PhotoMarker } = require("./photo-marker");
   const projectPoint = parseProjectCoordinates(projectCoordinates);
   const hasProjectPoint = projectPoint !== null;
 
@@ -351,9 +330,11 @@ function MapContent({
 
       {/* BAFE Logo - Bottom Left */}
       <div className="absolute bottom-4 left-4 pointer-events-none">
-        <img
+        <Image
           src="/bafe-logo.png"
           alt="BAFE Logo"
+          width={160}
+          height={80}
           className="h-20 w-auto drop-shadow-lg"
         />
       </div>
@@ -362,8 +343,6 @@ function MapContent({
 }
 
 function ProjectLocationMarker({ position, geotagCount }: { position: CoordinatePair; geotagCount: number }) {
-  const { Marker, Popup } = require("react-leaflet");
-  const L = require("leaflet");
   const iconMarkup = renderToStaticMarkup(<MapPin className="size-5 text-white" strokeWidth={2.5} />);
   const icon = L.divIcon({
     html: `

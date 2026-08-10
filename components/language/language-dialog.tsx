@@ -12,32 +12,34 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/providers/language-provider";
 import { useTranslation } from "@/i18n";
-import { Language } from "@/i18n/translations";
+import type { Language } from "@/i18n/translations";
 
 export function LanguageDialog() {
   const { language, setLanguage, isDialogOpen, setIsDialogOpen } = useLanguage();
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>(language);
+  const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(null);
+  const currentSelection = selectedLanguage ?? language;
   const { t } = useTranslation();
 
   useEffect(() => {
     const hasSelected = localStorage.getItem("language_selected");
     if (!hasSelected) {
       setIsDialogOpen(true);
-      setSelectedLanguage(language);
     }
-  }, [language, setIsDialogOpen]);
+  }, [setIsDialogOpen]);
 
   const handleConfirm = () => {
-    setLanguage(selectedLanguage);
+    setLanguage(currentSelection);
     localStorage.setItem("language_selected", "true");
+    setSelectedLanguage(null);
     setIsDialogOpen(false);
   };
 
-  const handleOpenChange = (open: boolean, event?: any) => {
+  const handleOpenChange = (open: boolean) => {
     // If trying to close, check if they have confirmed a selection first
     if (!open) {
       const hasSelected = localStorage.getItem("language_selected");
       if (!hasSelected) return; // Prevent closing
+      setSelectedLanguage(null);
     }
     setIsDialogOpen(open);
   };
@@ -59,15 +61,15 @@ export function LanguageDialog() {
         <div className="grid grid-cols-1 gap-4 py-4">
           <Button
             variant="outline"
-            className={`justify-start gap-4 h-16 text-base border-2 transition-all ${selectedLanguage === "en"
+            className={`justify-start gap-4 h-16 text-base border-2 transition-all ${currentSelection === "en"
               ? "border-primary bg-primary/10 dark:bg-primary/20"
               : "border-slate-200 dark:border-slate-800"
               }`}
             onClick={() => setSelectedLanguage("en")}
           >
-            <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedLanguage === "en" ? "border-primary" : "border-slate-300 dark:border-slate-600"
+            <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${currentSelection === "en" ? "border-primary" : "border-slate-300 dark:border-slate-600"
               }`}>
-              {selectedLanguage === "en" && <div className="w-3 h-3 rounded-full bg-primary animate-in zoom-in duration-200" />}
+              {currentSelection === "en" && <div className="w-3 h-3 rounded-full bg-primary animate-in zoom-in duration-200" />}
             </div>
             <div className="flex flex-col items-start leading-tight">
               <span className="font-semibold">{t("languageDialog.english")}</span>
@@ -76,15 +78,15 @@ export function LanguageDialog() {
           </Button>
           <Button
             variant="outline"
-            className={`justify-start gap-4 h-16 text-base border-2 transition-all ${selectedLanguage === "tl"
+            className={`justify-start gap-4 h-16 text-base border-2 transition-all ${currentSelection === "tl"
               ? "border-primary bg-primary/10 dark:bg-primary/20"
               : "border-slate-200 dark:border-slate-800"
               }`}
             onClick={() => setSelectedLanguage("tl")}
           >
-            <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedLanguage === "tl" ? "border-primary" : "border-slate-300 dark:border-slate-600"
+            <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${currentSelection === "tl" ? "border-primary" : "border-slate-300 dark:border-slate-600"
               }`}>
-              {selectedLanguage === "tl" && <div className="w-3 h-3 rounded-full bg-primary animate-in zoom-in duration-200" />}
+              {currentSelection === "tl" && <div className="w-3 h-3 rounded-full bg-primary animate-in zoom-in duration-200" />}
             </div>
             <div className="flex flex-col items-start leading-tight">
               <span className="font-semibold">{t("languageDialog.filipino")}</span>

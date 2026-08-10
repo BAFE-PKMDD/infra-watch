@@ -27,11 +27,14 @@ export function CommentVotersModal({ commentId, isOpen, onClose }: CommentVoters
   const [activeTab, setActiveTab] = useState<"helpful" | "unhelpful">("helpful");
 
   useEffect(() => {
-    if (isOpen && commentId) {
+    if (!isOpen || !commentId) return;
+
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
       setLoading(true);
-      getCommentVoters(commentId)
+      void getCommentVoters(commentId)
         .then((result) => {
-          if (result.success) {
+          if (!cancelled && result.success) {
             setHelpfulVoters(result.data.helpfulVoters);
             setUnhelpfulVoters(result.data.unhelpfulVoters);
             // Set active tab to the one with more voters
@@ -43,12 +46,21 @@ export function CommentVotersModal({ commentId, isOpen, onClose }: CommentVoters
           }
         })
         .catch((error) => {
-          console.error("Error fetching voters:", error);
+          if (!cancelled) {
+            console.error("Error fetching voters:", error);
+          }
         })
         .finally(() => {
-          setLoading(false);
+          if (!cancelled) {
+            setLoading(false);
+          }
         });
-    }
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
   }, [commentId, isOpen]);
 
   if (!isOpen || !commentId) return null;

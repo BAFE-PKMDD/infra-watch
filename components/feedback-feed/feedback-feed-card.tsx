@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from "react";
 import {
   Star,
-  User,
   Play,
   ThumbsUp,
   ThumbsDown,
@@ -11,10 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   MapPin,
-  ExternalLink,
-  Loader2,
 } from "lucide-react";
-import Link from "next/link";
 import Image from "next/image";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "motion/react";
@@ -30,19 +26,6 @@ import { useAuth } from "@/providers/auth-provider";
 import type { FeedbackFeedItem, FeedbackFeedComment } from "@/types/feedback.types";
 import { ProjectPreviewSheet } from "@/components/feedback-feed/project-preview-sheet";
 
-const categoryLabels: Record<string, string> = {
-  quality: "Project Quality",
-  progress: "Project Progress",
-  concerns: "Concerns & Issues",
-  general: "General Feedback",
-};
-
-const categoryColors: Record<string, string> = {
-  quality: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
-  progress: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
-  concerns: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
-  general: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400",
-};
 
 function getInitials(name: string): string {
   return name
@@ -75,7 +58,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
 
   // Comments state
   const [commentsExpanded, setCommentsExpanded] = useState(false);
-  const [allComments, setAllComments] = useState<any[] | null>(null);
+  const [allComments, setAllComments] = useState<FeedbackFeedComment[] | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentCount, setCommentCount] = useState(item.commentCount);
 
