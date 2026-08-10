@@ -5,10 +5,12 @@ import test from "node:test";
 import {
   findSnapshotMismatches,
   getMigrationBaselineState,
+  migrationNeedsOperatorVerification,
   migrationRequiresDataEffectVerification,
 } from "./prepare-migrations";
 
 const migrationMetaUrl = new URL("../drizzle/meta/", import.meta.url);
+const migrationsUrl = new URL("../drizzle/", import.meta.url);
 
 test("index-only migrations are verified against their snapshot", () => {
   assert.equal(getMigrationBaselineState([]), "verify-snapshot");
@@ -33,6 +35,46 @@ test("data-changing migrations are never auto-baselined from schema shape", () =
     ),
     false,
   );
+  assert.equal(
+    migrationRequiresDataEffectVerification(
+      'ALTER TABLE "account" ADD CONSTRAINT "account_user_fk" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON UPDATE no action ON DELETE cascade;',
+    ),
+    false,
+  );
+});
+
+test("real migration baseline stops at 0008 before 0009 data consolidation", async () => {
+  const journal = JSON.parse(
+    await readFile(new URL("_journal.json", migrationMetaUrl), "utf8"),
+  ) as { entries: Array<{ tag: string }> };
+  const decisions = await Promise.all(
+    journal.entries.map(async ({ tag }) => {
+      const migrationSql = await readFile(
+        new URL(`${tag}.sql`, migrationsUrl),
+        "utf8",
+      );
+      return {
+        tag,
+        hasDataEffects: migrationRequiresDataEffectVerification(migrationSql),
+        needsOperatorVerification: migrationNeedsOperatorVerification(
+          tag,
+          migrationSql,
+        ),
+      };
+    }),
+  );
+  const firstBlockedIndex = decisions.findIndex(
+    ({ needsOperatorVerification }) => needsOperatorVerification,
+  );
+
+  assert.notEqual(firstBlockedIndex, -1);
+  assert.equal(decisions[firstBlockedIndex]?.tag, "0009_classy_randall");
+  assert.equal(decisions[firstBlockedIndex - 1]?.tag, "0008_stormy_lifeguard");
+  const ownerKeyMigration = decisions.find(
+    ({ tag }) => tag === "0004_add_chat_owner_key",
+  );
+  assert.equal(ownerKeyMigration?.hasDataEffects, true);
+  assert.equal(ownerKeyMigration?.needsOperatorVerification, false);
 });
 
 test("rate-limit index snapshot contains no unrelated schema changes", async () => {
