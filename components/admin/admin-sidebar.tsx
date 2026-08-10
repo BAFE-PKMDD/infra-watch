@@ -4,13 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
-  ClipboardCheck,
+  CircleAlert,
+  FileText,
   FolderKanban,
   Home,
   LayoutDashboard,
+  MessageSquare,
   RefreshCw,
+  ScrollText,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 
 import { hasPermission } from "@/lib/permissions";
@@ -24,16 +27,19 @@ const menu = [
   {
     label: "Main",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, resource: "dashboard", action: "view" },
+      { label: "Analytics", href: "/dashboard", icon: LayoutDashboard, resource: "analytics", action: "view" },
+      { label: "Executive Brief", href: "/executive-brief", icon: FileText, resource: "analytics", action: "view" },
       { label: "Projects", href: "/admin-projects", icon: FolderKanban, resource: "projects", action: "list" },
-      { label: "Checklists", href: "/checklists", icon: ClipboardCheck, resource: "projects", action: "list" },
+      { label: "Feedbacks", href: "/feedbacks", icon: MessageSquare, resource: "feedback", action: "list" },
+      { label: "Reported Issues", href: "/issues", icon: CircleAlert, resource: "issues", action: "list" },
     ],
   },
   {
     label: "System",
     items: [
       { label: "ABEMIS Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view" },
-      { label: "Analytics", href: "/dashboard#analytics", icon: BarChart3, resource: "analytics", action: "view" },
+      { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view" },
+      { label: "User Management", href: "/user-management", icon: Users, resource: "user", action: "list" },
     ],
   },
 ] as const;
@@ -67,7 +73,7 @@ export function AdminSidebar({ role }: AdminSidebarProps) {
 
           return (
             <div key={category.label} className="space-y-2">
-              <p className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{category.label}</p>
+              <p className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-600 dark:text-slate-400">{category.label}</p>
               <div className="space-y-1">
                 {visibleItems.map((item) => {
                   const Icon = item.icon;

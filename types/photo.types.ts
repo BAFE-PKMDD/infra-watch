@@ -84,7 +84,7 @@ export interface GeoTag {
   longitude?: string;
   timestamp?: string;
   category?: GeoTagCategory;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ExtractedGeoTag extends GeoTag {

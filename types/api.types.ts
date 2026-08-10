@@ -2,6 +2,8 @@
  * API request/response type definitions
  */
 
+import type { ProjectDisplayItem } from "./ui.types";
+
 // Generic API response wrapper
 export interface ApiResponse<T = unknown> {
   success: boolean;
@@ -133,10 +135,14 @@ export interface AbemisProject {
   post_geotagged_length: string | null;
   procurement_mode: string | null;
   geotag: AbemisGeoTag[];
-  proposalDocuments: AbemisProposalDocument[];
-  powRelation: AbemisPowRelation[];
-  procurementRelation: AbemisProcurementRelation[];
-  kmllink: AbemisKmlLink | null;
+  proposalDocuments?: AbemisProposalDocument[];
+  proposal_documents?: AbemisProposalDocument[];
+  powRelation?: AbemisPowRelation[];
+  pow_relation?: AbemisPowRelation[];
+  procurementRelation?: AbemisProcurementRelation[];
+  procurement_relation?: AbemisProcurementRelation[];
+  kmllink?: AbemisKmlLink | null;
+  kml_link?: AbemisKmlLink | null;
   psgc: AbemisPsgc;
   sourceId: number;
 }
@@ -200,7 +206,7 @@ export interface ProjectsQueryParams {
  */
 export interface ProjectsApiResponse {
   success: boolean;
-  data: any[]; // ProjectDisplayItem[]
+  data: ProjectDisplayItem[];
   pagination: {
     page: number;
     limit: number;

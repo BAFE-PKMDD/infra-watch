@@ -1,7 +1,5 @@
-"use client";
-
 import type { LucideIcon } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useTranslation } from "@/i18n";
 
 interface ProjectEmptyStateProps {
@@ -21,18 +19,18 @@ export function ProjectEmptyState({ icon: Icon, title, description, actionLabel 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      <div className="bg-primary text-primary-foreground px-6 py-4 rounded-t-lg">
+      <div className="bg-green-600 text-white px-6 py-4 rounded-t-lg">
         <h2 className="text-lg font-semibold">{title}</h2>
       </div>
       <div className="p-6">
         <div className="text-center py-12">
-          <Icon className="w-16 h-16 text-slate-350 dark:text-slate-650 mx-auto mb-4" />
+          <Icon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-900 mb-2 dark:text-white">
-            {t("projectDetail.common.noContent") || "No Content Available"}
+            {t("projectDetail.common.noContent")}
           </h3>
-          <p className="text-sm text-slate-500 mb-6 dark:text-slate-400">{description}</p>
+          <p className="text-slate-600 mb-6 dark:text-slate-300">{description}</p>
           {actionLabel && (
-            <button className="px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/95 transition-colors">
+            <button className="px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
               {actionLabel}
             </button>
           )}

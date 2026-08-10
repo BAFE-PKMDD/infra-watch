@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, Database, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, Database, Loader2, XCircle } from "lucide-react";
 
 type SyncStatsCardProps = {
   statistics: {
@@ -15,8 +15,8 @@ type SyncStatsCardProps = {
 };
 
 function formatDuration(duration: number | null) {
-  if (!duration) return "N/A";
-  const seconds = Math.round(duration / 1000);
+  if (duration === null) return "N/A";
+  const seconds = Math.max(0, Math.round(duration));
   if (seconds < 60) return `${seconds}s`;
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
@@ -34,6 +34,7 @@ function formatDate(value: Date | string) {
 export function SyncStatsCard({ statistics }: SyncStatsCardProps) {
   const lastSync = statistics.lastSync;
   const failed = lastSync?.status === "failed";
+  const running = lastSync?.status === "running";
 
   return (
     <section className="grid gap-3 md:grid-cols-4">
@@ -46,7 +47,7 @@ export function SyncStatsCard({ statistics }: SyncStatsCardProps) {
       </div>
       <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-2 text-sm font-bold text-slate-500 dark:text-slate-400">
-          {failed ? <XCircle className="size-4 text-red-600" /> : <CheckCircle2 className="size-4 text-emerald-600" />}
+          {running ? <Loader2 className="size-4 animate-spin text-blue-600" /> : failed ? <XCircle className="size-4 text-red-600" /> : <CheckCircle2 className="size-4 text-emerald-600" />}
           Last Sync
         </div>
         <p className="mt-3 text-sm font-extrabold text-slate-950 dark:text-white">{lastSync ? formatDate(lastSync.syncedAt) : "Never synced"}</p>

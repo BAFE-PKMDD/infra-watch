@@ -1,0 +1,17 @@
+.git
+.github
+.next
+.playwright-cli
+.dev-logs
+node_modules
+output
+coverage
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+Dockerfile*
+docker-compose*.yml
+docs
+dev-tools

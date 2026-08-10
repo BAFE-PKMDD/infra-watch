@@ -46,7 +46,7 @@ export function SyncLogsTable({ logs }: { logs: SyncLog[] }) {
             <TableHead className="text-right">Updated</TableHead>
             <TableHead className="text-right">Failed</TableHead>
             <TableHead className="text-right">Processed</TableHead>
-            <TableHead>Started</TableHead>
+            <TableHead>Finished</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -63,7 +63,7 @@ export function SyncLogsTable({ logs }: { logs: SyncLog[] }) {
               <TableCell className="text-right font-mono">{log.projectsUpdated}</TableCell>
               <TableCell className="text-right font-mono">{log.projectsFailed}</TableCell>
               <TableCell className="text-right font-mono">{log.totalProcessed}</TableCell>
-              <TableCell>{formatDate(log.startedAt)}</TableCell>
+              <TableCell>{formatDate(log.completedAt ?? log.startedAt)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

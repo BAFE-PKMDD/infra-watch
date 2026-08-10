@@ -16,7 +16,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      statistics: await getAdminProjectStats(),
+      statistics: await getAdminProjectStats(user),
     });
   } catch (error) {
     const status = error instanceof Error && (error as Error & { status?: number }).status ? (error as Error & { status: number }).status : 500;

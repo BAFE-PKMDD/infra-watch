@@ -13,12 +13,12 @@ export default async function ProtectedLayout({
   const session = await getSession();
 
   if (!session?.user) {
-    redirect(`/sign-in?redirect=${encodeURIComponent("/checklists")}`);
+    redirect(`/sign-in?redirect=${encodeURIComponent("/projects")}`);
   }
 
   return (
     <div className="flex min-h-screen flex-col">
-      <AppHeader activeItem="checklists" />
+      <AppHeader activeItem="projects" />
       <main className="flex-1 bg-slate-50 dark:bg-slate-950">{children}</main>
       <AppFooter />
     </div>

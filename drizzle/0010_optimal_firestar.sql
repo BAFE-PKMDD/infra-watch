@@ -1,0 +1,1 @@
+ALTER TABLE "ai_chat_history" ADD COLUMN "surface" text DEFAULT 'public_chat' NOT NULL;

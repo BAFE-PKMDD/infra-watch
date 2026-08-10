@@ -24,88 +24,88 @@ export function ProjectTable({ projects }: ProjectTableProps) {
   const queryString = searchParams.toString();
 
   return (
-    <Card className="overflow-hidden bg-slate-50/50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800">
+    <Card className="overflow-hidden bg-[#121927] border-slate-800">
       <Table>
-        <TableHeader className="bg-slate-50/80 border-b border-slate-200 dark:bg-slate-900/40 dark:border-slate-800">
+        <TableHeader className="bg-[#0f172a] border-b border-slate-800">
           <TableRow>
             <TableHead className="px-6 py-4 text-left">
-              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-primary transition-colors dark:text-slate-100">
+              <button className="flex items-center gap-2 text-[11px] font-bold text-slate-300 uppercase tracking-wider hover:text-white transition-colors">
                 Project Name/Code
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </TableHead>
             <TableHead className="px-6 py-4 text-left">
-              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-primary transition-colors dark:text-slate-100">
+              <button className="flex items-center gap-2 text-[11px] font-bold text-slate-300 uppercase tracking-wider hover:text-white transition-colors">
                 Location
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </TableHead>
             <TableHead className="px-6 py-4 text-left">
-              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-primary transition-colors dark:text-slate-100">
-                Implementing Agency
-                <ChevronDown className="w-4 h-4" />
+              <button className="flex items-center gap-2 text-[11px] font-bold text-slate-300 uppercase tracking-wider hover:text-white transition-colors text-center leading-tight">
+                Implementing<br/>Agency
+                <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </TableHead>
             <TableHead className="px-6 py-4 text-left">
-              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-primary transition-colors dark:text-slate-100">
-                Budget (PHP)
-                <ChevronDown className="w-4 h-4" />
+              <button className="flex items-center gap-2 text-[11px] font-bold text-slate-300 uppercase tracking-wider hover:text-white transition-colors text-center leading-tight">
+                Budget<br/>(PHP)
+                <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </TableHead>
             <TableHead className="px-6 py-4 text-left">
-              <button className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider hover:text-primary transition-colors dark:text-slate-100">
+              <button className="flex items-center gap-2 text-[11px] font-bold text-slate-300 uppercase tracking-wider hover:text-white transition-colors">
                 Status
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </TableHead>
-            <TableHead className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+            <TableHead className="px-6 py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Action
             </TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody className="divide-y divide-slate-100">
+        <TableBody className="divide-y divide-slate-800">
           {projects.map((project) => (
             <TableRow
               key={project.id}
-              className="hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors group cursor-pointer"
+              className="hover:bg-slate-800/50 transition-colors group cursor-pointer border-slate-800"
             >
               <TableCell className="px-6 py-5 whitespace-normal">
                 <Link href={`/projects/${project.id}${queryString ? `?${queryString}` : ""}`} className="block">
-                  <p className="text-sm font-medium text-slate-900 group-hover:text-primary transition-colors line-clamp-2 dark:text-white">
+                  <p className="text-[14px] font-bold text-white group-hover:text-slate-300 transition-colors line-clamp-2">
                     {project.name}
                   </p>
-                  <p className="text-xs text-slate-500 mt-1 font-mono dark:text-slate-300">{project.code}</p>
+                  <p className="text-[11px] text-slate-400 mt-1.5 font-mono uppercase tracking-wide">{project.code}</p>
                 </Link>
               </TableCell>
               <TableCell className="px-6 py-5 whitespace-normal">
                 <Link href={`/projects/${project.id}${queryString ? `?${queryString}` : ""}`} className="block">
                   <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-slate-700 dark:text-slate-200">{project.location}</p>
+                    <MapPin className="w-[16px] h-[16px] text-slate-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-[14px] text-slate-300">{project.location}</p>
                   </div>
                 </Link>
               </TableCell>
-              <TableCell className="px-6 py-5">
+              <TableCell className="px-6 py-5 whitespace-normal">
                 <Link href={`/projects/${project.id}${queryString ? `?${queryString}` : ""}`} className="block">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{project.implementingAgency}</p>
+                  <p className="text-[14px] font-medium text-slate-300">{project.implementingAgency}</p>
                 </Link>
               </TableCell>
               <TableCell className="px-6 py-5">
                 <Link href={`/projects/${project.id}${queryString ? `?${queryString}` : ""}`} className="block">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(project.budget)}</p>
+                  <p className="text-[14px] font-bold text-white">{formatCurrency(project.budget)}</p>
                 </Link>
               </TableCell>
               <TableCell className="px-6 py-5">
                 <Link href={`/projects/${project.id}${queryString ? `?${queryString}` : ""}`} className="block">
-                  <p className="text-sm text-slate-700 dark:text-slate-200">{project.stage || "N/A"}</p>
+                  <p className="text-[14px] text-slate-300">{project.stage || "Not yet started"}</p>
                 </Link>
               </TableCell>
-              <TableCell className="px-6 py-5">
+              <TableCell className="px-6 py-5 text-center">
                 <Link href={`/projects/${project.id}${queryString ? `?${queryString}` : queryString.includes('tab=') ? `?${queryString}` : `?${queryString}&tab=feedback`}`}>
                   <Button
                     type="button"
                     onClick={(event) => event.stopPropagation()}
-                    className="px-4 py-2 text-sm font-semibold hover:bg-primary hover:text-primary-foreground"
+                    className="px-5 py-2 h-auto text-[13px] font-semibold bg-[#4caf50] hover:bg-[#43a047] text-[#111827] border-0"
                   >
                     Feedback
                   </Button>

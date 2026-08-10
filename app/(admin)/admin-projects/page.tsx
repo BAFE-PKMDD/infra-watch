@@ -33,7 +33,7 @@ export default function AdminProjectsPage() {
     <AdminPageWrapper
       breadcrumbs={[{ label: "Admin" }, { label: "Projects" }]}
       title="Synced Project Catalog"
-      description="Read-only AMEFIP and INS project records mirrored from ABEMIS for search, reporting, checklists, and public feedback."
+      description="Read-only AMEFIP and INS project records mirrored from ABEMIS for search, reporting, and public feedback."
     >
       {statsData?.statistics && <ProjectStatsCard statistics={statsData.statistics} />}
 

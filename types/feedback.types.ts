@@ -2,12 +2,18 @@
  * Feedback-related type definitions
  */
 
+import type { GeoTrackPoint } from "@/types/geo-evidence.types";
+
 export type FeedbackCategory = "quality" | "progress" | "concerns" | "general";
 
 export interface FeedbackMedia {
   type: 'image' | 'video';
   url: string;
   caption?: string;
+  lat?: number;
+  lon?: number;
+  accuracy?: number;
+  track?: GeoTrackPoint[];
 }
 
 /**

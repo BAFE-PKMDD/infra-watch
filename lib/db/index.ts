@@ -1,4 +1,4 @@
-import "server-only";
+// import "server-only";
 
 import * as authSchema from "@/auth-schema";
 import { drizzle } from "drizzle-orm/postgres-js";

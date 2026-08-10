@@ -4,6 +4,9 @@ import { getRecentSyncLogs, getSyncStatistics } from "@/lib/abemis/sync";
 import { requirePermission } from "@/lib/permissions";
 import { getCurrentUser } from "@/lib/session";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -19,12 +22,19 @@ export async function GET(request: NextRequest) {
     const logs = await getRecentSyncLogs(limit);
     const statistics = includeStats ? await getSyncStatistics() : undefined;
 
-    return NextResponse.json({
-      success: true,
-      logs,
-      statistics,
-      total: logs.length,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        logs,
+        statistics,
+        total: logs.length,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      },
+    );
   } catch (error) {
     const status = error instanceof Error && (error as Error & { status?: number }).status ? (error as Error & { status: number }).status : 500;
 
