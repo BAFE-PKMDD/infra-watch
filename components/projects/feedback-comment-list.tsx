@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { ThumbsUp, ThumbsDown, Play, X, ChevronLeft, ChevronRight, MoreVertical, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { ThumbsUp, ThumbsDown, Play, MoreVertical, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { MediaViewer } from "@/components/ui/media-viewer";
@@ -390,7 +390,6 @@ export function FeedbackCommentList({
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                         {comment.media.map((item, index) => {
                           const mediaUrl = getFullUrl(item.url);
-                          const globalIndex = allMedia.findIndex(m => m.url === mediaUrl && m.commentId === comment.id);
 
                           return (
                             <motion.div

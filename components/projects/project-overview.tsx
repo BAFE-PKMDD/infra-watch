@@ -7,7 +7,7 @@ import {
   CalendarRange,
   Ruler,
   FolderOpen,
-  Building2,
+
 } from "lucide-react";
 import {
   Tooltip,

@@ -36,7 +36,7 @@ export function ProjectTypeBudgetChart({ data, onSelect }: { data: ManagerialDas
     <ChartPanel title="Budget allocation by project type" description="Ranked allocated budget; long tails are combined as Other without changing totals." summary={summary}>
       {chartData.length === 0 ? <ChartEmptyState /> : (
         <>
-          <ChartContainer config={{ allocatedBudget: { label: "Allocated budget", color: "#0f766e" } }} className="h-72 w-full aspect-auto" aria-label="Allocated budget by project type">
+          <ChartContainer config={{ allocatedBudget: { label: "Allocated budget", color: "#0f766e" } }} className="h-72 w-full aspect-auto" role="img" aria-label="Allocated budget by project type">
             <BarChart data={chartData} layout="vertical" margin={{ left: 12, right: 16 }}>
               <CartesianGrid horizontal={false} />
               <XAxis type="number" tickFormatter={(value) => `₱${Math.round(Number(value) / 1_000_000)}M`} />

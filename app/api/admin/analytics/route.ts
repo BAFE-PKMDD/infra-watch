@@ -7,7 +7,7 @@ import {
   getManagerialDashboardData,
 } from "@/lib/analytics/managerial-dashboard-query";
 import { hasPermission } from "@/lib/permissions";
-import type { ScopedUser } from "@/lib/scope";
+import { hasAssignedModeratorScope, type ScopedUser } from "@/lib/scope";
 import { getCurrentUser } from "@/lib/session";
 import type { ManagerialDashboardData, ManagerialDashboardFilters } from "@/types/managerial-dashboard.types";
 
@@ -43,6 +43,9 @@ export function createAnalyticsGetHandler(
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
       if (!dependencies.canViewAnalytics(user.role)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      if (!hasAssignedModeratorScope(user)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 

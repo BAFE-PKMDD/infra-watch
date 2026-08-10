@@ -33,7 +33,7 @@ export function ScheduleHealthChart({ data, onSelect }: { data: ManagerialDashbo
     <ChartPanel title="Schedule health distribution" description="Rules-based current schedule outlook and allocated budget exposure." summary={summary}>
       {chartData.length === 0 ? <ChartEmptyState /> : (
         <>
-          <ChartContainer config={{ count: { label: "Projects", color: "#0f766e" } }} className="h-60 w-full aspect-auto" aria-label="Schedule health project counts">
+          <ChartContainer config={{ count: { label: "Projects", color: "#0f766e" } }} className="h-60 w-full aspect-auto" role="img" aria-label="Schedule health project counts">
             <BarChart data={chartData} margin={{ left: 4, right: 8 }}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="label" tickLine={false} axisLine={false} />

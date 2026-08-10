@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Package,
   Calendar,
-  PhilippinePeso,
+
   ExternalLink,
   TrendingUp,
   LineChart as ChartIcon,
@@ -54,7 +54,7 @@ export function ProjectPow({ powRelations }: ProjectPowProps) {
     const startDate = new Date(sortedPows[0].date!);
     const endDate = new Date(sortedPows[sortedPows.length - 1].date!);
 
-    let current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
     const last = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
 
     let lastTarget = 0;

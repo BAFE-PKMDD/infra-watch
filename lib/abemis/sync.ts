@@ -7,6 +7,10 @@ import { fetchInfraProjects } from "./client";
 import { isInfraWatchProject, transformAbemisProject } from "./transform";
 import { eq, sql, or, ilike, and, inArray } from "drizzle-orm";
 import { getProjectScopeConditions, type ScopedUser } from "@/lib/scope";
+import {
+  captureProjectMetricSnapshots,
+  pruneProjectMetricSnapshots,
+} from "@/lib/analytics/project-metric-snapshots";
 
 type ProjectInsert = typeof projects.$inferInsert;
 type SyncError = { projectId: string; message: string };
@@ -39,6 +43,7 @@ export async function syncAbemisProjects(
   let totalProcessed = 0;
   const errors: SyncError[] = [];
   const diagnostics: string[] = [];
+  const successfullyUpsertedIds = new Set<string>();
 
   try {
     onProgress?.(0, 0, "Fetching metadata from ABEMIS...");
@@ -105,6 +110,7 @@ export async function syncAbemisProjects(
           const updatedCount = values.filter((value) => existingIds.has(value.abemisId)).length;
           recordsUpdated += updatedCount;
           recordsAdded += values.length - updatedCount;
+          values.forEach((value) => successfullyUpsertedIds.add(value.abemisId));
         } catch (error) {
           diagnostics.push(
             `Bulk upsert fallback on page ${page}, records ${i + 1}-${i + chunk.length}: ${getReadableError(error)}`
@@ -113,6 +119,7 @@ export async function syncAbemisProjects(
           for (const value of values) {
             try {
               await upsertProjectValues([value]);
+              successfullyUpsertedIds.add(value.abemisId);
               if (existingIds.has(value.abemisId)) {
                 recordsUpdated += 1;
               } else {
@@ -157,6 +164,13 @@ export async function syncAbemisProjects(
         duration,
       })
       .where(eq(syncLogs.id, syncLog.id));
+
+    await captureSnapshotsAfterSuccessfulSync({
+      successful: errors.length === 0,
+      syncLogId: syncLog.id,
+      capturedAt: completedAt,
+      projectIds: [...successfullyUpsertedIds],
+    });
   }
 
   return {
@@ -171,6 +185,46 @@ export async function syncAbemisProjects(
     duration: getDurationSeconds(startedAtMs),
     errors,
   };
+}
+
+type SnapshotAfterSyncInput = {
+  successful: boolean;
+  syncLogId: string;
+  capturedAt: Date;
+  projectIds: string[];
+};
+
+type SnapshotAfterSyncDependencies = {
+  capture: typeof captureProjectMetricSnapshots;
+  prune?: typeof pruneProjectMetricSnapshots;
+  logError: (...values: unknown[]) => void;
+};
+
+export async function captureSnapshotsAfterSuccessfulSync(
+  input: SnapshotAfterSyncInput,
+  dependencies: SnapshotAfterSyncDependencies = {
+    capture: captureProjectMetricSnapshots,
+    prune: pruneProjectMetricSnapshots,
+    logError: (...values) => console.error(...values),
+  },
+) {
+  if (!input.successful) return 0;
+
+  try {
+    const inserted = await dependencies.capture({
+      syncLogId: input.syncLogId,
+      capturedAt: input.capturedAt,
+      projectIds: input.projectIds,
+    });
+    await dependencies.prune?.(input.capturedAt);
+    return inserted;
+  } catch (error) {
+    dependencies.logError(
+      "[ABEMIS sync] Snapshot capture failed:",
+      getReadableError(error),
+    );
+    return 0;
+  }
 }
 
 async function getExistingProjectIds(projectIds: string[]) {

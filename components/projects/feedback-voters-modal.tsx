@@ -28,8 +28,9 @@ export function FeedbackVotersModal({ feedbackId, isOpen, onClose }: FeedbackVot
 
   useEffect(() => {
     if (isOpen && feedbackId) {
-      setLoading(true);
-      getFeedbackVoters(feedbackId)
+      const timeout = window.setTimeout(() => {
+        setLoading(true);
+        getFeedbackVoters(feedbackId)
         .then((result) => {
           if (result.success) {
             setHelpfulVoters(result.data.helpfulVoters);
@@ -48,6 +49,8 @@ export function FeedbackVotersModal({ feedbackId, isOpen, onClose }: FeedbackVot
         .finally(() => {
           setLoading(false);
         });
+      }, 0);
+      return () => window.clearTimeout(timeout);
     }
   }, [feedbackId, isOpen]);
 

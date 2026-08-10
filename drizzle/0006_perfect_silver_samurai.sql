@@ -1,0 +1,2 @@
+ALTER TABLE "project_metric_snapshots" ALTER COLUMN "abc" SET DATA TYPE numeric(14, 2) USING "abc"::numeric(14, 2);--> statement-breakpoint
+ALTER TABLE "projects" ALTER COLUMN "abc" SET DATA TYPE numeric(14, 2) USING "abc"::numeric(14, 2);

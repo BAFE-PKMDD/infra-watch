@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Calendar, PhilippinePeso, MapPin } from "lucide-react";
+import { PhilippinePeso, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 

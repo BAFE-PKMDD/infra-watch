@@ -111,6 +111,26 @@ test("passes a scoped moderator and validated filters to the service", async () 
   });
 });
 
+test("rejects an unassigned moderator without querying portfolio analytics", async () => {
+  for (const moderator of [
+    { id: "unassigned", role: "moderator", region: null, assignedAgency: null },
+    { id: "blank", role: "moderator", region: " ", assignedAgency: "\t" },
+  ]) {
+    let serviceCalls = 0;
+    const response = await createAnalyticsGetHandler({
+      getCurrentUser: async () => moderator,
+      canViewAnalytics: () => true,
+      getDashboardData: async () => {
+        serviceCalls += 1;
+        return emptyData;
+      },
+    })(request());
+
+    assert.equal(response.status, 403);
+    assert.equal(serviceCalls, 0);
+  }
+});
+
 test("returns a generic 500 without SQL, secrets, or stack details", async () => {
   const response = await createAnalyticsGetHandler({
     getCurrentUser: async () => ({ id: "admin", role: "admin" }),

@@ -1,6 +1,6 @@
 "use server";
 
-import type { CommentMedia, FeedbackFeedComment } from "@/types/feedback.types";
+import type { FeedbackFeedComment } from "@/types/feedback.types";
 
 type VoteType = "helpful" | "unhelpful";
 
@@ -14,6 +14,7 @@ interface CommentVoter {
 export async function getFeedbackComments(
   _feedbackId: string,
 ): Promise<{ success: true; data: FeedbackFeedComment[] }> {
+  void _feedbackId;
   return {
     success: true,
     data: [],
@@ -23,6 +24,7 @@ export async function getFeedbackComments(
 export async function getUserCommentVotes(
   _commentIds: string[],
 ): Promise<{ success: true; data: Record<string, VoteType> }> {
+  void _commentIds;
   return {
     success: true,
     data: {},
@@ -38,6 +40,7 @@ export async function getCommentVoters(
     unhelpfulVoters: CommentVoter[];
   };
 }> {
+  void _commentId;
   return {
     success: true,
     data: {

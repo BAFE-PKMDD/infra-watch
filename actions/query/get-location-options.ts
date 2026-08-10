@@ -15,22 +15,6 @@ export type LocationOption = {
 // Cache helpers
 const CACHE_TTL = 3600; // 1 hour
 
-/**
- * Helper to slugify a string to match the project query logic
- * Logic: LOWER(REPLACE(col, ' ', '-'))
- */
-function toSlug(value: string | null): string {
-  if (!value) return "";
-  return value.toLowerCase().replace(/\s+/g, "-");
-}
-
-/**
- * Helper to convert Title Case to Sentence Case or similar if needed.
- * For now, we return the DB value as label.
- */
-function toLabel(value: string): string {
-  return value; // Can add capitalization logic here if PSGC is all caps
-}
 
 /**
  * Get all available regions

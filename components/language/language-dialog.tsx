@@ -16,28 +16,30 @@ import { Language } from "@/i18n/translations";
 
 export function LanguageDialog() {
   const { language, setLanguage, isDialogOpen, setIsDialogOpen } = useLanguage();
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>(language);
+  const [draftLanguage, setDraftLanguage] = useState<Language | null>(null);
+  const selectedLanguage = draftLanguage ?? language;
   const { t } = useTranslation();
 
   useEffect(() => {
     const hasSelected = localStorage.getItem("language_selected");
     if (!hasSelected) {
       setIsDialogOpen(true);
-      setSelectedLanguage(language);
     }
-  }, [language, setIsDialogOpen]);
+  }, [setIsDialogOpen]);
 
   const handleConfirm = () => {
     setLanguage(selectedLanguage);
     localStorage.setItem("language_selected", "true");
+    setDraftLanguage(null);
     setIsDialogOpen(false);
   };
 
-  const handleOpenChange = (open: boolean, event?: any) => {
+  const handleOpenChange = (open: boolean) => {
     // If trying to close, check if they have confirmed a selection first
     if (!open) {
       const hasSelected = localStorage.getItem("language_selected");
       if (!hasSelected) return; // Prevent closing
+      setDraftLanguage(null);
     }
     setIsDialogOpen(open);
   };
@@ -63,7 +65,7 @@ export function LanguageDialog() {
               ? "border-primary bg-primary/10 dark:bg-primary/20"
               : "border-slate-200 dark:border-slate-800"
               }`}
-            onClick={() => setSelectedLanguage("en")}
+            onClick={() => setDraftLanguage("en")}
           >
             <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedLanguage === "en" ? "border-primary" : "border-slate-300 dark:border-slate-600"
               }`}>
@@ -80,7 +82,7 @@ export function LanguageDialog() {
               ? "border-primary bg-primary/10 dark:bg-primary/20"
               : "border-slate-200 dark:border-slate-800"
               }`}
-            onClick={() => setSelectedLanguage("tl")}
+            onClick={() => setDraftLanguage("tl")}
           >
             <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedLanguage === "tl" ? "border-primary" : "border-slate-300 dark:border-slate-600"
               }`}>

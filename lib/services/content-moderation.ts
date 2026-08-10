@@ -3,6 +3,8 @@ import "server-only";
 import { Filter } from "bad-words";
 import type * as nsfwjs from "nsfwjs";
 
+type ClassifiableImage = Parameters<nsfwjs.NSFWJS["classify"]>[0];
+
 type ImageModerationResult = {
   isNSFW: boolean;
   predictions: nsfwjs.PredictionType[];
@@ -192,7 +194,9 @@ export async function moderateImageBuffer(buffer: Buffer): Promise<ImageModerati
     const pngBuffer = await sharp(buffer).png().toBuffer();
     imageTensor = tf.node.decodeImage(pngBuffer, 3);
 
-    const predictions = await nsfwModel.classify(imageTensor as any);
+    const predictions = await nsfwModel.classify(
+      imageTensor as unknown as ClassifiableImage,
+    );
     const flagged = findFlaggedPrediction(predictions);
 
     return {

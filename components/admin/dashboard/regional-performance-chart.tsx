@@ -17,7 +17,7 @@ export function RegionalPerformanceChart({ data, onSelect }: { data: ManagerialD
     <ChartPanel title="Regional performance ranking" description="Completion, delayed, and at-risk rates with project counts for context." summary={summary}>
       {chartData.length === 0 ? <ChartEmptyState /> : (
         <>
-          <ChartContainer config={{ completionRate: { label: "Completion", color: "#16a34a" }, delayedRate: { label: "Delayed", color: "#dc2626" }, atRiskRate: { label: "At risk", color: "#d97706" } }} className="w-full aspect-auto" style={{ height: Math.max(288, chartData.length * 42) }} aria-label="Regional completion, delayed, and at-risk rates">
+          <ChartContainer config={{ completionRate: { label: "Completion", color: "#16a34a" }, delayedRate: { label: "Delayed", color: "#dc2626" }, atRiskRate: { label: "At risk", color: "#d97706" } }} className="w-full aspect-auto" style={{ height: Math.max(288, chartData.length * 42) }} role="img" aria-label="Regional completion, delayed, and at-risk rates">
             <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 12 }}>
               <CartesianGrid horizontal={false} />
               <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />

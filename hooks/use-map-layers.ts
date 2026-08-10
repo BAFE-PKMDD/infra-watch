@@ -3,6 +3,8 @@ export function useMapLayers() {
     layers: [],
     loading: false,
     visibleLayers: new Set<string>(),
-    toggleLayer: (id: string) => {},
+    toggleLayer: (id: string) => {
+      void id;
+    },
   };
 }

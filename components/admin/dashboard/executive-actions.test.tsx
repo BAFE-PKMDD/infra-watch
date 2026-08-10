@@ -40,12 +40,21 @@ test("renders a keyboard-usable priority table with reason and canonical project
       scheduleVariance: -24,
       health: "delayed",
       reason: "9 days overdue",
+      forecast: {
+        status: "projected",
+        projectedCompletionDate: "2026-10-15",
+        confidence: "high",
+        targetRisk: true,
+      },
     }],
   }));
   assert.match(html, /Priority projects/);
   assert.match(html, /9 days overdue/);
   assert.match(html, /₱|PHP/);
   assert.match(html, /42%/);
+  assert.match(html, /Projected completion/i);
+  assert.match(html, /Oct 15, 2026/);
+  assert.match(html, /high confidence/i);
   assert.match(html, /href="\/projects\/ABEMIS%20123"/);
   assert.doesNotMatch(html, /reporter|contact|email/i);
 });

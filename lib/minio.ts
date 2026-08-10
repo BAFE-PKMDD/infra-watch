@@ -6,6 +6,28 @@ export { getFileUrl, getFullUrl, isFullUrl } from "./minio-url";
 
 const bucketName = process.env.MINIO_BUCKET_NAME || "infra-watch";
 
+type BucketCorsConfiguration = {
+  CORSRules: Array<{
+    AllowedHeaders: string[];
+    AllowedMethods: string[];
+    AllowedOrigins: string[];
+    ExposeHeaders: string[];
+    MaxAgeSeconds: number;
+  }>;
+};
+
+type MinioClientWithCors = Minio.Client & {
+  setBucketCors(bucket: string, configuration: BucketCorsConfiguration): Promise<void>;
+};
+
+function isWebReadableStream(value: unknown): value is ReadableStream<Uint8Array> {
+  if (typeof value !== "object" || value === null || !("getReader" in value)) {
+    return false;
+  }
+
+  return typeof value.getReader === "function";
+}
+
 const minioConfig: Minio.ClientOptions = {
   endPoint: process.env.MINIO_ENDPOINT || "storage.bafe.online",
   useSSL: process.env.MINIO_USE_SSL === "true",
@@ -40,7 +62,7 @@ export async function ensureBucketExists(): Promise<void> {
   await minioClient.setBucketPolicy(bucketName, JSON.stringify(policy));
 
   try {
-    await (minioClient as any).setBucketCors(bucketName, {
+    await (minioClient as MinioClientWithCors).setBucketCors(bucketName, {
       CORSRules: [
         {
           AllowedHeaders: ["*"],
@@ -72,8 +94,10 @@ export async function uploadFile(
     stream = Buffer.from(await content.arrayBuffer());
   } else if (content instanceof Readable) {
     stream = content;
-  } else if (typeof (content as any).getReader === "function") {
-    stream = Readable.fromWeb(content as any);
+  } else if (isWebReadableStream(content)) {
+    stream = Readable.fromWeb(
+      content as unknown as import("stream/web").ReadableStream<Uint8Array>,
+    );
   } else {
     throw new Error("Invalid upload content");
   }

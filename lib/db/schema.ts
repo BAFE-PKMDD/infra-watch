@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -8,6 +9,7 @@ import {
   real,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   customType,
 } from "drizzle-orm/pg-core";
@@ -43,7 +45,7 @@ export const projects = pgTable(
     latitude: real("latitude"),
     longitude: real("longitude"),
     budget: numeric("budget", { precision: 14, scale: 2 }),
-    abc: real("abc"),
+    abc: numeric("abc", { precision: 14, scale: 2, mode: "number" }),
     contractAmount: numeric("contract_amount", { precision: 14, scale: 2 }),
     calendarDays: integer("calendar_days"),
     physicalProgress: integer("physical_progress").notNull().default(0),
@@ -215,6 +217,48 @@ export const syncLogs = pgTable("sync_logs", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 
+export const projectMetricSnapshots = pgTable(
+  "project_metric_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.abemisId, { onDelete: "cascade" }),
+    syncLogId: uuid("sync_log_id")
+      .notNull()
+      .references(() => syncLogs.id, { onDelete: "cascade" }),
+    captureDate: date("capture_date", { mode: "string" }).notNull(),
+    capturedAt: timestamp("captured_at", { mode: "date" }).notNull(),
+    physicalProgress: integer("physical_progress"),
+    financialProgress: integer("financial_progress"),
+    budget: numeric("budget", { precision: 14, scale: 2 }),
+    abc: numeric("abc", { precision: 14, scale: 2, mode: "number" }),
+    program: text("program"),
+    region: text("region"),
+    province: text("province"),
+    yearFunded: text("year_funded"),
+    projectType: text("project_type"),
+    status: text("status").notNull(),
+    targetCompletionDate: timestamp("target_completion_date", { mode: "date" }),
+    sourceLastSyncedAt: timestamp("source_last_synced_at", { mode: "date" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    projectDayUnique: uniqueIndex(
+      "project_metric_snapshots_project_day_uidx",
+    ).on(table.projectId, table.captureDate),
+    projectCaptureDateIdx: index(
+      "project_metric_snapshots_project_capture_date_idx",
+    ).on(table.projectId, table.captureDate),
+    captureDateIdx: index("project_metric_snapshots_capture_date_idx").on(
+      table.captureDate,
+    ),
+    statusCaptureDateIdx: index(
+      "project_metric_snapshots_status_capture_date_idx",
+    ).on(table.status, table.captureDate),
+  }),
+);
+
 export const auditLogs = pgTable(
   "audit_logs",
   {
@@ -246,6 +290,7 @@ export const chatHistory = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     conversationId: uuid("conversation_id").notNull(),
     ownerKey: text("owner_key").notNull(),
+    surface: text("surface").notNull().default("public_chat"),
     userId: text("user_id"),
     userMessage: text("user_message").notNull(),
     assistantMessage: text("assistant_message"),

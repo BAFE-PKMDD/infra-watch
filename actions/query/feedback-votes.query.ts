@@ -12,6 +12,7 @@ interface Voter {
 export async function getUserVotes(
   _feedbackIds: string[],
 ): Promise<{ success: true; data: Record<string, VoteType> }> {
+  void _feedbackIds;
   return {
     success: true,
     data: {},
@@ -27,6 +28,7 @@ export async function getFeedbackVoters(
     unhelpfulVoters: Voter[];
   };
 }> {
+  void _feedbackId;
   return {
     success: true,
     data: {

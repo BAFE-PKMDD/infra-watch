@@ -18,11 +18,6 @@ import type {
 import { getFeedSidebarData } from "@/actions/query/community-stats.query";
 import { ProjectPreviewSheet } from "@/components/feedback-feed/project-preview-sheet";
 
-function formatCount(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return n.toLocaleString();
-}
-
 function timeAgo(date: Date): string {
   const now = new Date();
   const diff = now.getTime() - new Date(date).getTime();

@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import { FileText, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
@@ -17,13 +17,18 @@ import { DashboardSkeleton } from "./dashboard-skeleton";
 import { DashboardState } from "./dashboard-state";
 import { ExecutiveInsights } from "./executive-insights";
 import { ExecutiveKpis } from "./executive-kpis";
+import { OptionalManagerialAiCopilot } from "./managerial-ai-copilot";
 import { ProgressVarianceChart } from "./progress-variance-chart";
 import { PriorityProjectsTable } from "./priority-projects-table";
 import { ProjectTypeBudgetChart } from "./project-type-budget-chart";
 import { RegionalPerformanceChart } from "./regional-performance-chart";
 import { ScheduleHealthChart } from "./schedule-health-chart";
 
-export function ManagerialDashboardClient() {
+export function ManagerialDashboardClient({
+  managerialAiEnabled = false,
+}: {
+  managerialAiEnabled?: boolean;
+}) {
   const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -75,11 +80,28 @@ export function ManagerialDashboardClient() {
   }
 
   const data = query.data;
+  const executiveBriefParams = dashboardFiltersToSearchParams(filters);
+  const executiveBriefHref = executiveBriefParams.size > 0
+    ? `/executive-brief?${executiveBriefParams.toString()}`
+    : "/executive-brief";
   return (
     <div className="space-y-5" aria-busy={query.isFetching}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <DataFreshness freshness={data.freshness} />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <OptionalManagerialAiCopilot
+            enabled={managerialAiEnabled}
+            filters={filters}
+            asOf={data.asOf}
+            onRefresh={() => query.refetch({ throwOnError: true })}
+          />
+          {managerialAiEnabled && (
+            <Button variant="outline" asChild>
+              <Link href={executiveBriefHref}>
+                <FileText /> Executive brief
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" onClick={() => query.refetch()} disabled={query.isFetching}>
             <RefreshCw className={query.isFetching ? "animate-spin motion-reduce:animate-none" : ""} />
             Refresh

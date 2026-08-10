@@ -17,9 +17,10 @@ async function UsersData({
   limit: number;
 }) {
   const offset = (page - 1) * limit;
+  let result;
 
   try {
-    const [usersData, stats, regions] = await Promise.all([
+    result = await Promise.all([
       getAllUsers({
         search,
         role,
@@ -31,16 +32,6 @@ async function UsersData({
       getRegions(),
     ]);
 
-    return (
-      <UserManagementClient
-        initialUsers={usersData.users}
-        stats={stats}
-        total={usersData.total}
-        currentPage={page}
-        limit={limit}
-        regions={regions}
-      />
-    );
   } catch (error) {
     if (error instanceof Error && error.message.includes("Forbidden")) {
       return (
@@ -50,7 +41,7 @@ async function UsersData({
               Access Denied
             </h2>
             <p className="text-sm text-red-700 dark:text-red-300">
-              You don't have permission to access user management.
+              You don&apos;t have permission to access user management.
             </p>
           </div>
         </div>
@@ -59,6 +50,18 @@ async function UsersData({
 
     throw error;
   }
+
+  const [usersData, stats, regions] = result;
+  return (
+    <UserManagementClient
+      initialUsers={usersData.users}
+      stats={stats}
+      total={usersData.total}
+      currentPage={page}
+      limit={limit}
+      regions={regions}
+    />
+  );
 }
 
 export default async function UserManagementPage(props: {

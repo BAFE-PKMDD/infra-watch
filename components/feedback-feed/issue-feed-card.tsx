@@ -9,14 +9,6 @@ import {
   ArrowUpRight,
   MessageSquare,
   Play,
-  AlertTriangle,
-  Droplets,
-  Construction,
-  ShieldAlert,
-  Shield,
-  Slash,
-  HelpCircle,
-  Hammer,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
@@ -26,46 +18,6 @@ import { MediaViewer } from "@/components/ui/media-viewer";
 import type { IssueActivityItem } from "@/types/activity-feed.types";
 import { ProjectPreviewSheet } from "@/components/feedback-feed/project-preview-sheet";
 
-const ISSUE_TYPE_CONFIG: Record<
-  string,
-  { label: string; color: string; icon: typeof AlertTriangle }
-> = {
-  damage: {
-    label: "Road Damage",
-    color: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
-    icon: AlertTriangle,
-  },
-  stopped: {
-    label: "Stalled Project",
-    color: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400",
-    icon: Slash,
-  },
-  safety: {
-    label: "Safety Hazard",
-    color: "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400",
-    icon: ShieldAlert,
-  },
-  flooding: {
-    label: "Flooding",
-    color: "bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400",
-    icon: Droplets,
-  },
-  blocked: {
-    label: "Road Blocked",
-    color: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
-    icon: Construction,
-  },
-  quality: {
-    label: "Quality Issue",
-    color: "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400",
-    icon: Hammer,
-  },
-  other: {
-    label: "Other",
-    color: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400",
-    icon: HelpCircle,
-  },
-};
 
 // ─── Helpers ───────────────────────────────────────────
 
@@ -90,8 +42,7 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
   const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
 
   const displayName = item.isAnonymous ? "Anonymous Citizen" : item.reporterName;
-  const typeCfg = ISSUE_TYPE_CONFIG[item.issueType] || ISSUE_TYPE_CONFIG.other;
-  const TypeIcon = typeCfg.icon;
+
 
   // Build media items for the viewer
   const allMedia: { url: string; type: "image" | "video"; caption?: string }[] = [

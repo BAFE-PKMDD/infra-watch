@@ -51,6 +51,11 @@ export type ManagerialDashboardData = {
     atRiskProjects: number;
   };
   scheduleHealth: Array<{ key: ScheduleHealth; count: number; budget: number }>;
+  statusBreakdown?: Array<{
+    key: ProjectStatusFilter;
+    count: number;
+    allocatedBudget: number;
+  }>;
   regions: Array<{
     region: string;
     total: number;
@@ -89,6 +94,12 @@ export type ManagerialDashboardData = {
     scheduleVariance: number | null;
     health: ScheduleHealth;
     reason: string;
+    forecast?: {
+      status: "insufficientHistory" | "stalled" | "projected" | "completed" | "inactive";
+      projectedCompletionDate: string | null;
+      confidence: "low" | "medium" | "high" | null;
+      targetRisk: boolean | null;
+    };
   }>;
   insights: Array<{
     severity: "info" | "warning" | "critical";

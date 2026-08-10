@@ -1,6 +1,7 @@
 import React from "react";
 import { AppHeader } from "@/components/layout/app-header";
 import { AppFooter } from "@/components/layout/app-footer";
+import { AiAssistantWidget } from "@/components/ai-assistant-widget";
 
 export default function PublicLayout({
   children,
@@ -12,6 +13,7 @@ export default function PublicLayout({
       <AppHeader />
       <main className="flex-1">{children}</main>
       <AppFooter />
+      <AiAssistantWidget />
     </div>
   );
 }

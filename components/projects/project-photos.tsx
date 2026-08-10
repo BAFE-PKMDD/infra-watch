@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Image as ImageIcon, MapPin, X, Download, Share2, ChevronLeft, ChevronRight, Grid3x3, Map } from "lucide-react";
 import Image from "next/image";
 import { isLocalMinIO } from "@/lib/minio-url";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { PhotoGridView } from "./photo-grid-view";
@@ -44,23 +44,23 @@ export function ProjectPhotos({ projectId, geotags, projectCoordinates, kmlLink 
   const searchParams = useSearchParams();
   const [selectedPhoto, setSelectedPhoto] = useState<GeoTag | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
-  const [currentPhotos, setCurrentPhotos] = useState<GeoTag[]>(geotags);
-  const [viewMode, setViewMode] = useState<PhotoViewMode>("grid");
+  const [selectedPhotos, setSelectedPhotos] = useState<GeoTag[] | null>(null);
+  const currentPhotos = selectedPhotos ?? geotags;
+  const photoView = searchParams.get("photoView");
+  const viewMode: PhotoViewMode = photoView === "maps" ? "maps" : "grid";
+  const geotagVersion = geotags
+    .map((tag) => `${tag.id ?? ""}:${tag.url ?? ""}:${tag.category ?? ""}`)
+    .join("|");
 
-  // Adjust state during render when geotags prop changes (React recommended pattern)
-  const prevGeotagsRef = useRef(geotags);
-  if (prevGeotagsRef.current !== geotags) {
-    prevGeotagsRef.current = geotags;
-    setCurrentPhotos(geotags);
-  }
-
-  // Read view mode from URL parameter
   useEffect(() => {
-    const viewFromUrl = searchParams.get("photoView");
-    if (viewFromUrl === "maps" || viewFromUrl === "grid") {
-      setViewMode(viewFromUrl as PhotoViewMode);
-    }
-  }, [searchParams]);
+    const reset = window.setTimeout(() => {
+      setSelectedPhotos(null);
+      setSelectedPhoto(null);
+      setSelectedIndex(-1);
+    }, 0);
+
+    return () => window.clearTimeout(reset);
+  }, [geotagVersion]);
 
   const handleDownload = async (url: string, filename: string) => {
     try {
@@ -113,12 +113,12 @@ export function ProjectPhotos({ projectId, geotags, projectCoordinates, kmlLink 
     setSelectedIndex(index);
     setSelectedPhoto(tag);
     if (filteredPhotos) {
-      setCurrentPhotos(filteredPhotos);
+      setSelectedPhotos(filteredPhotos);
     } else {
       // Logic for MapView or other view if they don't filter
-      setCurrentPhotos(geotags);
+      setSelectedPhotos(null);
     }
-  }, [geotags]);
+  }, []);
 
   const navigatePhoto = useCallback((direction: 'prev' | 'next') => {
     if (!currentPhotos.length) return;
@@ -198,7 +198,7 @@ export function ProjectPhotos({ projectId, geotags, projectCoordinates, kmlLink 
             <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm rounded-lg p-1">
               <button
                 onClick={() => {
-                  setViewMode("grid");
+
                   const params = new URLSearchParams(searchParams.toString());
                   params.set("photoView", "grid");
                   router.push(`?${params.toString()}`, { scroll: false });
@@ -213,7 +213,7 @@ export function ProjectPhotos({ projectId, geotags, projectCoordinates, kmlLink 
               </button>
               <button
                 onClick={() => {
-                  setViewMode("maps");
+
                   const params = new URLSearchParams(searchParams.toString());
                   params.set("photoView", "maps");
                   router.push(`?${params.toString()}`, { scroll: false });

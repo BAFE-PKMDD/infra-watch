@@ -88,6 +88,7 @@ export async function getServerOwnedChatHistory(input: {
 type StartChatHistoryTurnInput = {
   conversationId: string;
   ownerKey: string;
+  surface?: "public_chat" | "managerial_ai";
   userId: string | null;
   userMessage: string;
   provider: string;
@@ -101,6 +102,7 @@ export async function startChatHistoryTurn(input: StartChatHistoryTurnInput) {
     .insert(chatHistory)
     .values({
       ...input,
+      surface: input.surface ?? "public_chat",
       expiresAt: getChatHistoryExpiry(),
     })
     .returning({ id: chatHistory.id });

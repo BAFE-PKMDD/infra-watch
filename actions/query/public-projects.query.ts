@@ -225,7 +225,7 @@ export async function getPublicProjectById(id: string) {
     if (!row) return null;
 
     // We parse metadata or provide empty defaults for the rich UI
-    const metadata = (row.metadata as any) || {};
+    const metadata = (row.metadata as Record<string, unknown> | null) || {};
 
     const coordinates = row.latitude && row.longitude ? `${row.latitude}, ${row.longitude}` : undefined;
 
@@ -249,8 +249,18 @@ export async function getPublicProjectById(id: string) {
         physical: row.physicalProgress || 0,
         financial: row.financialProgress || 0,
       },
-      photos: Array.isArray(metadata.geotag) 
-        ? metadata.geotag.map((tag: any) => tag?.photo_url || tag?.url).filter(Boolean)
+      photos: Array.isArray(metadata.geotag)
+        ? metadata.geotag
+          .map((tag) => {
+            if (!tag || typeof tag !== "object") return undefined;
+            const photo = tag as Record<string, unknown>;
+            return typeof photo.photo_url === "string"
+              ? photo.photo_url
+              : typeof photo.url === "string"
+                ? photo.url
+                : undefined;
+          })
+          .filter((url): url is string => Boolean(url))
         : [],
       updates: [],
       completionDate: row.targetCompletionDate ? new Date(row.targetCompletionDate).toLocaleDateString() : "Unknown",

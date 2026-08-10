@@ -5,14 +5,52 @@ import { PgDialect } from "drizzle-orm/pg-core";
 
 import {
   aggregateManagerialDashboardRows,
+  buildDashboardAggregateQueryPlan,
   buildDashboardConditions,
   buildDashboardConditionDescriptors,
+  buildDashboardScopeCountQuery,
   comparePriorityProjects,
+  currencyFromCents,
   enforceDashboardRowLimit,
   hasReportedPhysicalProgress,
   sumCurrency,
   type DashboardProjectRow,
 } from "./managerial-dashboard-query";
+
+test("builds PostgreSQL aggregate and bounded detail queries instead of a portfolio row load", () => {
+  const scopeCountSql = buildDashboardScopeCountQuery(
+    { health: "delayed" },
+    { role: "moderator", region: "08", assignedAgency: "AMEFIP" },
+    "2026-08-10",
+  ).toSQL().sql;
+  assert.match(scopeCountSql, /count\(\*\)/i);
+  assert.match(scopeCountSql, /where "health" =/i);
+
+  const plan = buildDashboardAggregateQueryPlan({}, { role: "admin" }, "2026-08-10");
+  assert.deepEqual(plan.map(({ name }) => name), [
+    "summary",
+    "scheduleHealth",
+    "statuses",
+    "regions",
+    "projectTypes",
+    "progressVariance",
+    "priorityProjects",
+    "filterOptions",
+  ]);
+
+  for (const query of plan) {
+    const compiled = query.query.toSQL();
+    assert.doesNotMatch(compiled.sql, /limit\s+\$\d+[^]*30001/i);
+    if (query.name === "progressVariance") assert.equal(compiled.params.at(-1), 50);
+    if (query.name === "priorityProjects") assert.equal(compiled.params.at(-1), 10);
+  }
+
+  for (const aggregateName of ["summary", "scheduleHealth", "statuses", "regions", "projectTypes", "filterOptions"] as const) {
+    const sqlText = plan.find(({ name }) => name === aggregateName)!.query.toSQL().sql;
+    assert.match(sqlText, /count\(|sum\(|group by|array_agg\(/i);
+    assert.match(sqlText, /case when/i);
+  }
+});
 
 test("translates Unknown dimension filters to null-or-blank SQL predicates", () => {
   const condition = and(
@@ -36,6 +74,11 @@ test("translates Unknown dimension filters to null-or-blank SQL predicates", () 
 test("sums decimal currency through integer cent arithmetic", () => {
   assert.equal(sumCurrency(["0.10", "0.20", null]), 0.3);
   assert.equal(sumCurrency(["900719925474.09", "0.01"]), 900719925474.1);
+  assert.equal(currencyFromCents("30"), 0.3);
+  assert.throws(
+    () => currencyFromCents((BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)).toString()),
+    /safe cent precision/,
+  );
 });
 
 const baseRow: DashboardProjectRow = {

@@ -27,6 +27,10 @@ interface ProjectPreviewSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface PreviewProjectMetadata {
+  geotag?: Array<{ url?: string | null }>;
+}
+
 const DESKTOP_BREAKPOINT = "(min-width: 768px)";
 
 // ─── Field Component ───────────────────────────────────
@@ -91,10 +95,10 @@ function PreviewContent({
   onClose: () => void;
 }) {
   // Extract all geotag images
-  const metadata = project?.metadata as any;
+  const metadata = project?.metadata as PreviewProjectMetadata | null | undefined;
   const images: string[] = (metadata?.geotag || [])
-    .map((tag: any) => tag.url)
-    .filter(Boolean);
+    .map((tag) => tag.url)
+    .filter((url): url is string => Boolean(url));
   const hasImages = images.length > 0;
   const allImages = hasImages ? images : ["/hero-road.jpg"];
 
@@ -108,11 +112,6 @@ function PreviewContent({
     }, 4000);
     return () => clearInterval(interval);
   }, [allImages.length]);
-
-  // Reset index when project changes
-  useEffect(() => {
-    setCurrentIndex(0);
-  }, [project?.id]);
 
   const goToPrev = useCallback(
     (e: React.MouseEvent) => {
@@ -282,14 +281,17 @@ export function ProjectPreviewSheet({ projectId, open, onOpenChange }: ProjectPr
 
   useEffect(() => {
     if (open && projectId) {
-      setLoading(true);
-      setProject(null);
-      getProjectPreview(projectId).then((result) => {
-        if (result.success && result.data) {
-          setProject(result.data);
-        }
-        setLoading(false);
-      });
+      const timeout = window.setTimeout(() => {
+        setLoading(true);
+        setProject(null);
+        getProjectPreview(projectId).then((result) => {
+          if (result.success && result.data) {
+            setProject(result.data);
+          }
+          setLoading(false);
+        });
+      }, 0);
+      return () => window.clearTimeout(timeout);
     }
   }, [open, projectId]);
 
@@ -305,7 +307,7 @@ export function ProjectPreviewSheet({ projectId, open, onOpenChange }: ProjectPr
             <SheetDescription>Project details preview</SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto h-full">
-            <PreviewContent project={project} loading={loading} onClose={handleClose} />
+            <PreviewContent key={project?.id} project={project} loading={loading} onClose={handleClose} />
           </div>
         </SheetContent>
       </Sheet>
@@ -326,7 +328,7 @@ export function ProjectPreviewSheet({ projectId, open, onOpenChange }: ProjectPr
             Project details preview
           </DrawerPrimitive.Description>
           <div className="overflow-y-auto flex-1">
-            <PreviewContent project={project} loading={loading} onClose={handleClose} />
+            <PreviewContent key={project?.id} project={project} loading={loading} onClose={handleClose} />
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>

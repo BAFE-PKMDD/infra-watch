@@ -14,6 +14,22 @@ interface OTPVerificationFormProps {
   onBack?: () => void;
 }
 
+export type OtpTimerState = {
+  expiresAt: number;
+  generation: number;
+};
+
+export function resetOtpTimerState(
+  state: OtpTimerState,
+  now: number,
+  seconds: number,
+): OtpTimerState {
+  return {
+    expiresAt: now + seconds * 1_000,
+    generation: state.generation + 1,
+  };
+}
+
 export function OTPVerificationForm({
   identifier,
   type = "email-verification",
@@ -26,13 +42,16 @@ export function OTPVerificationForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [expiresAt, setExpiresAt] = useState<number>(Date.now() + 180 * 1000);
   const [timer, setTimer] = useState(180); // 3 minutes countdown
+  const [timerState, setTimerState] = useState<OtpTimerState>(() => ({
+    expiresAt: Date.now() + 180 * 1_000,
+    generation: 0,
+  }));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Update expiration time when code is sent/resent
   const resetTimer = (seconds: number = 180) => {
-    setExpiresAt(Date.now() + seconds * 1000);
+    setTimerState((state) => resetOtpTimerState(state, Date.now(), seconds));
     setTimer(seconds);
   };
 
@@ -41,16 +60,16 @@ export function OTPVerificationForm({
     if (success) return;
 
     const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+      const remaining = Math.max(
+        0,
+        Math.floor((timerState.expiresAt - Date.now()) / 1000),
+      );
       setTimer(remaining);
-
-      if (remaining === 0) {
-        clearInterval(interval);
-      }
+      if (remaining === 0) clearInterval(interval);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [expiresAt, success]);
+  }, [success, timerState.expiresAt, timerState.generation]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -69,15 +88,6 @@ export function OTPVerificationForm({
       .padStart(2, "0")}`;
   };
 
-  // Auto-submit when all digits are entered
-  useEffect(() => {
-    const code = otp.join("");
-    if (code.length === 6 && !isVerifying && timer > 0) {
-      handleVerify(code);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otp]);
-
   const handleChange = (index: number, value: string) => {
     // Only accept digits
     if (value && !/^\d+$/.test(value)) return;
@@ -92,19 +102,22 @@ export function OTPVerificationForm({
           newOtp[index + i] = digit;
         }
       });
-      setOtp(newOtp);
       const nextIndex = Math.min(index + pastedDigits.length, 5);
       inputRefs.current[nextIndex]?.focus();
-      return;
+    } else {
+      newOtp[index] = value;
+      setError(null);
+
+      // Move to next input
+      if (value && index < 5) {
+        inputRefs.current[index + 1]?.focus();
+      }
     }
 
-    newOtp[index] = value;
     setOtp(newOtp);
-    setError(null);
-
-    // Move to next input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+    const code = newOtp.join("");
+    if (code.length === 6 && !isVerifying && timer > 0) {
+      void handleVerify(code);
     }
   };
 
@@ -114,7 +127,7 @@ export function OTPVerificationForm({
     }
   };
 
-  const handleVerify = async (code: string) => {
+  async function handleVerify(code: string) {
     if (timer === 0) {
       setError("This code has expired. Please request a new one.");
       return;
@@ -163,14 +176,14 @@ export function OTPVerificationForm({
       setTimeout(() => {
         onSuccess(code);
       }, 1500);
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred. Please try again.");
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
       setIsVerifying(false);
     }
-  };
+  }
 
   const handleResend = async () => {
     setIsResending(true);

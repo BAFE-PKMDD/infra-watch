@@ -134,7 +134,7 @@ export interface ProposalDocument {
   url?: string;
   category?: string;
   uploaded_at?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface PowRelation {
@@ -146,7 +146,7 @@ export interface PowRelation {
   target?: string;
   actual?: string;
   attachment_url?: string | null;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ProcurementRelation {
@@ -158,5 +158,5 @@ export interface ProcurementRelation {
   factors_affecting_progress?: string;
   measures_undertaken?: string;
   remarks?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }

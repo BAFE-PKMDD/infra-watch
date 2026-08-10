@@ -120,6 +120,7 @@ export async function updateFeedbackComment(
 export async function deleteFeedbackComment(
   _commentId: string,
 ): Promise<{ success: true; message: string }> {
+  void _commentId;
   return {
     success: true,
     message: "Comment deleted.",

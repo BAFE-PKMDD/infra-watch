@@ -16,7 +16,9 @@ export default async function DashboardPage() {
       description="Interactive portfolio intelligence for project performance, schedule risk, budget oversight, and regional delivery—designed to support executive decisions and surface bottlenecks early."
     >
       <Suspense fallback={<DashboardSkeleton />}>
-        <ManagerialDashboardClient />
+        <ManagerialDashboardClient
+          managerialAiEnabled={process.env.ENABLE_MANAGERIAL_AI === "true"}
+        />
       </Suspense>
     </AdminPageWrapper>
   );

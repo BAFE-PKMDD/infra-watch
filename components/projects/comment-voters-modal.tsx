@@ -28,8 +28,9 @@ export function CommentVotersModal({ commentId, isOpen, onClose }: CommentVoters
 
   useEffect(() => {
     if (isOpen && commentId) {
-      setLoading(true);
-      getCommentVoters(commentId)
+      const timeout = window.setTimeout(() => {
+        setLoading(true);
+        getCommentVoters(commentId)
         .then((result) => {
           if (result.success) {
             setHelpfulVoters(result.data.helpfulVoters);
@@ -48,6 +49,8 @@ export function CommentVotersModal({ commentId, isOpen, onClose }: CommentVoters
         .finally(() => {
           setLoading(false);
         });
+      }, 0);
+      return () => window.clearTimeout(timeout);
     }
   }, [commentId, isOpen]);
 

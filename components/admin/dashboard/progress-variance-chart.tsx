@@ -14,7 +14,7 @@ export function ProgressVarianceChart({ data }: { data: ManagerialDashboardData[
     <ChartPanel title="Physical versus expected progress" description="Largest current variance among assessable active projects; rules-based, not a trend forecast." summary={summary}>
       {chartData.length === 0 ? <ChartEmptyState /> : (
         <>
-          <ChartContainer config={{ expectedProgress: { label: "Expected", color: "#64748b" }, physicalProgress: { label: "Physical", color: "#0f766e" } }} className="h-72 w-full aspect-auto" aria-label="Physical and expected schedule progress by project">
+          <ChartContainer config={{ expectedProgress: { label: "Expected", color: "#64748b" }, physicalProgress: { label: "Physical", color: "#0f766e" } }} className="h-72 w-full aspect-auto" role="img" aria-label="Physical and expected schedule progress by project">
             <BarChart data={chartData} margin={{ left: 0, right: 8 }}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="projectName" tick={false} />

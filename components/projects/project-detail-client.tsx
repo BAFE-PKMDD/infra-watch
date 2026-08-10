@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ProjectHero } from "@/components/projects/project-hero";
@@ -24,24 +23,23 @@ const validTabs: ProjectTabKey[] = [
   "feedback",
 ];
 
+interface ProjectMetadataCounts {
+  geotag?: unknown[];
+  proposalDocuments?: unknown[];
+  powRelation?: unknown[];
+  procurementRelation?: unknown[];
+}
+
 export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Always initialize with 'overview' to prevent hydration mismatch
-  const [activeTab, setActiveTab] = useState<ProjectTabKey>("overview");
-
-  // Read tab from URL after mount to avoid hydration issues
-  useEffect(() => {
-    const tabFromUrl = searchParams.get("tab") as ProjectTabKey | null;
-    if (tabFromUrl && validTabs.includes(tabFromUrl)) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [searchParams]);
+  const tabFromUrl = searchParams.get("tab") as ProjectTabKey | null;
+  const activeTab = tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : "overview";
 
   // Update URL when tab changes
   const handleTabChange = (tab: ProjectTabKey) => {
-    setActiveTab(tab);
+
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
     router.push(`?${params.toString()}`, { scroll: false });
@@ -49,7 +47,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
 
   // Navigate to photos tab with map view
   const handleShowOnMap = () => {
-    setActiveTab("photos");
+
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", "photos");
     params.set("photoView", "maps");
@@ -57,7 +55,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
   };
 
   // Calculate counts for sidebar
-  const metadata = project.metadata as any;
+  const metadata = project.metadata as ProjectMetadataCounts | null | undefined;
   const tabCounts: Partial<Record<ProjectTabKey, number>> = {
     articles: project.articles?.length || 0,
     photos: metadata?.geotag?.length || 0,

@@ -29,6 +29,7 @@ export function PriorityProjectsTable({ projects }: { projects: ManagerialDashbo
                 <th scope="col" className="px-4 py-3">Allocated budget</th>
                 <th scope="col" className="px-4 py-3">Physical progress</th>
                 <th scope="col" className="px-4 py-3">Target date</th>
+                <th scope="col" className="px-4 py-3">Completion forecast</th>
                 <th scope="col" className="px-4 py-3">Schedule health</th>
               </tr>
             </thead>
@@ -46,6 +47,7 @@ export function PriorityProjectsTable({ projects }: { projects: ManagerialDashbo
                   <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-slate-200">{project.allocatedBudget === null ? "Unknown" : formatDashboardCurrency(project.allocatedBudget)}</td>
                   <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-slate-200">{project.physicalProgress === null ? "Unknown" : `${project.physicalProgress}%`}</td>
                   <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{formatTargetDate(project.targetCompletionDate)}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{formatForecast(project.forecast)}</td>
                   <td className="px-4 py-3">
                     <span className={project.health === "delayed" ? "inline-flex rounded-full bg-red-100 px-2 py-1 text-xs font-extrabold text-red-800 dark:bg-red-950 dark:text-red-200" : "inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-extrabold text-amber-800 dark:bg-amber-950 dark:text-amber-200"}>{healthLabels[project.health]}</span>
                     <p className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">{project.reason}</p>
@@ -58,6 +60,19 @@ export function PriorityProjectsTable({ projects }: { projects: ManagerialDashbo
       )}
     </section>
   );
+}
+
+function formatForecast(
+  forecast: ManagerialDashboardData["priorityProjects"][number]["forecast"],
+) {
+  if (!forecast) return "Insufficient history";
+  if (forecast.status === "insufficientHistory") return "Insufficient history";
+  if (forecast.status === "stalled") return "Stalled — no projected date";
+  if (forecast.status === "completed") return "Completed";
+  if (forecast.status === "inactive") return "Inactive — no projection";
+  const date = formatTargetDate(forecast.projectedCompletionDate);
+  const confidence = forecast.confidence ? `${forecast.confidence} confidence` : "confidence unavailable";
+  return `Projected completion: ${date} (${confidence})`;
 }
 
 function formatTargetDate(value: string | null) {

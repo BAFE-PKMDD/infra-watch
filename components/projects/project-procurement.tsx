@@ -1,12 +1,9 @@
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useMemo } from "react";
+import { motion } from "motion/react";
 import {
   ListChecks,
   Calendar,
   AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  List,
   Milestone
 } from "lucide-react";
 import { ProcurementRelation } from "@/types/project.types";
@@ -19,7 +16,7 @@ interface ProjectProcurementProps {
 
 export function ProjectProcurement({ procurementRelations, isActive }: ProjectProcurementProps) {
   const { t, language } = useTranslation();
-  const [isListExpanded, setIsListExpanded] = useState(false);
+
 
   // Sort relations by actual date from lowest to highest
   const sortedMilestones = useMemo(() => {

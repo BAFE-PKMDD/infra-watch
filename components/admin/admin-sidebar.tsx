@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CircleAlert,
+  FileText,
   FolderKanban,
   Home,
   LayoutDashboard,
@@ -27,6 +28,7 @@ const menu = [
     label: "Main",
     items: [
       { label: "Analytics", href: "/dashboard", icon: LayoutDashboard, resource: "analytics", action: "view" },
+      { label: "Executive Brief", href: "/executive-brief", icon: FileText, resource: "analytics", action: "view" },
       { label: "Projects", href: "/admin-projects", icon: FolderKanban, resource: "projects", action: "list" },
       { label: "Feedbacks", href: "/feedbacks", icon: MessageSquare, resource: "feedback", action: "list" },
       { label: "Reported Issues", href: "/issues", icon: CircleAlert, resource: "issues", action: "list" },
@@ -71,7 +73,7 @@ export function AdminSidebar({ role }: AdminSidebarProps) {
 
           return (
             <div key={category.label} className="space-y-2">
-              <p className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{category.label}</p>
+              <p className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-slate-600 dark:text-slate-400">{category.label}</p>
               <div className="space-y-1">
                 {visibleItems.map((item) => {
                   const Icon = item.icon;

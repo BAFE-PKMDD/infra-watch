@@ -73,7 +73,7 @@ export interface ProjectDetail extends ProjectDisplayItem {
   coordinates?: string;
   abc?: number; // Approved Budget for Contract
   commodities?: string[] | null;
-  metadata?: Record<string, any> | null; // Contains geotags, proposalDocuments, powRelation, procurementRelation
+  metadata?: Record<string, unknown> | null; // Contains geotags, proposalDocuments, powRelation, procurementRelation
   articles?: Article[]; // Related articles and publications
   feedbackCount?: number; // Total approved feedback
   agencyData?: Record<string, string | number | boolean | null> | null; // Public-facing agency-specific data

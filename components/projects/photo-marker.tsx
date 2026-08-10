@@ -2,6 +2,9 @@
 
 import { MapPin, Camera } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
+import Image from "next/image";
+import L from "leaflet";
+import { Marker, Popup } from "react-leaflet";
 import { GeoTag } from "@/types/photo.types";
 
 interface PhotoMarkerProps {
@@ -13,9 +16,6 @@ interface PhotoMarkerProps {
 
 // Create premium photo marker with glassmorphism
 const createPhotoMarker = (photoUrl: string, isSelected: boolean) => {
-  if (typeof window === 'undefined') return null;
-  const L = require("leaflet");
-
   const markerHtml = `
     <div class="relative group cursor-pointer">
       <!-- Pulse animation ring for selected marker -->
@@ -69,9 +69,6 @@ const createPhotoMarker = (photoUrl: string, isSelected: boolean) => {
 
 // Premium fallback marker for photos without URLs
 const createDefaultMarker = (isSelected: boolean) => {
-  if (typeof window === 'undefined') return null;
-  const L = require("leaflet");
-
   const iconMarkup = renderToStaticMarkup(
     <MapPin className="w-6 h-6 text-white" strokeWidth={2.5} />
   );
@@ -127,9 +124,6 @@ const createDefaultMarker = (isSelected: boolean) => {
 };
 
 export function PhotoMarker({ tag, index, isSelected, onClick }: PhotoMarkerProps) {
-  const { Marker, Popup } = require("react-leaflet");
-  const L = require("leaflet");
-
   const lat = parseFloat(tag.latitude || "0");
   const lng = parseFloat(tag.longitude || "0");
 
@@ -154,9 +148,12 @@ export function PhotoMarker({ tag, index, isSelected, onClick }: PhotoMarkerProp
           {/* Photo Preview */}
           {tag.url && (
             <div className="relative mb-3 rounded-xl overflow-hidden shadow-lg group">
-              <img
+              <Image
                 src={tag.url}
                 alt={tag.photo_name || "Photo"}
+                width={320}
+                height={192}
+                unoptimized
                 className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
               />
               {/* Gradient overlay */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useRef, useState } from "react";
+import { memo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -113,16 +113,6 @@ export default function IssuesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  const prevFiltersRef = useRef({ searchQuery, statusFilter, startDate, endDate });
-  if (
-    prevFiltersRef.current.searchQuery !== searchQuery ||
-    prevFiltersRef.current.statusFilter !== statusFilter ||
-    prevFiltersRef.current.startDate !== startDate ||
-    prevFiltersRef.current.endDate !== endDate
-  ) {
-    prevFiltersRef.current = { searchQuery, statusFilter, startDate, endDate };
-    if (currentPage !== 1) setCurrentPage(1);
-  }
 
   const { data, isLoading } = useQuery({
     queryKey: ["issues", debouncedSearchQuery, statusFilter, startDate, endDate, currentPage],
@@ -184,7 +174,10 @@ export default function IssuesPage() {
                 type="text"
                 placeholder="Search by description or location..."
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setCurrentPage(1);
+                }}
                 className="h-10 border-slate-200 bg-white pl-9 text-slate-900 placeholder:text-slate-400 focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100"
               />
             </div>
@@ -195,7 +188,10 @@ export default function IssuesPage() {
                 <Input
                   type="date"
                   value={startDate}
-                  onChange={(event) => setStartDate(event.target.value)}
+                  onChange={(event) => {
+                    setStartDate(event.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="h-10 border-slate-200 bg-white pl-9 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 />
               </div>
@@ -204,11 +200,19 @@ export default function IssuesPage() {
                 <Input
                   type="date"
                   value={endDate}
-                  onChange={(event) => setEndDate(event.target.value)}
+                  onChange={(event) => {
+                    setEndDate(event.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="h-10 border-slate-200 bg-white pl-9 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={(value) => value && setStatusFilter(value as IssueStatus | "all")}>
+              <Select value={statusFilter} onValueChange={(value) => {
+                if (value) {
+                  setStatusFilter(value as IssueStatus | "all");
+                  setCurrentPage(1);
+                }
+              }}>
                 <SelectTrigger className="h-10 w-full border-slate-200 bg-white text-slate-900 sm:w-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                   <div className="flex items-center gap-2">
                     <Filter className="size-3.5 text-slate-400" />

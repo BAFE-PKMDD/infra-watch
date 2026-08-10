@@ -1,12 +1,12 @@
 "use client";
 
-import { Star, User, Play, MoreVertical, Pencil, Trash2, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Image as ImageIcon, ThumbsUp, ThumbsDown, MessageSquare, ArrowUp, ArrowDown } from "lucide-react";
+import { Star, User, Play, MoreVertical, Pencil, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Image as ImageIcon, ThumbsUp, ThumbsDown, MessageSquare, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
 import { MediaViewer } from "@/components/ui/media-viewer";
 import Image from "next/image";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +21,7 @@ import { FeedbackCommentForm } from "./feedback-comment-form";
 import { FeedbackCommentList } from "./feedback-comment-list";
 import { FeedbackCommentSkeleton } from "./feedback-comment-skeleton";
 import { getFeedbackComments } from "@/actions/query/feedback-comments.query";
-import { FeedbackMedia } from "@/types/feedback.types";
+import type { FeedbackFeedComment, FeedbackMedia } from "@/types/feedback.types";
 import { useAuth } from "@/providers/auth-provider";
 import { useNotifications } from "@/providers/notification-provider";
 
@@ -94,7 +94,7 @@ export function FeedbackList({
   const [userVotes, setUserVotes] = useState<Record<string, "helpful" | "unhelpful">>({});
   const [votersModalFeedbackId, setVotersModalFeedbackId] = useState<string | null>(null);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
-  const [comments, setComments] = useState<Record<string, any[]>>({});
+  const [comments, setComments] = useState<Record<string, FeedbackFeedComment[]>>({});
   const [loadingComments, setLoadingComments] = useState<Set<string>>(new Set());
   const itemsPerPage = 5;
   const feedbackRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -191,7 +191,7 @@ export function FeedbackList({
   };
 
   // Load comments for a feedback
-  const loadComments = useCallback(async (feedbackId: string, forceRefetch = false) => {
+  const loadComments = useCallback(async (feedbackId: string) => {
     setLoadingComments(prev => new Set(prev).add(feedbackId));
 
     try {
@@ -227,12 +227,12 @@ export function FeedbackList({
     // Check if it's a relevant notification type
     const relevantTypes = ["comment_approved", "comment_posted"];
     if (relevantTypes.includes(latestNotification.type)) {
-      const metadata = latestNotification.metadata as any;
+      const metadata = latestNotification.metadata as { feedbackId?: string } | null;
       const feedbackId = metadata?.feedbackId;
 
       if (feedbackId && expandedComments.has(feedbackId)) {
         // Refetch comments for this feedback
-        loadComments(feedbackId, true);
+        loadComments(feedbackId);
       }
 
       lastNotificationIdRef.current = latestNotification.id;
@@ -259,35 +259,39 @@ export function FeedbackList({
 
   // Reset to page 1 when feedbacks change
   useEffect(() => {
-    // If we have a highlight feedback, find its page
-    if (highlightFeedbackId) {
-      const index = sortedFeedbacks.findIndex(f => f.id === highlightFeedbackId);
-      if (index !== -1) {
-        const page = Math.floor(index / itemsPerPage) + 1;
-        setCurrentPage(page);
-        return;
+    const timeout = window.setTimeout(() => {
+      // If we have a highlight feedback, find its page
+      if (highlightFeedbackId) {
+        const index = sortedFeedbacks.findIndex(f => f.id === highlightFeedbackId);
+        if (index !== -1) {
+          const targetPage = Math.floor(index / itemsPerPage) + 1;
+          setCurrentPage(targetPage);
+          return;
+        }
       }
-    }
-    setCurrentPage(1);
-  }, [feedbacks.length, highlightFeedbackId]);
+      setCurrentPage(1);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [sortedFeedbacks, highlightFeedbackId]);
 
   // Handle highlighting and scrolling
   useEffect(() => {
     if (highlightFeedbackId) {
-      // Toggle comments if commentId is provided
-      if (highlightCommentId) {
-        toggleComments(highlightFeedbackId);
-      }
-
-      // Scroll to feedback after a short delay to ensure rendering/pagination
-      setTimeout(() => {
+      const timeout = window.setTimeout(() => {
+        if (highlightCommentId) {
+          setExpandedComments((prev) => new Set(prev).add(highlightFeedbackId));
+          if (!comments[highlightFeedbackId]) {
+            void loadComments(highlightFeedbackId);
+          }
+        }
         const element = feedbackRefs.current[highlightFeedbackId];
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 500);
+      return () => window.clearTimeout(timeout);
     }
-  }, [highlightFeedbackId, highlightCommentId, currentPage]);
+  }, [highlightFeedbackId, highlightCommentId, currentPage, comments, loadComments]);
 
   // Get all media from current page feedbacks for navigation
   const allMedia = currentFeedbacks.flatMap(feedback =>
@@ -529,7 +533,6 @@ export function FeedbackList({
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {feedback.media.map((item, index) => {
                         const mediaUrl = getFullUrl(item.url);
-                        const globalIndex = allMedia.findIndex(m => m.url === mediaUrl && m.feedbackId === feedback.id);
 
                         return (
                           <motion.div
