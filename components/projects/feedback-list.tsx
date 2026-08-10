@@ -24,6 +24,7 @@ import { getFeedbackComments } from "@/actions/query/feedback-comments.query";
 import type { FeedbackFeedComment, FeedbackMedia } from "@/types/feedback.types";
 import { useAuth } from "@/providers/auth-provider";
 import { useNotifications } from "@/providers/notification-provider";
+import { getFeedbackTargetPage } from "@/lib/ui-lifecycle";
 
 interface FeedbackItem {
   id: string;
@@ -191,7 +192,8 @@ export function FeedbackList({
   };
 
   // Load comments for a feedback
-  const loadComments = useCallback(async (feedbackId: string) => {
+  const loadComments = useCallback(async (feedbackId: string, forceRefetch = false) => {
+    void forceRefetch;
     setLoadingComments(prev => new Set(prev).add(feedbackId));
 
     try {
@@ -232,7 +234,7 @@ export function FeedbackList({
 
       if (feedbackId && expandedComments.has(feedbackId)) {
         // Refetch comments for this feedback
-        loadComments(feedbackId);
+        loadComments(feedbackId, true);
       }
 
       lastNotificationIdRef.current = latestNotification.id;
@@ -256,42 +258,57 @@ export function FeedbackList({
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentFeedbacks = sortedFeedbacks.slice(startIndex, endIndex);
+  const highlightedFeedbackIndex = highlightFeedbackId
+    ? sortedFeedbacks.findIndex((feedback) => feedback.id === highlightFeedbackId)
+    : -1;
 
-  // Reset to page 1 when feedbacks change
+  // Keep the current page during content-only refetches, while still clamping
+  // a page that no longer exists and selecting a deep-linked feedback page.
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      // If we have a highlight feedback, find its page
-      if (highlightFeedbackId) {
-        const index = sortedFeedbacks.findIndex(f => f.id === highlightFeedbackId);
-        if (index !== -1) {
-          const targetPage = Math.floor(index / itemsPerPage) + 1;
-          setCurrentPage(targetPage);
-          return;
-        }
-      }
-      setCurrentPage(1);
+      setCurrentPage((page) =>
+        getFeedbackTargetPage({
+          currentPage: page,
+          totalPages,
+          highlightedIndex: highlightedFeedbackIndex,
+          itemsPerPage,
+        }),
+      );
     }, 0);
     return () => window.clearTimeout(timeout);
-  }, [sortedFeedbacks, highlightFeedbackId]);
+  }, [highlightedFeedbackIndex, totalPages]);
 
-  // Handle highlighting and scrolling
+  // Expand and load a deep-linked comment independently of scrolling so
+  // ordinary comment-cache updates do not force the viewport to recenter.
   useEffect(() => {
-    if (highlightFeedbackId) {
-      const timeout = window.setTimeout(() => {
-        if (highlightCommentId) {
-          setExpandedComments((prev) => new Set(prev).add(highlightFeedbackId));
-          if (!comments[highlightFeedbackId]) {
-            void loadComments(highlightFeedbackId);
-          }
-        }
-        const element = feedbackRefs.current[highlightFeedbackId];
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 500);
-      return () => window.clearTimeout(timeout);
-    }
-  }, [highlightFeedbackId, highlightCommentId, currentPage, comments, loadComments]);
+    if (!highlightFeedbackId || !highlightCommentId) return;
+
+    const timeout = window.setTimeout(() => {
+      setExpandedComments((previous) => {
+        if (previous.has(highlightFeedbackId)) return previous;
+        return new Set(previous).add(highlightFeedbackId);
+      });
+      if (!comments[highlightFeedbackId]) {
+        void loadComments(highlightFeedbackId);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [highlightFeedbackId, highlightCommentId, comments, loadComments]);
+
+  // Scroll once for each deep link/page transition, not for comment updates.
+  useEffect(() => {
+    if (!highlightFeedbackId) return;
+
+    const timeout = window.setTimeout(() => {
+      const element = feedbackRefs.current[highlightFeedbackId];
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 500);
+
+    return () => window.clearTimeout(timeout);
+  }, [highlightFeedbackId, highlightCommentId, currentPage]);
 
   // Get all media from current page feedbacks for navigation
   const allMedia = currentFeedbacks.flatMap(feedback =>
@@ -533,7 +550,6 @@ export function FeedbackList({
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {feedback.media.map((item, index) => {
                         const mediaUrl = getFullUrl(item.url);
-
                         return (
                           <motion.div
                             key={index}

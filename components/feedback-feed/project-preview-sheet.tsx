@@ -19,6 +19,10 @@ import useMediaQuery from "@/hooks/use-media-query";
 import { getProjectPreview } from "@/actions/query/project-preview.query";
 import { formatCurrency } from "@/lib/format";
 import { getBlurDataURL } from "@/lib/image-utils";
+import {
+  getProjectPreviewView,
+  type ProjectPreviewRequestState,
+} from "@/lib/ui-lifecycle";
 import type { ProjectDetail } from "@/types";
 
 interface ProjectPreviewSheetProps {
@@ -27,13 +31,9 @@ interface ProjectPreviewSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-interface PreviewProjectMetadata {
-  geotag?: Array<{ url?: string | null }>;
-}
-
 const DESKTOP_BREAKPOINT = "(min-width: 768px)";
 
-// ─── Field Component ───────────────────────────────────
+// --- Field Component -----------------------------------
 function InfoField({
   icon: Icon,
   label,
@@ -60,7 +60,7 @@ function InfoField({
   );
 }
 
-// ─── Skeleton ───────────────────────────────────────────
+// --- Skeleton -------------------------------------------
 function PreviewSkeleton() {
   return (
     <div className="animate-pulse">
@@ -84,7 +84,20 @@ function PreviewSkeleton() {
   );
 }
 
-// ─── Shared Content ─────────────────────────────────────
+function getGeotagImages(metadata: unknown): string[] {
+  if (!metadata || typeof metadata !== "object" || !("geotag" in metadata)) return [];
+  const geotag = metadata.geotag;
+  if (!Array.isArray(geotag)) return [];
+
+  return geotag.flatMap((tag) => {
+    if (!tag || typeof tag !== "object" || !("url" in tag) || typeof tag.url !== "string") {
+      return [];
+    }
+    return [tag.url];
+  });
+}
+
+// Shared Content
 function PreviewContent({
   project,
   loading,
@@ -95,10 +108,7 @@ function PreviewContent({
   onClose: () => void;
 }) {
   // Extract all geotag images
-  const metadata = project?.metadata as PreviewProjectMetadata | null | undefined;
-  const images: string[] = (metadata?.geotag || [])
-    .map((tag) => tag.url)
-    .filter((url): url is string => Boolean(url));
+  const images = getGeotagImages(project?.metadata);
   const hasImages = images.length > 0;
   const allImages = hasImages ? images : ["/hero-road.jpg"];
 
@@ -273,50 +283,66 @@ function PreviewContent({
   );
 }
 
-// ─── Main Component ─────────────────────────────────────
+// --- Main Component -------------------------------------
 export function ProjectPreviewSheet({ projectId, open, onOpenChange }: ProjectPreviewSheetProps) {
-  const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [requestState, setRequestState] = useState<ProjectPreviewRequestState<ProjectDetail> | null>(null);
   const isDesktop = useMediaQuery(DESKTOP_BREAKPOINT);
+  const { project, loading } = getProjectPreviewView({ open, projectId, requestState });
 
   useEffect(() => {
-    if (open && projectId) {
-      const timeout = window.setTimeout(() => {
-        setLoading(true);
-        setProject(null);
-        getProjectPreview(projectId).then((result) => {
-          if (result.success && result.data) {
-            setProject(result.data);
-          }
-          setLoading(false);
+    if (!open || !projectId) return;
+
+    let active = true;
+    const selectedProjectId = projectId;
+    void getProjectPreview(selectedProjectId)
+      .then((result) => {
+        if (!active) return;
+        setRequestState({
+          projectId: selectedProjectId,
+          project: result.success && result.data ? result.data : null,
         });
-      }, 0);
-      return () => window.clearTimeout(timeout);
-    }
+      })
+      .catch(() => {
+        if (!active) return;
+        setRequestState({ projectId: selectedProjectId, project: null });
+      });
+
+    return () => {
+      active = false;
+    };
   }, [open, projectId]);
 
-  const handleClose = () => onOpenChange(false);
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setRequestState(null);
+    onOpenChange(nextOpen);
+  };
+  const handleClose = () => handleOpenChange(false);
 
-  // ─── Desktop: shadcn Sheet (right slide-in) ─────────
+  // --- Desktop: shadcn Sheet (right slide-in) ---------
   if (isDesktop) {
     return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent side="right" className="w-[480px] sm:max-w-[480px] p-0 overflow-hidden">
           <SheetHeader className="sr-only">
             <SheetTitle>{project?.name || "Project Preview"}</SheetTitle>
             <SheetDescription>Project details preview</SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto h-full">
-            <PreviewContent key={project?.id} project={project} loading={loading} onClose={handleClose} />
+            <PreviewContent
+              key={project?.id ?? projectId ?? "empty"}
+              project={project}
+              loading={loading}
+              onClose={handleClose}
+            />
           </div>
         </SheetContent>
       </Sheet>
     );
   }
 
-  // ─── Mobile: vaul Drawer (bottom sheet) ─────────────
+  // --- Mobile: vaul Drawer (bottom sheet) -------------
   return (
-    <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <DrawerPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <DrawerPrimitive.Content className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl bg-background border-t max-h-[85vh]">
@@ -328,7 +354,12 @@ export function ProjectPreviewSheet({ projectId, open, onOpenChange }: ProjectPr
             Project details preview
           </DrawerPrimitive.Description>
           <div className="overflow-y-auto flex-1">
-            <PreviewContent key={project?.id} project={project} loading={loading} onClose={handleClose} />
+            <PreviewContent
+              key={project?.id ?? projectId ?? "empty"}
+              project={project}
+              loading={loading}
+              onClose={handleClose}
+            />
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
