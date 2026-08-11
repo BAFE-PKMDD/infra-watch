@@ -128,13 +128,15 @@ export function ManagerialDashboardClient({
           <ExecutiveKpis kpis={data.kpis} coverage={data.coverage} />
           <ExecutiveInsights insights={data.insights} onApplyFilter={applyPartialFilters} />
           <DataCoverage coverage={data.coverage} />
-          <section aria-label="Portfolio analytics" className="grid gap-4 lg:grid-cols-2">
+          <PriorityProjectsTable projects={data.priorityProjects} />
+          <section aria-label="Portfolio distributions" className="grid items-start gap-4 lg:grid-cols-2">
             <ScheduleHealthChart data={data.scheduleHealth} onSelect={(health) => updateFilters(mergeDashboardFilter(filters, "health", health))} />
             <ProjectTypeBudgetChart data={data.projectTypes} onSelect={(projectType) => updateFilters(mergeDashboardFilter(filters, "projectType", projectType))} />
+          </section>
+          <section aria-label="Comparative portfolio performance" className={`grid items-start gap-4 ${data.progressVariance.length > 0 ? "xl:grid-cols-2" : "grid-cols-1"}`}>
             <RegionalPerformanceChart data={data.regions} onSelect={(region) => updateFilters(mergeDashboardFilter(filters, "region", region))} />
             <ProgressVarianceChart data={data.progressVariance} />
           </section>
-          <PriorityProjectsTable projects={data.priorityProjects} />
         </>
       )}
     </div>

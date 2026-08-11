@@ -12,6 +12,17 @@ export function ChartPanel({ title, description, summary, children }: { title: s
   );
 }
 
-export function ChartEmptyState() {
-  return <div className="flex h-52 items-center justify-center rounded-lg border border-dashed border-slate-300 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">No data available for the current filters.</div>;
+export function ChartEmptyState({
+  title = "No data available for the current filters.",
+  detail,
+}: {
+  title?: string;
+  detail?: string;
+}) {
+  return (
+    <div className="flex min-h-36 flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 px-6 py-8 text-center dark:border-slate-700">
+      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{title}</p>
+      {detail && <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500 dark:text-slate-400">{detail}</p>}
+    </div>
+  );
 }

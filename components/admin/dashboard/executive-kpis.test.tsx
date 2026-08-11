@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   ExecutiveKpis,
   formatDashboardCount,
+  formatDashboardCompactCurrency,
   formatDashboardCurrency,
   formatDashboardPercentage,
 } from "./executive-kpis";
@@ -13,6 +14,7 @@ import {
 test("formats Philippine currency, percentages, and counts", () => {
   assert.match(formatDashboardCurrency(1_250_000), /₱|PHP/);
   assert.match(formatDashboardCurrency(1_250_000), /1,250,000/);
+  assert.equal(formatDashboardCompactCurrency(77_139_613_575), "₱77.14B");
   assert.equal(formatDashboardPercentage(12.345), "12.3%");
   assert.equal(formatDashboardCount(1234), "1,234");
 });
@@ -48,5 +50,32 @@ test("renders six truthful executive KPIs without expenditure claims", () => {
   ]) assert.match(html, new RegExp(label));
   assert.doesNotMatch(html, /spent|disbursed|expenditure|utilization/i);
   assert.match(html, /Unavailable/);
-  assert.match(html, /Definition:/);
+  assert.match(html, /Metric definition/);
+});
+
+test("does not present schedule-health zeroes as positive results when nothing is assessable", () => {
+  const html = renderToStaticMarkup(
+    createElement(ExecutiveKpis, {
+      kpis: {
+        totalProjects: 25_901,
+        allocatedBudget: 77_139_613_575,
+        approvedBudgetForContract: 0,
+        completionRate: 67.7,
+        delayedProjects: 0,
+        atRiskProjects: 0,
+      },
+      coverage: {
+        total: 25_901,
+        withBudget: 25_893,
+        withApprovedBudgetForContract: 0,
+        withSchedule: 0,
+        withPhysicalProgress: 0,
+        withFinancialData: 0,
+      },
+    }),
+  );
+
+  assert.equal((html.match(/Not assessable/g) ?? []).length, 2);
+  assert.match(html, /0 of 25,901 projects have schedule dates/);
+  assert.match(html, /title="₱77,139,613,575"/);
 });

@@ -3,9 +3,9 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { ProjectTypeBudgetChart, limitProjectTypes, selectProjectType } from "./project-type-budget-chart";
+import { ProjectTypeBudgetChart, formatProjectTypeAxisLabel, limitProjectTypes, selectProjectType } from "./project-type-budget-chart";
 import { ProgressVarianceChart } from "./progress-variance-chart";
-import { RegionalPerformanceChart } from "./regional-performance-chart";
+import { formatRegionAxisLabel, limitRegionalPerformance, RegionalPerformanceChart } from "./regional-performance-chart";
 import { ScheduleHealthChart, selectScheduleHealth } from "./schedule-health-chart";
 
 const healthData = [
@@ -47,10 +47,43 @@ test("renders explicit empty states instead of empty charts", () => {
     createElement(ScheduleHealthChart, { data: [], onSelect: () => undefined }),
     createElement(ProjectTypeBudgetChart, { data: [], onSelect: () => undefined }),
     createElement(RegionalPerformanceChart, { data: [], onSelect: () => undefined }),
-    createElement(ProgressVarianceChart, { data: [] }),
   ]) {
     assert.match(renderToStaticMarkup(element), /No data available/);
   }
+});
+
+test("explains why progress variance is unavailable", () => {
+  const html = renderToStaticMarkup(createElement(ProgressVarianceChart, { data: [] }));
+  assert.match(html, /Physical-progress data is unavailable/);
+  assert.match(html, /schedule dates and physical progress/i);
+});
+
+test("bounds regional rankings to the strongest and weakest performers", () => {
+  const data = Array.from({ length: 14 }, (_, index) => ({
+    region: `Region ${index + 1}`,
+    total: 100,
+    assessed: 80,
+    completed: index * 5,
+    delayed: 2,
+    atRisk: 1,
+    completionRate: index * 5,
+    allocatedBudget: 1_000_000,
+  }));
+  const limited = limitRegionalPerformance(data, 10);
+
+  assert.equal(limited.length, 10);
+  assert.equal(new Set(limited.map((item) => item.region)).size, 10);
+  assert.ok(limited.some((item) => item.region === "Region 1"));
+  assert.ok(limited.some((item) => item.region === "Region 14"));
+});
+
+test("keeps long regional axis labels within the chart gutter", () => {
+  assert.equal(formatRegionAxisLabel("Bangsamoro Autonomous Region of Muslim Mindanao (BARMM)"), "BARMM");
+  assert.ok(formatRegionAxisLabel("A very long regional name without an acronym").length <= 28);
+});
+
+test("keeps long project-type labels within the chart gutter", () => {
+  assert.ok(formatProjectTypeAxisLabel("Village Type Corn Postharvest Processing Center (VTCPPC)").length <= 24);
 });
 
 test("schedule-health selection calls the shared filter callback", () => {

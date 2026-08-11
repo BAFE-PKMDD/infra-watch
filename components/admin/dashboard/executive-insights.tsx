@@ -21,11 +21,11 @@ export function ExecutiveInsights({ insights, onApplyFilter }: { insights: Manag
           <CheckCircle2 className="size-4" /> No material portfolio exception is identified for the current filters.
         </div>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-3">
-          {visibleInsights.map((insight, index) => {
+        <div className={`grid gap-3 ${visibleInsights.length === 1 ? "grid-cols-1" : visibleInsights.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
+          {visibleInsights.map((insight) => {
             const Icon = insight.severity === "critical" || insight.severity === "warning" ? AlertTriangle : Info;
             return (
-              <article key={`${insight.title}-${index}`} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <article key={`${insight.severity}-${insight.title}-${insight.detail}`} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex items-start gap-2">
                   <Icon className={insight.severity === "critical" ? "mt-0.5 size-4 text-red-600" : insight.severity === "warning" ? "mt-0.5 size-4 text-amber-600" : "mt-0.5 size-4 text-primary"} aria-hidden="true" />
                   <div>

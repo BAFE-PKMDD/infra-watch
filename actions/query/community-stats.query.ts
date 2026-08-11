@@ -53,7 +53,7 @@ export async function getFeedSidebarData(): Promise<FeedSidebarData> {
       })
       .from(feedback)
       .where(
-        sql`${feedback.status} = 'approved' and ${feedback.createdAt} >= ${from}`,
+        sql`${feedback.status} = 'approved' and ${feedback.createdAt} >= ${from.toISOString()}`,
       )
       .groupBy(feedback.projectId)
       .orderBy(desc(sql`count(*)`))

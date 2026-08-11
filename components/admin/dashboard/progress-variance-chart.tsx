@@ -12,7 +12,12 @@ export function ProgressVarianceChart({ data }: { data: ManagerialDashboardData[
   const summary = chartData.length > 0 ? chartData.map((item) => `${item.projectName}: ${Math.abs(item.variance).toFixed(1)} points ${item.variance < 0 ? "behind" : "ahead of"} expected schedule progress`).join("; ") : "No assessable progress-variance data available.";
   return (
     <ChartPanel title="Physical versus expected progress" description="Largest current variance among assessable active projects; rules-based, not a trend forecast." summary={summary}>
-      {chartData.length === 0 ? <ChartEmptyState /> : (
+      {chartData.length === 0 ? (
+        <ChartEmptyState
+          title="Physical-progress data is unavailable."
+          detail="This comparison requires both valid schedule dates and physical progress for active projects in the selected scope."
+        />
+      ) : (
         <>
           <ChartContainer config={{ expectedProgress: { label: "Expected", color: "#64748b" }, physicalProgress: { label: "Physical", color: "#0f766e" } }} className="h-72 w-full aspect-auto" role="img" aria-label="Physical and expected schedule progress by project">
             <BarChart data={chartData} margin={{ left: 0, right: 8 }}>

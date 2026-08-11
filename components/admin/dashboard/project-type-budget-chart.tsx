@@ -5,9 +5,13 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import type { ManagerialDashboardData } from "@/types/managerial-dashboard.types";
 import { ChartEmptyState, ChartPanel } from "./chart-panel";
-import { formatDashboardCurrency } from "./executive-kpis";
+import { formatDashboardCompactCurrency, formatDashboardCurrency } from "./executive-kpis";
 
 type ProjectTypeRow = ManagerialDashboardData["projectTypes"][number];
+
+export function formatProjectTypeAxisLabel(projectType: string) {
+  return projectType.length > 24 ? `${projectType.slice(0, 23)}…` : projectType;
+}
 
 export function selectProjectType(onSelect: (projectType: string) => void, projectType: string) {
   if (projectType !== "Other") onSelect(projectType);
@@ -36,11 +40,11 @@ export function ProjectTypeBudgetChart({ data, onSelect }: { data: ManagerialDas
     <ChartPanel title="Budget allocation by project type" description="Ranked allocated budget; long tails are combined as Other without changing totals." summary={summary}>
       {chartData.length === 0 ? <ChartEmptyState /> : (
         <>
-          <ChartContainer config={{ allocatedBudget: { label: "Allocated budget", color: "#0f766e" } }} className="h-72 w-full aspect-auto" role="img" aria-label="Allocated budget by project type">
+          <ChartContainer config={{ allocatedBudget: { label: "Allocated budget", color: "#0f766e" } }} className="h-80 w-full aspect-auto" role="img" aria-label="Allocated budget by project type">
             <BarChart data={chartData} layout="vertical" margin={{ left: 12, right: 16 }}>
               <CartesianGrid horizontal={false} />
-              <XAxis type="number" tickFormatter={(value) => `₱${Math.round(Number(value) / 1_000_000)}M`} />
-              <YAxis type="category" dataKey="projectType" width={110} tickLine={false} axisLine={false} />
+              <XAxis type="number" tickFormatter={(value) => formatDashboardCompactCurrency(Number(value))} />
+              <YAxis type="category" dataKey="projectType" width={150} tickFormatter={formatProjectTypeAxisLabel} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
               <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatDashboardCurrency(Number(value))} />} />
               <Bar dataKey="allocatedBudget" fill="var(--color-allocatedBudget)" radius={[0, 5, 5, 0]} onClick={(entry) => selectProjectType(onSelect, (entry.payload as ProjectTypeRow).projectType)} />
             </BarChart>

@@ -111,6 +111,52 @@ function attachDaSidecar(item: InternalEvidenceItem, sidecar: ParsedSidecar): In
   };
 }
 
+type AccuracyLevel = "excellent" | "good" | "fair" | "poor";
+
+function getAccuracyLevel(accuracy: number): AccuracyLevel {
+  if (accuracy <= 10) return "excellent";
+  if (accuracy <= 30) return "good";
+  if (accuracy <= 100) return "fair";
+  return "poor";
+}
+
+function getAccuracyLabel(level: AccuracyLevel): string {
+  switch (level) {
+    case "excellent": return "Excellent";
+    case "good": return "Good";
+    case "fair": return "Fair";
+    case "poor": return "Poor";
+  }
+}
+
+function getAccuracyColor(level: AccuracyLevel) {
+  switch (level) {
+    case "excellent": return { bg: "bg-emerald-500", text: "text-emerald-400", pill: "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30" };
+    case "good": return { bg: "bg-sky-500", text: "text-sky-400", pill: "bg-sky-500/20 text-sky-300 ring-sky-500/30" };
+    case "fair": return { bg: "bg-amber-500", text: "text-amber-400", pill: "bg-amber-500/20 text-amber-300 ring-amber-500/30" };
+    case "poor": return { bg: "bg-red-500", text: "text-red-400", pill: "bg-red-500/20 text-red-300 ring-red-500/30" };
+  }
+}
+
+function AccuracySignalBars({ level }: { level: AccuracyLevel }) {
+  const barCount = level === "excellent" ? 4 : level === "good" ? 3 : level === "fair" ? 2 : 1;
+  const color = getAccuracyColor(level);
+  return (
+    <span className="inline-flex items-end gap-[2px]" aria-hidden="true">
+      {[1, 2, 3, 4].map((bar) => (
+        <span
+          key={bar}
+          className={cn(
+            "w-[3px] rounded-full transition-all",
+            bar <= barCount ? color.bg : "bg-white/20",
+          )}
+          style={{ height: `${6 + bar * 3}px` }}
+        />
+      ))}
+    </span>
+  );
+}
+
 type CameraMode = "photo" | "video";
 type CameraLocationStatus = "idle" | "locating" | "ready" | "error";
 
@@ -1023,10 +1069,22 @@ export function GeoEvidenceUpload({
                       ? <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
                       : <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" />}
                     <span>
-                      {item.locationSource === "da-sidecar"
-                        ? "DA GeoCamera route"
-                        : typeof item.accuracy === "number" && item.accuracy > 100 ? "Approximate location" : "GPS attached"}
-                      {" "}&middot; {item.lat.toFixed(6)}, {item.lon.toFixed(6)}
+                      <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                        {item.locationSource === "da-sidecar"
+                          ? "DA GeoCamera route"
+                          : typeof item.accuracy === "number" && item.accuracy > 100 ? "Approximate location" : "GPS attached"}
+                        {typeof item.accuracy === "number" ? (() => {
+                          const level = getAccuracyLevel(item.accuracy);
+                          const color = getAccuracyColor(level);
+                          return (
+                            <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-extrabold uppercase tracking-wide ring-1", color.pill)}>
+                              <AccuracySignalBars level={level} />
+                              {getAccuracyLabel(level)}
+                            </span>
+                          );
+                        })() : null}
+                      </span>
+                      {item.lat.toFixed(6)}, {item.lon.toFixed(6)}
                       {typeof item.accuracy === "number" ? ` · ±${Math.round(item.accuracy)} m` : ""}
                       {item.track && item.track.length > 1 ? ` · ${item.track.length} route points` : ""}
                       {typeof item.accuracy === "number" && item.accuracy > 100 ? (
@@ -1152,13 +1210,25 @@ export function GeoEvidenceUpload({
                       </>
                     ) : cameraLocationReady ? (
                       <>
-                        <p className="font-extrabold">
-                          {cameraLocationApproximate ? "Approximate location" : "Location ready"}
-                          {" "}&middot; &plusmn;{Math.round(cameraPosition.accuracy)} m
+                        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-extrabold">
+                          <span>
+                            {cameraLocationApproximate ? "Approximate location" : "Location ready"}
+                            {" "}&middot; &plusmn;{Math.round(cameraPosition.accuracy)} m
+                          </span>
+                          {(() => {
+                            const level = getAccuracyLevel(cameraPosition.accuracy);
+                            const color = getAccuracyColor(level);
+                            return (
+                              <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ring-1", color.pill)}>
+                                <AccuracySignalBars level={level} />
+                                {getAccuracyLabel(level)}
+                              </span>
+                            );
+                          })()}
                         </p>
                         <p className="mt-0.5 text-white/70">
                           {cameraLocationApproximate
-                            ? "You can drag the pin to its correct position after capture."
+                            ? "Accuracy is too low for precise geotagging. You can drag the pin to correct it after capture."
                             : "The coordinates will be attached to this evidence."}
                         </p>
                       </>

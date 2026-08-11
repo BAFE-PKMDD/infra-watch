@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChangeEvent } from "react";
+import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type {
@@ -19,6 +20,16 @@ const FILTER_ORDER: Array<keyof ManagerialDashboardFilters> = [
   "status",
   "health",
 ];
+
+const FILTER_LABELS: Record<keyof ManagerialDashboardFilters, string> = {
+  program: "Program",
+  year: "Funding year",
+  region: "Region",
+  province: "Province",
+  projectType: "Project type",
+  status: "Project status",
+  health: "Schedule health",
+};
 
 export function dashboardFiltersToSearchParams(
   filters: ManagerialDashboardFilters,
@@ -58,6 +69,10 @@ type DashboardFiltersProps = {
 };
 
 export function DashboardFilters({ filters, options, onChange }: DashboardFiltersProps) {
+  const activeFilters = FILTER_ORDER.flatMap((key) => {
+    const value = filters[key];
+    return value ? [{ key, value }] : [];
+  });
   const update =
     <K extends keyof ManagerialDashboardFilters>(key: K) =>
     (event: ChangeEvent<HTMLSelectElement>) =>
@@ -74,7 +89,16 @@ export function DashboardFilters({ filters, options, onChange }: DashboardFilter
       aria-label="Dashboard filters"
       className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-extrabold text-slate-950 dark:text-white">Portfolio scope</h2>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">All indicators and drill-downs use the same authorized filter scope.</p>
+        </div>
+        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          {activeFilters.length === 0 ? "No active filters" : `${activeFilters.length} active ${activeFilters.length === 1 ? "filter" : "filters"}`}
+        </span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Filter label="Program" value={filters.program} options={options.programs} onChange={update("program")} />
         <Filter label="Funding year" value={filters.year} options={options.years} onChange={update("year")} />
         <Filter label="Region" value={filters.region} options={options.regions} onChange={update("region")} />
@@ -101,7 +125,22 @@ export function DashboardFilters({ filters, options, onChange }: DashboardFilter
           format={formatHealth}
         />
       </div>
-      <div className="mt-3 flex justify-end">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <div className="flex flex-wrap gap-2" aria-label="Active dashboard filters">
+          {activeFilters.map(({ key, value }) => (
+            <button
+              key={key}
+              type="button"
+              aria-label={`Remove ${FILTER_LABELS[key]} filter`}
+              onClick={() => onChange(mergeDashboardFilter(filters, key, "all"))}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary/8 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              {FILTER_LABELS[key]}: {key === "status" ? formatStatus(value) : key === "health" ? formatHealth(value) : value}
+              <X className="size-3" aria-hidden="true" />
+            </button>
+          ))}
+          {activeFilters.length === 0 && <span className="text-xs text-slate-500 dark:text-slate-400">Showing the full authorized portfolio</span>}
+        </div>
         <Button variant="outline" onClick={() => onChange(resetDashboardFilters())} disabled={Object.keys(filters).length === 0}>
           Reset filters
         </Button>
