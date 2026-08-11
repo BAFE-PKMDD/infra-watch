@@ -3,7 +3,10 @@ import { auth } from "@/lib/auth";
 import { logBlockedUploadAttempt } from "@/lib/audit";
 import { generateUniqueFileName, uploadFile } from "@/lib/minio";
 import { assertSafeImageUpload } from "@/lib/services/content-moderation";
-import { getClientUploadErrorMessage } from "@/lib/upload-errors";
+import {
+  getClientUploadErrorMessage,
+  isUploadStorageUnavailable,
+} from "@/lib/upload-errors";
 import { isAllowedFolder, validateUploadFile } from "@/lib/upload-validation";
 
 export const runtime = "nodejs";
@@ -90,12 +93,13 @@ export async function POST(request: NextRequest) {
     console.error("Upload error", error);
     const message = error instanceof Error ? error.message : "Failed to upload file";
     const clientMessage = getClientUploadErrorMessage(message);
+    const storageUnavailable = isUploadStorageUnavailable(message);
 
     return NextResponse.json(
       {
         error: clientMessage ?? message,
       },
-      { status: clientMessage ? 400 : 500 },
+      { status: storageUnavailable ? 503 : clientMessage ? 400 : 500 },
     );
   }
 }
