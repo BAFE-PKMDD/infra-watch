@@ -50,7 +50,7 @@ export function ProjectTypeBudgetChart({ data, onSelect }: { data: ManagerialDas
             </BarChart>
           </ChartContainer>
           <div className="mt-3 flex flex-wrap gap-2" aria-label="Filter by project type">
-            {chartData.filter((item) => item.projectType !== "Other").map((item) => <button key={item.projectType} type="button" data-filter-value={item.projectType} onClick={() => selectProjectType(onSelect, item.projectType)} className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700 hover:border-primary hover:text-primary dark:border-slate-700 dark:text-slate-200">{item.projectType}</button>)}
+            {chartData.map((item) => item.projectType === "Other" ? null : <button key={item.projectType} type="button" data-filter-value={item.projectType} onClick={() => selectProjectType(onSelect, item.projectType)} className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700 hover:border-primary hover:text-primary dark:border-slate-700 dark:text-slate-200">{item.projectType}</button>)}
           </div>
         </>
       )}
