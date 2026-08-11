@@ -15,6 +15,7 @@ export const statement = {
   analytics: ["view", "export"],
   reports: ["generate", "view", "export", "schedule"],
   abemis_sync: ["trigger", "view", "configure"],
+  data_quality: ["view"],
   audit_logs: ["view", "export", "delete"],
   system_settings: ["read", "update"],
 } as const;
@@ -49,6 +50,7 @@ export const moderator = ac.newRole({
   analytics: ["view"],
   reports: ["generate", "view", "export"],
   abemis_sync: ["view"],
+  data_quality: ["view"],
   audit_logs: ["view"],
 });
 
@@ -67,6 +69,7 @@ export const admin = ac.newRole({
   analytics: ["view", "export"],
   reports: ["generate", "view", "export", "schedule"],
   abemis_sync: ["trigger", "view", "configure"],
+  data_quality: ["view"],
   audit_logs: ["view", "export", "delete"],
   system_settings: ["read", "update"],
 });

@@ -84,8 +84,8 @@ Stores local cache of project records synced from ABEMIS for AMEFIP & INS data (
 - `latitude` (real, NOT NULL)
 - `longitude` (real, NOT NULL)
 - `geom` (geometry(Point, 4326), nullable) — PostGIS geometry point for spatial searches
-- `budget` (real, NOT NULL) — Allocated budget
-- `abc` (real, nullable) — Approved Budget for Contract
+- `budget` (numeric, nullable) — Approved project budget from ABEMIS `allocated_amount`
+- `abc` (numeric, nullable) — Supplier's actual bid amount in this ABEMIS source
 - `contractor_name` (text, nullable)
 - `physical_progress` (real, default 0) — Progress percentage (0–100%)
 - `financial_progress` (real, default 0) — Disbursed budget percentage (0–100%)

@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect } from "react";
-import L from "leaflet";
-import { MapContainer, TileLayer, Marker, Polygon } from "react-leaflet";
+import { CircleMarker, MapContainer, TileLayer, Polygon, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { getProjectMarkerColor } from "@/lib/public-project-map";
 
 interface ProjectPin {
   id: string;
@@ -27,32 +27,31 @@ interface GISMapCanvasProps {
   mapZoom: number;
 }
 
-const createCustomMarker = (status: string) => {
-  let mainColor = "#22c55e"; // Green for completed
-  const normalizedStatus = status.toLowerCase().replace(/\s+/g, '');
-  
-  if (normalizedStatus === "ongoing") {
-    mainColor = "#eab308"; // Yellow for ongoing
-  } else if (normalizedStatus === "notyetstarted") {
-    mainColor = "#ef4444"; // Red for not yet started
-  }
 
-  const markerHtml = `
-    <div style="width: 10px; height: 10px; display: flex; align-items: center; justify-content: center;">
-      <svg width="10" height="10" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
-        <circle cx="50" cy="50" r="45" fill="${mainColor}" stroke="black" stroke-width="10" />
-      </svg>
-    </div>
-  `;
+function FitFilteredPins({ pins, fallbackCenter, fallbackZoom }: {
+  pins: ProjectPin[];
+  fallbackCenter: [number, number];
+  fallbackZoom: number;
+}) {
+  const map = useMap();
 
-  return L.divIcon({
-    html: markerHtml,
-    className: "custom-leaflet-marker bg-transparent border-0",
-    iconSize: [10, 10],
-    iconAnchor: [5, 5],
-    popupAnchor: [0, -5]
-  });
-};
+  useEffect(() => {
+    if (pins.length === 0) {
+      map.setView(fallbackCenter, fallbackZoom);
+      return;
+    }
+    const sortedLatitudes = pins.map((pin) => pin.lat).sort((a, b) => a - b);
+    const sortedLongitudes = pins.map((pin) => pin.lng).sort((a, b) => a - b);
+    const trim = pins.length >= 20 ? Math.floor(pins.length * 0.02) : 0;
+    const upperIndex = pins.length - 1 - trim;
+    map.fitBounds([
+      [sortedLatitudes[trim], sortedLongitudes[trim]],
+      [sortedLatitudes[upperIndex], sortedLongitudes[upperIndex]],
+    ], { padding: [24, 24], maxZoom: 10 });
+  }, [fallbackCenter, fallbackZoom, map, pins]);
+
+  return null;
+}
 
 export default function GISMapCanvas({
   filteredPins,
@@ -62,18 +61,6 @@ export default function GISMapCanvas({
   mapCenter,
   mapZoom,
 }: GISMapCanvasProps) {
-  // Reset leaflet default icon paths
-  useEffect(() => {
-    const defaultIconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
-      _getIconUrl?: () => string;
-    };
-    delete defaultIconPrototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-      iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-      shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-    });
-  }, []);
 
   const tileUrl = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";
   const attribution = '&copy; <a href="https://www.google.com/maps">Google</a>, FMR Watch Projects';
@@ -99,9 +86,11 @@ export default function GISMapCanvas({
         center={mapCenter}
         zoom={mapZoom}
         zoomControl={false}
+        preferCanvas
         className="w-full h-full"
       >
         <TileLayer url={tileUrl} attribution={attribution} />
+        <FitFilteredPins pins={filteredPins} fallbackCenter={mapCenter} fallbackZoom={mapZoom} />
 
         {/* Watersheds overlay boundary polygon */}
         {watershedOverlay && (
@@ -133,10 +122,16 @@ export default function GISMapCanvas({
 
         {/* Marker pins */}
         {filteredPins.map((pin) => (
-          <Marker
+          <CircleMarker
             key={pin.id}
-            position={[pin.lat, pin.lng]}
-            icon={createCustomMarker(pin.status)}
+            center={[pin.lat, pin.lng]}
+            radius={5}
+            pathOptions={{
+              color: "#111827",
+              fillColor: getProjectMarkerColor(pin.status),
+              fillOpacity: 1,
+              weight: 1,
+            }}
             eventHandlers={{
               click: () => {
                 setSelectedProject(pin);

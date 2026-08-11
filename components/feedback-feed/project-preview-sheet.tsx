@@ -250,7 +250,7 @@ function PreviewContent({
             value={project.actualCompletionDate || project.completionDate}
           />
           <InfoField icon={Clock} label="Duration" value={project.duration} />
-          <InfoField icon={Banknote} label="Budget" value={formatCurrency(project.budget)} />
+          <InfoField icon={Banknote} label="Budget" value={project.budget === null ? "Unavailable" : formatCurrency(project.budget)} />
           <InfoField
             icon={Ruler}
             label={project.postGeotaggedLength ? "Post-Geotagged" : "Target Length"}

@@ -4,17 +4,19 @@ export function Pagination({
   page,
   totalPages,
   totalCount,
+  itemLabel = "projects",
   onPageChange,
 }: {
   page: number;
   totalPages: number;
   totalCount: number;
+  itemLabel?: string;
   onPageChange: (page: number) => void;
 }) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
       <p className="font-semibold text-slate-600 dark:text-slate-300">
-        Page {page} of {Math.max(totalPages, 1)} · {totalCount.toLocaleString()} projects
+        Page {page} of {Math.max(totalPages, 1)} · {totalCount.toLocaleString()} {itemLabel}
       </p>
       <div className="flex gap-2">
         <Button type="button" variant="outline" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>

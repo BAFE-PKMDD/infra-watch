@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleAlert, FileText, FolderKanban, LayoutDashboard, MessageSquare, RefreshCw, ScrollText, Users } from "lucide-react";
+import { CircleAlert, DatabaseZap, FileText, FolderKanban, LayoutDashboard, MessageSquare, RefreshCw, ScrollText, Users } from "lucide-react";
 
 import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ const items = [
   { label: "Feedbacks", href: "/feedbacks", icon: MessageSquare, resource: "feedback", action: "list" },
   { label: "Issues", href: "/issues", icon: CircleAlert, resource: "issues", action: "list" },
   { label: "Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view" },
+  { label: "Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view" },
   { label: "Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view" },
   { label: "Users", href: "/user-management", icon: Users, resource: "user", action: "list" },
 ] as const;

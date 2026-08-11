@@ -7,8 +7,8 @@ import type { ManagerialDashboardData } from "@/types/managerial-dashboard.types
 const fixture: ManagerialDashboardData = {
   asOf: "2026-08-10",
   freshness: { lastSuccessfulSyncAt: "2026-08-10T01:00:00.000Z", latestSyncStatus: "completed", isStale: false, staleAfterHours: 26 },
-  coverage: { total: 14, withBudget: 12, withApprovedBudgetForContract: 11, withSchedule: 10, withPhysicalProgress: 9, withFinancialData: 0 },
-  kpis: { totalProjects: 14, allocatedBudget: 1234, approvedBudgetForContract: 1000, completionRate: 25, delayedProjects: 4, atRiskProjects: 3 },
+  coverage: { total: 14, withBudget: 12, withActualBidAmount: 11, withSchedule: 10, withPhysicalProgress: 9, withFinancialData: 0 },
+  kpis: { totalProjects: 14, allocatedBudget: 1234, actualBidAmount: 1000, completionRate: 25, delayedProjects: 4, atRiskProjects: 3 },
   scheduleHealth: [
     { key: "delayed", count: 4, budget: 700 },
     { key: "atRisk", count: 3, budget: 300 },

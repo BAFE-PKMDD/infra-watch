@@ -91,7 +91,7 @@ const baseRow: DashboardProjectRow = {
   yearFunded: "2026",
   status: "ongoing",
   allocatedBudget: "1000000.00",
-  approvedBudgetForContract: 900000,
+  actualBidAmount: 900000,
   physicalProgress: 50,
   hasPhysicalProgressEvidence: true,
   startDate: new Date("2026-07-01T00:00:00+08:00"),
@@ -157,14 +157,14 @@ test("counts null budget separately while retaining a known zero", () => {
   const data = aggregateManagerialDashboardRows(
     [
       { ...baseRow, projectId: "zero", allocatedBudget: "0" },
-      { ...baseRow, projectId: "missing", allocatedBudget: null, approvedBudgetForContract: null },
+      { ...baseRow, projectId: "missing", allocatedBudget: null, actualBidAmount: null },
     ],
     {},
     "2026-08-10",
   );
   assert.equal(data.coverage.total, 2);
   assert.equal(data.coverage.withBudget, 1);
-  assert.equal(data.coverage.withApprovedBudgetForContract, 1);
+  assert.equal(data.coverage.withActualBidAmount, 1);
   assert.equal(data.kpis.allocatedBudget, 0);
 });
 

@@ -23,11 +23,13 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
-import { getPublicProjects, getPublicMapPins } from "@/actions/query/public-projects.query";
+import { getPublicMapPins, getPublicMapProjectDetails, getPublicProjects } from "@/actions/query/public-projects.query";
 import { mapInternalToPublicStage } from "@/constants/stage-mapping";
 import { getRegions, getProvinces, getMunicipalities, getBarangays } from "@/actions/query/get-location-options";
 import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
+import { isPhilippineCoordinatePair } from "@/lib/philippine-coordinates";
+import { PROJECT_MARKER_LEGEND } from "@/lib/public-project-map";
 
 type CatalogMapPin = {
   id: string;
@@ -45,9 +47,6 @@ type GeotagPhoto = {
   url?: string;
 };
 
-function randomCoordinateFallback(base: number) {
-  return base + (Math.random() - 0.5) * 5;
-}
 
 function getGeotagPhotos(metadata: unknown): GeotagPhoto[] {
   if (!metadata || typeof metadata !== "object") return [];
@@ -128,7 +127,7 @@ export default function ProjectsCatalog() {
   });
 
   const { data: allMapPins = [], isLoading: isLoadingMapPins } = useQuery({
-    queryKey: ["public-map-projects", searchQuery, activeProgram, selectedRegion, selectedProvince, selectedMunicipality, selectedBarangay, selectedStatus, selectedYear],
+    queryKey: ["public-map-projects", 3, searchQuery, activeProgram, selectedRegion, selectedProvince, selectedMunicipality, selectedBarangay, selectedStatus, selectedYear],
     queryFn: () => getPublicMapPins({
       searchQuery,
       program: activeProgram,
@@ -143,20 +142,30 @@ export default function ProjectsCatalog() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: selectedMapProjectDetails, isLoading: isLoadingMapProjectDetails } = useQuery({
+    queryKey: ["public-map-project-details", selectedPin?.id],
+    queryFn: () => getPublicMapProjectDetails(selectedPin!.id),
+    enabled: Boolean(selectedPin),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const filteredProjects = queryData?.pages.flatMap((page) => page.data) || [];
   const totalCount = queryData?.pages[0]?.totalCount || 0;
 
   const mapPins = React.useMemo(() => {
-    return allMapPins.map(p => ({
-      id: p.id,
-      name: p.name,
-      lat: p.latitude || randomCoordinateFallback(12.8797),
-      lng: p.longitude || randomCoordinateFallback(121.7740),
-      status: mapInternalToPublicStage(p.status).toLowerCase().replace(" ", ""),
-      type: p.program,
-      desc: `${p.barangay}, ${p.municipality}`,
-      progress: p.physicalProgress || 0
-    }));
+    return allMapPins.flatMap(p => {
+      if (!isPhilippineCoordinatePair(p.latitude, p.longitude)) return [];
+      return [{
+        id: p.id,
+        name: p.name,
+        lat: p.latitude!,
+        lng: p.longitude!,
+        status: mapInternalToPublicStage(p.status).toLowerCase().replace(" ", ""),
+        type: p.program,
+        desc: `${p.barangay}, ${p.municipality}`,
+        progress: p.physicalProgress || 0
+      }];
+    });
   }, [allMapPins]);
 
   React.useEffect(() => {
@@ -292,7 +301,7 @@ export default function ProjectsCatalog() {
                   className={`p-1.5 rounded-md transition-colors cursor-pointer flex items-center justify-center ${
                     viewMode === "map" ? "bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 text-primary" : "text-slate-400 hover:text-slate-700 dark:hover:text-white border border-transparent"
                   }`}
-                  title="Map View (Coming Soon)"
+                  title="Map View"
                 >
                   <MapIcon className="w-4 h-4" />
                 </button>
@@ -639,6 +648,45 @@ export default function ProjectsCatalog() {
             className="w-full h-[600px] mt-6 flex gap-4 relative z-0"
           >
             <div className="flex-1 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm relative">
+              {!isLoadingMapPins && (
+                <div className="absolute left-3 top-3 z-[1000] rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200">
+                  {mapPins.length.toLocaleString()} coordinate-backed projects shown
+                </div>
+              )}
+              {!isLoadingMapPins && (
+                <label className="absolute bottom-6 right-3 z-[1000] flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200">
+                  <span>Region</span>
+                  <select
+                    value={selectedRegion}
+                    onChange={(event) => {
+                      setSelectedRegion(event.target.value);
+                      setSelectedProvince("all");
+                      setSelectedMunicipality("all");
+                      setSelectedBarangay("all");
+                      setSelectedPin(null);
+                    }}
+                    className="max-w-[220px] rounded border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-950"
+                  >
+                    <option value="all">All Regions</option>
+                    {regionsList.map((region) => (
+                      <option key={region.value} value={region.value}>{region.label}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {!isLoadingMapPins && (
+                <div className="absolute bottom-6 left-3 z-[1000] rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200">
+                  <p className="mb-1.5 font-bold">Project status</p>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                    {PROJECT_MARKER_LEGEND.map((item) => (
+                      <span key={item.label} className="flex items-center gap-1.5 whitespace-nowrap">
+                        <span className="h-2.5 w-2.5 rounded-full border border-slate-900" style={{ backgroundColor: item.color }} />
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               {isLoadingMapPins ? (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">
                   <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
@@ -667,8 +715,11 @@ export default function ProjectsCatalog() {
                   className="h-full relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col shrink-0"
                 >
                   {(() => {
-                    const projectDetails = allMapPins.find((p) => p.id === selectedPin.id);
-                    if (!projectDetails) return null;
+                    if (isLoadingMapProjectDetails) {
+                      return <div className="flex h-full items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+                    }
+                    const projectDetails = selectedMapProjectDetails;
+                    if (!projectDetails) return <p className="p-5 text-sm text-slate-500">Project details are unavailable.</p>;
                     const geotagPhotos = getGeotagPhotos(projectDetails.metadata);
                     const firstPhotoUrl = geotagPhotos[0]?.photo_url
                       || geotagPhotos[0]?.url
@@ -706,7 +757,9 @@ export default function ProjectsCatalog() {
                             BUDGET
                           </div>
                           <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                            ₱{projectDetails.budget.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            {projectDetails.budget === null
+                              ? "Unavailable"
+                              : `₱${projectDetails.budget.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
                           </p>
                         </div>
 

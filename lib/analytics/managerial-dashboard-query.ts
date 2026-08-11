@@ -41,7 +41,7 @@ export type DashboardProjectRow = {
   yearFunded: string | null;
   status: string | null;
   allocatedBudget: string | number | null;
-  approvedBudgetForContract: string | number | null;
+  actualBidAmount: string | number | null;
   physicalProgress: number | null;
   hasPhysicalProgressEvidence: boolean;
   startDate: Date | string | null;
@@ -237,7 +237,7 @@ function dashboardBaseQuery(
       projectType: projects.projectType,
       yearFunded: projects.yearFunded,
       allocatedBudget: projects.budget,
-      approvedBudgetForContract: projects.abc,
+      actualBidAmount: projects.abc,
       physicalProgress: sql<number | null>`case when ${expressions.hasProgressEvidence} then ${projects.physicalProgress} else null end`.as("physical_progress"),
       startDate: projects.startDate,
       targetCompletionDate: projects.targetCompletionDate,
@@ -295,11 +295,11 @@ export function buildDashboardAggregateQueryPlan(
   const summary = db.select({
     total: count,
     withBudget: numberSql(sql`count(${base.allocatedBudget})::int`),
-    withApprovedBudgetForContract: numberSql(sql`count(${base.approvedBudgetForContract})::int`),
+    withActualBidAmount: numberSql(sql`count(${base.actualBidAmount})::int`),
     withSchedule: numberSql(sql`count(*) filter (where ${base.hasSchedule})::int`),
     withPhysicalProgress: numberSql(sql`count(*) filter (where ${base.hasProgressEvidence})::int`),
     allocatedBudget: budget,
-    approvedBudgetForContract: currencySumSql(base.approvedBudgetForContract),
+    actualBidAmount: currencySumSql(base.actualBidAmount),
     completed: numberSql(sql`coalesce(sum(case when ${isCompleted} then 1 else 0 end), 0)::int`),
     delayed: numberSql(sql`coalesce(sum(case when ${isDelayed} then 1 else 0 end), 0)::int`),
     atRisk: numberSql(sql`coalesce(sum(case when ${isAtRisk} then 1 else 0 end), 0)::int`),
@@ -454,8 +454,8 @@ export function aggregateManagerialDashboardRows(
   const coverage = {
     total: rows.length,
     withBudget: rows.filter((row) => row.allocatedBudget !== null).length,
-    withApprovedBudgetForContract: rows.filter(
-      (row) => row.approvedBudgetForContract !== null,
+    withActualBidAmount: rows.filter(
+      (row) => row.actualBidAmount !== null,
     ).length,
     withSchedule: rows.filter(
       (row) =>
@@ -488,8 +488,8 @@ export function aggregateManagerialDashboardRows(
     kpis: {
       totalProjects: rows.length,
       allocatedBudget: sum(rows.map((row) => row.allocatedBudget)),
-      approvedBudgetForContract: sum(
-        rows.map((row) => row.approvedBudgetForContract),
+      actualBidAmount: sum(
+        rows.map((row) => row.actualBidAmount),
       ),
       completionRate: safePercentage(completed, rows.length),
       delayedProjects: delayed,
@@ -593,11 +593,11 @@ export async function getManagerialDashboardData(
   const summary = summaryRows[0] ?? {
     total: 0,
     withBudget: 0,
-    withApprovedBudgetForContract: 0,
+    withActualBidAmount: 0,
     withSchedule: 0,
     withPhysicalProgress: 0,
     allocatedBudget: 0,
-    approvedBudgetForContract: 0,
+    actualBidAmount: 0,
     completed: 0,
     delayed: 0,
     atRisk: 0,
@@ -644,7 +644,7 @@ export async function getManagerialDashboardData(
     coverage: {
       total: summary.total,
       withBudget: summary.withBudget,
-      withApprovedBudgetForContract: summary.withApprovedBudgetForContract,
+      withActualBidAmount: summary.withActualBidAmount,
       withSchedule: summary.withSchedule,
       withPhysicalProgress: summary.withPhysicalProgress,
       withFinancialData: 0,
@@ -652,7 +652,7 @@ export async function getManagerialDashboardData(
     kpis: {
       totalProjects: summary.total,
       allocatedBudget: summary.allocatedBudget,
-      approvedBudgetForContract: summary.approvedBudgetForContract,
+      actualBidAmount: summary.actualBidAmount,
       completionRate: safePercentage(summary.completed, summary.total),
       delayedProjects: summary.delayed,
       atRiskProjects: summary.atRisk,

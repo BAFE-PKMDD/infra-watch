@@ -1,10 +1,16 @@
 import type { AbemisProject } from "@/types/api.types";
+import { buildProjectGeometry } from "@/lib/data-quality/project-quality";
 
 
 function parseNumber(value: string | number | null | undefined) {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(String(value).replace(/,/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseCoordinate(value: string | number | null | undefined, minimum: number, maximum: number) {
+  const parsed = parseNumber(value);
+  return parsed !== null && parsed >= minimum && parsed <= maximum ? parsed : null;
 }
 
 function parseInteger(value: string | number | null | undefined) {
@@ -100,23 +106,12 @@ function inferTargetCompletionDate(project: AbemisProject) {
   return target;
 }
 
-// Convert lat/long to PostGIS geometry (WKT format)
-function createGeometry(latStr: string | null | undefined, lngStr: string | null | undefined) {
-  const lat = latStr ? parseFloat(latStr) : null;
-  const lng = lngStr ? parseFloat(lngStr) : null;
-
-  if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-    // Return WKT (Well-Known Text) format: SRID=4326;POINT(longitude latitude)
-    // Note: PostGIS uses (longitude, latitude) order for POINT
-    return `SRID=4326;POINT(${lng} ${lat})`;
-  }
-  return null;
-}
-
 export function transformAbemisProject(project: AbemisProject) {
   const abemisId = project.project_id || project.id;
   const physicalProgress = inferProgress(project, "actual");
   const financialProgress = inferProgress(project, "target");
+  const latitude = parseCoordinate(project.latitude, -90, 90);
+  const longitude = parseCoordinate(project.longitude, -180, 180);
 
   return {
     abemisRawId: project.id,
@@ -128,11 +123,10 @@ export function transformAbemisProject(project: AbemisProject) {
     province: project.province || project.psgc?.province || null,
     municipality: project.municipality || project.psgc?.municipality || null,
     barangay: project.barangay || project.psgc?.barangay || null,
-    latitude: parseNumber(project.latitude),
-    longitude: parseNumber(project.longitude),
+    latitude,
+    longitude,
     budget: parseNumber(project.allocated_amount)?.toFixed(2) ?? null,
     abc: parseNumber(project.abc),
-    contractAmount: parseNumber(project.abc)?.toFixed(2) ?? null,
     calendarDays: parseInteger(project.calendar_days),
     physicalProgress,
     financialProgress,
@@ -176,7 +170,7 @@ export function transformAbemisProject(project: AbemisProject) {
       kmllink: project.kmllink ?? project.kml_link,
     },
     commodities: [],
-    geom: createGeometry(project.latitude, project.longitude),
+    geom: buildProjectGeometry(latitude, longitude),
   };
 }
 

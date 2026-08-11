@@ -22,14 +22,14 @@ The integration relies on the standard ABEMIS AMEFIP list API:
 GET {{ABEMIS_BASE_URL}}/api/infra-amefip-list
 ```
 
-### 2.2 Query Parameters
-To query specific pages or sync dates, the client requests the following parameters:
+### 2.2 Request Parameters and Authentication
+The client sends these pagination parameters and the API key header:
 
-| Parameter | Type | Required | Value / Description |
-| :--- | :--- | :---: | :--- |
-| `page` | `integer` | ❌ | Current page number (default: `1`) |
-| `limit` | `integer` | ❌ | Number of records per page (default: `10`, max `100`) |
-| `apiKey` | `string` | ✅ | Authorization token passed via `x-api-key` header |
+| Name | Location | Type | Required | Value / Description |
+| :--- | :--- | :--- | :---: | :--- |
+| `page` | Query | `integer` | ❌ | Current page number (default: `1`) |
+| `page_size` | Query | `integer` | ❌ | Number of records per page (the synchronization client requests up to `500`) |
+| `x-api-key` | Header | `string` | ✅ | ABEMIS API key; never exposed to the browser |
 
 ---
 
@@ -53,8 +53,8 @@ The project structure returned from the ABEMIS API is transformed into the inter
 | `barangay` | `barangay` | `text` | Barangay name |
 | `latitude` | `latitude` | `real` | Coordinate |
 | `longitude` | `longitude` | `real` | Coordinate |
-| `allocated_amount` | `budget` | `real` | Budget allocated |
-| `abc` | `abc` | `real` | Approved Budget for Contract |
+| `allocated_amount` | `budget` | `numeric` | Approved project budget |
+| `abc` | `abc` | `numeric` | Supplier's actual bid amount in this ABEMIS source |
 | `contractor` | `contractor_name` | `text` | Name of the construction firm |
 | `date_completed` | `actual_completion_date`| `timestamp`| Actual project completion / handover date |
 | `calendar_days` | `calendar_days` | `integer` | Calendar days to complete |

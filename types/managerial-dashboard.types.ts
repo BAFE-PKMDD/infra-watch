@@ -37,7 +37,7 @@ export type ManagerialDashboardData = {
   coverage: {
     total: number;
     withBudget: number;
-    withApprovedBudgetForContract: number;
+    withActualBidAmount: number;
     withSchedule: number;
     withPhysicalProgress: number;
     withFinancialData: number;
@@ -45,7 +45,7 @@ export type ManagerialDashboardData = {
   kpis: {
     totalProjects: number;
     allocatedBudget: number;
-    approvedBudgetForContract: number;
+    actualBidAmount: number;
     completionRate: number;
     delayedProjects: number;
     atRiskProjects: number;

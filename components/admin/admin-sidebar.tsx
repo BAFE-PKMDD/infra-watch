@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CircleAlert,
+  DatabaseZap,
   FileText,
   FolderKanban,
   Home,
@@ -38,6 +39,7 @@ const menu = [
     label: "System",
     items: [
       { label: "ABEMIS Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view" },
+      { label: "Data Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view" },
       { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view" },
       { label: "User Management", href: "/user-management", icon: Users, resource: "user", action: "list" },
     ],

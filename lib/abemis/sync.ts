@@ -7,6 +7,7 @@ import { fetchInfraProjects } from "./client";
 import { isInfraWatchProject, transformAbemisProject } from "./transform";
 import { eq, sql, or, ilike, and, inArray } from "drizzle-orm";
 import { getProjectScopeConditions, type ScopedUser } from "@/lib/scope";
+
 import {
   captureProjectMetricSnapshots,
   pruneProjectMetricSnapshots,
@@ -239,10 +240,11 @@ async function getExistingProjectIds(projectIds: string[]) {
 }
 
 async function upsertProjectValues(values: ProjectInsert[]) {
-  await db
-    .insert(projects)
-    .values(values)
-    .onConflictDoUpdate({
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(projects)
+      .values(values)
+      .onConflictDoUpdate({
       target: projects.abemisId,
       set: {
         abemisRawId: sql`excluded.abemis_raw_id`,
@@ -257,7 +259,6 @@ async function upsertProjectValues(values: ProjectInsert[]) {
         longitude: sql`excluded.longitude`,
         budget: sql`excluded.budget`,
         abc: sql`excluded.abc`,
-        contractAmount: sql`excluded.contract_amount`,
         calendarDays: sql`excluded.calendar_days`,
         physicalProgress: sql`excluded.physical_progress`,
         financialProgress: sql`excluded.financial_progress`,
@@ -299,7 +300,8 @@ async function upsertProjectValues(values: ProjectInsert[]) {
         lastSyncedAt: sql`excluded.last_synced_at`,
         updatedAt: sql`excluded.updated_at`,
       },
-    });
+      });
+  });
 }
 
 function getReadableError(error: unknown) {

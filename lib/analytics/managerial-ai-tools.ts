@@ -24,8 +24,8 @@ const MAX_PRIORITY_PROJECTS = 10;
 
 export const MANAGERIAL_KPI_DEFINITIONS = {
   totalProjects: "Projects in the authorized filtered dashboard scope.",
-  allocatedBudget: "Sum of reported allocated budget; missing values are not inferred.",
-  approvedBudgetForContract: "Sum of reported approved budget for contract; missing values are not inferred.",
+  allocatedBudget: "Sum of reported allocated amounts, representing approved project budgets; missing values are not inferred.",
+  actualBidAmount: "Sum of reported ABC values, representing suppliers' actual bid amounts in this source; missing values are not inferred.",
   completionRate:
     "Completed projects divided by all projects in the authorized filtered scope, multiplied by 100.",
   delayedProjects: "Projects classified as delayed by the dashboard's deterministic schedule-health rules.",

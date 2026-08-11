@@ -61,7 +61,8 @@ export interface ProjectUpdate {
   description: string;
 }
 
-export interface ProjectDetail extends ProjectDisplayItem {
+export interface ProjectDetail extends Omit<ProjectDisplayItem, "budget"> {
+  budget: number | null; // Approved budget only; null when the source allocation is unavailable
   completionDate: string; // Target completion date
   actualCompletionDate?: string; // Actual completion date
   contractor: string;
@@ -71,7 +72,7 @@ export interface ProjectDetail extends ProjectDisplayItem {
   description: string;
   updates: ProjectUpdate[];
   coordinates?: string;
-  abc?: number; // Approved Budget for Contract
+  abc?: number; // Supplier's actual bid amount in this ABEMIS source
   commodities?: string[] | null;
   metadata?: Record<string, unknown> | null; // Contains geotags, proposalDocuments, powRelation, procurementRelation
   articles?: Article[]; // Related articles and publications

@@ -25,7 +25,7 @@ test("renders six truthful executive KPIs without expenditure claims", () => {
       kpis: {
         totalProjects: 42,
         allocatedBudget: 5_000_000,
-        approvedBudgetForContract: 4_800_000,
+        actualBidAmount: 4_800_000,
         completionRate: 25,
         delayedProjects: 7,
         atRiskProjects: 3,
@@ -33,7 +33,7 @@ test("renders six truthful executive KPIs without expenditure claims", () => {
       coverage: {
         total: 42,
         withBudget: 40,
-        withApprovedBudgetForContract: 0,
+        withActualBidAmount: 0,
         withSchedule: 35,
         withPhysicalProgress: 36,
         withFinancialData: 0,
@@ -43,12 +43,13 @@ test("renders six truthful executive KPIs without expenditure claims", () => {
   for (const label of [
     "Projects monitored",
     "Allocated budget",
-    "Approved Budget for Contract",
+    "Supplier actual bid amount",
     "Completion rate",
     "Delayed projects",
     "At-risk projects",
   ]) assert.match(html, new RegExp(label));
   assert.doesNotMatch(html, /spent|disbursed|expenditure|utilization/i);
+  assert.doesNotMatch(html, /Approved Budget for Contract/i);
   assert.match(html, /Unavailable/);
   assert.match(html, /Metric definition/);
 });
@@ -59,7 +60,7 @@ test("does not present schedule-health zeroes as positive results when nothing i
       kpis: {
         totalProjects: 25_901,
         allocatedBudget: 77_139_613_575,
-        approvedBudgetForContract: 0,
+        actualBidAmount: 0,
         completionRate: 67.7,
         delayedProjects: 0,
         atRiskProjects: 0,
@@ -67,7 +68,7 @@ test("does not present schedule-health zeroes as positive results when nothing i
       coverage: {
         total: 25_901,
         withBudget: 25_893,
-        withApprovedBudgetForContract: 0,
+        withActualBidAmount: 0,
         withSchedule: 0,
         withPhysicalProgress: 0,
         withFinancialData: 0,

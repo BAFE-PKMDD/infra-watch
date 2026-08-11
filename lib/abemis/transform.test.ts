@@ -56,3 +56,46 @@ test("uses snake-case ABEMIS relations for progress and schedule provenance", ()
   assert.equal(transformed.metadata.powRelation.length, 1);
   assert.equal(transformed.metadata.procurementRelation.length, 1);
 });
+
+test("derives coordinates and geometry from one strictly validated coordinate pair", () => {
+  const malformed = transformAbemisProject({
+    id: "raw-bad-coordinates",
+    project_id: "P-BAD",
+    latitude: "15.5north",
+    longitude: "121.0",
+  } as unknown as AbemisProject);
+  assert.equal(malformed.latitude, null);
+  assert.equal(malformed.geom, null);
+
+  const zero = transformAbemisProject({
+    id: "raw-zero-coordinates",
+    project_id: "P-ZERO",
+    latitude: "0",
+    longitude: "0",
+  } as unknown as AbemisProject);
+  assert.equal(zero.latitude, 0);
+  assert.equal(zero.longitude, 0);
+  assert.equal(zero.geom, "SRID=4326;POINT(0 0)");
+
+  const outOfRange = transformAbemisProject({
+    id: "raw-out-of-range",
+    project_id: "P-RANGE",
+    latitude: "91",
+    longitude: "121",
+  } as unknown as AbemisProject);
+  assert.equal(outOfRange.latitude, null);
+  assert.equal(outOfRange.geom, null);
+});
+
+test("maps approved budget and actual bid without inventing a contract amount", () => {
+  const transformed = transformAbemisProject({
+    id: "raw-financial",
+    project_id: "P-FINANCIAL",
+    allocated_amount: "1500000.00",
+    abc: "1400000.00",
+  } as unknown as AbemisProject);
+
+  assert.equal(transformed.budget, "1500000.00");
+  assert.equal(transformed.abc, 1400000);
+  assert.equal("contractAmount" in transformed, false);
+});

@@ -24,7 +24,7 @@ export interface Project {
 
   // Budget & Timeline
   budget?: number | null;
-  abc?: number | null; // Approved Budget for Contract
+  abc?: number | null; // Supplier's actual bid amount in this ABEMIS source
   calendarDays?: number | null; // Contract duration in calendar days
   contractorName?: string | null;
   startDate?: Date | null;

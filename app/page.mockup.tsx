@@ -742,7 +742,7 @@ export default function MockupPortal() {
                       <p className="font-bold text-slate-900 mt-0.5">₱4,200,000.00</p>
                     </div>
                     <div>
-                      <span className="text-slate-500">Approved Budget (ABC)</span>
+                      <span className="text-slate-500">Supplier Actual Bid Amount</span>
                       <p className="font-bold text-slate-900 mt-0.5">₱4,200,000.00</p>
                     </div>
                     <div>

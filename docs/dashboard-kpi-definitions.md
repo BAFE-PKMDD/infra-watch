@@ -26,8 +26,8 @@ The dashboard is a managerial view of the local ABEMIS read model. Browser refre
 | Label | Managerial question | Formula and denominator | Source | Null/invalid handling | Filters and scope | v1 status |
 |---|---|---|---|---|---|---|
 | Projects monitored | How large is the visible portfolio? | Count of scoped, filtered `projects` rows | `projects.id` | Every scoped row counts once | All global filters and server scope | Ready |
-| Allocated budget | What allocation is represented? | Sum of non-null `projects.budget` | ABEMIS `allocated_amount` → `projects.budget` | Null excluded from sum and reported in coverage; zero retained | Same condition set as project count | Ready |
-| Approved Budget for Contract (ABC) | What procurement ceiling is represented? | Sum of non-null `projects.abc` | ABEMIS `abc` → `projects.abc` | Null excluded and reported in coverage; zero retained | Same condition set as project count | Ready; label exactly as ABC |
+| Allocated budget | What approved project budget is represented? | Sum of non-null `projects.budget` | ABEMIS `allocated_amount` → `projects.budget` | Null excluded from sum and reported in coverage; zero retained | Same condition set as project count | Ready; allocated amount means approved budget |
+| Supplier actual bid amount | What amount did suppliers actually bid? | Sum of non-null `projects.abc` | ABEMIS `abc` → `projects.abc` | Null excluded and reported in coverage; zero retained | Same condition set as project count | Ready; do not expand ABC using conventional terminology |
 | Completion rate | What proportion of the assessed portfolio is complete? | Canonically completed / all status-assessed scoped projects × 100 | `projects.status`, shared canonical status mapping | Zero denominator returns 0; raw variants map through one tested classifier | Same condition set as project count | Ready; baseline denominator is all canonically assessed projects |
 | Delayed projects | Which incomplete projects have passed target? | Count where project is incomplete and target date is before `asOf` | `status`, `targetCompletionDate` | Missing/invalid target is not assessed, not delayed | Same condition set plus optional schedule-health filter | Ready, show schedule coverage |
 | At-risk projects | Which active projects show explainable schedule risk? | Count classified at risk by rules below | dates + physical progress | Missing/untrusted inputs are not assessed | Same condition set plus optional schedule-health filter | Ready as rules-based outlook |
@@ -40,12 +40,12 @@ The dashboard is a managerial view of the local ABEMIS read model. Browser refre
 
 These labels are not interchangeable:
 
-- `projects.budget` is **Allocated budget**, sourced from ABEMIS `allocated_amount`.
-- `projects.abc` is **Approved Budget for Contract (ABC)**, a procurement ceiling.
-- `projects.contractAmount` currently duplicates ABEMIS `abc` in `transformAbemisProject()`. It must not be displayed as awarded contract value.
+- `projects.budget` is the **approved project budget**, sourced from ABEMIS `allocated_amount`.
+- `projects.abc` is the **supplier's actual bid amount** in InfraWatch's ABEMIS source contract.
+- `projects.contractAmount` is a legacy column that may contain older duplicate values. Synchronization no longer derives or updates it from ABEMIS `abc`; consumers must not use it as awarded contract value or instead of corrected `projects.abc` data.
 - No authoritative actual expenditure/disbursement amount is currently mapped.
 
-The v1 section is therefore named **Budget Oversight** and may show allocated budget, ABC, and their variance. It must not use “spent,” “disbursed,” “expenditure,” “actual contract value,” or “utilization.”
+The v1 section is therefore named **Budget Oversight** and may show approved budget, supplier actual bid amount, and their variance. It must not use “spent,” “disbursed,” “expenditure,” “actual contract value,” or “utilization.”
 
 ## Progress semantics
 
@@ -78,7 +78,7 @@ Each response reports:
 
 - total scoped projects;
 - projects with non-null allocated budget;
-- projects with non-null Approved Budget for Contract;
+- projects with a non-null supplier actual bid amount;
 - projects with valid schedule dates;
 - projects with trusted physical-progress evidence to the extent current source fields permit;
 - projects with validated financial data (zero in v1 until source confirmation).
@@ -133,7 +133,7 @@ Supported filters are program, funding year, region, province, project type, can
 The following require authoritative ABEMIS confirmation before labels or calculations change:
 
 1. actual expenditure/disbursement field, if any;
-2. awarded contract amount distinct from ABC;
+2. awarded contract amount distinct from the supplier's actual bid amount;
 3. exact POW `target` and `actual` semantics and whether missingness can be preserved;
 4. whether completion-rate denominator should later be narrowed to started or target-dated projects;
 5. whether schedule-risk thresholds vary by project type.

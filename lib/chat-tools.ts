@@ -103,7 +103,7 @@ export const searchProjects = tool({
         barangay: projects.barangay,
         region: projects.region,
         budget: projects.budget,
-        contractAmount: projects.contractAmount,
+        actualBidAmount: projects.abc,
         physicalProgress: projects.physicalProgress,
         financialProgress: projects.financialProgress,
         contractorName: projects.contractorName,
@@ -133,8 +133,8 @@ export const searchProjects = tool({
         budget: row.budget
           ? `₱${Number(row.budget).toLocaleString()}`
           : "N/A",
-        contractAmount: row.contractAmount
-          ? `₱${Number(row.contractAmount).toLocaleString()}`
+        actualBidAmount: row.actualBidAmount
+          ? `₱${Number(row.actualBidAmount).toLocaleString()}`
           : "N/A",
         physicalProgress: `${row.physicalProgress}%`,
         financialProgress: `${row.financialProgress}%`,
@@ -267,8 +267,8 @@ export const getProjectById = tool({
         budget: row.budget
           ? `₱${Number(row.budget).toLocaleString()}`
           : "N/A",
-        contractAmount: row.contractAmount
-          ? `₱${Number(row.contractAmount).toLocaleString()}`
+        actualBidAmount: row.abc
+          ? `₱${Number(row.abc).toLocaleString()}`
           : "N/A",
         physicalProgress: `${row.physicalProgress}%`,
         financialProgress: `${row.financialProgress}%`,

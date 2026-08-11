@@ -116,7 +116,8 @@ function DataField({ label, tooltip, value, isMono = false }: DataFieldProps) {
 export function ProjectOverview({ project, onShowOnMap }: ProjectOverviewProps) {
   const { t, language } = useTranslation();
 
-  const formatBudget = (amount: number) => {
+  const formatBudget = (amount: number | null) => {
+    if (amount === null) return "Unavailable";
     return `₱${amount.toLocaleString(language === 'tl' ? 'en-PH' : 'en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 

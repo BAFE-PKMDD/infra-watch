@@ -2,7 +2,21 @@ import type { AbemisListResponse, AbemisProject, FetchProjectsParams } from "@/t
 
 const ABEMIS_BASE_URL = process.env.ABEMIS_BASE_URL;
 const ABEMIS_API_KEY = process.env.ABEMIS_API_KEY;
-const INFRA_ENDPOINT = process.env.ABEMIS_INFRA_ENDPOINT ?? "/api/infra-list";
+
+export function resolveInfraEndpoint(configuredEndpoint: string | undefined) {
+  const endpoint = configuredEndpoint?.trim() || "/api/infra-amefip-list";
+  if (
+    !endpoint.startsWith("/") ||
+    endpoint.startsWith("//") ||
+    endpoint.includes("\\") ||
+    /[\u0000-\u001F\u007F]/.test(endpoint)
+  ) {
+    throw new Error("ABEMIS_INFRA_ENDPOINT must be a root-relative path");
+  }
+  return endpoint;
+}
+
+const INFRA_ENDPOINT = resolveInfraEndpoint(process.env.ABEMIS_INFRA_ENDPOINT);
 
 export class AbemisApiError extends Error {
   constructor(
@@ -15,12 +29,28 @@ export class AbemisApiError extends Error {
   }
 }
 
-function buildUrl(path: string) {
-  if (!ABEMIS_BASE_URL) {
+export function buildUrl(path: string, baseUrl = ABEMIS_BASE_URL) {
+  if (!baseUrl) {
     throw new AbemisApiError("ABEMIS_BASE_URL is not configured");
   }
 
-  return new URL(path, ABEMIS_BASE_URL);
+  const base = new URL(baseUrl);
+  const url = new URL(path, base);
+  if (url.origin !== base.origin) {
+    throw new AbemisApiError("ABEMIS infrastructure endpoint must use the configured base URL origin");
+  }
+  return url;
+}
+
+export async function fetchAbemisResponse(url: URL, init: RequestInit) {
+  const response = await fetch(url, {
+    ...init,
+    redirect: "manual",
+  });
+  if (response.status >= 300 && response.status < 400) {
+    throw new AbemisApiError("ABEMIS API redirects are not allowed", response.status);
+  }
+  return response;
 }
 
 function resolveTotalPages(response: AbemisListResponse) {
@@ -51,7 +81,7 @@ export async function fetchInfraProjects(params: FetchProjectsParams = {}): Prom
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, {
+      const response = await fetchAbemisResponse(url, {
         method: "GET",
         headers,
         cache: noCache ? "no-store" : "force-cache",

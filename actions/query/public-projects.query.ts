@@ -2,8 +2,9 @@
 
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
-import { desc, and, ilike, or, eq, count, inArray, sql } from "drizzle-orm";
+import { desc, and, ilike, or, eq, count, gte, inArray, lte, sql } from "drizzle-orm";
 import { mapPublicToInternalStages } from "@/constants/stage-mapping";
+import { PHILIPPINE_COORDINATE_BOUNDS } from "@/lib/philippine-coordinates";
 
 export type PublicProjectFilters = {
   searchQuery?: string;
@@ -73,7 +74,7 @@ export async function getPublicProjects({
     const rows = await db.select()
       .from(projects)
       .where(whereClause)
-      .orderBy(desc(projects.lastSyncedAt))
+      .orderBy(desc(projects.lastSyncedAt), desc(projects.id))
       .limit(limit)
       .offset(offset);
 
@@ -156,9 +157,56 @@ export async function getPublicMapPins({
       conditions.push(eq(projects.yearFunded, year));
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    conditions.push(
+      gte(projects.latitude, PHILIPPINE_COORDINATE_BOUNDS.minLatitude),
+      lte(projects.latitude, PHILIPPINE_COORDINATE_BOUNDS.maxLatitude),
+      gte(projects.longitude, PHILIPPINE_COORDINATE_BOUNDS.minLongitude),
+      lte(projects.longitude, PHILIPPINE_COORDINATE_BOUNDS.maxLongitude),
+    );
+    const whereClause = and(...conditions);
 
     const rows = await db.select({
+      id: projects.id,
+      abemisId: projects.abemisId,
+      projectCode: projects.projectCode,
+      name: projects.name,
+      program: projects.program,
+      municipality: projects.municipality,
+      barangay: projects.barangay,
+      status: projects.status,
+      physicalProgress: projects.physicalProgress,
+      latitude: projects.latitude,
+      longitude: projects.longitude
+    })
+      .from(projects)
+      .where(whereClause)
+      .orderBy(desc(projects.lastSyncedAt));
+
+    return rows.map(row => ({
+      id: row.abemisId || row.projectCode || row.id,
+      name: row.name,
+      program: row.program?.toLowerCase() || "ins",
+      municipality: row.municipality || "Unknown",
+      barangay: row.barangay || "Unknown",
+      physicalProgress: row.physicalProgress || 0,
+      status: row.status?.toLowerCase() || "ongoing",
+      latitude: row.latitude,
+      longitude: row.longitude
+    }));
+  } catch (error) {
+    console.error("Failed to fetch map pins:", error);
+    return [];
+  }
+}
+
+export async function getPublicMapProjectDetails(id: string) {
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+    const condition = isUuid
+      ? or(eq(projects.abemisId, id), eq(projects.projectCode, id), eq(projects.id, id))
+      : or(eq(projects.abemisId, id), eq(projects.projectCode, id));
+
+    const [row] = await db.select({
       id: projects.id,
       abemisId: projects.abemisId,
       projectCode: projects.projectCode,
@@ -170,42 +218,29 @@ export async function getPublicMapPins({
       barangay: projects.barangay,
       budget: projects.budget,
       status: projects.status,
-      contractorName: projects.contractorName,
-      physicalProgress: projects.physicalProgress,
-      latitude: projects.latitude,
-      longitude: projects.longitude,
-      proposedLength: projects.proposedLength,
       quantity: projects.quantity,
       quantityUnit: projects.quantityUnit,
-      metadata: projects.metadata
-    })
-      .from(projects)
-      .where(whereClause)
-      .orderBy(desc(projects.lastSyncedAt))
-      .limit(1500);
+      metadata: projects.metadata,
+    }).from(projects).where(condition).limit(1);
 
-    return rows.map(row => ({
+    if (!row) return null;
+    return {
       id: row.abemisId || row.projectCode || row.id,
       name: row.name,
       program: row.program?.toLowerCase() || "ins",
-      region: row.region || "R8",
+      region: row.region || "Unknown",
       province: row.province || "Unknown",
       municipality: row.municipality || "Unknown",
       barangay: row.barangay || "Unknown",
-      budget: row.budget ? Number(row.budget) : 0,
-      physicalProgress: row.physicalProgress || 0,
-      status: row.status?.toLowerCase() || "ongoing",
-      contractor: row.contractorName || "Unknown Contractor",
-      latitude: row.latitude,
-      longitude: row.longitude,
-      proposedLength: row.proposedLength || null,
+      budget: row.budget === null ? null : Number(row.budget),
+      status: row.status?.toLowerCase() || "unknown",
       quantity: row.quantity || null,
       quantityUnit: row.quantityUnit || null,
-      metadata: row.metadata || {}
-    }));
+      metadata: row.metadata || {},
+    };
   } catch (error) {
-    console.error("Failed to fetch map pins:", error);
-    return [];
+    console.error("Failed to fetch map project details:", error);
+    return null;
   }
 }
 

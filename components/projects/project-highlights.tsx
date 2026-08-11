@@ -223,7 +223,7 @@ export function ProjectHighlights({ project }: ProjectHighlightsProps) {
               <HighlightField
                 label={t("projectDetail.overview.budget")}
                 tooltip={t("projectDetail.overview.budgetTooltip")}
-                value={formatCurrency(project.budget)}
+                value={project.budget === null ? "Unavailable" : formatCurrency(project.budget)}
               />
               <HighlightField
                 label={project.postGeotaggedLength ? t("projectDetail.overview.postGeotaggedLength") : t("projectDetail.overview.targetLength")}

@@ -114,8 +114,8 @@ export interface AbemisProject {
   quantity_unit: string;
   latitude: string;
   longitude: string;
-  allocated_amount: string;
-  abc: string | null; // Approved Budget for Contract
+  allocated_amount: string; // Approved project budget
+  abc: string | null; // Supplier's actual bid amount in this ABEMIS source
   calendar_days: string | null; // Contract duration in calendar days
   beneficiary: string;
   prexc_program: string;

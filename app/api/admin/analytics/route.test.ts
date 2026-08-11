@@ -15,7 +15,7 @@ const emptyData = {
   coverage: {
     total: 0,
     withBudget: 0,
-    withApprovedBudgetForContract: 0,
+    withActualBidAmount: 0,
     withSchedule: 0,
     withPhysicalProgress: 0,
     withFinancialData: 0,
@@ -23,7 +23,7 @@ const emptyData = {
   kpis: {
     totalProjects: 0,
     allocatedBudget: 0,
-    approvedBudgetForContract: 0,
+    actualBidAmount: 0,
     completionRate: 0,
     delayedProjects: 0,
     atRiskProjects: 0,
