@@ -78,4 +78,5 @@ test("does not present schedule-health zeroes as positive results when nothing i
   assert.equal((html.match(/Not assessable/g) ?? []).length, 2);
   assert.match(html, /0 of 25,901 projects have schedule dates/);
   assert.match(html, /title="₱77,139,613,575"/);
+  assert.match(html, /Exact value: ₱77,139,613,575/);
 });

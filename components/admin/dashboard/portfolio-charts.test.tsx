@@ -52,10 +52,11 @@ test("renders explicit empty states instead of empty charts", () => {
   }
 });
 
-test("explains why progress variance is unavailable", () => {
+test("explains an empty progress-variance comparison without assuming the cause", () => {
   const html = renderToStaticMarkup(createElement(ProgressVarianceChart, { data: [] }));
-  assert.match(html, /Physical-progress data is unavailable/);
-  assert.match(html, /schedule dates and physical progress/i);
+  assert.match(html, /No assessable active projects/);
+  assert.match(html, /current filters or missing schedule and physical-progress evidence/i);
+  assert.doesNotMatch(html, /Physical-progress data is unavailable/);
 });
 
 test("bounds regional rankings to the strongest and weakest performers", () => {
@@ -75,6 +76,7 @@ test("bounds regional rankings to the strongest and weakest performers", () => {
   assert.equal(new Set(limited.map((item) => item.region)).size, 10);
   assert.ok(limited.some((item) => item.region === "Region 1"));
   assert.ok(limited.some((item) => item.region === "Region 14"));
+  assert.deepEqual(limitRegionalPerformance(data, 1).map((item) => item.region), ["Region 14"]);
 });
 
 test("keeps long regional axis labels within the chart gutter", () => {

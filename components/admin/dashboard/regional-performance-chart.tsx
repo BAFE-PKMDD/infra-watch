@@ -15,12 +15,16 @@ export function formatRegionAxisLabel(region: string) {
 }
 
 export function limitRegionalPerformance(data: RegionalPerformanceRow[], limit = 10) {
+  if (limit <= 0) return [];
   const ranked = [...data].sort((a, b) => b.completionRate - a.completionRate || a.region.localeCompare(b.region));
   if (ranked.length <= limit) return ranked;
 
   const strongestCount = Math.ceil(limit / 2);
   const weakestCount = limit - strongestCount;
-  const selected = [...ranked.slice(0, strongestCount), ...ranked.slice(-weakestCount)];
+  const selected = [
+    ...ranked.slice(0, strongestCount),
+    ...(weakestCount > 0 ? ranked.slice(-weakestCount) : []),
+  ];
   return selected.sort((a, b) => b.completionRate - a.completionRate || a.region.localeCompare(b.region));
 }
 

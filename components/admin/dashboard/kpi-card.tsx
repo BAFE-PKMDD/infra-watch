@@ -36,7 +36,14 @@ export function KpiCard({
         </p>
         {icon && <span aria-hidden="true" className="text-primary">{icon}</span>}
       </div>
-      <p title={valueTitle} className={cn("mt-3 text-2xl font-extrabold tabular-nums text-slate-950 dark:text-white", tone === "critical" && "text-red-700 dark:text-red-300", tone === "warning" && "text-amber-700 dark:text-amber-300")}>{value}</p>
+      <p title={valueTitle} className={cn("mt-3 text-2xl font-extrabold tabular-nums text-slate-950 dark:text-white", tone === "critical" && "text-red-700 dark:text-red-300", tone === "warning" && "text-amber-700 dark:text-amber-300")}>
+        {valueTitle ? (
+          <>
+            <span aria-hidden="true">{value}</span>
+            <span className="sr-only">Exact value: {valueTitle}</span>
+          </>
+        ) : value}
+      </p>
       {detail && <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{detail}</p>}
       <details className="group mt-2 text-xs text-slate-600 dark:text-slate-300">
         <summary className="cursor-pointer font-bold text-slate-500 outline-none marker:text-slate-400 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/30 dark:text-slate-400">

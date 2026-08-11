@@ -14,8 +14,8 @@ export function ProgressVarianceChart({ data }: { data: ManagerialDashboardData[
     <ChartPanel title="Physical versus expected progress" description="Largest current variance among assessable active projects; rules-based, not a trend forecast." summary={summary}>
       {chartData.length === 0 ? (
         <ChartEmptyState
-          title="Physical-progress data is unavailable."
-          detail="This comparison requires both valid schedule dates and physical progress for active projects in the selected scope."
+          title="No assessable active projects for this comparison."
+          detail="Current filters or missing schedule and physical-progress evidence may leave no projects eligible for comparison."
         />
       ) : (
         <>
