@@ -29,7 +29,7 @@ function isWebReadableStream(value: unknown): value is ReadableStream<Uint8Array
 }
 
 const minioConfig: Minio.ClientOptions = {
-  endPoint: process.env.MINIO_ENDPOINT || "storage.bafe.online",
+  endPoint: process.env.MINIO_ENDPOINT || "storage.bafe.gov.ph",
   useSSL: process.env.MINIO_USE_SSL === "true",
   accessKey: process.env.MINIO_ACCESS_KEY || "",
   secretKey: process.env.MINIO_SECRET_KEY || "",

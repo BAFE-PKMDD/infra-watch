@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "storage.bafe.online",
+        hostname: "storage.bafe.gov.ph",
         pathname: "/**",
       },
       {

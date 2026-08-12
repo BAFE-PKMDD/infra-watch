@@ -5,7 +5,7 @@
 
 // MinIO configuration (read from env or use defaults)
 const getMinioConfig = () => {
-  const endpoint = process.env.NEXT_PUBLIC_MINIO_ENDPOINT ? process.env.NEXT_PUBLIC_MINIO_ENDPOINT : 'storage.bafe.online';
+  const endpoint = process.env.NEXT_PUBLIC_MINIO_ENDPOINT ? process.env.NEXT_PUBLIC_MINIO_ENDPOINT : 'storage.bafe.gov.ph';
   const useSSL = process.env.NEXT_PUBLIC_MINIO_USE_SSL === 'true' ? true : false;
   const bucket = process.env.NEXT_PUBLIC_MINIO_BUCKET || process.env.MINIO_BUCKET_NAME || 'infra-watch';
 

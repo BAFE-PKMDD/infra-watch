@@ -13,7 +13,7 @@ COPY . .
 
 ARG NEXT_PUBLIC_APP_URL=https://infrawatch.bafe.gov.ph
 ARG NEXT_PUBLIC_BASE_URL=https://infrawatch.bafe.gov.ph
-ARG NEXT_PUBLIC_MINIO_ENDPOINT=storage.bafe.online
+ARG NEXT_PUBLIC_MINIO_ENDPOINT=storage.bafe.gov.ph
 ARG NEXT_PUBLIC_MINIO_BUCKET=infra-watch
 ARG NEXT_PUBLIC_MINIO_USE_SSL=true
 
