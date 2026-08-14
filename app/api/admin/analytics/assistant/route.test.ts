@@ -4,9 +4,14 @@ import {
   MANAGERIAL_AI_MAX_OUTPUT_TOKENS,
   MANAGERIAL_AI_MAX_STEPS,
   MANAGERIAL_AI_TOOL_STEPS,
+  EXECUTIVE_BRIEF_MAX_OUTPUT_TOKENS,
+  EXECUTIVE_BRIEF_MAX_STEPS,
+  EXECUTIVE_BRIEF_TOOL_STEPS,
+  assistantGenerationLimits,
   createManagerialAssistantPostHandler,
   managerialAiHistoryOwnerKey,
   managerialAiStepPreparation,
+  managerialDashboardContextMatches,
 } from "./route";
 import { EXECUTIVE_BRIEF_PROMPT } from "@/lib/analytics/executive-brief";
 
@@ -29,6 +34,23 @@ test("bounds provider output and reserves a final text-only step", () => {
   assert.ok(MANAGERIAL_AI_TOOL_STEPS < MANAGERIAL_AI_MAX_STEPS);
 });
 
+test("gives executive briefs a larger bounded generation budget without changing chat limits", () => {
+  assert.deepEqual(assistantGenerationLimits("chat"), {
+    maxOutputTokens: MANAGERIAL_AI_MAX_OUTPUT_TOKENS,
+    toolSteps: MANAGERIAL_AI_TOOL_STEPS,
+    maxSteps: MANAGERIAL_AI_MAX_STEPS,
+    timeoutMs: 55_000,
+  });
+  assert.deepEqual(assistantGenerationLimits("executive-brief"), {
+    maxOutputTokens: EXECUTIVE_BRIEF_MAX_OUTPUT_TOKENS,
+    toolSteps: EXECUTIVE_BRIEF_TOOL_STEPS,
+    maxSteps: EXECUTIVE_BRIEF_MAX_STEPS,
+    timeoutMs: 110_000,
+  });
+  assert.ok(EXECUTIVE_BRIEF_MAX_OUTPUT_TOKENS > MANAGERIAL_AI_MAX_OUTPUT_TOKENS);
+  assert.ok(EXECUTIVE_BRIEF_TOOL_STEPS < EXECUTIVE_BRIEF_MAX_STEPS);
+});
+
 test("forces the trusted current summary before model-authored text", () => {
   assert.deepEqual(managerialAiStepPreparation(0), {
     toolChoice: { type: "tool", toolName: "getCurrentDashboardSummary" },
@@ -37,6 +59,14 @@ test("forces the trusted current summary before model-authored text", () => {
   assert.deepEqual(managerialAiStepPreparation(MANAGERIAL_AI_TOOL_STEPS), {
     toolChoice: "none",
   });
+});
+
+test("binds brief conversations to the captured dashboard data version", () => {
+  const expected = { asOf: "2026-08-10", lastSuccessfulSyncAt: "2026-08-10T01:00:00.000Z" };
+  assert.equal(managerialDashboardContextMatches(expected, expected), true);
+  assert.equal(managerialDashboardContextMatches(expected, { ...expected, asOf: "2026-08-11" }), false);
+  assert.equal(managerialDashboardContextMatches(expected, { ...expected, lastSuccessfulSyncAt: "2026-08-10T02:00:00.000Z" }), false);
+  assert.equal(managerialDashboardContextMatches(undefined, expected), true);
 });
 
 test("isolates server-owned history by normalized filters and authorization scope", () => {
@@ -147,4 +177,17 @@ test("executive-brief mode uses the server-owned prompt", async () => {
   assert.equal(response.status, 200);
   assert.equal(input?.purpose, "executive-brief");
   assert.equal(input?.message, EXECUTIVE_BRIEF_PROMPT);
+});
+
+test("accepts a bounded captured dashboard context for brief follow-up questions", async () => {
+  let input: Record<string, unknown> | undefined;
+  const dashboardContext = { asOf: "2026-08-10", lastSuccessfulSyncAt: "2026-08-10T01:00:00.000Z" };
+  const response = await createManagerialAssistantPostHandler(dependencies({
+    invokeAssistant: async (received: unknown) => {
+      input = received as Record<string, unknown>;
+      return new Response("answer");
+    },
+  }))(request({ ...body, dashboardContext }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(input?.dashboardContext, dashboardContext);
 });

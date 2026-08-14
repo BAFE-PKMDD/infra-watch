@@ -101,6 +101,30 @@ export const projects = pgTable(
   }),
 );
 
+export const projectDataCorrections = pgTable(
+  "project_data_corrections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.abemisId, { onDelete: "restrict" }),
+    field: text("field").notNull(),
+    sourceValue: jsonb("source_value"),
+    correctedValue: jsonb("corrected_value").notNull(),
+    reason: text("reason").notNull(),
+    correctedBy: text("corrected_by").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    projectFieldUnique: uniqueIndex("project_data_corrections_project_field_uidx").on(table.projectId, table.field),
+    projectIdIdx: index("project_data_corrections_project_id_idx").on(table.projectId),
+  }),
+);
+
 export const feedback = pgTable(
   "feedback",
   {

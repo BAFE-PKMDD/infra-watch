@@ -7,6 +7,7 @@ import { managerialDashboardFilterSchema } from "@/lib/analytics/dashboard-filte
 import { MANAGERIAL_AI_SYSTEM_INSTRUCTION } from "@/lib/analytics/managerial-ai-prompt";
 import { getManagerialAiPolicyRefusal } from "@/lib/analytics/managerial-ai-policy";
 import { createManagerialAiTools } from "@/lib/analytics/managerial-ai-tools";
+import { getManagerialDashboardData } from "@/lib/analytics/managerial-dashboard-query";
 import { EXECUTIVE_BRIEF_PROMPT } from "@/lib/analytics/executive-brief";
 import {
   completeChatHistoryTurn,
@@ -28,19 +29,39 @@ import { getCurrentUser } from "@/lib/session";
 import type { ManagerialDashboardFilters } from "@/types/managerial-dashboard.types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 export const MANAGERIAL_AI_MAX_OUTPUT_TOKENS = 2_000;
 export const MANAGERIAL_AI_TOOL_STEPS = 3;
 export const MANAGERIAL_AI_MAX_STEPS = 5;
+export const EXECUTIVE_BRIEF_MAX_OUTPUT_TOKENS = 4_000;
+export const EXECUTIVE_BRIEF_TOOL_STEPS = 5;
+export const EXECUTIVE_BRIEF_MAX_STEPS = 7;
+const EXECUTIVE_BRIEF_TIMEOUT_MS = 110_000;
 
-export function managerialAiStepPreparation(stepNumber: number) {
+export function assistantGenerationLimits(purpose: "chat" | "executive-brief") {
+  return purpose === "executive-brief"
+    ? {
+        maxOutputTokens: EXECUTIVE_BRIEF_MAX_OUTPUT_TOKENS,
+        toolSteps: EXECUTIVE_BRIEF_TOOL_STEPS,
+        maxSteps: EXECUTIVE_BRIEF_MAX_STEPS,
+        timeoutMs: EXECUTIVE_BRIEF_TIMEOUT_MS,
+      }
+    : {
+        maxOutputTokens: MANAGERIAL_AI_MAX_OUTPUT_TOKENS,
+        toolSteps: MANAGERIAL_AI_TOOL_STEPS,
+        maxSteps: MANAGERIAL_AI_MAX_STEPS,
+        timeoutMs: getChatResponseTimeoutMs(),
+      };
+}
+
+export function managerialAiStepPreparation(stepNumber: number, toolSteps = MANAGERIAL_AI_TOOL_STEPS) {
   if (stepNumber === 0) {
     return {
       toolChoice: { type: "tool" as const, toolName: "getCurrentDashboardSummary" as const },
     };
   }
-  return stepNumber >= MANAGERIAL_AI_TOOL_STEPS
+  return stepNumber >= toolSteps
     ? { toolChoice: "none" as const }
     : undefined;
 }
@@ -51,16 +72,25 @@ const assistantRequestSchema = z
     message: z.string().trim().min(1).max(4_000),
     filters: managerialDashboardFilterSchema.default({}),
     purpose: z.enum(["chat", "executive-brief"]).default("chat"),
+    dashboardContext: z.object({
+      asOf: z.iso.date(),
+      lastSuccessfulSyncAt: z.iso.datetime({ offset: true }).nullable(),
+    }).strict().optional(),
   })
   .strict();
 
 type AssistantUser = ScopedUser & { id: string } & Record<string, unknown>;
+type DashboardContext = {
+  asOf: string;
+  lastSuccessfulSyncAt: string | null;
+};
 type AssistantInput = {
   conversationId: string;
   message: string;
   filters: ManagerialDashboardFilters;
   user: AssistantUser;
-  purpose?: "executive-brief";
+  purpose?: "chat" | "executive-brief";
+  dashboardContext?: DashboardContext;
 };
 type RateLimitResult = Awaited<ReturnType<typeof checkChatRateLimits>>;
 
@@ -91,6 +121,16 @@ export function managerialAiHistoryOwnerKey(
     status: filters.status ?? null,
     health: filters.health ?? null,
   })}`);
+}
+
+export function managerialDashboardContextMatches(
+  expected: DashboardContext | undefined,
+  actual: DashboardContext,
+) {
+  return !expected || (
+    expected.asOf === actual.asOf
+    && expected.lastSuccessfulSyncAt === actual.lastSuccessfulSyncAt
+  );
 }
 
 async function recordManagerialRefusal(input: AssistantInput & { refusal: string }) {
@@ -137,21 +177,36 @@ async function invokeManagerialAssistant(
     return NextResponse.json({ error: GENERIC_CHAT_ERROR }, { status: 503 });
   }
 
+  const dashboardData = await getManagerialDashboardData(input.filters, input.user);
+  const actualDashboardContext = {
+    asOf: dashboardData.asOf,
+    lastSuccessfulSyncAt: dashboardData.freshness.lastSuccessfulSyncAt,
+  };
+  if (!managerialDashboardContextMatches(input.dashboardContext, actualDashboardContext)) {
+    await failChatHistoryTurn(historyId, "dashboard_context_changed", Date.now() - startedAt);
+    return NextResponse.json(
+      { error: "Dashboard data changed. Refresh the executive brief before asking ANIA." },
+      { status: 409 },
+    );
+  }
+
   const messages = [
     ...(await getServerOwnedChatHistory({
       conversationId: input.conversationId,
       ownerKey,
+      surface: "managerial_ai",
       userId: input.user.id,
     })),
     { role: "user" as const, content: input.message },
   ];
   const terminalState = createChatStreamTerminalState();
   const historyLifecycle = createChatHistoryLifecycle();
+  const limits = assistantGenerationLimits(input.purpose ?? "chat");
   const timeoutController = new AbortController();
   const timeoutId = setTimeout(() => {
     terminalState.markTimeout("The response timed out before it could finish. Please try again.");
     timeoutController.abort();
-  }, getChatResponseTimeoutMs());
+  }, limits.timeoutMs);
   let completion: {
     modelId: string;
     toolNames: string[];
@@ -165,10 +220,14 @@ async function invokeManagerialAssistant(
     model,
     system: MANAGERIAL_AI_SYSTEM_INSTRUCTION,
     messages,
-    tools: createManagerialAiTools({ filters: input.filters, user: input.user }),
-    maxOutputTokens: MANAGERIAL_AI_MAX_OUTPUT_TOKENS,
-    prepareStep: ({ stepNumber }) => managerialAiStepPreparation(stepNumber),
-    stopWhen: isStepCount(MANAGERIAL_AI_MAX_STEPS),
+    tools: createManagerialAiTools({
+      filters: input.filters,
+      user: input.user,
+      getDashboardData: async () => dashboardData,
+    }),
+    maxOutputTokens: limits.maxOutputTokens,
+    prepareStep: ({ stepNumber }) => managerialAiStepPreparation(stepNumber, limits.toolSteps),
+    stopWhen: isStepCount(limits.maxSteps),
     abortSignal: AbortSignal.any([requestSignal, timeoutController.signal]),
     onEnd: ({ usage, toolCalls, finishReason, model: completedModel }) => {
       completion = {
@@ -316,6 +375,7 @@ export function createManagerialAssistantPostHandler(
       filters: parsed.data.filters,
       user,
       ...(purpose === "executive-brief" ? { purpose } : {}),
+      ...(parsed.data.dashboardContext ? { dashboardContext: parsed.data.dashboardContext } : {}),
     };
     const refusal = getManagerialAiPolicyRefusal(input.message, purpose);
     if (refusal) {

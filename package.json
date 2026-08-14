@@ -45,6 +45,7 @@
         "dotenv": "^17.4.2",
         "drizzle-orm": "^0.45.2",
         "framer-motion": "^12.43.0",
+        "kokoro-js": "^1.2.1",
         "leaflet": "^1.9.4",
         "lucide-react": "^1.30.0",
         "minio": "^8.0.7",

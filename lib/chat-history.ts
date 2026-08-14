@@ -57,9 +57,12 @@ export function buildServerOwnedChatHistory(
   return messages;
 }
 
+export type ChatHistorySurface = "public_chat" | "managerial_ai" | "ania";
+
 export async function getServerOwnedChatHistory(input: {
   conversationId: string;
   ownerKey: string;
+  surface: ChatHistorySurface;
   userId: string | null;
 }) {
   const rows = await db
@@ -72,6 +75,7 @@ export async function getServerOwnedChatHistory(input: {
       and(
         eq(chatHistory.conversationId, input.conversationId),
         eq(chatHistory.ownerKey, input.ownerKey),
+        eq(chatHistory.surface, input.surface),
         input.userId
           ? eq(chatHistory.userId, input.userId)
           : isNull(chatHistory.userId),
@@ -88,7 +92,7 @@ export async function getServerOwnedChatHistory(input: {
 type StartChatHistoryTurnInput = {
   conversationId: string;
   ownerKey: string;
-  surface?: "public_chat" | "managerial_ai";
+  surface?: ChatHistorySurface;
   userId: string | null;
   userMessage: string;
   provider: string;

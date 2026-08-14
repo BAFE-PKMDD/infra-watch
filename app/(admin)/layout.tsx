@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { AniaAssistant } from "@/components/voice/ania-assistant";
 import { canAccessAdmin, getSession } from "@/lib/session";
+import { getVoiceAssistantConfig } from "@/lib/voice/config";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -19,6 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   const role = typeof session.user.role === "string" ? session.user.role : null;
+  const voiceConfig = getVoiceAssistantConfig();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
@@ -29,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <main>{children}</main>
         </div>
       </div>
+      {role === "admin" && voiceConfig.enabled && <AniaAssistant config={voiceConfig} />}
     </div>
   );
 }

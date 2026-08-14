@@ -21,17 +21,19 @@ test("feature gate is disabled by default and requires exact true", () => {
   assert.equal(isManagerialAiFeatureEnabled("true"), true);
 });
 
-test("disabled optional wrapper hides every copilot control", () => {
+test("disabled optional wrapper hides every ANIA control", () => {
   const disabled = renderToStaticMarkup(createElement(OptionalManagerialAiCopilot, { enabled: false, filters, asOf: "2026-08-10" }));
   const enabled = renderToStaticMarkup(createElement(OptionalManagerialAiCopilot, { enabled: true, filters, asOf: "2026-08-10" }));
   assert.equal(disabled, "");
-  assert.match(enabled, /AI Copilot/);
+  assert.match(enabled, /ANIA/);
+  assert.doesNotMatch(enabled, /AI Copilot/);
   assert.doesNotMatch(enabled, /Generate executive brief/);
 });
 
-test("closed copilot exposes only explicit user-triggered controls", () => {
+test("closed assistant exposes ANIA as the explicit user-triggered control", () => {
   const html = renderToStaticMarkup(createElement(ManagerialAiCopilot, { filters, asOf: "2026-08-10" }));
-  assert.match(html, /AI Copilot/);
+  assert.match(html, /ANIA/);
+  assert.doesNotMatch(html, /AI Copilot/);
   assert.doesNotMatch(html, /Generate executive brief/);
   assert.doesNotMatch(html, /managerial-copilot-dialog/);
 });
@@ -44,9 +46,9 @@ test("open copilot shows active filters, timestamp, accessible controls, and per
   assert.match(html, /Schedule health: At risk/);
   assert.match(html, /Data as of 2026-08-10/);
   assert.match(html, /AI-generated analysis—verify against the dashboard before making official decisions/);
-  assert.match(html, /aria-label="Close AI Copilot"/);
-  assert.match(html, /aria-label="Refresh AI Copilot"/);
-  assert.match(html, /aria-label="Ask the Managerial AI Copilot"/);
+  assert.match(html, /aria-label="Close ANIA"/);
+  assert.match(html, /aria-label="Refresh ANIA"/);
+  assert.match(html, /aria-label="Ask ANIA"/);
   assert.match(html, /role="status"/);
 });
 
@@ -57,8 +59,24 @@ test("filter context is deterministic and never invents scope", () => {
   assert.notEqual(managerialFilterContextKey(filters), managerialFilterContextKey({ ...filters, region: "09" }));
 });
 
+test("embedded brief conversation stays inline and identifies the captured brief context", () => {
+  const html = renderToStaticMarkup(createElement(ManagerialAiCopilot, {
+    filters,
+    asOf: "2026-08-10",
+    initialOpen: true,
+    presentation: "embedded",
+    initialConversationId: "123e4567-e89b-42d3-a456-426614174000",
+  }));
+  assert.match(html, /Ask ANIA about this executive brief/);
+  assert.match(html, /Data as of 2026-08-10/);
+  assert.match(html, /active dashboard filters/i);
+  assert.doesNotMatch(html, /role="dialog"/);
+  assert.doesNotMatch(html, /fixed inset-x/);
+  assert.doesNotMatch(html, /aria-label="Close ANIA"/);
+});
+
 test("cancel, timeout, and provider-unavailable states are visible and retryable", () => {
   assert.equal(managerialCopilotErrorMessage(true, false, null), "Response cancelled. You can retry the last question.");
   assert.equal(managerialCopilotErrorMessage(true, true, null), "The response timed out. You can retry the last question.");
-  assert.equal(managerialCopilotErrorMessage(false, false, new Error("offline")), "The AI Copilot is temporarily unavailable. You can retry the last question.");
+  assert.equal(managerialCopilotErrorMessage(false, false, new Error("offline")), "ANIA is temporarily unavailable. You can retry the last question.");
 });

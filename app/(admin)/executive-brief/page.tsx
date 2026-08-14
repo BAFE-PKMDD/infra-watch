@@ -1,10 +1,17 @@
 import { connection } from "next/server";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { ExecutiveBriefClient } from "@/components/admin/dashboard/executive-brief-client";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "Infrastructure Analytics Executive Brief",
+  description: "Generate a decision-focused brief from the current authorized infrastructure dashboard scope.",
+  robots: { index: false, follow: false },
+};
 
 export default async function ExecutiveBriefPage() {
   await connection();

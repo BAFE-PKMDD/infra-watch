@@ -1,4 +1,4 @@
-import { eq, or, type SQL } from "drizzle-orm";
+import { and, eq, or, type SQL } from "drizzle-orm";
 
 import { chatHistory } from "@/lib/db/schema";
 
@@ -14,6 +14,9 @@ export function getChatHistoryVisibilityCondition(
 
   return or(
     eq(chatHistory.surface, "public_chat"),
-    eq(chatHistory.userId, viewer.userId),
+    and(
+      eq(chatHistory.surface, "managerial_ai"),
+      eq(chatHistory.userId, viewer.userId),
+    ),
   );
 }

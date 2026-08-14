@@ -28,7 +28,7 @@ export function limitRegionalPerformance(data: RegionalPerformanceRow[], limit =
   return selected.sort((a, b) => b.completionRate - a.completionRate || a.region.localeCompare(b.region));
 }
 
-export function RegionalPerformanceChart({ data, onSelect }: { data: ManagerialDashboardData["regions"]; onSelect: (region: string) => void }) {
+export function RegionalPerformanceChart({ data, onSelect }: { data: ManagerialDashboardData["regions"]; onSelect?: (region: string) => void }) {
   const chartData = limitRegionalPerformance(data).map((item) => ({
     ...item,
     delayedRate: item.assessed > 0 ? (item.delayed / item.assessed) * 100 : 0,
@@ -46,14 +46,14 @@ export function RegionalPerformanceChart({ data, onSelect }: { data: ManagerialD
               <YAxis type="category" dataKey="region" width={190} tickFormatter={formatRegionAxisLabel} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
               <ChartTooltip content={<ChartTooltipContent formatter={(value, name, item) => <span>{Number(value).toFixed(1)}% ({String(name) === "completionRate" ? item.payload?.completed : String(name) === "delayedRate" ? item.payload?.delayed : item.payload?.atRisk} of {item.payload?.total})</span>} />} />
               <Legend />
-              <Bar dataKey="completionRate" fill="var(--color-completionRate)" radius={[0, 4, 4, 0]} onClick={(entry) => onSelect(String(entry.payload?.region ?? ""))} />
-              <Bar dataKey="delayedRate" fill="var(--color-delayedRate)" radius={[0, 4, 4, 0]} onClick={(entry) => onSelect(String(entry.payload?.region ?? ""))} />
-              <Bar dataKey="atRiskRate" fill="var(--color-atRiskRate)" radius={[0, 4, 4, 0]} onClick={(entry) => onSelect(String(entry.payload?.region ?? ""))} />
+              <Bar dataKey="completionRate" fill="var(--color-completionRate)" radius={[0, 4, 4, 0]} onClick={onSelect ? (entry) => onSelect(String(entry.payload?.region ?? "")) : undefined} />
+              <Bar dataKey="delayedRate" fill="var(--color-delayedRate)" radius={[0, 4, 4, 0]} onClick={onSelect ? (entry) => onSelect(String(entry.payload?.region ?? "")) : undefined} />
+              <Bar dataKey="atRiskRate" fill="var(--color-atRiskRate)" radius={[0, 4, 4, 0]} onClick={onSelect ? (entry) => onSelect(String(entry.payload?.region ?? "")) : undefined} />
             </BarChart>
           </ChartContainer>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2" aria-label="Filter by region">
+          {onSelect ? <div className="mt-3 grid gap-2 sm:grid-cols-2" aria-label="Filter by region">
             {chartData.map((item) => <button key={item.region} type="button" data-filter-value={item.region} onClick={() => onSelect(item.region)} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-left text-xs text-slate-700 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:border-slate-700 dark:text-slate-200"><span className="min-w-0 truncate font-bold">{item.region}</span><span className="shrink-0 tabular-nums">{item.completionRate.toFixed(1)}% · {item.completed}/{item.total}</span></button>)}
-          </div>
+          </div> : null}
         </>
       )}
     </ChartPanel>
