@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
+import { Download, RefreshCw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
 import {
   type KeyboardEvent,
   useCallback,
@@ -11,6 +11,8 @@ import {
 
 import { AiMessageContent } from "@/components/ai-message-content";
 import { Button } from "@/components/ui/button";
+import { cleanAniaAnswer } from "@/lib/analytics/ania-answer-content";
+import { aniaPdfFilename, downloadElementAsPdf } from "@/lib/analytics/ania-answer-pdf";
 import {
   appendToLastAssistantMessage,
   ensureAssistantMessage,
@@ -85,6 +87,50 @@ type ManagerialAiCopilotProps = {
   initialConversationId?: string;
   dashboardContext?: { asOf: string; lastSuccessfulSyncAt: string | null };
 };
+
+export function AniaAnswerDownloadButton({ targetId, asOf, answerNumber, variant = "ghost" }: {
+  targetId: string;
+  asOf: string;
+  answerNumber?: number;
+  variant?: "default" | "outline" | "ghost";
+}) {
+  const [pdfState, setPdfState] = useState<"idle" | "preparing" | "error">("idle");
+  const label = answerNumber ? `ANIA answer ${answerNumber}` : "ANIA executive brief";
+
+  async function downloadPdf() {
+    const target = document.getElementById(targetId);
+    if (!(target instanceof HTMLElement)) {
+      setPdfState("error");
+      return;
+    }
+    setPdfState("preparing");
+    try {
+      await downloadElementAsPdf(target, aniaPdfFilename(asOf, answerNumber));
+      setPdfState("idle");
+    } catch {
+      setPdfState("error");
+    }
+  }
+
+  return (
+    <Button
+      variant={variant}
+      size="sm"
+      aria-label={`Download ${label} as PDF`}
+      aria-busy={pdfState === "preparing"}
+      disabled={pdfState === "preparing"}
+      onClick={() => void downloadPdf()}
+    >
+      <Download /> {pdfState === "preparing"
+        ? "Preparing PDF…"
+        : pdfState === "error"
+          ? "Retry PDF download"
+          : answerNumber
+            ? "Download PDF"
+            : "Download executive brief PDF"}
+    </Button>
+  );
+}
 
 export function OptionalManagerialAiCopilot({
   enabled,
@@ -197,6 +243,7 @@ export function ManagerialAiCopilot({
           { role: "assistant", content: "" },
         ]);
         const decoder = new TextDecoder();
+        let answer = "";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -205,10 +252,18 @@ export function ManagerialAiCopilot({
             return;
           }
           const chunk = decoder.decode(value, { stream: true });
+          answer += chunk;
           setMessages((current) =>
             appendToLastAssistantMessage(current, chunk),
           );
         }
+        answer += decoder.decode();
+        const cleanedAnswer = cleanAniaAnswer(answer);
+        setMessages((current) => {
+          const lastMessage = current.at(-1);
+          if (!lastMessage || lastMessage.role !== "assistant") return current;
+          return [...current.slice(0, -1), { ...lastMessage, content: cleanedAnswer }];
+        });
         setStatus("ANIA response complete.");
       } catch (error) {
         if (activeRequestRef.current !== requestId) return;
@@ -340,6 +395,7 @@ export function ManagerialAiCopilot({
           messages.map((message, index) => (
             <article
               key={`${message.role}-${index}`}
+              id={message.role === "assistant" ? `ania-answer-${index}` : undefined}
               className={
                 message.role === "user"
                   ? "ml-auto max-w-[85%] whitespace-pre-wrap rounded-xl bg-blue-900 px-3 py-2 text-sm text-white"
@@ -347,10 +403,21 @@ export function ManagerialAiCopilot({
               }
             >
               {message.role === "assistant" ? (
-                <AiMessageContent
-                  content={message.content}
-                  isStreaming={loading && index === messages.length - 1}
-                />
+                <>
+                  <AiMessageContent
+                    content={message.content}
+                    isStreaming={loading && index === messages.length - 1}
+                  />
+                  {!(loading && index === messages.length - 1) && message.content ? (
+                    <div data-pdf-exclude="true" className="mt-2 flex justify-end border-t border-slate-200 pt-2 dark:border-slate-700">
+                      <AniaAnswerDownloadButton
+                        targetId={`ania-answer-${index}`}
+                        asOf={asOf}
+                        answerNumber={messages.slice(0, index + 1).filter((item) => item.role === "assistant").length}
+                      />
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 message.content
               )}

@@ -26,11 +26,6 @@ export function formatExecutiveBriefScope(filters: ManagerialDashboardFilters) {
   return parts.length ? parts.join(" · ") : "All authorized dashboard data";
 }
 
-export function executiveBriefFilename(asOf: string) {
-  const suffix = /^\d{4}-\d{2}-\d{2}$/.test(asOf) ? `-${asOf}` : "";
-  return `infrastructure-analytics-executive-brief${suffix}.md`;
-}
-
 export function stripExecutiveBriefDisclaimer(content: string) {
   return content
     .replaceAll(EXECUTIVE_BRIEF_DISCLAIMER, "")
@@ -38,22 +33,6 @@ export function stripExecutiveBriefDisclaimer(content: string) {
     .trim();
 }
 
-export function buildExecutiveBriefMarkdown({ content, filters, asOf, generatedAt }: {
-  content: string;
-  filters: ManagerialDashboardFilters;
-  asOf: string;
-  generatedAt: Date;
-}) {
-  return [
-    "# Infrastructure Analytics Executive Brief", "",
-    `**Handling:** ${EXECUTIVE_BRIEF_HANDLING_LABEL}`,
-    `**Data as of:** ${asOf}`,
-    `**Authorized dashboard scope:** ${formatExecutiveBriefScope(filters)}`,
-    `**Generated:** ${generatedAt.toISOString()}`, "", "---", "",
-    stripExecutiveBriefDisclaimer(content), "", "---", "",
-    `> ${EXECUTIVE_BRIEF_DISCLAIMER}`, "",
-  ].join("\n");
-}
 
 export function executiveBriefPersistenceKey(
   userId: string,

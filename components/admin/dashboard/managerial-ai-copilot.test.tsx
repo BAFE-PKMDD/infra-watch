@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
+  AniaAnswerDownloadButton,
   ManagerialAiCopilot,
   OptionalManagerialAiCopilot,
   formatManagerialFilterContext,
@@ -73,6 +74,27 @@ test("embedded brief conversation stays inline and identifies the captured brief
   assert.doesNotMatch(html, /role="dialog"/);
   assert.doesNotMatch(html, /fixed inset-x/);
   assert.doesNotMatch(html, /aria-label="Close ANIA"/);
+});
+
+test("assistant answers expose a direct PDF download action", () => {
+  const html = renderToStaticMarkup(createElement(AniaAnswerDownloadButton, {
+    targetId: "ania-answer-1",
+    asOf: "2026-08-14",
+    answerNumber: 1,
+  }));
+  assert.match(html, /Download PDF/);
+  assert.match(html, /aria-label="Download ANIA answer 1 as PDF"/);
+  assert.doesNotMatch(html, /Markdown|Print/);
+});
+
+test("executive briefs expose an explicit PDF label", () => {
+  const html = renderToStaticMarkup(createElement(AniaAnswerDownloadButton, {
+    targetId: "ania-executive-brief-report",
+    asOf: "2026-08-14",
+    variant: "default",
+  }));
+  assert.match(html, /Download executive brief PDF/);
+  assert.match(html, /aria-label="Download ANIA executive brief as PDF"/);
 });
 
 test("cancel, timeout, and provider-unavailable states are visible and retryable", () => {

@@ -1,23 +1,22 @@
 "use client";
 
-import { AlertTriangle, Check, Copy, Download, FileText, Printer, RefreshCw, Sparkles, Square } from "lucide-react";
+import { AlertTriangle, FileText, RefreshCw, Sparkles, Square } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AiMessageContent } from "@/components/ai-message-content";
 import { ExecutiveBriefAnalytics } from "@/components/admin/dashboard/executive-brief-analytics";
-import { ManagerialAiCopilot } from "@/components/admin/dashboard/managerial-ai-copilot";
+import { AniaAnswerDownloadButton, ManagerialAiCopilot } from "@/components/admin/dashboard/managerial-ai-copilot";
 import { Button } from "@/components/ui/button";
+import { cleanAniaAnswer } from "@/lib/analytics/ania-answer-content";
 import { tryParseManagerialDashboardFilters } from "@/lib/analytics/dashboard-filters";
 import {
-  buildExecutiveBriefMarkdown,
   EXECUTIVE_BRIEF_DISCLAIMER,
   EXECUTIVE_BRIEF_HANDLING_LABEL,
   EXECUTIVE_BRIEF_PROMPT,
   executiveBriefPersistenceKey,
   executiveBriefStaleNudge,
-  executiveBriefFilename,
   formatExecutiveBriefScope,
   shouldRetryExecutiveBrief,
   stripExecutiveBriefDisclaimer,
@@ -28,18 +27,6 @@ import type { ManagerialDashboardData } from "@/types/managerial-dashboard.types
 
 const BRIEF_TIMEOUT_MS = 115_000;
 const RETRY_BACKOFF_MS = 750;
-
-function downloadText(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
 
 export function ExecutiveBriefClient() {
   const { user } = useAuth();
@@ -58,7 +45,6 @@ export function ExecutiveBriefClient() {
   const [briefData, setBriefData] = useState<ManagerialDashboardData | null>(null);
   const [briefConversationId, setBriefConversationId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState("Ready to generate an executive brief.");
   const controllerRef = useRef<AbortController | null>(null);
 
@@ -97,7 +83,7 @@ export function ExecutiveBriefClient() {
       const restoredContext = { asOf: query.data.asOf, filters: { ...(filters ?? {}) } };
       queueMicrotask(() => {
         if (cancelled) return;
-        setContent(parsed.content as string);
+        setContent(cleanAniaAnswer(parsed.content as string));
         setGeneratedAt(restoredDate);
         setBriefContext(restoredContext);
         setBriefData(query.data);
@@ -167,7 +153,7 @@ export function ExecutiveBriefClient() {
         setStatus("Drafting the four-lens analytical brief from verified dashboard results…");
       }
       brief += decoder.decode();
-      brief = stripExecutiveBriefDisclaimer(brief);
+      brief = cleanAniaAnswer(stripExecutiveBriefDisclaimer(brief));
       setContent(brief);
       const completedAt = new Date();
       setGeneratedAt(completedAt);
@@ -175,7 +161,7 @@ export function ExecutiveBriefClient() {
       setBriefData(query.data);
       setBriefConversationId(conversationId);
       if (persistenceKey) window.sessionStorage.setItem(persistenceKey, JSON.stringify({ content: brief, generatedAt: completedAt.toISOString(), conversationId }));
-      setStatus("Executive brief generated and ready to copy, print, or download.");
+      setStatus("Executive brief generated and ready to download.");
     } catch (error) {
       if (timedOut) {
         setStatus("Executive brief generation timed out. Please retry.");
@@ -191,28 +177,6 @@ export function ExecutiveBriefClient() {
     }
   }
 
-  function download() {
-    if (!content || !generatedAt || !briefContext) return;
-    const markdown = buildExecutiveBriefMarkdown({
-      content,
-      filters: briefContext.filters,
-      asOf: briefContext.asOf,
-      generatedAt,
-    });
-    downloadText(executiveBriefFilename(briefContext.asOf), markdown);
-  }
-
-  async function copy() {
-    if (!content || !generatedAt || !briefContext) return;
-    try {
-      await navigator.clipboard.writeText(buildExecutiveBriefMarkdown({ content, filters: briefContext.filters, asOf: briefContext.asOf, generatedAt }));
-      setCopied(true);
-      setStatus("Executive brief copied to the clipboard.");
-      window.setTimeout(() => setCopied(false), 2_000);
-    } catch {
-      setStatus("Unable to copy the executive brief. Use Download Markdown instead.");
-    }
-  }
 
   if (!filters) {
     return (
@@ -260,6 +224,13 @@ export function ExecutiveBriefClient() {
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{EXECUTIVE_BRIEF_HANDLING_LABEL}</p>
           </div>
           <div className="flex flex-wrap gap-2 print:hidden">
+            {content && generatedAt && briefContext && !generating ? (
+              <AniaAnswerDownloadButton
+                targetId="ania-executive-brief-report"
+                asOf={briefContext.asOf}
+                variant="default"
+              />
+            ) : null}
             <Button variant="outline" onClick={() => query.refetch()} disabled={query.isFetching || generating}>
               <RefreshCw className={query.isFetching ? "animate-spin motion-reduce:animate-none" : ""} />
               Refresh data
@@ -269,7 +240,7 @@ export function ExecutiveBriefClient() {
                 <Square /> Cancel
               </Button>
             ) : (
-              <Button onClick={() => void generate()} disabled={query.isFetching}>
+              <Button variant={content ? "outline" : "default"} onClick={() => void generate()} disabled={query.isFetching}>
                 <Sparkles /> {content ? "Regenerate brief" : "Generate brief"}
               </Button>
             )}
@@ -281,7 +252,7 @@ export function ExecutiveBriefClient() {
         {staleNudge ? <p className="mt-3 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><AlertTriangle className="mt-0.5 size-4 shrink-0" /> {staleNudge}</p> : null}
       </section>
 
-      <article className="min-h-96 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
+      <article id="ania-executive-brief-report" className="min-h-96 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
         {content ? (
           <>
             <div className="mb-6 border-b border-slate-200 pb-5 dark:border-slate-800">
@@ -336,15 +307,9 @@ export function ExecutiveBriefClient() {
         <Button variant="link" asChild>
           <Link href={dashboardHref}>Back to Infrastructure Analytics Dashboard</Link>
         </Button>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => void copy()} disabled={!content || !generatedAt || !briefContext || generating}>{copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy Markdown"}</Button>
-          <Button variant="outline" onClick={() => window.print()} disabled={!content || generating}>
-            <Printer /> Print / save as PDF
-          </Button>
-          <Button onClick={download} disabled={!content || !generatedAt || !briefContext || generating}>
-            <Download /> Download Markdown
-          </Button>
-        </div>
+        {content && generatedAt && briefContext && !generating ? (
+          <AniaAnswerDownloadButton targetId="ania-executive-brief-report" asOf={briefContext.asOf} />
+        ) : null}
       </div>
     </div>
   );
