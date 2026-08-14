@@ -16,6 +16,9 @@ const row: InfraAnalyticsRow = {
   program: "AMEFIP",
   yearFunded: "2025",
   lastSyncedAt: new Date("2026-08-09T18:00:00.000Z"),
+  budget: null,
+  latitude: null,
+  longitude: null,
 };
 
 test("returns a typed empty state instead of reference figures", () => {
@@ -74,4 +77,36 @@ test("uses the shared canonical status mapping for Inventory", () => {
   const result = aggregateInfraAnalyticsRows([{ ...row, status: "Inventory", stage: null }]);
   assert.equal(result.data?.stages.completed.count, 1);
   assert.equal(result.data?.stages.preImplementation.count, 0);
+});
+
+test("publishes one traceable summary contract for homepage and public analytics", () => {
+  const result = aggregateInfraAnalyticsRows([
+    {
+      ...row,
+      status: "Inventory",
+      stage: null,
+      budget: "4000000.00",
+      latitude: 14.5995,
+      longitude: 120.9842,
+    },
+    {
+      ...row,
+      status: "ongoing",
+      stage: "Implementation",
+      budget: null,
+      latitude: null,
+      longitude: null,
+    },
+  ]);
+
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.data?.summary, {
+    approvedBudget: 4_000_000,
+    budgetCoverage: { available: 1, total: 2 },
+    completedOrTurnedOver: { count: 1, percentage: 50, total: 2 },
+    mappedProjects: { count: 1, total: 2 },
+  });
+  assert.equal(result.data?.source.name, "ABEMIS infrastructure project feed");
+  assert.equal(result.data?.source.projectCount, result.data?.totalTarget);
+  assert.match(result.data?.source.lastSuccessfulSync ?? "", /2026/);
 });

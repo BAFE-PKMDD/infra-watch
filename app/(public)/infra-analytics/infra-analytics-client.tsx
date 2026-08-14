@@ -25,6 +25,8 @@ import {
   Legend as ReLegend
 } from "recharts";
 import type { InfraAnalyticsResult } from "@/actions/query/analytics.query";
+import Link from "next/link";
+import { formatCurrencyCompact, formatNumber } from "@/lib/format";
 
 type TooltipItem = {
   dataKey?: string | number;
@@ -155,6 +157,25 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
           </div>
         </div>
 
+        <aside aria-labelledby="statistics-method-title" className="rounded-2xl border border-blue-200 bg-blue-50/70 p-5 dark:border-blue-900/60 dark:bg-blue-950/20">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 id="statistics-method-title" className="text-sm font-extrabold text-slate-950 dark:text-white">Source and calculation basis</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                Source: {data.source.name}. Last successful sync: {data.source.lastSuccessfulSync}. Percentages divide each canonical lifecycle-stage count by {formatNumber(data.totalTarget)} synchronized public projects; FMR records are excluded because they belong to FMR Watch.
+              </p>
+            </div>
+            <Link href="/projects" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-blue-700 px-4 py-2 text-xs font-bold text-white hover:bg-blue-800">
+              Inspect underlying projects
+            </Link>
+          </div>
+          <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-blue-900/50 dark:bg-slate-900"><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Approved budget</dt><dd className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrencyCompact(data.summary.approvedBudget)}</dd><p className="mt-1 text-[11px] text-slate-500">Sum of source allocated_amount values; {formatNumber(data.summary.budgetCoverage.available)} of {formatNumber(data.summary.budgetCoverage.total)} records available.</p></div>
+            <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-blue-900/50 dark:bg-slate-900"><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Completed or turned over</dt><dd className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{data.summary.completedOrTurnedOver.percentage}%</dd><p className="mt-1 text-[11px] text-slate-500">{formatNumber(data.summary.completedOrTurnedOver.count)} canonical completed or turnover records.</p></div>
+            <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-blue-900/50 dark:bg-slate-900"><dt className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Coordinate-backed projects</dt><dd className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatNumber(data.summary.mappedProjects.count)}</dd><p className="mt-1 text-[11px] text-slate-500">Only valid source latitude/longitude pairs are counted; missing coordinates are not inferred.</p></div>
+          </dl>
+        </aside>
+
         {/* 6 KPI Status Row */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {/* Target Card */}
@@ -173,7 +194,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
                 <Target className="w-5 h-5 text-slate-700 dark:text-slate-350" />
               </div>
               <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                {data.totalTarget}
+                {formatNumber(data.totalTarget)}
               </h3>
             </div>
             <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300 group-hover:text-primary transition-colors">
@@ -216,7 +237,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
               </div>
               <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300">
                 <span className="group-hover:text-primary transition-colors">
-                  {card.count} {t("infraAnalytics.target").toLowerCase()}
+                  {formatNumber(card.count)} {t("infraAnalytics.target").toLowerCase()}
                 </span>
                 <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform text-slate-300 dark:text-slate-650" />
               </div>

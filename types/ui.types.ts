@@ -72,7 +72,11 @@ export interface ProjectDetail extends Omit<ProjectDisplayItem, "budget"> {
   description: string;
   updates: ProjectUpdate[];
   coordinates?: string;
-  abc?: number; // Supplier's actual bid amount in this ABEMIS source
+  abc?: number | null; // Supplier's actual bid amount in this ABEMIS source
+  sourceSystem?: string;
+  lastSyncedAt?: string;
+  coordinateStatus?: "verified" | "unavailable";
+  dataCoverage?: { available: number; total: number };
   commodities?: string[] | null;
   metadata?: Record<string, unknown> | null; // Contains geotags, proposalDocuments, powRelation, procurementRelation
   articles?: Article[]; // Related articles and publications

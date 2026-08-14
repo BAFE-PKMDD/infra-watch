@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { mapInternalToPublicStage } from "@/constants/stage-mapping";
+import { isPhilippineCoordinatePair } from "@/lib/philippine-coordinates";
 
 export interface StageStat {
   labelKey: string;
@@ -33,6 +34,17 @@ export interface InfraAnalyticsData {
   };
   regionalStats: RegionalStat[];
   bannerStats: BannerStat[];
+  summary: {
+    approvedBudget: number;
+    budgetCoverage: { available: number; total: number };
+    completedOrTurnedOver: { count: number; percentage: number; total: number };
+    mappedProjects: { count: number; total: number };
+  };
+  source: {
+    name: "ABEMIS infrastructure project feed";
+    projectCount: number;
+    lastSuccessfulSync: string;
+  };
 }
 
 export type InfraAnalyticsResult =
@@ -47,6 +59,9 @@ export type InfraAnalyticsRow = {
   program: string | null;
   yearFunded: string | null;
   lastSyncedAt: Date;
+  budget: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type QueryRows = () => Promise<InfraAnalyticsRow[]>;
@@ -73,12 +88,23 @@ export function aggregateInfraAnalyticsRows(
   >;
   const regionalCounts = new Map<string, { target: number; turnedOver: number }>();
   const bannerCounts = new Map<string, { target: number; turnedOver: number }>();
+  let approvedBudget = 0;
+  let budgetCoverage = 0;
+  let mappedProjects = 0;
 
   for (const row of rows) {
     const stage = getProjectStage(row.status, row.stage);
     stageCounts[stage] += 1;
     increment(regionalCounts, mapDbRegionToLabel(row.region), stage === "turnedOver");
     increment(bannerCounts, normalizedDimension(row.bannerProgram), stage === "turnedOver");
+    if (row.budget !== null) {
+      const amount = Number(row.budget);
+      if (Number.isFinite(amount)) {
+        approvedBudget += amount;
+        budgetCoverage += 1;
+      }
+    }
+    if (isPhilippineCoordinatePair(row.latitude, row.longitude)) mappedProjects += 1;
   }
 
   const stages = Object.fromEntries(
@@ -97,17 +123,19 @@ export function aggregateInfraAnalyticsRows(
     if (Number.isNaN(date.getTime())) return latest;
     return !latest || date > latest ? date : latest;
   }, null);
+  const lastSuccessfulSync = latestSync
+    ? new Intl.DateTimeFormat("en-PH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Manila",
+      }).format(latestSync)
+    : "Unknown";
+  const completedCount = stageCounts.completed + stageCounts.turnedOver;
 
   return {
     status: "ready",
     data: {
-      asOfDate: latestSync
-        ? new Intl.DateTimeFormat("en-PH", {
-            dateStyle: "medium",
-            timeStyle: "short",
-            timeZone: "Asia/Manila",
-          }).format(latestSync)
-        : "Unknown",
+      asOfDate: lastSuccessfulSync,
       scopeLabel: buildScopeLabel(rows),
       totalTarget: rows.length,
       stages,
@@ -119,6 +147,21 @@ export function aggregateInfraAnalyticsRows(
           .map(([program, value]) => ({ program, ...value }))
           .sort((a, b) => b.target - a.target || a.program.localeCompare(b.program)),
       ),
+      summary: {
+        approvedBudget,
+        budgetCoverage: { available: budgetCoverage, total: rows.length },
+        completedOrTurnedOver: {
+          count: completedCount,
+          percentage: percentage(completedCount, rows.length),
+          total: rows.length,
+        },
+        mappedProjects: { count: mappedProjects, total: rows.length },
+      },
+      source: {
+        name: "ABEMIS infrastructure project feed",
+        projectCount: rows.length,
+        lastSuccessfulSync,
+      },
     },
   };
 }
@@ -145,6 +188,9 @@ async function queryInfraAnalyticsRows(): Promise<InfraAnalyticsRow[]> {
       program: projects.program,
       yearFunded: projects.yearFunded,
       lastSyncedAt: projects.lastSyncedAt,
+      budget: projects.budget,
+      latitude: projects.latitude,
+      longitude: projects.longitude,
     })
     .from(projects)
     .limit(MAX_PUBLIC_ANALYTICS_ROWS + 1);

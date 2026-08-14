@@ -1,10 +1,14 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { projects } from "@/lib/db/schema";
-import { desc, and, ilike, or, eq, count, gte, inArray, lte, sql } from "drizzle-orm";
-import { mapPublicToInternalStages } from "@/constants/stage-mapping";
-import { PHILIPPINE_COORDINATE_BOUNDS } from "@/lib/philippine-coordinates";
+import { feedback, projects } from "@/lib/db/schema";
+import { asc, desc, and, ilike, or, eq, count, gte, inArray, lte, sql } from "drizzle-orm";
+import { mapInternalToPublicStage, mapPublicToInternalStages } from "@/constants/stage-mapping";
+import { isPhilippineCoordinatePair, PHILIPPINE_COORDINATE_BOUNDS } from "@/lib/philippine-coordinates";
+import type { PublicProjectSort } from "@/lib/public-project-directory";
+import { calculateProjectPassportCoverage, formatPublicSyncDate } from "@/lib/project-passport";
+import { formatPublicProjectRecord } from "@/lib/public-project-record";
+import { sanitizePublicSourceGeotags } from "@/lib/public-source-media";
 
 export type PublicProjectFilters = {
   searchQuery?: string;
@@ -16,7 +20,9 @@ export type PublicProjectFilters = {
   status?: string;
   year?: string;
   pageParam?: number;
+  sort?: PublicProjectSort;
 };
+
 
 export async function getPublicProjects({
   searchQuery,
@@ -27,7 +33,8 @@ export async function getPublicProjects({
   barangay,
   status,
   year,
-  pageParam = 1
+  pageParam = 1,
+  sort = "newest",
 }: PublicProjectFilters) {
   try {
     const limit = 20;
@@ -71,43 +78,45 @@ export async function getPublicProjects({
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
+    const orderBy = sort === "name-asc"
+      ? [asc(projects.name), asc(projects.id)]
+      : sort === "budget-desc"
+        ? [sql`${projects.budget} desc nulls last`, desc(projects.id)]
+        : sort === "budget-asc"
+          ? [sql`${projects.budget} asc nulls last`, asc(projects.id)]
+          : sort === "year-desc"
+            ? [sql`${projects.yearFunded} desc nulls last`, desc(projects.lastSyncedAt), desc(projects.id)]
+            : [desc(projects.lastSyncedAt), desc(projects.id)];
+
     const rows = await db.select()
       .from(projects)
       .where(whereClause)
-      .orderBy(desc(projects.lastSyncedAt), desc(projects.id))
+      .orderBy(...orderBy)
       .limit(limit)
       .offset(offset);
 
-    const [{ value: totalCount }] = await db
-      .select({ value: count() })
+    const [{ value: totalCount, lastSuccessfulSync }] = await db
+      .select({
+        value: count(),
+        lastSuccessfulSync: sql<Date | null>`max(${projects.lastSyncedAt})`.mapWith(projects.lastSyncedAt),
+      })
       .from(projects)
       .where(whereClause);
       
-    const formattedData = rows.map(row => ({
-      id: row.abemisId || row.projectCode || row.id,
-      name: row.name,
-      program: row.program?.toLowerCase() || "ins",
-      sector: row.projectType || "Infrastructure",
-      region: row.region || "R8",
-      province: row.province || "Unknown",
-      municipality: row.municipality || "Unknown",
-      barangay: row.barangay || "Unknown",
-      budget: row.budget ? Number(row.budget) : 0,
-      physicalProgress: row.physicalProgress || 0,
-      financialProgress: row.financialProgress || 0,
-      status: row.status?.toLowerCase() || "ongoing",
-      contractor: row.contractorName || "Unknown Contractor",
-      year: row.yearFunded || "2024"
-    }));
+    const formattedData = rows.map(formatPublicProjectRecord);
 
     return {
       data: formattedData,
       nextCursor: rows.length === limit ? pageParam + 1 : undefined,
       totalCount,
+      source: {
+        name: "ABEMIS infrastructure project feed",
+        lastSuccessfulSync: lastSuccessfulSync ? formatPublicSyncDate(new Date(lastSuccessfulSync)) : null,
+      },
     };
   } catch (error) {
     console.error("Failed to fetch public projects:", error);
-    return { data: [], nextCursor: undefined, totalCount: 0 };
+    return { data: [], nextCursor: undefined, totalCount: 0, source: null };
   }
 }
 
@@ -185,11 +194,11 @@ export async function getPublicMapPins({
     return rows.map(row => ({
       id: row.abemisId || row.projectCode || row.id,
       name: row.name,
-      program: row.program?.toLowerCase() || "ins",
-      municipality: row.municipality || "Unknown",
-      barangay: row.barangay || "Unknown",
+      program: row.program?.toLowerCase() || "unclassified",
+      municipality: row.municipality,
+      barangay: row.barangay,
       physicalProgress: row.physicalProgress || 0,
-      status: row.status?.toLowerCase() || "ongoing",
+      status: row.status.toLowerCase(),
       latitude: row.latitude,
       longitude: row.longitude
     }));
@@ -224,19 +233,25 @@ export async function getPublicMapProjectDetails(id: string) {
     }).from(projects).where(condition).limit(1);
 
     if (!row) return null;
+    const sourceMetadata = (row.metadata as Record<string, unknown> | null) || {};
+    const publicGeotags = sanitizePublicSourceGeotags(sourceMetadata.geotag ?? sourceMetadata.geotags);
     return {
       id: row.abemisId || row.projectCode || row.id,
       name: row.name,
-      program: row.program?.toLowerCase() || "ins",
-      region: row.region || "Unknown",
-      province: row.province || "Unknown",
-      municipality: row.municipality || "Unknown",
-      barangay: row.barangay || "Unknown",
+      program: row.program?.toLowerCase() || "unclassified",
+      region: row.region,
+      province: row.province,
+      municipality: row.municipality,
+      barangay: row.barangay,
       budget: row.budget === null ? null : Number(row.budget),
-      status: row.status?.toLowerCase() || "unknown",
+      status: row.status.toLowerCase(),
       quantity: row.quantity || null,
       quantityUnit: row.quantityUnit || null,
-      metadata: row.metadata || {},
+      metadata: {
+        ...sourceMetadata,
+        geotag: publicGeotags,
+        geotags: publicGeotags,
+      },
     };
   } catch (error) {
     console.error("Failed to fetch map project details:", error);
@@ -259,56 +274,100 @@ export async function getPublicProjectById(id: string) {
 
     if (!row) return null;
 
+    const [{ value: feedbackCount }] = row.abemisId
+      ? await db
+        .select({ value: count() })
+        .from(feedback)
+        .where(and(eq(feedback.projectId, row.abemisId), eq(feedback.status, "approved")))
+      : [{ value: 0 }];
+
     // We parse metadata or provide empty defaults for the rich UI
     const metadata = (row.metadata as Record<string, unknown> | null) || {};
+    const publicGeotags = sanitizePublicSourceGeotags(metadata.geotag ?? metadata.geotags);
 
-    const coordinates = row.latitude && row.longitude ? `${row.latitude}, ${row.longitude}` : undefined;
+    const hasVerifiedCoordinates = isPhilippineCoordinatePair(row.latitude, row.longitude);
+    const coordinates = hasVerifiedCoordinates ? `${row.latitude}, ${row.longitude}` : undefined;
+    const locationParts = [row.barangay ? `Brgy. ${row.barangay}` : null, row.municipality, row.province]
+      .filter((value): value is string => Boolean(value));
+    const dataCoverage = calculateProjectPassportCoverage([
+      row.projectCode || row.abemisId,
+      row.name,
+      row.status,
+      row.region,
+      row.province,
+      row.municipality,
+      row.budget,
+      row.implementingAgency,
+      row.startDate,
+      coordinates,
+    ]);
 
     return {
       id: row.abemisId || row.projectCode || row.id,
       name: row.name,
       code: row.projectCode || row.abemisId || row.id,
-      location: `Brgy. ${row.barangay || "Unknown"}, ${row.municipality || "Unknown"}, ${row.province || "Unknown"}`,
-      implementingAgency: row.implementingAgency || row.program || "BAFE",
-      budget: row.budget ? Number(row.budget) : 0,
-      startDate: row.startDate ? new Date(row.startDate).toLocaleDateString() : (row.yearFunded || "Unknown"),
-      duration: row.calendarDays ? `${row.calendarDays} Days` : "120 Days",
-      status: row.status?.toLowerCase() || "ongoing",
-      stage: row.stage || row.status?.toUpperCase() || "ONGOING",
-      yearFunded: row.yearFunded || "Unknown",
-      contractor: row.contractorName || "Unknown Contractor",
-      scope: row.projectType || "Infrastructure",
-      projectLength: row.proposedLength ? `${row.proposedLength} ${row.quantityUnit || ""}`.trim() : "N/A",
-      description: row.description || "No description provided.",
+      location: locationParts.length > 0 ? locationParts.join(", ") : "Location unavailable",
+      region: row.region || undefined,
+      province: row.province || undefined,
+      city: row.municipality || undefined,
+      barangay: row.barangay || undefined,
+      implementingAgency: row.implementingAgency || row.program || "Unavailable",
+      budget: row.budget === null ? null : Number(row.budget),
+      abc: row.abc,
+      startDate: row.startDate ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" }).format(row.startDate) : "Unavailable",
+      duration: row.calendarDays ? `${row.calendarDays} days` : "Unavailable",
+      calendarDays: row.calendarDays || undefined,
+      status: row.status.toLowerCase(),
+      stage: mapInternalToPublicStage(row.status),
+      yearFunded: row.yearFunded || "Unavailable",
+      contractor: row.contractorName || "Unavailable",
+      scope: row.projectType,
+      projectType: row.projectType,
+      projectLength: row.proposedLength ? `${row.proposedLength} ${row.quantityUnit || ""}`.trim() : "Unavailable",
+      postGeotaggedLength: row.postGeotaggedLength || undefined,
+      description: row.description || "No description was provided by the source.",
       progress: {
         physical: row.physicalProgress || 0,
         financial: row.financialProgress || 0,
       },
-      photos: Array.isArray(metadata.geotag)
-        ? metadata.geotag
-          .map((tag) => {
-            if (!tag || typeof tag !== "object") return undefined;
-            const photo = tag as Record<string, unknown>;
-            return typeof photo.photo_url === "string"
-              ? photo.photo_url
-              : typeof photo.url === "string"
-                ? photo.url
-                : undefined;
-          })
-          .filter((url): url is string => Boolean(url))
-        : [],
+      photos: publicGeotags
+        .map((tag) => typeof tag.url === "string" ? tag.url : undefined)
+        .filter((url): url is string => Boolean(url)),
       updates: [],
-      completionDate: row.targetCompletionDate ? new Date(row.targetCompletionDate).toLocaleDateString() : "Unknown",
-      feedbackCount: 0,
+      completionDate: row.targetCompletionDate ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" }).format(row.targetCompletionDate) : "Unavailable",
+      actualCompletionDate: row.actualCompletionDate
+        ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" }).format(row.actualCompletionDate)
+        : undefined,
+      feedbackCount,
       coordinates,
+      coordinateStatus: hasVerifiedCoordinates ? "verified" : "unavailable",
+      sourceAgency: "ABEMIS",
+      sourceSystem: "ABEMIS infrastructure project feed",
+      lastSyncedAt: formatPublicSyncDate(row.lastSyncedAt),
+      dataCoverage,
+      operatingUnit: row.operatingUnit || undefined,
+      bannerProgram: row.bannerProgram || undefined,
+      subProgram: row.subProgram || undefined,
+      prexcProgram: row.prexcProgram || undefined,
+      procurementMode: row.procurementMode || undefined,
+      implementationType: row.implementationType || undefined,
+      quantity: row.quantity || undefined,
+      quantityUnit: row.quantityUnit || undefined,
+      beneficiary: row.beneficiary || undefined,
+      recipientType: row.recipientType || undefined,
+      indicatorLevel1: row.indicatorLevel1 || undefined,
+      indicatorLevel3: row.indicatorLevel3 || undefined,
+      dateTurnOver: row.dateTurnOver || undefined,
+      commodities: row.commodities,
       metadata: {
         ...metadata,
         physicalProgress: row.physicalProgress || 0,
         financialProgress: row.financialProgress || 0,
-        calendarDays: 120,
+        calendarDays: row.calendarDays,
         powRelation: metadata.powRelation || metadata.pow_relation || [],
         procurementRelation: metadata.procurementRelation || metadata.procurement_relation || [],
-        geotag: metadata.geotag || metadata.geotags || [],
+        geotag: publicGeotags,
+        geotags: publicGeotags,
         coordinates,
       }
     };
