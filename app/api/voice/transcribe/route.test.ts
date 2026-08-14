@@ -219,15 +219,41 @@ test("forwards audio to local Whisper with server-only authentication", async ()
   assert.ok((receivedAudio as unknown) instanceof File);
 });
 
-test("rejects non-loopback local Whisper endpoints", () => {
-  assert.throws(
-    () =>
-      createLocalWhisperTranscriber({
-        endpoint: "https://example.com/transcribe",
-        token: "local-test-token-at-least-24-characters",
-      }),
-    /loopback/,
-  );
+test("accepts the private Docker Whisper service endpoint and rejects redirects", async () => {
+  let receivedUrl = "";
+  let redirectMode: RequestRedirect | undefined;
+  const transcribe = createLocalWhisperTranscriber({
+    endpoint: "http://ania-whisper:8000/transcribe",
+    token: "local-test-token-at-least-24-characters",
+    fetchImpl: async (input, init) => {
+      receivedUrl = String(input);
+      redirectMode = init?.redirect;
+      return Response.json({ text: "Show delayed projects" });
+    },
+  });
+
+  await transcribe(audio, new AbortController().signal);
+  assert.equal(receivedUrl, "http://ania-whisper:8000/transcribe");
+  assert.equal(redirectMode, "error");
+});
+
+test("rejects unapproved local Whisper endpoints", () => {
+  for (const endpoint of [
+    "https://example.com/transcribe",
+    "http://whisper.example.internal/transcribe",
+    "http://ania-whisper:8000/healthz",
+    "http://user:password@ania-whisper:8000/transcribe",
+    "http://ania-whisper:8000/transcribe?redirect=example.com",
+  ]) {
+    assert.throws(
+      () =>
+        createLocalWhisperTranscriber({
+          endpoint,
+          token: "local-test-token-at-least-24-characters",
+        }),
+      /loopback or the private Docker Whisper service/,
+    );
+  }
 });
 
 test("returns trimmed transcription without storing audio", async () => {
