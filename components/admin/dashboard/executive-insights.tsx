@@ -8,7 +8,7 @@ export function applyInsightFilter(callback: (filter: Partial<ManagerialDashboar
   callback(filter);
 }
 
-export function ExecutiveInsights({ insights, onApplyFilter }: { insights: ManagerialDashboardData["insights"]; onApplyFilter: (filter: Partial<ManagerialDashboardFilters>) => void }) {
+export function ExecutiveInsights({ insights, onApplyFilter, interactive = true }: { insights: ManagerialDashboardData["insights"]; onApplyFilter: (filter: Partial<ManagerialDashboardFilters>) => void; interactive?: boolean }) {
   const visibleInsights = insights.slice(0, 3);
   return (
     <section aria-labelledby="executive-insights-heading">
@@ -33,7 +33,7 @@ export function ExecutiveInsights({ insights, onApplyFilter }: { insights: Manag
                     <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">{insight.detail}</p>
                   </div>
                 </div>
-                {insight.filter && (
+                {interactive && insight.filter && (
                   <button type="button" onClick={() => applyInsightFilter(onApplyFilter, insight.filter!)} className="mt-3 text-xs font-extrabold text-primary hover:underline">
                     Show affected projects
                   </button>

@@ -4,9 +4,12 @@ import React, { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
-import { Compass, Search, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Compass, Loader2, Search, ZoomIn, ZoomOut, Maximize } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { getPublicMapPins } from "@/actions/query/public-projects.query";
+import { toSourceBackedMapPins } from "@/lib/public-project-map";
 
 
 // Dynamically import Leaflet Map Component with SSR disabled
@@ -22,25 +25,25 @@ const GISMapCanvas = dynamic(
   }
 );
 
-// Real coordinates for Visayas projects
-const mapProjects = [
-  { id: "PRJ-INS-2023-009", name: "Dingle Diversion Dam Rehabilitation", lat: 10.7431, lng: 125.0135, status: "completed", type: "ins", desc: "Abuyog, Leyte • ₱14.0M", progress: 100 },
-  { id: "PRJ-AMSS-2024-042", name: "Post-Harvest Grain Dryer", lat: 10.4503, lng: 123.7228, status: "ongoing", type: "amss", desc: "Balamban, Cebu • ₱1.8M", progress: 75 },
-  { id: "PRJ-INS-2025-115", name: "Solar Powered Irrigation Pump", lat: 10.7188, lng: 125.0298, status: "ongoing", type: "ins", desc: "Abuyog, Leyte • ₱4.2M", progress: 85 },
-  { id: "PRJ-AMSS-2026-002", name: "Agricultural Warehouse", lat: 11.2789, lng: 125.0673, status: "planned", type: "amss", desc: "Basey, Samar • ₱5.2M", progress: 0 },
-  { id: "PRJ-INS-2024-108", name: "Concrete Drainage Canal", lat: 11.3115, lng: 125.0890, status: "suspended", type: "ins", desc: "Basey, Samar • ₱3.1M", progress: 40 },
-];
+type PublicMapPin = ReturnType<typeof toSourceBackedMapPins>[number];
 
-const defaultCenter: [number, number] = [10.74, 124.79]; // Visayas center
-const defaultZoom = 8.5;
+const defaultCenter: [number, number] = [12.8797, 121.7740];
+const defaultZoom = 6;
 
 export default function GISMapPage() {
 
   const { resolvedTheme } = useTheme();
 
-  const [selectedProject, setSelectedProject] = useState<typeof mapProjects[0] | null>(null);
+  const { data: sourceRows = [], isLoading, isError } = useQuery({
+    queryKey: ["public-map-source-pins", 2],
+    queryFn: () => getPublicMapPins({}),
+    staleTime: 5 * 60 * 1000,
+  });
+  const mapProjects = React.useMemo(() => toSourceBackedMapPins(sourceRows), [sourceRows]);
+
+  const [selectedProject, setSelectedProject] = useState<PublicMapPin | null>(null);
   const [insActive, setInsActive] = useState(true);
-  const [amssActive, setAmssActive] = useState(true);
+  const [amefipActive, setAmefipActive] = useState(true);
   const [watershedOverlay, setWatershedOverlay] = useState(false);
   const [agriZoneOverlay, setAgriZoneOverlay] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,7 +52,7 @@ export default function GISMapPage() {
   const [mapZoom, setMapZoom] = useState(defaultZoom);
 
   // Sync center and zoom when project selection changes
-  const handleSelectProject = (pin: typeof mapProjects[0] | null) => {
+  const handleSelectProject = (pin: PublicMapPin | null) => {
     setSelectedProject(pin);
     if (pin) {
       setMapCenter([pin.lat, pin.lng]);
@@ -73,7 +76,7 @@ export default function GISMapPage() {
 
   const filteredPins = mapProjects.filter((pin) => {
     if (pin.type === "ins" && !insActive) return false;
-    if (pin.type === "amss" && !amssActive) return false;
+    if (pin.type === "amefip" && !amefipActive) return false;
     if (searchQuery && !pin.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
@@ -123,11 +126,11 @@ export default function GISMapPage() {
                 <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={amssActive}
-                    onChange={() => setAmssActive(!amssActive)}
+                    checked={amefipActive}
+                    onChange={() => setAmefipActive(!amefipActive)}
                     className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
                   />
-                  AMSS Projects (Machinery)
+                  AMEFIP Projects
                 </label>
               </div>
             </div>
@@ -183,16 +186,29 @@ export default function GISMapPage() {
 
       {/* Main Map View Area */}
       <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-200 dark:bg-slate-900">
-        <GISMapCanvas
-          filteredPins={filteredPins}
-          selectedProject={selectedProject}
-          setSelectedProject={handleSelectProject}
-          watershedOverlay={watershedOverlay}
-          agriZoneOverlay={agriZoneOverlay}
-          theme={(resolvedTheme as "light" | "dark") || "light"}
-          mapCenter={mapCenter}
-          mapZoom={mapZoom}
-        />
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-3 text-sm font-semibold text-slate-600 dark:text-slate-300"><Loader2 className="h-8 w-8 animate-spin text-primary" />Loading source-backed projects…</div>
+        ) : isError ? (
+          <div role="alert" className="max-w-md rounded-xl border border-rose-200 bg-white p-5 text-center text-sm text-rose-700 shadow dark:border-rose-900 dark:bg-slate-900 dark:text-rose-300">The synchronized project map is temporarily unavailable. No reference markers are being shown.</div>
+        ) : (
+          <GISMapCanvas
+            filteredPins={filteredPins}
+            selectedProject={selectedProject}
+            setSelectedProject={handleSelectProject}
+            watershedOverlay={watershedOverlay}
+            agriZoneOverlay={agriZoneOverlay}
+            theme={(resolvedTheme as "light" | "dark") || "light"}
+            mapCenter={mapCenter}
+            mapZoom={mapZoom}
+          />
+        )}
+
+        {!isLoading && !isError && (
+          <div className="absolute left-4 top-4 z-20 rounded-xl border border-slate-200 bg-white/95 px-4 py-3 text-xs text-slate-700 shadow backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-200">
+            <p className="font-extrabold">{mapProjects.length.toLocaleString()} coordinate-backed projects</p>
+            <p className="mt-1 text-[10px] text-slate-500">Source: ABEMIS infrastructure project feed. Records without valid source coordinates are omitted, never inferred.</p>
+          </div>
+        )}
 
         {/* Selected Project HUD Panel */}
         {selectedProject && (

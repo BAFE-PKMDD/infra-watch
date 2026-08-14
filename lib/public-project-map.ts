@@ -1,3 +1,6 @@
+import { mapInternalToPublicStage } from "@/constants/stage-mapping";
+import { isPhilippineCoordinatePair } from "@/lib/philippine-coordinates";
+
 export const PROJECT_MARKER_LEGEND = [
   { label: "Completed", color: "#22c55e" },
   { label: "On going", color: "#eab308" },
@@ -11,4 +14,34 @@ export function getProjectMarkerColor(status: string) {
   if (normalizedStatus === "ongoing") return PROJECT_MARKER_LEGEND[1].color;
   if (normalizedStatus === "notyetstarted") return PROJECT_MARKER_LEGEND[2].color;
   return PROJECT_MARKER_LEGEND[3].color;
+}
+
+type SourceProjectPin = {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  status: string;
+  program: string;
+  barangay: string | null;
+  municipality: string | null;
+  physicalProgress: number;
+};
+
+export function toSourceBackedMapPins(rows: SourceProjectPin[]) {
+  return rows.flatMap((row) => {
+    if (!isPhilippineCoordinatePair(row.latitude, row.longitude)) return [];
+    const latitude = row.latitude as number;
+    const longitude = row.longitude as number;
+    return [{
+      id: row.id,
+      name: row.name,
+      lat: latitude,
+      lng: longitude,
+      status: mapInternalToPublicStage(row.status).toLowerCase().replace(/\s+/g, ""),
+      type: row.program.toLowerCase(),
+      desc: [row.barangay, row.municipality].filter(Boolean).join(", ") || "Location unavailable",
+      progress: row.physicalProgress,
+    }];
+  });
 }

@@ -30,7 +30,7 @@ interface ProjectOverviewProps {
     psgcCode?: string;
     latitude?: number;
     longitude?: number;
-    abc?: number;
+    abc?: number | null;
     calendarDays?: number;
     budgetProcess?: string;
     procurementMode?: string;

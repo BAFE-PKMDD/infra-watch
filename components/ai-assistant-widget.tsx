@@ -8,7 +8,7 @@ import {
   KeyboardEvent,
 } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { X, Send, RotateCcw } from "lucide-react";
+import { Mic, MicOff, X, Send, RotateCcw } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { AiMessageContent } from "@/components/ai-message-content";
@@ -17,6 +17,9 @@ import {
   ensureAssistantMessage,
   type ChatMessage,
 } from "@/lib/chat-messages";
+import { useVoiceAssistant } from "@/hooks/use-voice-assistant";
+import { AniaVoiceOrb } from "@/components/voice/ania-voice-orb";
+import type { VoiceAssistantClientConfig } from "@/lib/voice/config";
 
 const botImages = {
   closed: "/b-bot-close-eye.png",
@@ -69,7 +72,13 @@ const SUGGESTIONS = [
   "Show 10 ongoing projects with contractors",
 ];
 
-export function AiAssistantWidget() {
+export function AiAssistantWidget({
+  voiceConfig,
+  adminMode = false,
+}: {
+  voiceConfig?: VoiceAssistantClientConfig;
+  adminMode?: boolean;
+} = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -83,6 +92,13 @@ export function AiAssistantWidget() {
   const activeRequestIdRef = useRef<string | null>(null);
   const hasOpenedRef = useRef(false);
   const conversationIdRef = useRef(crypto.randomUUID());
+  const safeVoiceConfig = voiceConfig ?? {
+    enabled: false,
+    wakeWord: "hey_ania",
+    wakeWordWsUrl: "",
+    kokoroModel: "onnx-community/Kokoro-82M-v1.0-ONNX",
+    kokoroVoice: "af_heart",
+  };
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -117,7 +133,7 @@ export function AiAssistantWidget() {
   );
 
   const handleSend = useCallback(
-    async (textToSend?: string) => {
+    async (textToSend?: string, responseMode: "text" | "voice" = "text") => {
       const text = textToSend ?? inputValue;
       if (!text.trim() || isLoading) return;
 
@@ -140,6 +156,7 @@ export function AiAssistantWidget() {
         controller.abort();
       }, 58_000);
 
+      let assistantText = "";
       try {
         const response = await fetch("/api/chat", {
           method: "POST",
@@ -147,6 +164,8 @@ export function AiAssistantWidget() {
           body: JSON.stringify({
             conversationId: conversationIdRef.current,
             message: text.trim(),
+            responseMode,
+            surface: adminMode ? "ania" : "public",
           }),
           signal: controller.signal,
         });
@@ -172,9 +191,11 @@ export function AiAssistantWidget() {
             return;
           }
           const chunk = decoder.decode(value, { stream: true });
+          assistantText += chunk;
 
           setMessages((prev) => appendToLastAssistantMessage(prev, chunk));
         }
+        return assistantText;
       } catch (error) {
         if (activeRequestIdRef.current !== requestId) return;
         const errorMessage = controller.signal.aborted
@@ -194,13 +215,22 @@ export function AiAssistantWidget() {
         }
       }
     },
-    [inputValue, messages, isLoading],
+    [adminMode, inputValue, messages, isLoading],
   );
 
   const handleClose = useCallback(() => {
     abortControllerRef.current?.abort();
     setIsOpen(false);
   }, []);
+
+  const voice = useVoiceAssistant({
+    config: safeVoiceConfig,
+    submitCommand: (text) => handleSend(text, "voice"),
+    cancelCommand: () => abortControllerRef.current?.abort(),
+    onWakeDetected: () => setIsOpen(true),
+    onTranscription: setInputValue,
+    onSleep: handleClose,
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -242,9 +272,25 @@ export function AiAssistantWidget() {
             }
             onClick={() => setIsOpen(true)}
             className="group/fab fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-xl border border-slate-200 hover:bg-slate-50 transition-colors p-1"
-            aria-label="Open AI Assistant"
+            aria-label={
+              adminMode && safeVoiceConfig.enabled
+                ? `Open ANIA. ${voice.statusLabel}`
+                : adminMode
+                  ? "Open ANIA"
+                  : "Open InfraWatch AI"
+            }
           >
             <BotFace className="h-14 w-14" sizes="56px" priority />
+            {adminMode && safeVoiceConfig.enabled && (
+              <span
+                className="absolute -bottom-7 right-0 flex min-w-max items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-medium text-slate-600 shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                role="status"
+                aria-live="polite"
+              >
+                <AniaVoiceOrb status={voice.status} className="h-3 w-3" />
+                {voice.statusLabel}
+              </span>
+            )}
           </motion.button>
         )}
       </AnimatePresence>
@@ -264,7 +310,7 @@ export function AiAssistantWidget() {
             className="fixed bottom-6 right-6 z-50 flex h-[640px] max-h-[calc(100vh-3rem)] w-[440px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-slate-950 dark:ring-white/10"
             role="dialog"
             aria-modal="false"
-            aria-labelledby="infra-watch-ai-title"
+            aria-labelledby={adminMode ? "ania-title" : "infra-watch-ai-title"}
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 bg-white/50 px-4 py-3 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/50">
@@ -272,12 +318,14 @@ export function AiAssistantWidget() {
                 <BotFace className="h-10 w-10 ring-2 ring-slate-100 dark:ring-slate-800" />
                 <div>
                   <h3
-                    id="infra-watch-ai-title"
+                    id={adminMode ? "ania-title" : "infra-watch-ai-title"}
                     className="font-semibold text-slate-900 dark:text-white"
                   >
-                    InfraWatch AI
+                    {adminMode ? "ANIA" : "InfraWatch AI"}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Ask about projects</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {adminMode ? "Agricultural Network Intelligence Assistant" : "Ask about projects"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -297,7 +345,7 @@ export function AiAssistantWidget() {
                 <button
                   onClick={handleClose}
                   className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus-visible:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-300 dark:focus-visible:bg-slate-800"
-                  aria-label="Close AI Assistant"
+                  aria-label={adminMode ? "Close ANIA" : "Close InfraWatch AI"}
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -309,7 +357,7 @@ export function AiAssistantWidget() {
               className="flex-1 space-y-4 overflow-y-auto p-4 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]"
               role="log"
               aria-live="off"
-              aria-label="AI Assistant conversation"
+              aria-label={adminMode ? "ANIA conversation" : "InfraWatch AI conversation"}
             >
               {messages.length === 0 ? (
                 <div className="flex flex-col h-full items-center justify-center text-center space-y-6">
@@ -408,10 +456,10 @@ export function AiAssistantWidget() {
 
             <span className="sr-only" role="status" aria-live="polite">
               {isLoading
-                ? "InfraWatch AI is responding."
+                ? `${adminMode ? "ANIA" : "InfraWatch AI"} is responding.`
                 : messages.at(-1)?.role === "assistant"
-                  ? "InfraWatch AI response complete."
-                  : "InfraWatch AI is ready."}
+                  ? `${adminMode ? "ANIA" : "InfraWatch AI"} response complete.`
+                  : `${adminMode ? "ANIA" : "InfraWatch AI"} is ready.`}
             </span>
 
             {/* Input Area */}
@@ -424,11 +472,31 @@ export function AiAssistantWidget() {
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask a question..."
-                  aria-label="Ask InfraWatch AI a question"
+                  aria-label={adminMode ? "Ask ANIA a question" : "Ask InfraWatch AI a question"}
                   disabled={isLoading}
                   maxLength={4_000}
-                  className="w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-4 pr-12 text-sm text-slate-900 placeholder:text-slate-500 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+                  className={cn(
+                    "w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-4 text-sm text-slate-900 placeholder:text-slate-500 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-400 dark:focus:border-blue-500 dark:focus:ring-blue-500",
+                    safeVoiceConfig.enabled ? "pr-20" : "pr-12",
+                  )}
                 />
+                {safeVoiceConfig.enabled && (
+                  <button
+                    type="button"
+                    onClick={voice.toggle}
+                    className={cn(
+                      "absolute right-11 flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                      voice.enabled
+                        ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300"
+                        : "text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800",
+                    )}
+                    aria-label={voice.enabled ? "Disable ANIA voice mode" : "Enable ANIA voice mode"}
+                    aria-pressed={voice.enabled}
+                    title="Toggle ANIA voice mode (Ctrl+Shift+V)"
+                  >
+                    {voice.enabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                  </button>
+                )}
                 <button
                   onClick={() => handleSend()}
                   disabled={isLoading || !inputValue.trim()}
@@ -438,6 +506,18 @@ export function AiAssistantWidget() {
                   <Send className="h-4 w-4" />
                 </button>
               </div>
+              {safeVoiceConfig.enabled && (
+                <div
+                  className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <AniaVoiceOrb status={voice.status} className="h-6 w-6" />
+                  <span>{voice.statusLabel}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>Ctrl+Shift+V</span>
+                </div>
+              )}
               <p className="mt-2 text-center text-[10px] leading-4 text-slate-400 dark:text-slate-500">
                 Messages are retained for service quality and analysis. Do not share
                 passwords or sensitive personal information.

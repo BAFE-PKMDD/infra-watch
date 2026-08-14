@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+models/embedding_model_sleep.onnx
+models/melspectrogram_sleep.onnx
+models/hey_anh_ya.onnx (1).data
+models/hey_anh_ya.onnx.data
+models/hey_ania.onnx.data
+models/hey_ania.split-backup.onnx

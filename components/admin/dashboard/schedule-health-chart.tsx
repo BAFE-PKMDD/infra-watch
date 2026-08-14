@@ -24,7 +24,7 @@ export function selectScheduleHealth(callback: (health: ScheduleHealth) => void,
   callback(health);
 }
 
-export function ScheduleHealthChart({ data, onSelect }: { data: ManagerialDashboardData["scheduleHealth"]; onSelect: (health: ScheduleHealth) => void }) {
+export function ScheduleHealthChart({ data, onSelect }: { data: ManagerialDashboardData["scheduleHealth"]; onSelect?: (health: ScheduleHealth) => void }) {
   const chartData = data.map((item) => ({ ...item, label: labels[item.key], fill: colors[item.key] }));
   const summary = chartData.length > 0
     ? chartData.map((item) => `${item.count} ${item.label.toLowerCase()} with ${formatDashboardCurrency(item.budget)} allocated`).join("; ")
@@ -39,16 +39,16 @@ export function ScheduleHealthChart({ data, onSelect }: { data: ManagerialDashbo
               <XAxis dataKey="label" tickLine={false} axisLine={false} />
               <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
               <ChartTooltip content={<ChartTooltipContent formatter={(value, _name, item) => <div className="grid gap-0.5"><span>{Number(value).toLocaleString("en-PH")} projects</span><span>{formatDashboardCurrency(Number(item.payload?.budget ?? 0))} allocated</span></div>} />} />
-              <Bar dataKey="count" radius={[5, 5, 0, 0]} onClick={(entry) => selectScheduleHealth(onSelect, (entry as { key: ScheduleHealth }).key)} />
+              <Bar dataKey="count" radius={[5, 5, 0, 0]} onClick={onSelect ? (entry) => selectScheduleHealth(onSelect, (entry as { key: ScheduleHealth }).key) : undefined} />
             </BarChart>
           </ChartContainer>
-          <div className="mt-3 flex flex-wrap gap-2" aria-label="Filter by schedule health">
+          {onSelect ? <div className="mt-3 flex flex-wrap gap-2" aria-label="Filter by schedule health">
             {chartData.map((item) => (
               <button key={item.key} type="button" data-filter-value={item.key} onClick={() => selectScheduleHealth(onSelect, item.key)} className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700 hover:border-primary hover:text-primary dark:border-slate-700 dark:text-slate-200">
                 {item.label}: {item.count}
               </button>
             ))}
-          </div>
+          </div> : null}
         </>
       )}
     </ChartPanel>

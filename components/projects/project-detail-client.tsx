@@ -4,6 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { ProjectHero } from "@/components/projects/project-hero";
 import { ProjectHighlights } from "@/components/projects/project-highlights";
+import { ProjectPassport } from "./project-passport";
+import { safeProjectsReturnHref } from "@/lib/public-project-directory";
 import { ProjectSidebar } from "@/components/projects/project-sidebar";
 import { ProjectTabPanels } from "@/components/projects/project-tab-panels";
 import type { ProjectDetail, ProjectTabKey } from "@/types";
@@ -36,6 +38,8 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
 
   const tabFromUrl = searchParams.get("tab") as ProjectTabKey | null;
   const activeTab = tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : "overview";
+  const requestedReturn = searchParams.get("return");
+  const returnHref = safeProjectsReturnHref(requestedReturn);
 
   // Update URL when tab changes
   const handleTabChange = (tab: ProjectTabKey) => {
@@ -70,6 +74,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
       <ProjectHero project={project} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative">
+        <ProjectPassport project={project} returnHref={returnHref} />
         <ProjectHighlights project={project} />
       </div>
 

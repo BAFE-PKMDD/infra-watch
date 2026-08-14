@@ -20,6 +20,30 @@ import {
 import { ChartSpec, parseChartSpec } from "@/lib/chat-visuals";
 import { getProjectHref, isProjectHref } from "@/lib/chat-links";
 
+type MarkdownNode = {
+  type: string;
+  value?: string;
+  url?: string;
+  children?: MarkdownNode[];
+};
+
+function remarkProjectCodeLinks() {
+  return (tree: MarkdownNode) => {
+    function visit(node: MarkdownNode) {
+      if (!node.children) return;
+      node.children = node.children.map((child) => {
+        if (child.type === "inlineCode" && node.type !== "link") {
+          const href = getProjectHref(child.value ?? "");
+          if (href) return { type: "link", url: href, children: [child] };
+        }
+        visit(child);
+        return child;
+      });
+    }
+    visit(tree);
+  };
+}
+
 const CHART_COLORS = [
   "#2563eb",
   "#16a34a",
@@ -184,7 +208,7 @@ export function AiMessageContent({
   return (
     <div className="min-w-0 text-[13px] leading-5 text-slate-800 dark:text-slate-100">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkProjectCodeLinks]}
         components={{
           h1: ({ children }) => (
             <h3 className="mb-2 mt-4 text-base font-semibold tracking-tight first:mt-0">
@@ -282,20 +306,6 @@ export function AiMessageContent({
                 <pre className="my-3 max-w-full overflow-x-auto rounded-lg bg-slate-950 p-3 text-xs leading-5 text-slate-100">
                   <code>{source}</code>
                 </pre>
-              );
-            }
-
-            const projectHref = getProjectHref(source);
-            if (projectHref) {
-              return (
-                <Link
-                  href={projectHref}
-                  title="Open project overview"
-                  className="inline rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-blue-800 [overflow-wrap:anywhere] hover:bg-blue-200 dark:bg-blue-950 dark:text-blue-200 dark:hover:bg-blue-900"
-                >
-                  {children}
-                  <ArrowUpRight className="ml-1 inline h-3 w-3" aria-hidden="true" />
-                </Link>
               );
             }
 

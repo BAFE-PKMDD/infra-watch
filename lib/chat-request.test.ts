@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   MAX_CHAT_HISTORY_MESSAGES,
   MAX_CHAT_MESSAGE_CHARS,
+  canUseChatPresentation,
   getChatResponseTimeoutMs,
   parseChatRequest,
   readBoundedJsonBody,
@@ -19,6 +20,34 @@ test("accepts a bounded chatbot request", () => {
   });
 
   assert.equal(result.success, true);
+});
+
+test("allows ANIA presentation only for the exact admin role", () => {
+  assert.equal(
+    canUseChatPresentation({ role: "admin", responseMode: "voice", surface: "ania" }),
+    true,
+  );
+  for (const role of [undefined, "citizen", "moderator"]) {
+    assert.equal(
+      canUseChatPresentation({ role, responseMode: "voice", surface: "ania" }),
+      false,
+    );
+  }
+  assert.equal(
+    canUseChatPresentation({ role: undefined, responseMode: "text", surface: "public" }),
+    true,
+  );
+});
+
+test("accepts a bounded voice-mode chatbot request", () => {
+  const result = parseChatRequest({
+    conversationId,
+    message: "Summarize delayed projects",
+    responseMode: "voice",
+  });
+
+  assert.equal(result.success, true);
+  if (result.success) assert.equal(result.data.responseMode, "voice");
 });
 
 test("rejects oversized messages and histories", () => {

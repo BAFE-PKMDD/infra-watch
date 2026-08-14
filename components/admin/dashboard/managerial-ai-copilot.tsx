@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
+import { Download, RefreshCw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
 import {
   type KeyboardEvent,
   useCallback,
@@ -11,6 +11,8 @@ import {
 
 import { AiMessageContent } from "@/components/ai-message-content";
 import { Button } from "@/components/ui/button";
+import { cleanAniaAnswer } from "@/lib/analytics/ania-answer-content";
+import { aniaPdfFilename, downloadElementAsPdf } from "@/lib/analytics/ania-answer-pdf";
 import {
   appendToLastAssistantMessage,
   ensureAssistantMessage,
@@ -73,7 +75,7 @@ export function managerialCopilotErrorMessage(
       ? "The response timed out. You can retry the last question."
       : "Response cancelled. You can retry the last question.";
   }
-  return "The AI Copilot is temporarily unavailable. You can retry the last question.";
+  return "ANIA is temporarily unavailable. You can retry the last question.";
 }
 
 type ManagerialAiCopilotProps = {
@@ -81,7 +83,54 @@ type ManagerialAiCopilotProps = {
   asOf: string;
   initialOpen?: boolean;
   onRefresh?: () => Promise<unknown>;
+  presentation?: "floating" | "embedded";
+  initialConversationId?: string;
+  dashboardContext?: { asOf: string; lastSuccessfulSyncAt: string | null };
 };
+
+export function AniaAnswerDownloadButton({ targetId, asOf, answerNumber, variant = "ghost" }: {
+  targetId: string;
+  asOf: string;
+  answerNumber?: number;
+  variant?: "default" | "outline" | "ghost";
+}) {
+  const [pdfState, setPdfState] = useState<"idle" | "preparing" | "error">("idle");
+  const label = answerNumber ? `ANIA answer ${answerNumber}` : "ANIA executive brief";
+
+  async function downloadPdf() {
+    const target = document.getElementById(targetId);
+    if (!(target instanceof HTMLElement)) {
+      setPdfState("error");
+      return;
+    }
+    setPdfState("preparing");
+    try {
+      await downloadElementAsPdf(target, aniaPdfFilename(asOf, answerNumber));
+      setPdfState("idle");
+    } catch {
+      setPdfState("error");
+    }
+  }
+
+  return (
+    <Button
+      variant={variant}
+      size="sm"
+      aria-label={`Download ${label} as PDF`}
+      aria-busy={pdfState === "preparing"}
+      disabled={pdfState === "preparing"}
+      onClick={() => void downloadPdf()}
+    >
+      <Download /> {pdfState === "preparing"
+        ? "Preparing PDF…"
+        : pdfState === "error"
+          ? "Retry PDF download"
+          : answerNumber
+            ? "Download PDF"
+            : "Download executive brief PDF"}
+    </Button>
+  );
+}
 
 export function OptionalManagerialAiCopilot({
   enabled,
@@ -97,24 +146,28 @@ export function ManagerialAiCopilot({
   asOf,
   initialOpen = false,
   onRefresh,
+  presentation = "floating",
+  initialConversationId,
+  dashboardContext,
 }: ManagerialAiCopilotProps) {
-  const [open, setOpen] = useState(initialOpen);
+  const embedded = presentation === "embedded";
+  const [open, setOpen] = useState(initialOpen || embedded);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [status, setStatus] = useState("AI Copilot is ready.");
+  const [status, setStatus] = useState("ANIA is ready.");
   const [lastPrompt, setLastPrompt] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const activeRequestRef = useRef<string | null>(null);
-  const conversationIdRef = useRef<string | null>(null);
+  const conversationIdRef = useRef<string | null>(initialConversationId ?? null);
 
   const hasOpenedRef = useRef(initialOpen);
 
   useEffect(() => {
-    if (open) {
+    if (open && !embedded) {
       hasOpenedRef.current = true;
       inputRef.current?.focus();
       return;
@@ -123,7 +176,7 @@ export function ManagerialAiCopilot({
       const timer = window.setTimeout(() => launcherRef.current?.focus(), 0);
       return () => window.clearTimeout(timer);
     }
-  }, [open]);
+  }, [embedded, open]);
 
   useEffect(
     () => () => {
@@ -134,8 +187,8 @@ export function ManagerialAiCopilot({
 
   const close = useCallback(() => {
     controllerRef.current?.abort();
-    setOpen(false);
-  }, []);
+    if (!embedded) setOpen(false);
+  }, [embedded]);
 
   useEffect(() => {
     if (!open) return;
@@ -154,7 +207,7 @@ export function ManagerialAiCopilot({
       setInput("");
       setMessages((current) => [...current, { role: "user", content: message }]);
       setLoading(true);
-      setStatus("AI Copilot is analyzing the current dashboard.");
+      setStatus("ANIA is analyzing the current dashboard.");
       setLastPrompt(message);
 
       const requestId = crypto.randomUUID();
@@ -177,6 +230,7 @@ export function ManagerialAiCopilot({
             conversationId: conversationIdRef.current,
             message,
             filters,
+            ...(dashboardContext ? { dashboardContext } : {}),
           }),
           signal: controller.signal,
         });
@@ -189,6 +243,7 @@ export function ManagerialAiCopilot({
           { role: "assistant", content: "" },
         ]);
         const decoder = new TextDecoder();
+        let answer = "";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -197,11 +252,19 @@ export function ManagerialAiCopilot({
             return;
           }
           const chunk = decoder.decode(value, { stream: true });
+          answer += chunk;
           setMessages((current) =>
             appendToLastAssistantMessage(current, chunk),
           );
         }
-        setStatus("AI Copilot response complete.");
+        answer += decoder.decode();
+        const cleanedAnswer = cleanAniaAnswer(answer);
+        setMessages((current) => {
+          const lastMessage = current.at(-1);
+          if (!lastMessage || lastMessage.role !== "assistant") return current;
+          return [...current.slice(0, -1), { ...lastMessage, content: cleanedAnswer }];
+        });
+        setStatus("ANIA response complete.");
       } catch (error) {
         if (activeRequestRef.current !== requestId) return;
         const message = managerialCopilotErrorMessage(
@@ -220,7 +283,7 @@ export function ManagerialAiCopilot({
         }
       }
     },
-    [filters, input, loading],
+    [dashboardContext, filters, input, loading],
   );
 
   function clear() {
@@ -230,7 +293,7 @@ export function ManagerialAiCopilot({
     setLastPrompt(null);
     setMessages([]);
     setLoading(false);
-    setStatus("Conversation cleared. AI Copilot is ready.");
+    setStatus("Conversation cleared. ANIA is ready.");
   }
 
   async function refresh() {
@@ -241,10 +304,10 @@ export function ManagerialAiCopilot({
     setMessages([]);
     setLoading(false);
     setRefreshing(true);
-    setStatus("Refreshing dashboard data for the AI Copilot.");
+    setStatus("Refreshing dashboard data for ANIA.");
     try {
       await onRefresh?.();
-      setStatus("Dashboard data refreshed. AI Copilot is ready.");
+      setStatus("Dashboard data refreshed. ANIA is ready.");
     } catch {
       setStatus("Dashboard refresh failed. The previous dashboard data remains available.");
     } finally {
@@ -259,10 +322,10 @@ export function ManagerialAiCopilot({
     }
   }
 
-  if (!open) {
+  if (!open && !embedded) {
     return (
       <Button ref={launcherRef} variant="outline" onClick={() => setOpen(true)}>
-        <Sparkles /> AI Copilot
+        <Sparkles /> ANIA
       </Button>
     );
   }
@@ -270,16 +333,18 @@ export function ManagerialAiCopilot({
   return (
     <section
       id="managerial-copilot-dialog"
-      role="dialog"
-      aria-modal="false"
+      role={embedded ? "region" : "dialog"}
+      aria-modal={embedded ? undefined : "false"}
       aria-labelledby="managerial-copilot-title"
-      className="fixed inset-x-3 bottom-3 z-50 ml-auto flex max-h-[calc(100vh-1.5rem)] w-auto max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl motion-reduce:transition-none sm:right-5 sm:left-auto sm:w-[42rem] dark:border-slate-700 dark:bg-slate-950"
+      className={embedded
+        ? "flex min-h-[34rem] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950"
+        : "fixed inset-x-3 bottom-3 z-50 ml-auto flex max-h-[calc(100vh-1.5rem)] w-auto max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl motion-reduce:transition-none sm:right-5 sm:left-auto sm:w-[42rem] dark:border-slate-700 dark:bg-slate-950"}
     >
       <header className="border-b border-slate-200 p-4 dark:border-slate-800">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="managerial-copilot-title" className="font-semibold">
-              Managerial AI Copilot
+              {embedded ? "Ask ANIA about this executive brief" : "ANIA"}
             </h2>
             <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
               Data as of {asOf}
@@ -291,13 +356,13 @@ export function ManagerialAiCopilot({
               size="icon"
               onClick={() => void refresh()}
               disabled={refreshing}
-              aria-label="Refresh AI Copilot"
+              aria-label="Refresh ANIA"
             >
               <RefreshCw className={refreshing ? "animate-spin motion-reduce:animate-none" : ""} />
             </Button>
-            <Button variant="ghost" size="icon" onClick={close} aria-label="Close AI Copilot">
+            {!embedded ? <Button variant="ghost" size="icon" onClick={close} aria-label="Close ANIA">
               <X />
-            </Button>
+            </Button> : null}
           </div>
         </div>
         <p className="mt-2 text-xs font-medium text-slate-700 dark:text-slate-200">
@@ -307,14 +372,16 @@ export function ManagerialAiCopilot({
 
       <div
         role="log"
-        aria-label="Managerial AI Copilot conversation"
+        aria-label="ANIA managerial analytics conversation"
         aria-live="off"
         className="min-h-52 flex-1 space-y-3 overflow-y-auto p-4"
       >
         {messages.length === 0 ? (
           <div className="space-y-3">
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              Ask a question about the active dashboard filters. No analysis is generated until you choose a prompt or send a question.
+              {embedded
+                ? "Ask a follow-up about the generated analysis. ANIA remains constrained to this executive brief’s active dashboard filters and authorized data scope."
+                : "Ask a question about the active dashboard filters. No analysis is generated until you choose a prompt or send a question."}
             </p>
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((suggestion) => (
@@ -328,6 +395,7 @@ export function ManagerialAiCopilot({
           messages.map((message, index) => (
             <article
               key={`${message.role}-${index}`}
+              id={message.role === "assistant" ? `ania-answer-${index}` : undefined}
               className={
                 message.role === "user"
                   ? "ml-auto max-w-[85%] whitespace-pre-wrap rounded-xl bg-blue-900 px-3 py-2 text-sm text-white"
@@ -335,10 +403,21 @@ export function ManagerialAiCopilot({
               }
             >
               {message.role === "assistant" ? (
-                <AiMessageContent
-                  content={message.content}
-                  isStreaming={loading && index === messages.length - 1}
-                />
+                <>
+                  <AiMessageContent
+                    content={message.content}
+                    isStreaming={loading && index === messages.length - 1}
+                  />
+                  {!(loading && index === messages.length - 1) && message.content ? (
+                    <div data-pdf-exclude="true" className="mt-2 flex justify-end border-t border-slate-200 pt-2 dark:border-slate-700">
+                      <AniaAnswerDownloadButton
+                        targetId={`ania-answer-${index}`}
+                        asOf={asOf}
+                        answerNumber={messages.slice(0, index + 1).filter((item) => item.role === "assistant").length}
+                      />
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 message.content
               )}
@@ -364,7 +443,7 @@ export function ManagerialAiCopilot({
             onKeyDown={onInputKeyDown}
             disabled={loading}
             maxLength={4_000}
-            aria-label="Ask the Managerial AI Copilot"
+            aria-label="Ask ANIA"
             placeholder="Ask about portfolio risk, regions, or priority projects…"
             className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900"
           />

@@ -146,9 +146,9 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                 unoptimized
               />
               <div className="hidden sm:block">
-                <h1 className="flex items-center text-2xl font-extrabold leading-none text-slate-900 dark:text-white">
+                <div className="flex items-center text-2xl font-extrabold leading-none text-slate-900 dark:text-white">
                   INFRA WATCH
-                </h1>
+                </div>
                 <p className="max-w-[260px] truncate text-[10px] uppercase tracking-wide text-slate-600 dark:text-slate-300 lg:max-w-none">
                   Public Transparency and Monitoring Portal
                 </p>

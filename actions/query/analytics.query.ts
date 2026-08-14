@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { mapInternalToPublicStage } from "@/constants/stage-mapping";
+import { isPhilippineCoordinatePair } from "@/lib/philippine-coordinates";
+import { getLastSuccessfulProjectSyncAt } from "@/lib/public-sync";
 
 export interface StageStat {
   labelKey: string;
@@ -33,6 +35,17 @@ export interface InfraAnalyticsData {
   };
   regionalStats: RegionalStat[];
   bannerStats: BannerStat[];
+  summary: {
+    approvedBudget: number;
+    budgetCoverage: { available: number; total: number };
+    completedOrTurnedOver: { count: number; percentage: number; total: number };
+    mappedProjects: { count: number; total: number };
+  };
+  source: {
+    name: "ABEMIS infrastructure project feed";
+    projectCount: number;
+    lastSuccessfulSync: string;
+  };
 }
 
 export type InfraAnalyticsResult =
@@ -47,6 +60,9 @@ export type InfraAnalyticsRow = {
   program: string | null;
   yearFunded: string | null;
   lastSyncedAt: Date;
+  budget: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type QueryRows = () => Promise<InfraAnalyticsRow[]>;
@@ -54,6 +70,7 @@ export const MAX_PUBLIC_ANALYTICS_ROWS = 30_000;
 
 export function aggregateInfraAnalyticsRows(
   rows: InfraAnalyticsRow[],
+  lastSuccessfulSyncAt: Date | null = null,
 ): InfraAnalyticsResult {
   if (rows.length > MAX_PUBLIC_ANALYTICS_ROWS) {
     throw new Error("Public analytics scope exceeds the safe aggregation limit");
@@ -73,12 +90,23 @@ export function aggregateInfraAnalyticsRows(
   >;
   const regionalCounts = new Map<string, { target: number; turnedOver: number }>();
   const bannerCounts = new Map<string, { target: number; turnedOver: number }>();
+  let approvedBudget = 0;
+  let budgetCoverage = 0;
+  let mappedProjects = 0;
 
   for (const row of rows) {
     const stage = getProjectStage(row.status, row.stage);
     stageCounts[stage] += 1;
     increment(regionalCounts, mapDbRegionToLabel(row.region), stage === "turnedOver");
     increment(bannerCounts, normalizedDimension(row.bannerProgram), stage === "turnedOver");
+    if (row.budget !== null) {
+      const amount = Number(row.budget);
+      if (Number.isFinite(amount)) {
+        approvedBudget += amount;
+        budgetCoverage += 1;
+      }
+    }
+    if (isPhilippineCoordinatePair(row.latitude, row.longitude)) mappedProjects += 1;
   }
 
   const stages = Object.fromEntries(
@@ -92,22 +120,19 @@ export function aggregateInfraAnalyticsRows(
     ]),
   ) as InfraAnalyticsData["stages"];
 
-  const latestSync = rows.reduce<Date | null>((latest, row) => {
-    const date = new Date(row.lastSyncedAt);
-    if (Number.isNaN(date.getTime())) return latest;
-    return !latest || date > latest ? date : latest;
-  }, null);
+  const lastSuccessfulSync = lastSuccessfulSyncAt
+    ? new Intl.DateTimeFormat("en-PH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Manila",
+      }).format(lastSuccessfulSyncAt)
+    : "Unknown";
+  const completedCount = stageCounts.completed + stageCounts.turnedOver;
 
   return {
     status: "ready",
     data: {
-      asOfDate: latestSync
-        ? new Intl.DateTimeFormat("en-PH", {
-            dateStyle: "medium",
-            timeStyle: "short",
-            timeZone: "Asia/Manila",
-          }).format(latestSync)
-        : "Unknown",
+      asOfDate: lastSuccessfulSync,
       scopeLabel: buildScopeLabel(rows),
       totalTarget: rows.length,
       stages,
@@ -119,6 +144,21 @@ export function aggregateInfraAnalyticsRows(
           .map(([program, value]) => ({ program, ...value }))
           .sort((a, b) => b.target - a.target || a.program.localeCompare(b.program)),
       ),
+      summary: {
+        approvedBudget,
+        budgetCoverage: { available: budgetCoverage, total: rows.length },
+        completedOrTurnedOver: {
+          count: completedCount,
+          percentage: percentage(completedCount, rows.length),
+          total: rows.length,
+        },
+        mappedProjects: { count: mappedProjects, total: rows.length },
+      },
+      source: {
+        name: "ABEMIS infrastructure project feed",
+        projectCount: rows.length,
+        lastSuccessfulSync,
+      },
     },
   };
 }
@@ -126,9 +166,14 @@ export function aggregateInfraAnalyticsRows(
 export async function getInfraAnalyticsData(
   queryRows: QueryRows = queryInfraAnalyticsRows,
   reportError: () => void = () => console.error("Public infrastructure analytics query unavailable"),
+  queryLastSuccessfulSync: () => Promise<Date | null> = getLastSuccessfulProjectSyncAt,
 ): Promise<InfraAnalyticsResult> {
   try {
-    return aggregateInfraAnalyticsRows(await queryRows());
+    const [rows, lastSuccessfulSyncAt] = await Promise.all([
+      queryRows(),
+      queryLastSuccessfulSync(),
+    ]);
+    return aggregateInfraAnalyticsRows(rows, lastSuccessfulSyncAt);
   } catch {
     reportError();
     return { status: "unavailable", data: null };
@@ -145,6 +190,9 @@ async function queryInfraAnalyticsRows(): Promise<InfraAnalyticsRow[]> {
       program: projects.program,
       yearFunded: projects.yearFunded,
       lastSyncedAt: projects.lastSyncedAt,
+      budget: projects.budget,
+      latitude: projects.latitude,
+      longitude: projects.longitude,
     })
     .from(projects)
     .limit(MAX_PUBLIC_ANALYTICS_ROWS + 1);

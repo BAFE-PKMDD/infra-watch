@@ -16,11 +16,19 @@ const row: InfraAnalyticsRow = {
   program: "AMEFIP",
   yearFunded: "2025",
   lastSyncedAt: new Date("2026-08-09T18:00:00.000Z"),
+  budget: null,
+  latitude: null,
+  longitude: null,
 };
 
 test("returns a typed empty state instead of reference figures", () => {
   const result = aggregateInfraAnalyticsRows([]);
   assert.deepEqual(result, { status: "empty", data: null });
+});
+
+test("does not label project-row ingestion time as a successful synchronization", () => {
+  const result = aggregateInfraAnalyticsRows([row], null);
+  assert.equal(result.data?.source.lastSuccessfulSync, "Unknown");
 });
 
 test("returns unavailable when the live query fails", async () => {
@@ -29,14 +37,30 @@ test("returns unavailable when the live query fails", async () => {
       throw new Error("database unavailable");
     },
     () => undefined,
+    async () => null,
   );
   assert.deepEqual(result, { status: "unavailable", data: null });
 });
 
 test("does not silently aggregate an oversized public portfolio", async () => {
   const oversized = Array.from({ length: MAX_PUBLIC_ANALYTICS_ROWS + 1 }, () => row);
-  const result = await getInfraAnalyticsData(async () => oversized, () => undefined);
+  const result = await getInfraAnalyticsData(
+    async () => oversized,
+    () => undefined,
+    async () => null,
+  );
   assert.deepEqual(result, { status: "unavailable", data: null });
+});
+
+test("uses the latest completed project sync supplied by the sync-log query", async () => {
+  const completedAt = new Date("2026-08-10T01:00:00.000Z");
+  const result = await getInfraAnalyticsData(
+    async () => [row],
+    () => undefined,
+    async () => completedAt,
+  );
+
+  assert.equal(result.data?.source.lastSuccessfulSync, "Aug 10, 2026, 9:00 AM");
 });
 
 test("uses the normalized banner-program value and explicit Unknown buckets", () => {
@@ -74,4 +98,36 @@ test("uses the shared canonical status mapping for Inventory", () => {
   const result = aggregateInfraAnalyticsRows([{ ...row, status: "Inventory", stage: null }]);
   assert.equal(result.data?.stages.completed.count, 1);
   assert.equal(result.data?.stages.preImplementation.count, 0);
+});
+
+test("publishes one traceable summary contract for homepage and public analytics", () => {
+  const result = aggregateInfraAnalyticsRows([
+    {
+      ...row,
+      status: "Inventory",
+      stage: null,
+      budget: "4000000.00",
+      latitude: 14.5995,
+      longitude: 120.9842,
+    },
+    {
+      ...row,
+      status: "ongoing",
+      stage: "Implementation",
+      budget: null,
+      latitude: null,
+      longitude: null,
+    },
+  ], new Date("2026-08-10T01:00:00.000Z"));
+
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.data?.summary, {
+    approvedBudget: 4_000_000,
+    budgetCoverage: { available: 1, total: 2 },
+    completedOrTurnedOver: { count: 1, percentage: 50, total: 2 },
+    mappedProjects: { count: 1, total: 2 },
+  });
+  assert.equal(result.data?.source.name, "ABEMIS infrastructure project feed");
+  assert.equal(result.data?.source.projectCount, result.data?.totalTarget);
+  assert.match(result.data?.source.lastSuccessfulSync ?? "", /2026/);
 });

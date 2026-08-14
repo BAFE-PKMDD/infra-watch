@@ -15,6 +15,7 @@ import {
   getChatPolicyRefusal,
 } from "@/lib/chat-policy";
 import {
+  canUseChatPresentation,
   getChatResponseTimeoutMs,
   parseChatRequest,
   readBoundedJsonBody,
@@ -33,6 +34,8 @@ import {
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+const VOICE_RESPONSE_INSTRUCTION = `This request is spoken through ANIA—Agricultural Network Intelligence Assistant. Identify yourself as ANIA if asked. Answer conversationally in at most three short sentences. Lead with the direct answer, then one useful supporting detail or follow-up question. Avoid Markdown tables, charts, headings, URLs, long lists, and repeated caveats because the response will be read aloud.`;
 
 const SYSTEM_INSTRUCTION = `You are INFRA Watch AI, an assistant for the Philippine Bureau of Agriculture and Fisheries Engineering (BAFE) infrastructure monitoring platform.
 
@@ -85,10 +88,12 @@ function logChatError(requestId: string, code: string, error: unknown) {
   );
 }
 
-async function getOptionalUserId(request: NextRequest) {
+async function getOptionalUser(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
-    return session?.user?.id ?? null;
+    return session?.user
+      ? { id: session.user.id, role: session.user.role ?? null }
+      : null;
   } catch {
     return null;
   }
@@ -138,7 +143,8 @@ export async function POST(request: NextRequest) {
   let finalizeResponse = (response: Response) => response;
 
   try {
-    const userId = await getOptionalUserId(request);
+    const user = await getOptionalUser(request);
+    const userId = user?.id ?? null;
     if (process.env.CHAT_REQUIRE_AUTH === "true" && !userId) {
       return NextResponse.json(
         { error: "Sign in to use the AI assistant." },
@@ -224,13 +230,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { conversationId, message } = parsedRequest.data;
+    const { conversationId, message, responseMode, surface } = parsedRequest.data;
+    if (!canUseChatPresentation({ role: user?.role, responseMode, surface })) {
+      return finalizeResponse(
+        NextResponse.json(
+          { error: "ANIA voice mode requires an administrator." },
+          { status: 403 },
+        ),
+      );
+    }
+    const historySurface = surface === "ania" ? "ania" : "public_chat";
     const { provider, modelId } = getAIConfig();
     try {
       historyId = await startChatHistoryTurn({
         conversationId,
         ownerKey,
         userId,
+        surface: historySurface,
         userMessage: message,
         provider,
         model: modelId,
@@ -284,7 +300,12 @@ export async function POST(request: NextRequest) {
     }
 
     const messages = [
-      ...(await getServerOwnedChatHistory({ conversationId, ownerKey, userId })),
+      ...(await getServerOwnedChatHistory({
+        conversationId,
+        ownerKey,
+        surface: historySurface,
+        userId,
+      })),
       { role: "user" as const, content: message },
     ];
     type CompletionMetadata = {
@@ -321,9 +342,18 @@ export async function POST(request: NextRequest) {
 
     const result = streamText({
       model,
-      system: SYSTEM_INSTRUCTION,
+      system: [
+        SYSTEM_INSTRUCTION,
+        surface === "ania"
+          ? "On this exact-admin interface, you are ANIA—Agricultural Network Intelligence Assistant. Identify yourself only as ANIA, never as InfraWatch AI or AI Copilot."
+          : "",
+        responseMode === "voice" ? VOICE_RESPONSE_INSTRUCTION : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       messages,
       tools: chatTools,
+      maxOutputTokens: responseMode === "voice" ? 180 : undefined,
       prepareStep: ({ stepNumber }) =>
         stepNumber >= 3 ? { toolChoice: "none" as const } : undefined,
       stopWhen: isStepCount(5),

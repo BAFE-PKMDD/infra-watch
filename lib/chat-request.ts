@@ -22,6 +22,8 @@ const chatRequestSchema = z
     conversationId: z.uuid(),
     message: z.string().trim().min(1).max(MAX_CHAT_MESSAGE_CHARS),
     history: z.array(chatMessageSchema).max(MAX_CHAT_HISTORY_MESSAGES).default([]),
+    responseMode: z.enum(["text", "voice"]).default("text"),
+    surface: z.enum(["public", "ania"]).default("public"),
   })
   .strict()
   .superRefine((value, context) => {
@@ -43,6 +45,17 @@ export type ChatRequest = z.infer<typeof chatRequestSchema>;
 
 export function parseChatRequest(input: unknown) {
   return chatRequestSchema.safeParse(input);
+}
+
+export type ChatPresentation = {
+  role?: string | null;
+  responseMode: "text" | "voice";
+  surface: "public" | "ania";
+};
+
+export function canUseChatPresentation({ role, responseMode, surface }: ChatPresentation) {
+  if (surface === "public" && responseMode === "text") return true;
+  return role === "admin" && surface === "ania";
 }
 
 export async function readBoundedJsonBody(request: Request): Promise<unknown> {
