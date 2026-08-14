@@ -65,8 +65,19 @@ export function createLocalWhisperTranscriber({
   fetchImpl = fetch,
 }: LocalWhisperTranscriberOptions) {
   const url = new URL(endpoint);
-  if (url.protocol !== "http:" || !isLoopbackHostname(url.hostname)) {
-    throw new Error("LOCAL_WHISPER_URL must use an HTTP loopback address.");
+  const usesLoopback = isLoopbackHostname(url.hostname);
+  const usesPrivateDockerService =
+    url.hostname === "ania-whisper" &&
+    url.port === "8000" &&
+    url.pathname === "/transcribe" &&
+    !url.username &&
+    !url.password &&
+    !url.search &&
+    !url.hash;
+  if (url.protocol !== "http:" || (!usesLoopback && !usesPrivateDockerService)) {
+    throw new Error(
+      "LOCAL_WHISPER_URL must use an HTTP loopback or the private Docker Whisper service.",
+    );
   }
   if (token.trim().length < 24) {
     throw new Error("LOCAL_WHISPER_TOKEN must be at least 24 characters.");
@@ -80,6 +91,7 @@ export function createLocalWhisperTranscriber({
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: form,
+      redirect: "error",
       signal,
     });
     if (!response.ok) throw new Error(`Local Whisper transcription failed (${response.status}).`);
