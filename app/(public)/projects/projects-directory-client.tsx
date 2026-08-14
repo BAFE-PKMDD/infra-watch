@@ -75,6 +75,8 @@ export default function ProjectsCatalog() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const searchParamsKey = searchParams.toString();
+  const applyingUrlStateRef = React.useRef(false);
   const [initialState] = useState(() => parsePublicProjectDirectoryState(new URLSearchParams(searchParams.toString())));
   const [searchQuery, setSearchQuery] = useState(initialState.searchQuery);
   const [activeProgram, setActiveProgram] = useState(initialState.program);
@@ -121,6 +123,8 @@ export default function ProjectsCatalog() {
   const {
     data: queryData,
     isLoading,
+    isError,
+    refetch,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
@@ -142,7 +146,12 @@ export default function ProjectsCatalog() {
     getNextPageParam: (lastPage) => lastPage?.nextCursor,
   });
 
-  const { data: allMapPins = [], isLoading: isLoadingMapPins } = useQuery({
+  const {
+    data: allMapPins = [],
+    isLoading: isLoadingMapPins,
+    isError: isMapError,
+    refetch: refetchMap,
+  } = useQuery({
     queryKey: ["public-map-projects", 3, searchQuery, activeProgram, selectedRegion, selectedProvince, selectedMunicipality, selectedBarangay, selectedStatus, selectedYear],
     queryFn: () => getPublicMapPins({
       searchQuery,
@@ -166,6 +175,7 @@ export default function ProjectsCatalog() {
   });
 
   const filteredProjects = queryData?.pages.flatMap((page) => page.data) || [];
+  const directoryUnavailable = isError || (viewMode === "map" && isMapError);
   const totalCount = queryData?.pages[0]?.totalCount || 0;
   const directorySource = queryData?.pages[0]?.source;
   const directoryParams = React.useMemo(() => serializePublicProjectDirectoryState({
@@ -188,10 +198,32 @@ export default function ProjectsCatalog() {
     return `/projects/${encodeURIComponent(projectId)}?${params.toString()}`;
   };
   React.useEffect(() => {
+    const syncFromHistory = () => {
+      const next = parsePublicProjectDirectoryState(new URLSearchParams(window.location.search));
+      applyingUrlStateRef.current = true;
+      setSearchQuery(next.searchQuery);
+      setActiveProgram(next.program);
+      setSelectedRegion(next.region);
+      setSelectedProvince(next.province);
+      setSelectedMunicipality(next.municipality);
+      setSelectedBarangay(next.barangay);
+      setSelectedStatus(next.status);
+      setSelectedYear(next.year);
+      setSort(next.sort);
+      setViewMode(next.view);
+    };
+    window.addEventListener("popstate", syncFromHistory);
+    return () => window.removeEventListener("popstate", syncFromHistory);
+  }, []);
+  React.useEffect(() => {
+    if (applyingUrlStateRef.current) {
+      applyingUrlStateRef.current = false;
+      return;
+    }
     const nextUrl = directoryQueryString ? `${pathname}?${directoryQueryString}` : pathname;
-    const currentUrl = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+    const currentUrl = searchParamsKey ? `${pathname}?${searchParamsKey}` : pathname;
     if (nextUrl !== currentUrl) router.replace(nextUrl, { scroll: false });
-  }, [directoryQueryString, pathname, router, searchParams]);
+  }, [directoryQueryString, pathname, router, searchParamsKey]);
 
   const mapPins = React.useMemo(() => {
     return allMapPins.flatMap(p => {
@@ -529,8 +561,33 @@ export default function ProjectsCatalog() {
           </motion.div>
         )}
 
+        {/* Unavailable State */}
+        {!isLoading && directoryUnavailable && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full py-12"
+          >
+            <div className="text-center flex flex-col items-center justify-center">
+              <h4 className="text-lg font-medium text-slate-600 dark:text-slate-300">Project data is temporarily unavailable</h4>
+              <p className="text-slate-400 dark:text-slate-500 text-sm mt-1 mb-6">
+                The synchronized source could not be reached. Please try again shortly.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  void refetch();
+                  if (viewMode === "map") void refetchMap();
+                }}
+              >
+                Try again
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
         {/* Empty State */}
-        {!isLoading && filteredProjects.length === 0 && (
+        {!isLoading && !directoryUnavailable && filteredProjects.length === 0 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -553,7 +610,7 @@ export default function ProjectsCatalog() {
         )}
 
         {/* Project Results Display */}
-        {!isLoading && filteredProjects.length > 0 && viewMode === "grid" && (
+        {!isLoading && !directoryUnavailable && filteredProjects.length > 0 && viewMode === "grid" && (
           <>
             <motion.div
               layout
@@ -639,7 +696,7 @@ export default function ProjectsCatalog() {
           </>
         )}
 
-        {!isLoading && filteredProjects.length > 0 && viewMode === "list" && (
+        {!isLoading && !directoryUnavailable && filteredProjects.length > 0 && viewMode === "list" && (
           <>
             <div className="space-y-3 md:hidden">
               {filteredProjects.map((project) => (
@@ -749,7 +806,7 @@ export default function ProjectsCatalog() {
         )}
 
         {/* Map View */}
-        {viewMode === "map" && (
+        {viewMode === "map" && !directoryUnavailable && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}

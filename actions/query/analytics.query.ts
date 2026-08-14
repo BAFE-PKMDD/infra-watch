@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { mapInternalToPublicStage } from "@/constants/stage-mapping";
 import { isPhilippineCoordinatePair } from "@/lib/philippine-coordinates";
+import { getLastSuccessfulProjectSyncAt } from "@/lib/public-sync";
 
 export interface StageStat {
   labelKey: string;
@@ -69,6 +70,7 @@ export const MAX_PUBLIC_ANALYTICS_ROWS = 30_000;
 
 export function aggregateInfraAnalyticsRows(
   rows: InfraAnalyticsRow[],
+  lastSuccessfulSyncAt: Date | null = null,
 ): InfraAnalyticsResult {
   if (rows.length > MAX_PUBLIC_ANALYTICS_ROWS) {
     throw new Error("Public analytics scope exceeds the safe aggregation limit");
@@ -118,17 +120,12 @@ export function aggregateInfraAnalyticsRows(
     ]),
   ) as InfraAnalyticsData["stages"];
 
-  const latestSync = rows.reduce<Date | null>((latest, row) => {
-    const date = new Date(row.lastSyncedAt);
-    if (Number.isNaN(date.getTime())) return latest;
-    return !latest || date > latest ? date : latest;
-  }, null);
-  const lastSuccessfulSync = latestSync
+  const lastSuccessfulSync = lastSuccessfulSyncAt
     ? new Intl.DateTimeFormat("en-PH", {
         dateStyle: "medium",
         timeStyle: "short",
         timeZone: "Asia/Manila",
-      }).format(latestSync)
+      }).format(lastSuccessfulSyncAt)
     : "Unknown";
   const completedCount = stageCounts.completed + stageCounts.turnedOver;
 
@@ -169,9 +166,14 @@ export function aggregateInfraAnalyticsRows(
 export async function getInfraAnalyticsData(
   queryRows: QueryRows = queryInfraAnalyticsRows,
   reportError: () => void = () => console.error("Public infrastructure analytics query unavailable"),
+  queryLastSuccessfulSync: () => Promise<Date | null> = getLastSuccessfulProjectSyncAt,
 ): Promise<InfraAnalyticsResult> {
   try {
-    return aggregateInfraAnalyticsRows(await queryRows());
+    const [rows, lastSuccessfulSyncAt] = await Promise.all([
+      queryRows(),
+      queryLastSuccessfulSync(),
+    ]);
+    return aggregateInfraAnalyticsRows(rows, lastSuccessfulSyncAt);
   } catch {
     reportError();
     return { status: "unavailable", data: null };

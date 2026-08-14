@@ -363,7 +363,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 1.8, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  {"2021 – 2026".split("").map((char, i) => (
+                  {"LIVE PROJECT PORTFOLIO".split("").map((char, i) => (
                     <motion.span
                       key={i}
                       initial={{ opacity: 0, y: 20 }}
@@ -505,9 +505,9 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
       <section className="bg-white dark:bg-slate-900 py-20 px-4 border-t border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Before & After Project Showcase</h2>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Illustrative Infrastructure Outcomes</h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-3 max-w-xl mx-auto leading-relaxed">
-              Drag the divider line to preview the transformation of active infrastructure sites, comparing dry soils with operational concrete irrigation channels.
+              This illustration explains a typical before-and-after outcome. It is not photographic evidence for a specific project.
             </p>
           </div>
 
@@ -515,7 +515,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
             {/* Before Stage */}
             <div className="absolute inset-0 bg-slate-200 dark:bg-slate-850 flex flex-col items-center justify-center text-center p-8">
               <div className="max-w-md">
-                <span className="inline-block px-3 py-1 rounded bg-slate-900/10 dark:bg-slate-100/10 text-slate-800 dark:text-slate-200 text-xs font-bold uppercase tracking-wider mb-3">Pre-Construction Site</span>
+                <span className="inline-block px-3 py-1 rounded bg-slate-900/10 dark:bg-slate-100/10 text-slate-800 dark:text-slate-200 text-xs font-bold uppercase tracking-wider mb-3">Illustrative Before</span>
                 <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-150 mb-2">Impassable & Dry Canals</h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
                   Inoperative systems and dry soil fields prior to government intervention and construction.
@@ -529,7 +529,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
               style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}
             >
               <div className="max-w-md text-primary-foreground">
-                <span className="inline-block px-3 py-1 rounded bg-white/20 text-white text-xs font-bold uppercase tracking-wider mb-3">Completed INS Project</span>
+                <span className="inline-block px-3 py-1 rounded bg-white/20 text-white text-xs font-bold uppercase tracking-wider mb-3">Illustrative After</span>
                 <h3 className="text-2xl font-bold text-white mb-2">Modern Concrete Infrastructure</h3>
                 <p className="text-primary-foreground/80 text-sm leading-relaxed">
                   Operational concrete canal networks flowing with water to irrigate adjacent farmland.

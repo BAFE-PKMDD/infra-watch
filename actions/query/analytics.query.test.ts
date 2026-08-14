@@ -26,20 +26,41 @@ test("returns a typed empty state instead of reference figures", () => {
   assert.deepEqual(result, { status: "empty", data: null });
 });
 
+test("does not label project-row ingestion time as a successful synchronization", () => {
+  const result = aggregateInfraAnalyticsRows([row], null);
+  assert.equal(result.data?.source.lastSuccessfulSync, "Unknown");
+});
+
 test("returns unavailable when the live query fails", async () => {
   const result = await getInfraAnalyticsData(
     async () => {
       throw new Error("database unavailable");
     },
     () => undefined,
+    async () => null,
   );
   assert.deepEqual(result, { status: "unavailable", data: null });
 });
 
 test("does not silently aggregate an oversized public portfolio", async () => {
   const oversized = Array.from({ length: MAX_PUBLIC_ANALYTICS_ROWS + 1 }, () => row);
-  const result = await getInfraAnalyticsData(async () => oversized, () => undefined);
+  const result = await getInfraAnalyticsData(
+    async () => oversized,
+    () => undefined,
+    async () => null,
+  );
   assert.deepEqual(result, { status: "unavailable", data: null });
+});
+
+test("uses the latest completed project sync supplied by the sync-log query", async () => {
+  const completedAt = new Date("2026-08-10T01:00:00.000Z");
+  const result = await getInfraAnalyticsData(
+    async () => [row],
+    () => undefined,
+    async () => completedAt,
+  );
+
+  assert.equal(result.data?.source.lastSuccessfulSync, "Aug 10, 2026, 9:00 AM");
 });
 
 test("uses the normalized banner-program value and explicit Unknown buckets", () => {
@@ -97,7 +118,7 @@ test("publishes one traceable summary contract for homepage and public analytics
       latitude: null,
       longitude: null,
     },
-  ]);
+  ], new Date("2026-08-10T01:00:00.000Z"));
 
   assert.equal(result.status, "ready");
   assert.deepEqual(result.data?.summary, {

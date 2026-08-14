@@ -8,7 +8,11 @@ import { isPhilippineCoordinatePair, PHILIPPINE_COORDINATE_BOUNDS } from "@/lib/
 import type { PublicProjectSort } from "@/lib/public-project-directory";
 import { calculateProjectPassportCoverage, formatPublicSyncDate } from "@/lib/project-passport";
 import { formatPublicProjectRecord } from "@/lib/public-project-record";
-import { sanitizePublicSourceGeotags } from "@/lib/public-source-media";
+import {
+  sanitizePublicProjectMetadata,
+  sanitizePublicSourceGeotags,
+} from "@/lib/public-source-media";
+import { getLastSuccessfulProjectSyncAt } from "@/lib/public-sync";
 
 export type PublicProjectFilters = {
   searchQuery?: string;
@@ -95,13 +99,13 @@ export async function getPublicProjects({
       .limit(limit)
       .offset(offset);
 
-    const [{ value: totalCount, lastSuccessfulSync }] = await db
-      .select({
-        value: count(),
-        lastSuccessfulSync: sql<Date | null>`max(${projects.lastSyncedAt})`.mapWith(projects.lastSyncedAt),
-      })
-      .from(projects)
-      .where(whereClause);
+    const [[{ value: totalCount }], lastSuccessfulSync] = await Promise.all([
+      db
+        .select({ value: count() })
+        .from(projects)
+        .where(whereClause),
+      getLastSuccessfulProjectSyncAt(),
+    ]);
       
     const formattedData = rows.map(formatPublicProjectRecord);
 
@@ -116,7 +120,7 @@ export async function getPublicProjects({
     };
   } catch (error) {
     console.error("Failed to fetch public projects:", error);
-    return { data: [], nextCursor: undefined, totalCount: 0, source: null };
+    throw error;
   }
 }
 
@@ -204,7 +208,7 @@ export async function getPublicMapPins({
     }));
   } catch (error) {
     console.error("Failed to fetch map pins:", error);
-    return [];
+    throw error;
   }
 }
 
@@ -248,14 +252,13 @@ export async function getPublicMapProjectDetails(id: string) {
       quantity: row.quantity || null,
       quantityUnit: row.quantityUnit || null,
       metadata: {
-        ...sourceMetadata,
         geotag: publicGeotags,
         geotags: publicGeotags,
       },
     };
   } catch (error) {
     console.error("Failed to fetch map project details:", error);
-    return null;
+    throw error;
   }
 }
 
@@ -274,12 +277,15 @@ export async function getPublicProjectById(id: string) {
 
     if (!row) return null;
 
-    const [{ value: feedbackCount }] = row.abemisId
-      ? await db
-        .select({ value: count() })
-        .from(feedback)
-        .where(and(eq(feedback.projectId, row.abemisId), eq(feedback.status, "approved")))
-      : [{ value: 0 }];
+    const [[{ value: feedbackCount }], lastSuccessfulSyncAt] = await Promise.all([
+      row.abemisId
+        ? db
+          .select({ value: count() })
+          .from(feedback)
+          .where(and(eq(feedback.projectId, row.abemisId), eq(feedback.status, "approved")))
+        : Promise.resolve([{ value: 0 }]),
+      getLastSuccessfulProjectSyncAt(),
+    ]);
 
     // We parse metadata or provide empty defaults for the rich UI
     const metadata = (row.metadata as Record<string, unknown> | null) || {};
@@ -343,7 +349,9 @@ export async function getPublicProjectById(id: string) {
       coordinateStatus: hasVerifiedCoordinates ? "verified" : "unavailable",
       sourceAgency: "ABEMIS",
       sourceSystem: "ABEMIS infrastructure project feed",
-      lastSyncedAt: formatPublicSyncDate(row.lastSyncedAt),
+      lastSyncedAt: lastSuccessfulSyncAt
+        ? formatPublicSyncDate(lastSuccessfulSyncAt)
+        : "Unavailable",
       dataCoverage,
       operatingUnit: row.operatingUnit || undefined,
       bannerProgram: row.bannerProgram || undefined,
@@ -353,26 +361,20 @@ export async function getPublicProjectById(id: string) {
       implementationType: row.implementationType || undefined,
       quantity: row.quantity || undefined,
       quantityUnit: row.quantityUnit || undefined,
-      beneficiary: row.beneficiary || undefined,
       recipientType: row.recipientType || undefined,
       indicatorLevel1: row.indicatorLevel1 || undefined,
       indicatorLevel3: row.indicatorLevel3 || undefined,
       dateTurnOver: row.dateTurnOver || undefined,
       commodities: row.commodities,
-      metadata: {
-        ...metadata,
+      metadata: sanitizePublicProjectMetadata(metadata, {
         physicalProgress: row.physicalProgress || 0,
         financialProgress: row.financialProgress || 0,
         calendarDays: row.calendarDays,
-        powRelation: metadata.powRelation || metadata.pow_relation || [],
-        procurementRelation: metadata.procurementRelation || metadata.procurement_relation || [],
-        geotag: publicGeotags,
-        geotags: publicGeotags,
         coordinates,
-      }
+      }),
     };
   } catch (error) {
     console.error("Failed to fetch project by id:", error);
-    return null;
+    throw error;
   }
 }
