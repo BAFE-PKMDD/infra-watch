@@ -32,10 +32,13 @@ import {
   createChatStreamTerminalState,
 } from "@/lib/chat-stream";
 
+import {
+  VOICE_MAX_OUTPUT_TOKENS,
+  VOICE_RESPONSE_INSTRUCTION,
+} from "@/lib/voice/runtime-policy";
+
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-const VOICE_RESPONSE_INSTRUCTION = `This request is spoken through ANIA—Agricultural Network Intelligence Assistant. Identify yourself as ANIA if asked. Answer conversationally in at most three short sentences. Lead with the direct answer, then one useful supporting detail or follow-up question. Avoid Markdown tables, charts, headings, URLs, long lists, and repeated caveats because the response will be read aloud.`;
 
 const SYSTEM_INSTRUCTION = `You are INFRA Watch AI, an assistant for the Philippine Bureau of Agriculture and Fisheries Engineering (BAFE) infrastructure monitoring platform.
 
@@ -353,7 +356,7 @@ export async function POST(request: NextRequest) {
         .join("\n\n"),
       messages,
       tools: chatTools,
-      maxOutputTokens: responseMode === "voice" ? 180 : undefined,
+      maxOutputTokens: responseMode === "voice" ? VOICE_MAX_OUTPUT_TOKENS : undefined,
       prepareStep: ({ stepNumber }) =>
         stepNumber >= 3 ? { toolChoice: "none" as const } : undefined,
       stopWhen: isStepCount(5),

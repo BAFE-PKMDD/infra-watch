@@ -8,9 +8,12 @@ import {
   getKokoroInferenceOptions,
   getRecordingDecision,
   canStartVoiceRecording,
+  clearOwnedPlaybackSettlement,
   isSleepCommand,
   isVoiceExplicitlyDisabled,
+  prepareSpeechChunks,
   reconnectDelayMs,
+  runSpeechChunkPipeline,
   shouldAutoEnableVoice,
   shouldReconnectWakeSocket,
   shouldStartConversationalFollowup,
@@ -184,52 +187,61 @@ export function useVoiceAssistant({
 
   const speak = useCallback(
     async (text: string, operation: number) => {
-      const speech = text
-        .replace(/```[\s\S]*?```/g, " ")
-        .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
-        .replace(/[*_#>`|]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 2_000);
-      if (!speech || operationRef.current !== operation) return false;
+      const speechChunks = prepareSpeechChunks(text);
+      if (!speechChunks.length || operationRef.current !== operation) return false;
 
       const tts = await loadKokoro();
       if (operationRef.current !== operation) return false;
-      const generated = await tts.generate(speech, {
-        voice: config.kokoroVoice as "af_heart",
+      let speechStarted = false;
+      return runSpeechChunkPipeline({
+        chunks: speechChunks,
+        generate: (speech) =>
+          tts.generate(speech, {
+            voice: config.kokoroVoice as "af_heart",
+          }),
+        shouldContinue: () => operationRef.current === operation,
+        play: async (generated, onStarted) => {
+          const url = URL.createObjectURL(generated.toBlob());
+          let audio: HTMLAudioElement | null = null;
+          let ownedSettlement: (() => void) | null = null;
+          try {
+            if (operationRef.current !== operation) return false;
+            audio = new Audio(url);
+            const playback = audio;
+            audioRef.current = playback;
+            const playbackEnded = new Promise<void>((resolve, reject) => {
+              const settle = () => {
+                if (settlePlaybackRef.current === settle) settlePlaybackRef.current = null;
+                resolve();
+              };
+              ownedSettlement = settle;
+              settlePlaybackRef.current = settle;
+              playback.onended = settle;
+              playback.onerror = () => {
+                if (settlePlaybackRef.current === settle) settlePlaybackRef.current = null;
+                reject(new Error("ANIA audio playback failed."));
+              };
+            });
+            void playbackEnded.catch(() => undefined);
+            await playback.play();
+            if (operationRef.current !== operation) {
+              playback.pause();
+              return false;
+            }
+            if (!speechStarted) {
+              speechStarted = true;
+              dispatch({ type: "SPEECH_STARTED" });
+            }
+            onStarted();
+            await playbackEnded;
+            return operationRef.current === operation;
+          } finally {
+            URL.revokeObjectURL(url);
+            if (audioRef.current === audio) audioRef.current = null;
+            clearOwnedPlaybackSettlement(settlePlaybackRef, ownedSettlement);
+          }
+        },
       });
-      if (operationRef.current !== operation) return false;
-      const url = URL.createObjectURL(generated.toBlob());
-      let audio: HTMLAudioElement | null = null;
-      try {
-        if (operationRef.current !== operation) return false;
-        audio = new Audio(url);
-        const playback = audio;
-        audioRef.current = playback;
-        await playback.play();
-        if (operationRef.current !== operation) {
-          playback.pause();
-          return false;
-        }
-        dispatch({ type: "SPEECH_STARTED" });
-        await new Promise<void>((resolve, reject) => {
-          const settle = () => {
-            if (settlePlaybackRef.current === settle) settlePlaybackRef.current = null;
-            resolve();
-          };
-          settlePlaybackRef.current = settle;
-          playback.onended = settle;
-          playback.onerror = () => {
-            if (settlePlaybackRef.current === settle) settlePlaybackRef.current = null;
-            reject(new Error("ANIA audio playback failed."));
-          };
-        });
-        return operationRef.current === operation;
-      } finally {
-        URL.revokeObjectURL(url);
-        if (audioRef.current === audio) audioRef.current = null;
-        settlePlaybackRef.current = null;
-      }
     },
     [config.kokoroVoice, loadKokoro],
   );
