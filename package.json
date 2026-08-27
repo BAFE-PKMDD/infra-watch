@@ -5,7 +5,7 @@
     "scripts": {
         "dev": "bun run build:tts-worker && next dev --port 3101",
         "build": "bun run build:tts-worker && next build",
-        "build:tts-worker": "tsx scripts/build-tts-worker.mts",
+        "build:tts-worker": "bun scripts/build-tts-worker.mts",
         "start": "next start",
         "lint": "eslint",
         "db:generate": "DRIZZLE_INCLUDE_AUTH=true drizzle-kit generate",
@@ -82,6 +82,7 @@
         "@types/react": "^19.2.18",
         "@types/react-dom": "^19.2.4",
         "drizzle-kit": "^0.31.10",
+        "esbuild": "0.28.1",
         "eslint": "^9.39.5",
         "eslint-config-next": "16.2.11",
         "shadcn": "4.16.2",

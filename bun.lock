@@ -60,6 +60,7 @@
         "@types/react": "^19.2.18",
         "@types/react-dom": "^19.2.4",
         "drizzle-kit": "^0.31.10",
+        "esbuild": "0.28.1",
         "eslint": "^9.39.5",
         "eslint-config-next": "16.2.11",
         "shadcn": "4.16.2",
@@ -70,8 +71,8 @@
     },
   },
   "trustedDependencies": [
-    "sharp",
     "esbuild",
+    "sharp",
     "@tensorflow/tfjs-node",
     "unrs-resolver",
   ],
