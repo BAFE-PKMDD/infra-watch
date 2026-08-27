@@ -44,7 +44,7 @@ test("open copilot shows active filters, timestamp, accessible controls, and per
   assert.match(html, /managerial-copilot-dialog/);
   assert.match(html, /AMEFIP/);
   assert.match(html, /Region: 08/);
-  assert.match(html, /Schedule health: At risk/);
+  assert.match(html, /Timeline status: At risk/);
   assert.match(html, /Data as of 2026-08-10/);
   assert.match(html, /AI-generated analysis—verify against the dashboard before making official decisions/);
   assert.match(html, /aria-label="Close ANIA"/);
@@ -55,7 +55,7 @@ test("open copilot shows active filters, timestamp, accessible controls, and per
 
 test("filter context is deterministic and never invents scope", () => {
   assert.equal(formatManagerialFilterContext({}), "All authorized dashboard data");
-  assert.equal(formatManagerialFilterContext(filters), "Program: AMEFIP · Region: 08 · Schedule health: At risk");
+  assert.equal(formatManagerialFilterContext(filters), "Program: AMEFIP · Region: 08 · Timeline status: At risk");
   assert.equal(managerialFilterContextKey(filters), managerialFilterContextKey({ ...filters }));
   assert.notEqual(managerialFilterContextKey(filters), managerialFilterContextKey({ ...filters, region: "09" }));
 });

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { CircleMarker, MapContainer, TileLayer, Polygon, useMap } from "react-leaflet";
+import React, { useEffect, useState } from "react";
+import { CircleMarker, MapContainer, TileLayer, Polygon, useMap, GeoJSON } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { getProjectMarkerColor } from "@/lib/public-project-map";
 
@@ -25,6 +25,24 @@ interface GISMapCanvasProps {
   theme: "light" | "dark";
   mapCenter: [number, number];
   mapZoom: number;
+  selectedRegion?: string;
+}
+
+interface RegionFeature {
+  type: "Feature";
+  properties: {
+    psgc_code: string;
+    name: string;
+  };
+  geometry: {
+    type: "Polygon" | "MultiPolygon";
+    coordinates: number[][][] | number[][][][];
+  };
+}
+
+interface RegionsGeoJSON {
+  type: "FeatureCollection";
+  features: RegionFeature[];
 }
 
 
@@ -53,6 +71,91 @@ function FitFilteredPins({ pins, fallbackCenter, fallbackZoom }: {
   return null;
 }
 
+function MapSizeWatcher() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const invalidate = () => map.invalidateSize({ animate: false });
+    const onFullscreenChange = () => window.setTimeout(invalidate, 50);
+    const onWindowResize = () => invalidate();
+    let observer: ResizeObserver | null = null;
+
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(invalidate);
+      observer.observe(container);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    window.addEventListener("resize", onWindowResize);
+
+    return () => {
+      observer?.disconnect();
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      window.removeEventListener("resize", onWindowResize);
+    };
+  }, [map]);
+
+  return null;
+}
+
+function isRegionSelected(rawCode: string, selectedRegion: string) {
+  if (selectedRegion === "all") return false;
+  const stripped = rawCode.replace(/^PH/, "");
+  const target = selectedRegion.padEnd(9, "0");
+  return stripped === target;
+}
+
+function RegionBoundaryLayer({ selectedRegion }: { selectedRegion: string }) {
+  const [regionsData, setRegionsData] = useState<RegionsGeoJSON | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    fetch("/boundaries/regions.json")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load region boundaries");
+        return res.json();
+      })
+      .then((data: RegionsGeoJSON) => setRegionsData(data))
+      .catch((err) => setError(err));
+  }, []);
+
+  if (!regionsData || error) return null;
+
+  const isAll = selectedRegion === "all";
+
+  return (
+    <GeoJSON
+      key={selectedRegion}
+      data={regionsData}
+      interactive={false}
+      bubblingMouseEvents={false}
+      style={(feature) => {
+        const raw = (feature?.properties?.psgc_code as string) ?? "";
+        const isSelected = isRegionSelected(raw, selectedRegion);
+        if (isSelected) {
+          return {
+            color: "#06b6d4",
+            weight: 4,
+            opacity: 1,
+            fillColor: "#06b6d4",
+            fillOpacity: 0.2,
+            interactive: false,
+          };
+        }
+        return {
+          color: "#ffffff",
+          weight: isAll ? 2.2 : 1.6,
+          opacity: isAll ? 0.95 : 0.55,
+          fillColor: "#ffffff",
+          fillOpacity: isAll ? 0.05 : 0.015,
+          dashArray: "8, 8",
+          interactive: false,
+        };
+      }}
+    />
+  );
+}
+
 export default function GISMapCanvas({
   filteredPins,
   setSelectedProject,
@@ -60,6 +163,7 @@ export default function GISMapCanvas({
   agriZoneOverlay,
   mapCenter,
   mapZoom,
+  selectedRegion = "all",
 }: GISMapCanvasProps) {
 
   const tileUrl = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";
@@ -90,7 +194,9 @@ export default function GISMapCanvas({
         className="w-full h-full"
       >
         <TileLayer url={tileUrl} attribution={attribution} />
+        <MapSizeWatcher />
         <FitFilteredPins pins={filteredPins} fallbackCenter={mapCenter} fallbackZoom={mapZoom} />
+        <RegionBoundaryLayer selectedRegion={selectedRegion} />
 
         {/* Watersheds overlay boundary polygon */}
         {watershedOverlay && (

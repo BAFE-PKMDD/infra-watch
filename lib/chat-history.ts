@@ -65,28 +65,33 @@ export async function getServerOwnedChatHistory(input: {
   surface: ChatHistorySurface;
   userId: string | null;
 }) {
-  const rows = await db
-    .select({
-      userMessage: chatHistory.userMessage,
-      assistantMessage: chatHistory.assistantMessage,
-    })
-    .from(chatHistory)
-    .where(
-      and(
-        eq(chatHistory.conversationId, input.conversationId),
-        eq(chatHistory.ownerKey, input.ownerKey),
-        eq(chatHistory.surface, input.surface),
-        input.userId
-          ? eq(chatHistory.userId, input.userId)
-          : isNull(chatHistory.userId),
-        eq(chatHistory.status, "completed"),
-        gt(chatHistory.expiresAt, new Date()),
-      ),
-    )
-    .orderBy(desc(chatHistory.createdAt))
-    .limit(MAX_MODEL_HISTORY_TURNS);
+  try {
+    const rows = await db
+      .select({
+        userMessage: chatHistory.userMessage,
+        assistantMessage: chatHistory.assistantMessage,
+      })
+      .from(chatHistory)
+      .where(
+        and(
+          eq(chatHistory.conversationId, input.conversationId),
+          eq(chatHistory.ownerKey, input.ownerKey),
+          eq(chatHistory.surface, input.surface),
+          input.userId
+            ? eq(chatHistory.userId, input.userId)
+            : isNull(chatHistory.userId),
+          eq(chatHistory.status, "completed"),
+          gt(chatHistory.expiresAt, new Date()),
+        ),
+      )
+      .orderBy(desc(chatHistory.createdAt))
+      .limit(MAX_MODEL_HISTORY_TURNS);
 
-  return buildServerOwnedChatHistory(rows);
+    return buildServerOwnedChatHistory(rows);
+  } catch (error) {
+    console.warn("[Chat History] Failed to fetch chat history, returning empty:", error);
+    return [];
+  }
 }
 
 type StartChatHistoryTurnInput = {
@@ -100,22 +105,27 @@ type StartChatHistoryTurnInput = {
 };
 
 export async function startChatHistoryTurn(input: StartChatHistoryTurnInput) {
-  await purgeExpiredChatHistory();
+  try {
+    try {
+      await purgeExpiredChatHistory();
+    } catch {
+      // ignore purge errors
+    }
 
-  const [record] = await db
-    .insert(chatHistory)
-    .values({
-      ...input,
-      surface: input.surface ?? "public_chat",
-      expiresAt: getChatHistoryExpiry(),
-    })
-    .returning({ id: chatHistory.id });
+    const [record] = await db
+      .insert(chatHistory)
+      .values({
+        ...input,
+        surface: input.surface ?? "public_chat",
+        expiresAt: getChatHistoryExpiry(),
+      })
+      .returning({ id: chatHistory.id });
 
-  if (!record) {
-    throw new Error("Chat history record was not created.");
+    return record?.id ?? null;
+  } catch (error) {
+    console.warn("[Chat History] Failed to start history turn, proceeding without logging:", error);
+    return null;
   }
-
-  return record.id;
 }
 
 type CompleteChatHistoryTurnInput = {
@@ -131,17 +141,22 @@ type CompleteChatHistoryTurnInput = {
 };
 
 export async function completeChatHistoryTurn(
-  id: string,
+  id: string | null,
   input: CompleteChatHistoryTurnInput,
 ) {
-  await db
-    .update(chatHistory)
-    .set({
-      ...input,
-      status: input.status ?? "completed",
-      updatedAt: new Date(),
-    })
-    .where(eq(chatHistory.id, id));
+  if (!id) return;
+  try {
+    await db
+      .update(chatHistory)
+      .set({
+        ...input,
+        status: input.status ?? "completed",
+        updatedAt: new Date(),
+      })
+      .where(eq(chatHistory.id, id));
+  } catch (error) {
+    console.warn("[Chat History] Failed to complete history turn:", error);
+  }
 }
 
 export function getChatHistoryFailureStatus(errorCode: string) {
@@ -151,17 +166,22 @@ export function getChatHistoryFailureStatus(errorCode: string) {
 }
 
 export async function failChatHistoryTurn(
-  id: string,
+  id: string | null,
   errorCode: string,
   durationMs: number,
 ) {
-  await db
-    .update(chatHistory)
-    .set({
-      status: getChatHistoryFailureStatus(errorCode),
-      errorCode,
-      durationMs,
-      updatedAt: new Date(),
-    })
-    .where(eq(chatHistory.id, id));
+  if (!id) return;
+  try {
+    await db
+      .update(chatHistory)
+      .set({
+        status: getChatHistoryFailureStatus(errorCode),
+        errorCode,
+        durationMs,
+        updatedAt: new Date(),
+      })
+      .where(eq(chatHistory.id, id));
+  } catch (error) {
+    console.warn("[Chat History] Failed to log failed history turn:", error);
+  }
 }

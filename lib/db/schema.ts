@@ -170,6 +170,9 @@ export const issues = pgTable(
     status: text("status").notNull().default("submitted"),
     priority: text("priority").notNull().default("normal"),
     description: text("description").notNull(),
+    publicDescription: text("public_description"),
+    publicApprovedAt: timestamp("public_approved_at", { mode: "date" }),
+    publicApprovedBy: text("public_approved_by"),
     region: text("region"),
     province: text("province"),
     municipality: text("municipality"),
@@ -417,3 +420,44 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
 export type ChatHistory = typeof chatHistory.$inferSelect;
 export type NewChatHistory = typeof chatHistory.$inferInsert;
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: text("id").primaryKey(),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => ({
+    createdAtIdx: index("notifications_created_at_idx").on(table.createdAt),
+  }),
+);
+
+export const notificationRecipients = pgTable(
+  "notification_recipients",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    notificationId: text("notification_id")
+      .notNull()
+      .references(() => notifications.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { mode: "date" }),
+  },
+  (table) => ({
+    userNotificationIdx: uniqueIndex("notification_recipients_user_notification_idx").on(
+      table.userId,
+      table.notificationId,
+    ),
+    userIdx: index("notification_recipients_user_id_idx").on(table.userId),
+    notificationIdx: index("notification_recipients_notification_id_idx").on(
+      table.notificationId,
+    ),
+  }),
+);
+
+export type NotificationRow = typeof notifications.$inferSelect;
+export type NewNotificationRow = typeof notifications.$inferInsert;
+export type NotificationRecipientRow = typeof notificationRecipients.$inferSelect;

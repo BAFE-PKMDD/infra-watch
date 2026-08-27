@@ -289,11 +289,69 @@ export const getProjectById = tool({
 });
 
 // ---------------------------------------------------------------------------
+// getDelayedProjectsSummary — region ranking and delayed project breakdown
+// ---------------------------------------------------------------------------
+
+const getDelayedProjectsSummarySchema = z.object({
+  region: z.string().optional().describe("Filter by specific region code or name"),
+  limit: z.number().optional().default(10).describe("Number of regions to return"),
+});
+
+export const getDelayedProjectsSummary = tool({
+  description:
+    "Get ranking of regions by number of delayed projects, total delayed budget, and breakdown of problem areas across the country.",
+  inputSchema: getDelayedProjectsSummarySchema,
+  execute: async (params: z.infer<typeof getDelayedProjectsSummarySchema>) => {
+    const delayedCondition = ilike(projects.status, "%delay%");
+    const conditions = [delayedCondition];
+
+    if (params.region) {
+      conditions.push(ilike(projects.region, `%${params.region}%`));
+    }
+
+    const regionalSummary = await db
+      .select({
+        region: projects.region,
+        delayedCount: count(),
+        totalDelayedBudget: sum(projects.budget),
+      })
+      .from(projects)
+      .where(and(...conditions))
+      .groupBy(projects.region)
+      .orderBy(desc(count()))
+      .limit(params.limit ?? 10);
+
+    const [overallTotals] = await db
+      .select({
+        totalDelayed: count(),
+        totalDelayedBudget: sum(projects.budget),
+      })
+      .from(projects)
+      .where(delayedCondition);
+
+    return {
+      totalDelayedProjectsNationwide: overallTotals?.totalDelayed ?? 0,
+      totalDelayedBudgetNationwide: overallTotals?.totalDelayedBudget
+        ? `₱${Number(overallTotals.totalDelayedBudget).toLocaleString()}`
+        : "₱0",
+      topRegionsWithDelays: regionalSummary.map((row) => ({
+        region: row.region ?? "Unspecified Region",
+        delayedProjectsCount: row.delayedCount,
+        allocatedBudget: row.totalDelayedBudget
+          ? `₱${Number(row.totalDelayedBudget).toLocaleString()}`
+          : "₱0",
+      })),
+    };
+  },
+});
+
+// ---------------------------------------------------------------------------
 // All tools bundled for the chat route
 // ---------------------------------------------------------------------------
 
 export const chatTools = {
   searchProjects,
   getProjectStats,
+  getDelayedProjectsSummary,
   getProjectById,
 };

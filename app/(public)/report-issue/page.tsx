@@ -43,7 +43,6 @@ type IssueItem = {
   province: string;
   city: string;
   barangay: string;
-  streetLandmark: string;
   issueType: string;
   issueDescription: string;
   status: IssueStatus;
@@ -349,7 +348,6 @@ const IssueRow = memo(({ issue }: { issue: IssueItem }) => {
           <MapPin className="mt-0.5 size-4 shrink-0 text-slate-400 dark:text-slate-500" />
           <div className="flex flex-col">
             <span className="font-medium">{[issue.barangay, issue.city].filter(Boolean).join(", ") || "N/A"}</span>
-            {issue.streetLandmark && <span className="text-xs text-slate-500 dark:text-slate-500">{issue.streetLandmark}</span>}
           </div>
         </div>
       </td>

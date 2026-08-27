@@ -17,6 +17,7 @@ export const statement = {
   abemis_sync: ["trigger", "view", "configure"],
   data_quality: ["view"],
   audit_logs: ["view", "export", "delete"],
+  knowledge_base: ["create", "read", "update", "delete", "list", "embed"],
   system_settings: ["read", "update"],
 } as const;
 
@@ -52,6 +53,7 @@ export const moderator = ac.newRole({
   abemis_sync: ["view"],
   data_quality: ["view"],
   audit_logs: ["view"],
+  knowledge_base: ["create", "read", "update", "delete", "list", "embed"],
 });
 
 export const admin = ac.newRole({
@@ -71,6 +73,7 @@ export const admin = ac.newRole({
   abemis_sync: ["trigger", "view", "configure"],
   data_quality: ["view"],
   audit_logs: ["view", "export", "delete"],
+  knowledge_base: ["create", "read", "update", "delete", "list", "embed"],
   system_settings: ["read", "update"],
 });
 

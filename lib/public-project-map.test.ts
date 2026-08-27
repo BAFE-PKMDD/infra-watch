@@ -12,7 +12,7 @@ test("map marker colors match the public project status legend", () => {
 
 test("maps only records with valid source-backed Philippine coordinates", () => {
   const pins = toSourceBackedMapPins([
-    { id: "valid", name: "Valid", latitude: 14.5995, longitude: 120.9842, status: "completed", program: "AMEFIP", barangay: null, municipality: "Manila", physicalProgress: 100 },
+    { id: "valid", name: "Valid", latitude: 14.5995, longitude: 120.9842, status: "completed", program: "AMEFIP", projectType: "Solar-powered irrigation", barangay: null, municipality: "Manila", physicalProgress: 100 },
     { id: "missing", name: "Missing", latitude: null, longitude: null, status: "ongoing", program: "INS", barangay: "A", municipality: "B", physicalProgress: 20 },
     { id: "outside", name: "Outside", latitude: 35.6762, longitude: 139.6503, status: "ongoing", program: "INS", barangay: "A", municipality: "B", physicalProgress: 20 },
   ]);
@@ -23,7 +23,7 @@ test("maps only records with valid source-backed Philippine coordinates", () => 
     lat: 14.5995,
     lng: 120.9842,
     status: "completed",
-    type: "amefip",
+    type: "Solar-powered irrigation",
     desc: "Manila",
     progress: 100,
   }]);

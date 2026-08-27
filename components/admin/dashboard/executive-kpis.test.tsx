@@ -19,7 +19,7 @@ test("formats Philippine currency, percentages, and counts", () => {
   assert.equal(formatDashboardCount(1234), "1,234");
 });
 
-test("renders six truthful executive KPIs without expenditure claims", () => {
+test("renders four primary KPIs and keeps secondary metrics subordinate", () => {
   const html = renderToStaticMarkup(
     createElement(ExecutiveKpis, {
       kpis: {
@@ -30,6 +30,7 @@ test("renders six truthful executive KPIs without expenditure claims", () => {
         delayedProjects: 7,
         atRiskProjects: 3,
       },
+      assessedProjects: 35,
       coverage: {
         total: 42,
         withBudget: 40,
@@ -41,17 +42,18 @@ test("renders six truthful executive KPIs without expenditure claims", () => {
     }),
   );
   for (const label of [
-    "Projects monitored",
-    "Allocated budget",
-    "Supplier actual bid amount",
-    "Completion rate",
-    "Delayed projects",
-    "At-risk projects",
+    "Total Projects",
+    "Allocated Budget",
+    "Completion Rate",
+    "Delayed Projects",
   ]) assert.match(html, new RegExp(label));
+  assert.equal((html.match(/data-primary-kpi=/g) ?? []).length, 4);
+  assert.match(html, /More metrics/);
+  assert.match(html, /Supplier Actual Bid Amount/);
+  assert.match(html, /At-risk assessment/);
   assert.doesNotMatch(html, /spent|disbursed|expenditure|utilization/i);
   assert.doesNotMatch(html, /Approved Budget for Contract/i);
-  assert.match(html, /Unavailable/);
-  assert.match(html, /Metric definition/);
+  assert.doesNotMatch(html, /Metric definition/);
 });
 
 test("does not present schedule-health zeroes as positive results when nothing is assessable", () => {
@@ -65,6 +67,7 @@ test("does not present schedule-health zeroes as positive results when nothing i
         delayedProjects: 0,
         atRiskProjects: 0,
       },
+      assessedProjects: 0,
       coverage: {
         total: 25_901,
         withBudget: 25_893,
@@ -80,4 +83,81 @@ test("does not present schedule-health zeroes as positive results when nothing i
   assert.match(html, /0 of 25,901 projects have schedule dates/);
   assert.match(html, /title="₱77,139,613,575"/);
   assert.match(html, /Exact value: ₱77,139,613,575/);
+});
+
+test("does not present zero at-risk projects as confirmed when most projects are unassessed", () => {
+  const html = renderToStaticMarkup(createElement(ExecutiveKpis, {
+    kpis: {
+      totalProjects: 100,
+      allocatedBudget: 1_000_000,
+      actualBidAmount: 900_000,
+      completionRate: 60,
+      delayedProjects: 4,
+      atRiskProjects: 0,
+    },
+    assessedProjects: 7,
+    coverage: {
+      total: 100,
+      withBudget: 100,
+      withActualBidAmount: 70,
+      withSchedule: 19,
+      withPhysicalProgress: 30,
+      withFinancialData: 0,
+    },
+  }));
+
+  assert.match(html, /At-risk assessment unavailable/);
+  assert.match(html, /Only 7 of 100 projects have sufficient data/);
+  assert.doesNotMatch(html, />0<\/p>/);
+});
+
+test("qualifies a zero delayed count when schedule coverage is incomplete", () => {
+  const html = renderToStaticMarkup(createElement(ExecutiveKpis, {
+    kpis: {
+      totalProjects: 100,
+      allocatedBudget: 1_000_000,
+      actualBidAmount: 900_000,
+      completionRate: 60,
+      delayedProjects: 0,
+      atRiskProjects: 0,
+    },
+    assessedProjects: 1,
+    coverage: {
+      total: 100,
+      withBudget: 100,
+      withActualBidAmount: 70,
+      withSchedule: 1,
+      withPhysicalProgress: 1,
+      withFinancialData: 0,
+    },
+  }));
+
+  assert.match(html, /No confirmed delays/);
+  assert.match(html, /1 of 100 projects have schedule data/);
+});
+
+test("keeps confirmed at-risk projects visible when assessment coverage is low", () => {
+  const html = renderToStaticMarkup(createElement(ExecutiveKpis, {
+    kpis: {
+      totalProjects: 100,
+      allocatedBudget: 1_000_000,
+      actualBidAmount: 900_000,
+      completionRate: 60,
+      delayedProjects: 2,
+      atRiskProjects: 3,
+    },
+    assessedProjects: 7,
+    coverage: {
+      total: 100,
+      withBudget: 100,
+      withActualBidAmount: 70,
+      withSchedule: 19,
+      withPhysicalProgress: 7,
+      withFinancialData: 0,
+    },
+  }));
+
+  assert.match(html, /3 confirmed/);
+  assert.match(html, /3 confirmed among 7 of 100 assessed projects/);
+  assert.doesNotMatch(html, /At-risk assessment unavailable/);
 });

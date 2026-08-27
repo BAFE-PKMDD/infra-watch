@@ -103,7 +103,7 @@ export default function GISMapPage() {
               placeholder="Search map markers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs outline-none focus:border-primary text-slate-850 dark:text-slate-100"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs outline-none focus:border-primary text-slate-900 dark:text-slate-100"
             />
           </div>
 
@@ -114,7 +114,7 @@ export default function GISMapPage() {
                 Program Layers
               </span>
               <div className="space-y-2">
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer">
+                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={insActive}
@@ -123,7 +123,7 @@ export default function GISMapPage() {
                   />
                   INS Projects (Irrigation)
                 </label>
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer">
+                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={amefipActive}
@@ -141,7 +141,7 @@ export default function GISMapPage() {
                 GeoServer Shapefile Overlays
               </span>
               <div className="space-y-2">
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer">
+                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={watershedOverlay}
@@ -150,7 +150,7 @@ export default function GISMapPage() {
                   />
                   Watersheds Boundary
                 </label>
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer">
+                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={agriZoneOverlay}
@@ -165,8 +165,8 @@ export default function GISMapPage() {
         </div>
 
         {/* Legend */}
-        <div className="bg-slate-50/70 dark:bg-slate-850/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-[10px] space-y-2 text-slate-500 dark:text-slate-400 mt-6">
-          <span className="font-extrabold text-slate-750 dark:text-slate-300 uppercase block">
+        <div className="bg-slate-50/70 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-[10px] space-y-2 text-slate-500 dark:text-slate-400 mt-6">
+          <span className="font-extrabold text-slate-700 dark:text-slate-300 uppercase block">
             Map Legend
           </span>
           <div className="flex items-center gap-2">
@@ -176,7 +176,7 @@ export default function GISMapPage() {
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 block" /> Ongoing (Amber)
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-slate-450 block" /> Planned (Slate)
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-400 block" /> Planned (Slate)
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-600 block" /> Suspended (Rose)
@@ -236,8 +236,8 @@ export default function GISMapPage() {
 
             <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4 mb-4 text-xs">
               <div className="flex items-center gap-2">
-                <span className="text-slate-450">Progress:</span>
-                <span className="font-bold font-mono text-slate-850 dark:text-slate-200">
+                <span className="text-slate-500">Progress:</span>
+                <span className="font-bold font-mono text-slate-900 dark:text-slate-200">
                   {selectedProject.progress}%
                 </span>
               </div>
@@ -275,21 +275,21 @@ export default function GISMapPage() {
             className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center bg-white dark:bg-slate-900 transition-colors shadow-sm"
             title="Zoom In"
           >
-            <ZoomIn className="w-4 h-4 text-slate-600 dark:text-slate-350" />
+            <ZoomIn className="w-4 h-4 text-slate-600 dark:text-slate-300" />
           </button>
           <button
             onClick={handleZoomOut}
             className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center bg-white dark:bg-slate-900 transition-colors shadow-sm"
             title="Zoom Out"
           >
-            <ZoomOut className="w-4 h-4 text-slate-600 dark:text-slate-350" />
+            <ZoomOut className="w-4 h-4 text-slate-600 dark:text-slate-300" />
           </button>
           <button
             onClick={handleMaximize}
             className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center bg-white dark:bg-slate-900 transition-colors shadow-sm"
             title="Recenter Map"
           >
-            <Maximize className="w-4 h-4 text-slate-600 dark:text-slate-350" />
+            <Maximize className="w-4 h-4 text-slate-600 dark:text-slate-300" />
           </button>
         </div>
       </div>

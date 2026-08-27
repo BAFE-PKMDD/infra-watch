@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { projects, syncLogs } from "@/lib/db/schema";
 import { aggregateProjectStatusCounts } from "@/lib/project-status-statistics";
+import { mapPublicToInternalStages } from "@/constants/stage-mapping";
 import { fetchInfraProjects } from "./client";
 import { isInfraWatchProject, transformAbemisProject } from "./transform";
 import { eq, sql, or, ilike, and, inArray } from "drizzle-orm";
@@ -430,7 +431,13 @@ export async function getAdminProjects(params: {
   }
 
   if (params.status && params.status !== "all") {
-    conditions.push(eq(projects.status, params.status));
+    const internalStages = mapPublicToInternalStages(params.status);
+    if (internalStages.length > 0) {
+      const lowerStages = internalStages.map((s) => s.toLowerCase());
+      conditions.push(inArray(sql`lower(${projects.status})`, lowerStages));
+    } else {
+      conditions.push(eq(sql`lower(${projects.status})`, params.status.toLowerCase()));
+    }
   }
 
   if (params.program && params.program !== "all") {

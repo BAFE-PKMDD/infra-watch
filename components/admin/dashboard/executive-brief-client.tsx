@@ -1,13 +1,13 @@
 "use client";
 
-import { AlertTriangle, FileText, RefreshCw, Sparkles, Square } from "lucide-react";
+import { AlertTriangle, FileText, MessageSquare, RefreshCw, Sparkles, Square } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { AiMessageContent } from "@/components/ai-message-content";
-import { ExecutiveBriefAnalytics } from "@/components/admin/dashboard/executive-brief-analytics";
-import { AniaAnswerDownloadButton, ManagerialAiCopilot } from "@/components/admin/dashboard/managerial-ai-copilot";
+import { ExecutiveBriefStructuredView } from "@/components/admin/dashboard/executive-brief-structured-view";
+import { AniaAnswerDownloadButton, ManagerialAiCopilot, type ManagerialAiCopilotHandle } from "@/components/admin/dashboard/managerial-ai-copilot";
+
 import { Button } from "@/components/ui/button";
 import { cleanAniaAnswer } from "@/lib/analytics/ania-answer-content";
 import { tryParseManagerialDashboardFilters } from "@/lib/analytics/dashboard-filters";
@@ -47,6 +47,14 @@ export function ExecutiveBriefClient() {
   const [generating, setGenerating] = useState(false);
   const [status, setStatus] = useState("Ready to generate an executive brief.");
   const controllerRef = useRef<AbortController | null>(null);
+
+  const copilotHandle = useRef<ManagerialAiCopilotHandle>(null);
+  const copilotRef = useRef<HTMLDivElement>(null);
+
+  const handleAskAbout = useCallback((prompt: string) => {
+    copilotHandle.current?.setInput(prompt);
+    copilotRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 
@@ -145,12 +153,11 @@ export function ExecutiveBriefClient() {
 
       const decoder = new TextDecoder();
       let brief = "";
+      setStatus("Drafting the four-lens analytical brief from verified dashboard results…");
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         brief += decoder.decode(value, { stream: true });
-        setContent(brief);
-        setStatus("Drafting the four-lens analytical brief from verified dashboard results…");
       }
       brief += decoder.decode();
       brief = cleanAniaAnswer(stripExecutiveBriefDisclaimer(brief));
@@ -231,6 +238,11 @@ export function ExecutiveBriefClient() {
                 variant="default"
               />
             ) : null}
+            {content && briefContext && briefConversationId && !generating ? (
+              <Button variant="outline" onClick={() => copilotRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+                <MessageSquare /> Ask ANIA
+              </Button>
+            ) : null}
             <Button variant="outline" onClick={() => query.refetch()} disabled={query.isFetching || generating}>
               <RefreshCw className={query.isFetching ? "animate-spin motion-reduce:animate-none" : ""} />
               Refresh data
@@ -253,7 +265,7 @@ export function ExecutiveBriefClient() {
       </section>
 
       <article id="ania-executive-brief-report" className="min-h-96 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
-        {content ? (
+        {content && !generating ? (
           <>
             <div className="mb-6 border-b border-slate-200 pb-5 dark:border-slate-800">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Infrastructure Analytics</p>
@@ -262,16 +274,34 @@ export function ExecutiveBriefClient() {
                 Data as of {briefContext?.asOf ?? data.asOf} · {formatExecutiveBriefScope(briefContext?.filters ?? filters)}
               </p>
             </div>
-            <AiMessageContent content={content} isStreaming={generating} />
-            {!generating && briefData ? (
+            <ExecutiveBriefStructuredView
+              content={content}
+              data={briefData}
+              isStreaming={false}
+              onAskAbout={handleAskAbout}
+            />
+            {briefData ? (
               <div className="mt-10 border-t border-slate-200 pt-8 dark:border-slate-800">
-                <ExecutiveBriefAnalytics data={briefData} />
+                <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                  <AlertTriangle className="size-5 shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-bold">Data Coverage Note</p>
+                    <p className="mt-1">Due to incomplete schedule data and missing physical progress updates for the majority of these projects, advanced forecasting and predictive analytics cannot be reliably assessed at this time.</p>
+                  </div>
+                </div>
               </div>
             ) : null}
             <p className="mt-8 border-t border-amber-200 pt-4 text-xs font-medium text-amber-800 dark:border-amber-900 dark:text-amber-200">
               {EXECUTIVE_BRIEF_DISCLAIMER}
             </p>
           </>
+        ) : generating ? (
+          <ExecutiveBriefStructuredView
+            content=""
+            data={briefData ?? data}
+            isStreaming
+            onAskAbout={handleAskAbout}
+          />
         ) : (
           <div className="flex min-h-80 flex-col items-center justify-center text-center">
             <div className="rounded-full bg-blue-50 p-4 text-primary dark:bg-blue-950/40">
@@ -287,14 +317,16 @@ export function ExecutiveBriefClient() {
       </article>
 
       {content && briefContext && briefConversationId ? (
-        <div className="print:hidden">
+        <div ref={copilotRef} className="print:hidden mt-10 scroll-mt-20">
           <ManagerialAiCopilot
+            ref={copilotHandle}
             key={`${briefConversationId}:${briefContext.asOf}`}
             filters={briefContext.filters}
             asOf={briefContext.asOf}
             initialOpen
             presentation="embedded"
             initialConversationId={briefConversationId}
+            briefContent={content}
             dashboardContext={{
               asOf: briefData?.asOf ?? briefContext.asOf,
               lastSuccessfulSyncAt: briefData?.freshness.lastSuccessfulSyncAt ?? null,

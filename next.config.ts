@@ -5,6 +5,17 @@ const nextConfig: NextConfig = {
   experimental: {
     cpus: 2,
   },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+          { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
+        ],
+      },
+    ];
+  },
   serverExternalPackages: ["nsfwjs", "@tensorflow/tfjs-node", "sharp"],
   images: {
     qualities: [70, 75, 80, 85, 90],

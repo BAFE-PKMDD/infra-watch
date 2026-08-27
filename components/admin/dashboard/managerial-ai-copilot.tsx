@@ -3,8 +3,10 @@
 import { Download, RefreshCw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
 import {
   type KeyboardEvent,
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
 } from "react";
@@ -21,9 +23,9 @@ import {
 import type { ManagerialDashboardFilters } from "@/types/managerial-dashboard.types";
 
 const SUGGESTIONS = [
-  "Which projects need intervention first, and why?",
-  "Compare delayed-project exposure across regions.",
-  "What changed since the previous sync?",
+  "Which region has the most delayed projects?",
+  "Why is there not enough data for project forecasting?",
+  "What is the total budget allocated for these projects?",
 ];
 const DISCLAIMER =
   "AI-generated analysis—verify against the dashboard before making official decisions.";
@@ -41,8 +43,8 @@ const FILTER_LABELS: Array<[
   ["region", "Region"],
   ["province", "Province"],
   ["projectType", "Project type"],
-  ["status", "Status"],
-  ["health", "Schedule health"],
+  ["status", "Project status"],
+  ["health", "Timeline status"],
 ];
 
 function humanize(value: string) {
@@ -85,6 +87,8 @@ type ManagerialAiCopilotProps = {
   onRefresh?: () => Promise<unknown>;
   presentation?: "floating" | "embedded";
   initialConversationId?: string;
+  initialPrompt?: string;
+  briefContent?: string;
   dashboardContext?: { asOf: string; lastSuccessfulSyncAt: string | null };
 };
 
@@ -141,15 +145,21 @@ export function OptionalManagerialAiCopilot({
     : null;
 }
 
-export function ManagerialAiCopilot({
+export type ManagerialAiCopilotHandle = {
+  setInput: (value: string) => void;
+};
+
+export const ManagerialAiCopilot = forwardRef<ManagerialAiCopilotHandle, ManagerialAiCopilotProps>(function ManagerialAiCopilot({
   filters,
   asOf,
   initialOpen = false,
   onRefresh,
   presentation = "floating",
   initialConversationId,
+  initialPrompt,
+  briefContent,
   dashboardContext,
-}: ManagerialAiCopilotProps) {
+}, ref) {
   const embedded = presentation === "embedded";
   const [open, setOpen] = useState(initialOpen || embedded);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -164,7 +174,25 @@ export function ManagerialAiCopilot({
   const activeRequestRef = useRef<string | null>(null);
   const conversationIdRef = useRef<string | null>(initialConversationId ?? null);
 
+  // Expose imperative handle so parent can set input without causing parent re-render
+  useImperativeHandle(ref, () => ({
+    setInput: (value: string) => {
+      setInput(value);
+      inputRef.current?.focus();
+    },
+  }), []);
+
   const hasOpenedRef = useRef(initialOpen);
+
+  // Pre-fill input from initialPrompt (click-to-prompt)
+  const appliedPromptRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (initialPrompt && initialPrompt !== appliedPromptRef.current) {
+      appliedPromptRef.current = initialPrompt;
+      setInput(initialPrompt);
+      inputRef.current?.focus();
+    }
+  }, [initialPrompt]);
 
   useEffect(() => {
     if (open && !embedded) {
@@ -230,6 +258,7 @@ export function ManagerialAiCopilot({
             conversationId: conversationIdRef.current,
             message,
             filters,
+            ...(briefContent ? { briefContext: briefContent.slice(0, 12_000) } : {}),
             ...(dashboardContext ? { dashboardContext } : {}),
           }),
           signal: controller.signal,
@@ -283,7 +312,7 @@ export function ManagerialAiCopilot({
         }
       }
     },
-    [dashboardContext, filters, input, loading],
+    [briefContent, dashboardContext, filters, input, loading],
   );
 
   function clear() {
@@ -325,7 +354,7 @@ export function ManagerialAiCopilot({
   if (!open && !embedded) {
     return (
       <Button ref={launcherRef} variant="outline" onClick={() => setOpen(true)}>
-        <Sparkles /> ANIA
+        <Sparkles /> Ask ANIA
       </Button>
     );
   }
@@ -444,7 +473,7 @@ export function ManagerialAiCopilot({
             disabled={loading}
             maxLength={4_000}
             aria-label="Ask ANIA"
-            placeholder="Ask about portfolio risk, regions, or priority projects…"
+            placeholder="Ask about project risks, regions, or priority projects..."
             className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900"
           />
           {loading ? (
@@ -466,4 +495,4 @@ export function ManagerialAiCopilot({
       </div>
     </section>
   );
-}
+});

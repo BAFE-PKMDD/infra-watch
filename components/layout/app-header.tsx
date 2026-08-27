@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { LanguageToggle } from "@/components/language/language-toggle";
+import { setHeaderOverlay, toggleHeaderOverlay, type HeaderOverlay } from "@/lib/header-overlay";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/i18n";
 import {
@@ -24,9 +25,8 @@ const navItems = [
   { label: "Citizen Feed", href: "/citizen-feed", key: "citizen-feed" },
   { label: "E-Report", href: "/report-issue", key: "report-issue" },
   { label: "Map", href: "/map", key: "map", isSecondary: true },
-  { label: "Evidence Map", href: "/evidence-map", key: "evidence-map", isSecondary: true },
+  { label: "Citizen Reports Map", href: "/evidence-map", key: "evidence-map", isSecondary: true },
   { label: "Infra Analytics", href: "/infra-analytics", key: "infra-analytics", isSecondary: true },
-  { label: "Articles & Updates", href: "/articles-and-updates", key: "articles-and-updates", isSecondary: true },
   { label: "FAQ", href: "/faq", key: "faq", isSecondary: true },
   { label: "Contact Us", href: "/contact", key: "contact", isSecondary: true },
 ] as { label: string; href: string; key: string; requiresAuth?: boolean; isSecondary?: boolean }[];
@@ -41,11 +41,12 @@ interface AppHeaderProps {
 
 export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [openOverlay, setOpenOverlay] = useState<HeaderOverlay>(null);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { user, isLoading, logout } = useAuth();
   const { t } = useTranslation();
+  const showUserMenu = openOverlay === "user";
   const resolvedActiveItem = activeItem ?? navItems.find((item) => (
     item.href === "/"
       ? pathname === "/"
@@ -122,7 +123,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (showUserMenu && !target.closest('[aria-label="User menu"]') && !target.closest('.absolute')) {
-        setShowUserMenu(false);
+        setOpenOverlay(null);
       }
     };
 
@@ -133,7 +134,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
   return (
     <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex h-16 items-center justify-between sm:h-20">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-3">
               <Image
@@ -141,7 +142,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                 alt="INFRA Watch logo"
                 width={96}
                 height={64}
-                className="h-12 w-auto flex-shrink-0 object-contain"
+                className="h-10 w-auto flex-shrink-0 object-contain sm:h-12"
                 priority
                 unoptimized
               />
@@ -156,7 +157,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
             </Link>
           </div>
 
-          <div className="flex items-center gap-3 lg:hidden">
+          <div className="flex items-center gap-2 sm:gap-3 lg:hidden">
             {mounted && user && <NotificationBell />}
             <LanguageToggle />
             <button
@@ -256,7 +257,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
               ) : user ? (
                 <div className="relative">
                   <button
-                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    onClick={() => setOpenOverlay((current) => toggleHeaderOverlay(current, "user"))}
                     className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     aria-label="User menu"
                     suppressHydrationWarning
@@ -291,7 +292,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                         <Link
                           href="/dashboard"
                           className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
-                          onClick={() => setShowUserMenu(false)}
+                          onClick={() => setOpenOverlay(null)}
                         >
                           <LayoutDashboard className="w-4 h-4" />
                           {t("nav.dashboard")}
@@ -300,7 +301,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                       <Link
                         href="/my-feedbacks"
                         className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
-                        onClick={() => setShowUserMenu(false)}
+                        onClick={() => setOpenOverlay(null)}
                       >
                         <MessageSquareDot className="w-4 h-4" />
                         {t("nav.myFeedback")}
@@ -308,7 +309,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                       <Link
                         href="/my-issues"
                         className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
-                        onClick={() => setShowUserMenu(false)}
+                        onClick={() => setOpenOverlay(null)}
                       >
                         <AlertCircle className="w-4 h-4" />
                         {t("nav.myReports")}
@@ -317,7 +318,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                         <Link
                           href="/my-notifications"
                           className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
-                          onClick={() => setShowUserMenu(false)}
+                          onClick={() => setOpenOverlay(null)}
                         >
                           <Bell className="w-4 h-4" />
                           {t("nav.myNotifications")}
@@ -325,7 +326,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                       )}
                       <button
                         onClick={async () => {
-                          setShowUserMenu(false);
+                          setOpenOverlay(null);
                           await logout();
                         }}
                         className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
@@ -345,7 +346,14 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                   {displayActionLabel}
                 </Link>
               )}
-              {mounted && user && <NotificationBell />}
+              {mounted && user && (
+                <NotificationBell
+                  open={openOverlay === "notifications"}
+                  onOpenChange={(open) => {
+                    setOpenOverlay((current) => setHeaderOverlay(current, "notifications", open));
+                  }}
+                />
+              )}
               <LanguageToggle />
               <button
                 type="button"

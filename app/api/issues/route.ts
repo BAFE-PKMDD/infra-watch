@@ -4,11 +4,13 @@ import { getAuditContextFromRequest, logAudit, logBlockedUploadAttempt } from "@
 import { db } from "@/lib/db";
 import { issues, projects } from "@/lib/db/schema";
 import { generateUniqueFileName, uploadFile } from "@/lib/minio";
-import { publishNotification } from "@/lib/realtime-notifications";
+import { publishAndPersistNotification } from "@/lib/notification-persistence";
+import { formatPublicIssue } from "@/lib/public-issue-dto";
+import { getIssueNotificationRecipientIds } from "@/lib/staff-notification-recipients";
 import { assertCleanText, assertSafeImageUpload } from "@/lib/services/content-moderation";
 import { getClientUploadErrorMessage } from "@/lib/upload-errors";
 import { validateUploadFile } from "@/lib/upload-validation";
-import { and, count, desc, eq, gte, ilike, lte, or } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, isNotNull, lte, or, sql } from "drizzle-orm";
 import { z } from 'zod';
 import type { GeoTrackPoint, StoredIssueEvidenceItem } from '@/types/geo-evidence.types';
 
@@ -17,6 +19,37 @@ export const runtime = "nodejs";
 const MAX_ISSUE_EVIDENCE = 5;
 const MAX_GEO_TRACK_POINTS = 10_000;
 const MAX_TRACK_TIME_SECONDS = 7 * 24 * 60 * 60;
+
+async function notifyStaffOfNewIssue(issue: {
+  id: string;
+  ticketNumber: string;
+  projectId?: string | null;
+  region?: string | null;
+  category: string;
+}) {
+  try {
+    const recipientUserIds = await getIssueNotificationRecipientIds(issue);
+    await publishAndPersistNotification(
+      {
+        type: "issue_created",
+        title: "New E-Report submitted",
+        message: `A citizen submitted issue report ${issue.ticketNumber}.`,
+        metadata: {
+          issueId: issue.id,
+          ticketNumber: issue.ticketNumber,
+          projectId: issue.projectId ?? null,
+          category: issue.category,
+        },
+      },
+      recipientUserIds,
+    );
+  } catch (error) {
+    console.error("Failed to persist scoped issue notification", {
+      issueId: issue.id,
+      error: error instanceof Error ? error.name : "UnknownError",
+    });
+  }
+}
 
 const mediaPathSchema = z.string().trim().min(1, 'Evidence URL is required.').max(2048, 'Evidence URL is too long.');
 const optionalLatitudeSchema = z.preprocess(
@@ -219,83 +252,6 @@ function normalizeStatus(status: string | null) {
   return undefined;
 }
 
-function toPublicStatus(status: string) {
-  if (status === "pending") return "pending";
-  if (status === "reviewing") return "in-progress";
-  if (status === "resolved") return "resolved";
-  if (status === "closed") return "suspended";
-  return "pending";
-}
-
-function formatIssue(row: {
-  id: string;
-  ticketNumber: string;
-  projectId: string | null;
-  reporterName: string | null;
-  reporterContact: string | null;
-  reporterEmail: string | null;
-  isAnonymous: boolean;
-  category: string;
-  status: string;
-  priority: string;
-  description: string;
-  region: string | null;
-  province: string | null;
-  municipality: string | null;
-  barangay: string | null;
-  landmark: string | null;
-  evidence: StoredIssueEvidenceItem[] | null;
-  resolvedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-  projectName: string | null;
-}) {
-  const evidence = Array.isArray(row.evidence) ? row.evidence : [];
-  const firstImage = evidence.find((item) => item.type === "image");
-
-  return {
-    id: row.id,
-    ticketNumber: row.ticketNumber,
-    projectId: row.projectId,
-    projectName: row.projectName ?? "Unlinked Infrastructure Report",
-    category: row.category,
-    issueType: row.category,
-    description: row.description,
-    issueDescription: row.description,
-    status: toPublicStatus(row.status),
-    fmrStatus: row.status === "submitted" ? "pending" : row.status,
-    rawStatus: row.status,
-    priority: row.priority,
-    date: row.createdAt,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    reporter: row.isAnonymous ? "Anonymous" : row.reporterName || "Citizen",
-    reporterName: row.isAnonymous ? "Anonymous" : row.reporterName || "Citizen",
-    reporterPhone: row.isAnonymous ? null : row.reporterContact,
-    reporterEmail: row.isAnonymous ? null : row.reporterEmail,
-    isAnonymous: row.isAnonymous,
-    region: row.region ?? "",
-    province: row.province ?? "",
-    city: row.municipality ?? "",
-    municipality: row.municipality ?? "",
-    barangay: row.barangay ?? "",
-    streetLandmark: row.landmark ?? "",
-    evidence,
-    photoUrls: evidence.filter((item) => item.type === "image").map((item) => item.url),
-    videoUrls: evidence.filter((item) => item.type === "video").map((item) => item.url),
-    documentUrls: evidence.filter((item) => item.type === "document").map((item) => item.url),
-    photoUrl: firstImage?.url ?? null,
-    dateNoticed: row.createdAt,
-    resolvedAt: row.resolvedAt,
-    project: row.projectName ? {
-      id: row.projectId,
-      name: row.projectName,
-      code: row.projectId,
-    } : null,
-    comments: [],
-  };
-}
-
 async function uploadEvidence(
   file: FormDataEntryValue | null,
   request: NextRequest,
@@ -394,19 +350,22 @@ export async function GET(request: NextRequest) {
   const endDate = params.get("endDate");
   const conditions = [];
 
+  // Workflow state is not publication approval. Only an explicitly approved,
+  // moderator-written summary may appear in the anonymous public directory.
+  conditions.push(isNotNull(issues.publicApprovedAt));
+  conditions.push(isNotNull(issues.publicDescription));
+
   if (status) {
-    conditions.push(status === "pending" ? or(eq(issues.status, "pending"), eq(issues.status, "submitted")) : eq(issues.status, status));
+    conditions.push(eq(issues.status, status));
   }
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(
       or(
         ilike(issues.ticketNumber, pattern),
-        ilike(issues.description, pattern),
+        ilike(issues.publicDescription, pattern),
         ilike(issues.category, pattern),
         ilike(issues.province, pattern),
-        ilike(issues.municipality, pattern),
-        ilike(issues.barangay, pattern),
         ilike(projects.name, pattern),
       ),
     );
@@ -426,19 +385,13 @@ export async function GET(request: NextRequest) {
         id: issues.id,
         ticketNumber: issues.ticketNumber,
         projectId: issues.projectId,
-        reporterName: issues.reporterName,
-        reporterContact: issues.reporterContact,
-        reporterEmail: issues.reporterEmail,
-        isAnonymous: issues.isAnonymous,
         category: issues.category,
         status: issues.status,
-        priority: issues.priority,
-        description: issues.description,
+        publicDescription: issues.publicDescription,
         region: issues.region,
         province: issues.province,
-        municipality: issues.municipality,
-        barangay: issues.barangay,
-        landmark: issues.landmark,
+        municipality: sql<string | null>`null`,
+        barangay: sql<string | null>`null`,
         evidence: issues.evidence,
         resolvedAt: issues.resolvedAt,
         createdAt: issues.createdAt,
@@ -456,18 +409,21 @@ export async function GET(request: NextRequest) {
 
   const total = Number(totalRows[0]?.value ?? 0);
 
-  return NextResponse.json({
-    success: true,
-    data: rows.map(formatIssue),
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      hasNext: page < Math.ceil(total / limit),
-      hasPrev: page > 1,
+  return NextResponse.json(
+    {
+      success: true,
+      data: rows.map(formatPublicIssue),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
+      },
     },
-  });
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -537,16 +493,12 @@ export async function POST(request: NextRequest) {
         })
         .returning();
 
-      publishNotification({
-        type: "issue_created",
-        title: "New E-Report submitted",
-        message: `A citizen submitted issue report ${ticketNumber}.`,
-        metadata: {
-          issueId: created.id,
-          ticketNumber,
-          projectId: body.projectId || null,
-          category,
-        },
+      await notifyStaffOfNewIssue({
+        id: created.id,
+        ticketNumber,
+        projectId: created.projectId,
+        region: created.region,
+        category,
       });
 
       await logAudit({
@@ -621,16 +573,12 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    publishNotification({
-      type: "issue_created",
-      title: "New E-Report submitted",
-      message: `A citizen submitted issue report ${ticketNumber}.`,
-      metadata: {
-        issueId: created.id,
-        ticketNumber,
-        projectId,
-        category,
-      },
+    await notifyStaffOfNewIssue({
+      id: created.id,
+      ticketNumber,
+      projectId: created.projectId,
+      region: created.region,
+      category,
     });
 
     await logAudit({

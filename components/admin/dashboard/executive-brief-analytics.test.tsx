@@ -37,15 +37,15 @@ test("summarizes only evidence-backed forecast availability", () => {
   });
 });
 
-test("renders generated brief analytics as descriptive, diagnostic, predictive, and prescriptive evidence", () => {
+test("renders generated brief analytics using plain-language management sections", () => {
   const html = renderToStaticMarkup(createElement(ExecutiveBriefAnalytics, { data }));
-  for (const label of ["Descriptive analytics", "Diagnostic analytics", "Predictive analytics", "Prescriptive analytics"]) {
+  for (const label of ["Current Status &amp; Overview", "Risk &amp; Problem Areas", "Forecast &amp; Future Outlook", "Action Items &amp; Recommendations"]) {
     assert.match(html, new RegExp(label, "i"));
   }
-  assert.match(html, /Schedule health distribution/);
+  assert.match(html, /Are projects on schedule\?/);
   assert.match(html, /Regional performance ranking/);
   assert.match(html, /1 of 2 priority projects have an evidence-backed projected completion date/);
   assert.match(html, /Insufficient history/);
-  assert.match(html, /Priority projects/);
+  assert.match(html, /Priority Projects/);
   assert.match(html, /Road package/);
 });

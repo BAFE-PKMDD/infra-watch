@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, gte, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
-import { feedback, issues, projects } from "@/lib/db/schema";
-import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
+import { feedback, projects } from "@/lib/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,32 +59,6 @@ const optionalAccuracySchema = z.preprocess(
   (value) => value === null ? undefined : value,
   z.number().finite().nonnegative().optional(),
 );
-
-const publicEvidenceSchema = z.object({
-  type: z.enum(["image", "video", "document"]),
-  url: mediaPathSchema,
-  name: z.string().trim().min(1).max(255).optional(),
-  lat: optionalLatitudeSchema,
-  lon: optionalLongitudeSchema,
-  accuracy: optionalAccuracySchema,
-}).superRefine((item, context) => {
-  const hasLat = item.lat !== undefined;
-  const hasLon = item.lon !== undefined;
-
-  if (hasLat !== hasLon) {
-    context.addIssue({
-      code: "custom",
-      message: "Latitude and longitude must be provided together.",
-    });
-  }
-
-  if (item.accuracy !== undefined && (!hasLat || !hasLon)) {
-    context.addIssue({
-      code: "custom",
-      message: "Accuracy requires a coordinate pair.",
-    });
-  }
-});
 
 const publicTrackPointSchema = z.object({
   lat: z.number().finite().min(-90).max(90),
@@ -168,27 +141,6 @@ function normalizeStatusFilter(status: z.infer<typeof querySchema>["status"]) {
   return status;
 }
 
-function toPublicStatus(status: string) {
-  if (status === "reviewing") return "in-progress";
-  if (status === "closed") return "suspended";
-  if (status === "submitted") return "pending";
-  return status;
-}
-
-function sanitizeEvidence(value: unknown): StoredIssueEvidenceItem[] {
-  if (!Array.isArray(value)) return [];
-
-  return value.flatMap((item) => {
-    const parsed = publicEvidenceSchema.safeParse(item);
-    return parsed.success ? [parsed.data] : [];
-  });
-}
-
-function sanitizeTrack(value: unknown): GeoTrackPoint[] | null {
-  const parsed = publicTrackSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
-}
-
 function sanitizeFeedbackMedia(value: unknown) {
   if (!Array.isArray(value)) return [];
 
@@ -226,36 +178,6 @@ export async function GET(request: NextRequest) {
   const query = parsedQuery.data;
   const mediaFilter = normalizeMediaFilter(query.mediaType);
   const status = normalizeStatusFilter(query.status);
-  const issueCandidateGeoCondition = sql<boolean>`(
-    exists (
-      select 1
-      from jsonb_array_elements(
-        case
-          when jsonb_typeof(${issues.evidence}) = 'array' then ${issues.evidence}
-          else '[]'::jsonb
-        end
-      ) as evidence_item
-      where evidence_item ? 'lat' and evidence_item ? 'lon'
-    )
-    or jsonb_array_length(
-      case
-        when jsonb_typeof(${issues.geoVideoTrack}) = 'array' then ${issues.geoVideoTrack}
-        else '[]'::jsonb
-      end
-    ) > 0
-  )`;
-  const issueConditions: SQL[] = [issueCandidateGeoCondition];
-
-  if (status === "pending") {
-    issueConditions.push(or(eq(issues.status, "pending"), eq(issues.status, "submitted"))!);
-  } else if (status) {
-    issueConditions.push(eq(issues.status, status));
-  }
-
-  if (query.category) issueConditions.push(eq(issues.category, query.category));
-  if (query.startDate) issueConditions.push(gte(issues.createdAt, new Date(`${query.startDate}T00:00:00.000Z`)));
-  if (query.endDate) issueConditions.push(lte(issues.createdAt, new Date(`${query.endDate}T23:59:59.999Z`)));
-
   const feedbackCandidateGeoCondition = sql<boolean>`exists (
     select 1
     from jsonb_array_elements(
@@ -284,82 +206,25 @@ export async function GET(request: NextRequest) {
   if (query.endDate) feedbackConditions.push(lte(feedback.createdAt, new Date(`${query.endDate}T23:59:59.999Z`)));
 
   try {
-    const [issueRows, feedbackRows] = await Promise.all([
-      db
-        .select({
-          id: issues.id,
-          ticketNumber: issues.ticketNumber,
-          category: issues.category,
-          status: issues.status,
-          description: issues.description,
-          createdAt: issues.createdAt,
-          region: issues.region,
-          province: issues.province,
-          municipality: issues.municipality,
-          barangay: issues.barangay,
-          evidence: issues.evidence,
-          geoVideoTrack: issues.geoVideoTrack,
-          geoVideoUrl: issues.geoVideoUrl,
-        })
-        .from(issues)
-        .where(and(...issueConditions))
-        .orderBy(desc(issues.createdAt)),
-      db
-        .select({
-          id: feedback.id,
-          projectId: feedback.projectId,
-          projectCode: projects.projectCode,
-          projectName: projects.name,
-          category: feedback.category,
-          comment: feedback.comment,
-          createdAt: feedback.createdAt,
-          media: feedback.media,
-          region: projects.region,
-          province: projects.province,
-          municipality: projects.municipality,
-          barangay: projects.barangay,
-        })
-        .from(feedback)
-        .innerJoin(projects, eq(projects.abemisId, feedback.projectId))
-        .where(and(...feedbackConditions))
-        .orderBy(desc(feedback.createdAt)),
-    ]);
-
-    const issueData = issueRows.flatMap((row) => {
-      const allEvidence = sanitizeEvidence(row.evidence);
-      const evidence = allEvidence.filter((item) => {
-        if (item.type === "document" || item.lat === undefined || item.lon === undefined) return false;
-        return mediaFilter === "both" || item.type === mediaFilter;
-      });
-      const parsedGeoVideoUrl = mediaPathSchema.safeParse(row.geoVideoUrl);
-      const attachedVideoMatches = parsedGeoVideoUrl.success
-        && allEvidence.some((item) => item.type === "video" && item.url === parsedGeoVideoUrl.data);
-      const track = mediaFilter === "image" || !attachedVideoMatches
-        ? null
-        : sanitizeTrack(row.geoVideoTrack);
-
-      if (evidence.length === 0 && !track) return [];
-
-      return [{
-        issueId: row.id,
-        sourceType: "issue" as const,
-        detailUrl: `/report-issue/${encodeURIComponent(row.id)}`,
-        ticketNumber: row.ticketNumber,
-        category: row.category,
-        status: toPublicStatus(row.status),
-        description: row.description.slice(0, 240),
-        createdAt: row.createdAt,
-        location: {
-          region: row.region ?? "",
-          province: row.province ?? "",
-          municipality: row.municipality ?? "",
-          barangay: row.barangay ?? "",
-        },
-        evidence,
-        geoVideoTrack: track,
-        geoVideoUrl: track && parsedGeoVideoUrl.success ? parsedGeoVideoUrl.data : null,
-      }];
-    });
+    const feedbackRows = await db
+      .select({
+        id: feedback.id,
+        projectId: feedback.projectId,
+        projectCode: projects.projectCode,
+        projectName: projects.name,
+        category: feedback.category,
+        comment: feedback.comment,
+        createdAt: feedback.createdAt,
+        media: feedback.media,
+        region: projects.region,
+        province: projects.province,
+        municipality: projects.municipality,
+        barangay: projects.barangay,
+      })
+      .from(feedback)
+      .innerJoin(projects, eq(projects.abemisId, feedback.projectId))
+      .where(and(...feedbackConditions))
+      .orderBy(desc(feedback.createdAt));
 
     const feedbackData = feedbackRows.flatMap((row) => {
       const allMedia = sanitizeFeedbackMedia(row.media);
@@ -407,7 +272,7 @@ export async function GET(request: NextRequest) {
       }];
     });
 
-    const data = [...issueData, ...feedbackData]
+    const data = feedbackData
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
     return NextResponse.json(

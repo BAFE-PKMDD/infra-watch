@@ -2,19 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { format } from "date-fns";
 import {
   MapPin,
   ArrowUpRight,
   MessageSquare,
-  Play,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
-import { MediaViewer } from "@/components/ui/media-viewer";
 import type { IssueActivityItem } from "@/types/activity-feed.types";
 import { ProjectPreviewSheet } from "@/components/feedback-feed/project-preview-sheet";
 
@@ -37,24 +33,9 @@ interface IssueFeedCardProps {
 }
 
 export function IssueFeedCard({ item }: IssueFeedCardProps) {
-  const [viewingMediaIndex, setViewingMediaIndex] = useState<number | null>(null);
   const [responsesExpanded, setResponsesExpanded] = useState(false);
   const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
-
-  const displayName = item.isAnonymous ? "Anonymous Citizen" : item.reporterName;
-
-
-  // Build media items for the viewer
-  const allMedia: { url: string; type: "image" | "video"; caption?: string }[] = [
-    ...(item.photoUrls || []).map((url) => ({
-      url: getFullUrl(url)!,
-      type: "image" as const,
-    })),
-    ...(item.videoUrls || []).map((url) => ({
-      url: getFullUrl(url)!,
-      type: "video" as const,
-    })),
-  ].filter((m) => m.url != null);
+  const displayName = "Citizen report";
 
   return (
     <div className="bg-white dark:bg-[#0d1526] rounded-2xl border border-slate-200 dark:border-[#1e3a5f]/30 overflow-hidden transition-shadow hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50">
@@ -119,57 +100,9 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
         <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-3">
           <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
           <span>
-            {item.barangay}, {item.city}, {item.province}
+            {[item.barangay, item.city, item.province].filter(Boolean).join(", ") || "Location unavailable"}
           </span>
-          {item.streetLandmark && (
-            <>
-              <span className="text-slate-300 dark:text-slate-600">·</span>
-              <span className="truncate max-w-[200px]">{item.streetLandmark}</span>
-            </>
-          )}
         </div>
-
-        {/* Evidence photos */}
-        {allMedia.length > 0 && (
-          <div className="mt-3">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {allMedia.slice(0, 6).map((mediaItem, index) => (
-                <motion.div
-                  key={index}
-                  className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-[#1e3a5f]/30 bg-slate-100 dark:bg-[#0d1526] cursor-pointer shadow-sm"
-                  whileHover={{ scale: 1.02 }}
-                  onClick={() => setViewingMediaIndex(index)}
-                >
-                  {mediaItem.type === "image" && mediaItem.url ? (
-                    <Image
-                      src={mediaItem.url}
-                      alt={`Evidence ${index + 1}`}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 640px) 50vw, 33vw"
-                      unoptimized={isLocalMinIO(mediaItem.url)}
-                    />
-                  ) : mediaItem.type === "video" && mediaItem.url ? (
-                    <div className="relative w-full h-full">
-                      <video
-                        src={`${mediaItem.url}#t=0.1`}
-                        className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                        preload="metadata"
-                        muted
-                        playsInline
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                        <div className="w-10 h-10 rounded-full bg-white/95 flex items-center justify-center shadow-lg">
-                          <Play className="w-5 h-5 text-slate-900 ml-0.5" fill="currentColor" />
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Action bar */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-[#1e3a5f]/20">
@@ -256,16 +189,6 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Media viewer */}
-      {viewingMediaIndex !== null && (
-        <MediaViewer
-          media={allMedia}
-          initialIndex={viewingMediaIndex}
-          open={viewingMediaIndex !== null}
-          onClose={() => setViewingMediaIndex(null)}
-        />
-      )}
 
       {/* Project preview sheet */}
       <ProjectPreviewSheet

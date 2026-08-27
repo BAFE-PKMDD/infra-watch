@@ -53,6 +53,7 @@ export function ProjectsFilters({
         <option value="Not yet started">Not yet started</option>
         <option value="On going">On going</option>
         <option value="Completed">Completed</option>
+        <option value="Suspended">Suspended</option>
       </select>
       <Button type="button" variant="outline" onClick={onReset}>
         <X className="size-4" />

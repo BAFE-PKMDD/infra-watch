@@ -33,13 +33,6 @@ export interface IssueActivityItem {
   province: string;
   city: string;
   barangay: string;
-  streetLandmark: string;
-  // Reporter
-  reporterName: string;
-  isAnonymous: boolean;
-  // Evidence thumbnails
-  photoUrls: string[];
-  videoUrls: string[];
   // Counts
   responseCount: number;
   // Recent responses (admin replies)

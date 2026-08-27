@@ -244,8 +244,32 @@ export function AiMessageContent({
               {children}
             </blockquote>
           ),
-          a: ({ children, href }) =>
-            isProjectHref(href) ? (
+          a: ({ children, href }) => {
+            if (href?.startsWith("#badge-")) {
+              const type = href.replace("#badge-", "");
+
+              if (type === "attention" || type === "critical" || type === "delayed") {
+                return <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-800 dark:bg-red-900/40 dark:text-red-200">{children}</span>;
+              }
+              if (type === "on-track") {
+                return <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-bold text-green-800 dark:bg-green-900/40 dark:text-green-200">{children}</span>;
+              }
+              if (type === "warning" || type === "at-risk") {
+                return <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{children}</span>;
+              }
+              return <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-800 dark:bg-slate-800 dark:text-slate-200">{children}</span>;
+            }
+
+            if (href?.startsWith("#prompt-")) {
+              const prompt = decodeURIComponent(href.replace("#prompt-", ""));
+              return (
+                <button type="button" data-brief-prompt={encodeURIComponent(prompt)} className="cursor-pointer underline decoration-dotted underline-offset-2 text-primary hover:decoration-solid">
+                  {children}
+                </button>
+              );
+            }
+
+            return isProjectHref(href) ? (
               <Link
                 href={href}
                 className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900 dark:text-blue-300"
@@ -261,7 +285,8 @@ export function AiMessageContent({
               >
                 {children}
               </span>
-            ),
+            );
+          },
           table: ({ children }) => (
             <div
               className="my-3 max-w-full overflow-x-auto rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:border-slate-700"

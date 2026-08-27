@@ -54,3 +54,13 @@ next-env.d.ts
 # dev-tools
 /dev-tools/
 
+# local source GIS files (commit only generated runtime boundaries)
+/Political Boundaries/
+
+# generated during the application build
+/public/ania/tts-worker.js
+
+# local Hermes agent artifacts
+/.hermes/
+/skills-lock.json
+

@@ -10,16 +10,15 @@ export type RealtimeNotification = {
 
 type NotificationClient = {
   id: string;
+  userId: string;
   controller: ReadableStreamDefaultController<Uint8Array>;
 };
 
-const encoder = new TextEncoder();
-const MAX_HISTORY = 50;
-
 type NotificationStore = {
   clients: Map<string, NotificationClient>;
-  history: RealtimeNotification[];
 };
+
+const encoder = new TextEncoder();
 
 declare global {
   var __infraWatchNotifications: NotificationStore | undefined;
@@ -27,47 +26,54 @@ declare global {
 
 const store = globalThis.__infraWatchNotifications ??= {
   clients: new Map<string, NotificationClient>(),
-  history: [],
 };
 
-function writeSse(controller: ReadableStreamDefaultController<Uint8Array>, event: string, data: unknown) {
-  controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+function writeSse(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  event: string,
+  data: unknown,
+) {
+  controller.enqueue(
+    encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+  );
 }
 
-export function subscribeToNotifications(controller: ReadableStreamDefaultController<Uint8Array>) {
+export function subscribeToNotifications(
+  userId: string,
+  controller: ReadableStreamDefaultController<Uint8Array>,
+) {
   const id = crypto.randomUUID();
-  store.clients.set(id, { id, controller });
-
+  store.clients.set(id, { id, userId, controller });
   writeSse(controller, "connected", { ok: true });
-  for (const notification of store.history.slice(0, 10).reverse()) {
-    writeSse(controller, "notification", notification);
-  }
 
   return () => {
     store.clients.delete(id);
   };
 }
 
-export function getRecentNotifications() {
-  return store.history;
-}
-
 export function getNotificationClientCount() {
   return store.clients.size;
 }
 
-export function publishNotification(input: Omit<RealtimeNotification, "id" | "createdAt" | "isRead">) {
-  const notification: RealtimeNotification = {
+export function createRealtimeNotification(
+  input: Omit<RealtimeNotification, "id" | "createdAt" | "isRead">,
+): RealtimeNotification {
+  return {
     ...input,
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     isRead: false,
   };
+}
 
-  store.history.unshift(notification);
-  store.history.splice(MAX_HISTORY);
+export function broadcastNotification(
+  notification: RealtimeNotification,
+  recipientUserIds: string[],
+) {
+  const recipients = new Set(recipientUserIds.filter(Boolean));
 
   for (const [clientId, client] of store.clients) {
+    if (!recipients.has(client.userId)) continue;
     try {
       writeSse(client.controller, "notification", notification);
     } catch {
@@ -76,4 +82,19 @@ export function publishNotification(input: Omit<RealtimeNotification, "id" | "cr
   }
 
   return notification;
+}
+
+export function publishNotification(
+  input: Omit<RealtimeNotification, "id" | "createdAt" | "isRead">,
+  recipientUserIds: string[],
+) {
+  return broadcastNotification(
+    createRealtimeNotification(input),
+    recipientUserIds,
+  );
+}
+
+export function resetNotificationStoreForTests() {
+  if (process.env.NODE_ENV !== "test") return;
+  store.clients.clear();
 }

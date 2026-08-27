@@ -3,8 +3,9 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "next dev --port 3101",
-        "build": "next build",
+        "dev": "bun run build:tts-worker && next dev --port 3101",
+        "build": "bun run build:tts-worker && next build",
+        "build:tts-worker": "tsx scripts/build-tts-worker.mts",
         "start": "next start",
         "lint": "eslint",
         "db:generate": "DRIZZLE_INCLUDE_AUTH=true drizzle-kit generate",

@@ -9,11 +9,12 @@ import {
   EXECUTIVE_BRIEF_PROMPT,
 } from "./executive-brief";
 
-test("prompt requires four analytical lenses and forbids invented predictive claims", () => {
-  for (const heading of ["Executive Summary", "Descriptive Analytics", "Diagnostic Analytics", "Predictive Analytics", "Prescriptive Analytics", "Data Limitations"]) {
+test("prompt requires six plain-language sections and forbids invented predictive claims", () => {
+  for (const heading of ["Executive Summary", "Current Status & Overview", "Risk & Problem Areas", "Forecast & Future Outlook", "Action Items & Recommendations", "Data Limitations"]) {
     assert.match(EXECUTIVE_BRIEF_PROMPT, new RegExp(heading));
   }
-  assert.match(EXECUTIVE_BRIEF_PROMPT, /only when.*tool.*official data/i);
+  assert.match(EXECUTIVE_BRIEF_PROMPT, /Use only trusted dashboard tool results/i);
+  assert.match(EXECUTIVE_BRIEF_PROMPT, /only when the tool provides them/i);
   assert.match(EXECUTIVE_BRIEF_PROMPT, /never (?:invent|recalculate)/i);
   assert.match(EXECUTIVE_BRIEF_PROMPT, /insufficient history/i);
   assert.match(EXECUTIVE_BRIEF_PROMPT, /rules-based.*not.*predictive/i);

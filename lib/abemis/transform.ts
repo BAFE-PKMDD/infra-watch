@@ -90,7 +90,7 @@ function inferStartDate(project: AbemisProject) {
     row.milestone?.toLowerCase().includes("notice to proceed"),
   );
 
-  return parseDate(ntp?.actual_date) ?? parseDate(project.date_turn_over);
+  return parseDate(ntp?.actual_date) ?? parseDate(ntp?.target_date) ?? null;
 }
 
 function inferTargetCompletionDate(project: AbemisProject) {

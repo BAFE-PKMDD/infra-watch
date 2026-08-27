@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
+import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { GeoJSON, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import { PhotoMarker } from "./photo-marker";
@@ -114,6 +115,35 @@ export function PhotoMapView({
     geoJsonData={geoJsonData}
     kmlLink={kmlLink}
   />;
+}
+
+// Keeps Leaflet's internal size in sync with layout changes (entrance animations,
+// tab switches, sidebar collapse) so tiles are never misplaced.
+function MapSizeWatcher() {
+  const map = useMap();
+
+  useEffect(() => {
+    const invalidate = () => map.invalidateSize({ animate: false });
+    const timers = [60, 250, 450].map((ms) => window.setTimeout(invalidate, ms));
+
+    const container = map.getContainer();
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => invalidate());
+      observer.observe(container);
+    }
+
+    const onWindowResize = () => invalidate();
+    window.addEventListener("resize", onWindowResize);
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      observer?.disconnect();
+      window.removeEventListener("resize", onWindowResize);
+    };
+  }, [map]);
+
+  return null;
 }
 
 // Component to handle map animation (module scope for stable identity)
@@ -256,10 +286,11 @@ function MapContent({
       >
         <TileLayer
           attribution='&copy; <a href="https://www.google.com/maps">Google</a>'
-          url="http://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}"
+          url="https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}"
           className="map-tiles"
         />
 
+        <MapSizeWatcher />
         <MapAnimator
           hasAnimated={hasAnimated}
           setHasAnimated={setHasAnimated}
@@ -293,7 +324,11 @@ function MapContent({
         ))}
 
         {validGeotags.length === 0 && projectPoint && (
-          <ProjectLocationMarker position={projectPoint} geotagCount={geotags.length} />
+          <ProjectLocationMarker
+            position={projectPoint}
+            geotags={geotags}
+            onPhotoClick={onPhotoClick}
+          />
         )}
       </MapContainer>
 
@@ -338,7 +373,15 @@ function MapContent({
   );
 }
 
-function ProjectLocationMarker({ position, geotagCount }: { position: CoordinatePair; geotagCount: number }) {
+function ProjectLocationMarker({
+  position,
+  geotags,
+  onPhotoClick,
+}: {
+  position: CoordinatePair;
+  geotags: GeoTag[];
+  onPhotoClick: (tag: GeoTag, index: number) => void;
+}) {
   const iconMarkup = renderToStaticMarkup(<MapPin className="size-5 text-white" strokeWidth={2.5} />);
   const icon = L.divIcon({
     html: `
@@ -355,14 +398,43 @@ function ProjectLocationMarker({ position, geotagCount }: { position: Coordinate
     popupAnchor: [0, -52],
   });
 
+  const visibleThumbnails = geotags.filter((tag) => typeof tag.url === "string").slice(0, 6);
+  const overflowCount = geotags.length - visibleThumbnails.length;
+
   return (
     <Marker position={position} icon={icon}>
-      <Popup>
-        <div className="space-y-1">
+      <Popup maxWidth={280}>
+        <div className="space-y-2">
           <p className="text-sm font-bold text-slate-900">Project location</p>
           <p className="text-xs text-slate-600">
-            {geotagCount} photo{geotagCount === 1 ? "" : "s"} linked to this project
+            {geotags.length} photo{geotags.length === 1 ? "" : "s"} linked to this project
           </p>
+          {visibleThumbnails.length > 0 && (
+            <div className="grid grid-cols-3 gap-1.5">
+              {visibleThumbnails.map((tag) => (
+                <button
+                  key={tag.id || tag.url}
+                  type="button"
+                  onClick={() => onPhotoClick(tag, geotags.indexOf(tag))}
+                  title={`Open ${tag.photo_name || "photo"}`}
+                  className="group relative h-[72px] w-full overflow-hidden rounded-md border border-slate-200 transition-all duration-200 hover:border-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
+                  <Image
+                    src={tag.url as string}
+                    alt={tag.photo_name || "Project photo"}
+                    width={120}
+                    height={72}
+                    unoptimized
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  />
+                  <span className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-200 group-hover:bg-black/20" />
+                </button>
+              ))}
+            </div>
+          )}
+          {overflowCount > 0 && (
+            <p className="text-[11px] font-medium text-slate-500">+ {overflowCount} more photo{overflowCount === 1 ? "" : "s"} in the grid view</p>
+          )}
           <p className="font-mono text-xs text-slate-500">
             {position[0].toFixed(6)}, {position[1].toFixed(6)}
           </p>

@@ -256,12 +256,7 @@ export async function POST(request: NextRequest) {
       });
     } catch (error) {
       logChatError(requestId, "history_start_failed", error);
-      return finalizeResponse(
-        NextResponse.json(
-          { error: "Chat history could not be saved. Please try again." },
-          { status: 503 },
-        ),
-      );
+      historyId = null;
     }
 
     const policyRefusal = getChatPolicyRefusal(message);

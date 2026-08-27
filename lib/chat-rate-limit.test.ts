@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { getTableColumns } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
@@ -95,4 +96,11 @@ test("derives a stable opaque chat-history owner key", () => {
     ownerKey,
     getChatOwnerKey("anonymous:private-client", "test-secret"),
   );
+});
+
+test("database failures fail closed instead of allowing unlimited chat requests", () => {
+  const source = readFileSync(new URL("./chat-rate-limit.ts", import.meta.url), "utf8");
+  assert.match(source, /DB check failed; rejecting chat request/);
+  assert.match(source, /catch \(error\)[\s\S]*throw error/);
+  assert.doesNotMatch(source, /falling back to allow request/);
 });

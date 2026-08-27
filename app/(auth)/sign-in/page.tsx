@@ -150,7 +150,7 @@ function SignInContent() {
                     <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                       Sign in to INFRA Watch
                     </CardTitle>
-                    <p className="text-sm text-slate-650 dark:text-slate-300 pb-3">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 pb-3">
                       Sign in to continue and access your account features.
                     </p>
                   </CardHeader>
@@ -160,7 +160,7 @@ function SignInContent() {
                           <Button
                             type="button"
                             variant="outline"
-                            className="w-full h-11 rounded-xl text-sm font-semibold relative flex items-center justify-center gap-2 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-850"
+                            className="w-full h-11 rounded-xl text-sm font-semibold relative flex items-center justify-center gap-2 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                             onClick={handleGoogleSignIn}
                           >
                             <GoogleIcon />
@@ -222,7 +222,7 @@ function SignInContent() {
                     <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                       Choose method
                     </CardTitle>
-                    <p className="text-sm text-slate-650 dark:text-slate-300 pb-3">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 pb-3">
                       Signing in as <span className="font-semibold text-slate-900 dark:text-white">{email}</span>
                       <button onClick={() => setStep("email")} className="ml-2 text-primary hover:underline text-xs font-semibold">Change</button>
                     </p>
@@ -293,7 +293,7 @@ function SignInContent() {
                     <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                       Enter password
                     </CardTitle>
-                    <p className="text-sm text-slate-650 dark:text-slate-300 pb-3">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 pb-3">
                       Welcome back, <span className="font-semibold text-slate-900 dark:text-white">{email}</span>
                       <button onClick={() => setStep("choice")} className="ml-2 text-primary hover:underline text-xs font-semibold">Back</button>
                     </p>

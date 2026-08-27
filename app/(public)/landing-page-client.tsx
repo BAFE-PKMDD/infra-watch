@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Camera, ClipboardCheck, CloudSun, Droplets, MoveHorizontal, Search, ShieldCheck, Tractor, Waves } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import Link from "next/link";
@@ -14,24 +14,55 @@ import { PublicPortfolioStatistics } from "@/components/public/public-portfolio-
 export function LandingPageClient({ initialAnalytics }: { initialAnalytics: InfraAnalyticsResult }) {
   const [sliderPosition, setSliderPosition] = useState(50);
 
+  const programs = [
+    {
+      code: "AMEFSS",
+      icon: Tractor,
+      title: "Agricultural Machinery, Equipment and Facilities Support Services",
+      desc: "Provision of post-harvest facilities, grain dryers, storage warehouses, tractors, and sorting/processing equipment directly to farmer cooperatives to secure food supply chains.",
+      href: "/projects?program=amefip",
+      cta: "View AMEFSS Projects",
+      topBar: "from-indigo-600 via-sky-500 to-indigo-600",
+      medallion: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-blue-300",
+      chip: "border-slate-300 bg-white/60 text-slate-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
+      btn: "w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 rounded-lg flex items-center justify-center dark:bg-blue-600 dark:hover:bg-blue-500",
+    },
+    {
+      code: "INS",
+      icon: Droplets,
+      title: "Irrigation Network Services",
+      desc: "Rehabilitation and construction of diversion dams, concrete distribution canals, solar powered water pumps, and local irrigation systems supporting farmer fields.",
+      href: "/projects?program=ins",
+      cta: "View INS Projects",
+      topBar: "from-indigo-600 via-sky-500 to-indigo-600",
+      medallion: "bg-indigo-50 text-primary dark:bg-indigo-950/60 dark:text-indigo-300",
+      chip: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/60 dark:bg-indigo-950/50 dark:text-indigo-300",
+      btn: "w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold h-10 rounded-lg flex items-center justify-center",
+    },
+  ];
+
   const steps = [
     {
       num: "01",
+      icon: Search,
       title: "Explore Database",
       desc: "Browse agricultural machinery, facilities, and irrigation infrastructure projects. Filter by sub-program, budget, region, and status.",
     },
     {
       num: "02",
+      icon: ClipboardCheck,
       title: "Inspect Site Details",
       desc: "Review coordinates, physical vs. financial progress, and the official program of works.",
     },
     {
       num: "03",
+      icon: Camera,
       title: "Submit Citizen Feedback",
       desc: "Provide ratings, comments, and upload geotagged photos to verify construction updates.",
     },
     {
       num: "04",
+      icon: ShieldCheck,
       title: "Resolve Reported Issues",
       desc: "Government moderators investigate citizen feedback and coordinate actions to resolve problems.",
     },
@@ -203,17 +234,17 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
         </div>
 
         {/* Main Content */}
-        <div className="relative px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
+        <div className="relative px-4 py-10 sm:px-6 md:py-16 lg:px-8 lg:py-20">
           <div className="max-w-7xl mx-auto">
             {/* Official Government Seals */}
             <motion.div
-              className="flex justify-center items-center gap-4 md:gap-6 mb-8 md:mb-10"
+              className="mb-6 flex items-center justify-center gap-3 sm:gap-4 md:mb-10 md:gap-6"
               initial={{ opacity: 0, y: -40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
             >
               <motion.div
-                className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-3 md:p-4 rounded-2xl shadow-2xl border-2 border-amber-400/40 dark:border-blue-500/40"
+                className="rounded-xl border-2 border-amber-400/40 bg-white/95 p-2.5 shadow-2xl backdrop-blur-sm dark:border-blue-500/40 dark:bg-slate-800/90 md:rounded-2xl md:p-4"
                 initial={{ opacity: 0, x: -60, rotateY: -90 }}
                 animate={{ opacity: 1, x: 0, rotateY: 0 }}
                 transition={{ duration: 1.2, delay: 0.2, ease: [0.22, 1, 0.36, 1], type: "spring", stiffness: 80 }}
@@ -230,7 +261,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
                     alt="Bagong Pilipinas Seal"
                     width={300}
                     height={120}
-                    className="h-16 md:h-24 lg:h-28 w-auto"
+                    className="h-14 w-auto sm:h-16 md:h-24 lg:h-28"
                     priority
                   />
                 </motion.div>
@@ -244,7 +275,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
               />
 
               <motion.div
-                className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-3 md:p-4 rounded-2xl shadow-2xl border-2 border-amber-400/40 dark:border-blue-500/40"
+                className="rounded-xl border-2 border-amber-400/40 bg-white/95 p-2.5 shadow-2xl backdrop-blur-sm dark:border-blue-500/40 dark:bg-slate-800/90 md:rounded-2xl md:p-4"
                 initial={{ opacity: 0, x: 60, rotateY: 90 }}
                 animate={{ opacity: 1, x: 0, rotateY: 0 }}
                 transition={{ duration: 1.2, delay: 0.2, ease: [0.22, 1, 0.36, 1], type: "spring", stiffness: 80 }}
@@ -261,7 +292,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
                     alt="DA-BAFE Logo"
                     width={300}
                     height={120}
-                    className="h-16 md:h-24 lg:h-28 w-auto"
+                    className="h-14 w-auto sm:h-16 md:h-24 lg:h-28"
                     priority
                   />
                 </motion.div>
@@ -272,7 +303,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
             <div className="max-w-4xl mx-auto text-center space-y-6 md:space-y-7">
               {/* Department Label with Online Badge */}
               <motion.div
-                className="inline-flex items-center gap-2.5 px-4 py-1.5 bg-white/20 dark:bg-slate-800/40 backdrop-blur-sm border border-white/30 dark:border-blue-500/30 rounded-md"
+                className="inline-flex max-w-full items-center gap-2 rounded-md border border-white/30 bg-white/20 px-3 py-2 backdrop-blur-sm dark:border-blue-500/30 dark:bg-slate-800/40 sm:gap-2.5 sm:px-4 sm:py-1.5"
                 initial={{ opacity: 0, y: 30, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.8, delay: 0.6, ease: [0.22, 1, 0.36, 1], type: "spring", stiffness: 100 }}
@@ -288,7 +319,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
                   <div className="absolute w-2 h-2 bg-sky-400 rounded-full animate-ping" />
                 </motion.div>
                 <motion.span
-                  className="text-xs md:text-sm font-semibold text-white uppercase tracking-widest"
+                  className="text-[10px] font-semibold uppercase leading-relaxed tracking-wider text-white sm:text-xs sm:tracking-widest md:text-sm"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.6, delay: 0.9 }}
@@ -311,20 +342,27 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
                   transition={{ duration: 1, delay: 0.8, ease: [0.22, 1, 0.36, 1] }}
                   style={{ transformStyle: "preserve-3d" }}
                 >
-                  {"TRANSPARENCY PORTAL".split("").map((char, i) => (
-                    <motion.span
-                      key={i}
-                      initial={{ opacity: 0, y: 50 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{
-                        duration: 0.5,
-                        delay: 0.8 + i * 0.03,
-                        ease: [0.22, 1, 0.36, 1]
-                      }}
-                      style={{ display: "inline-block" }}
-                    >
-                      {char === " " ? "\u00A0" : char}
-                    </motion.span>
+                  {"TRANSPARENCY PORTAL".split(" ").map((word, wordIndex) => (
+                    <React.Fragment key={word}>
+                      {wordIndex > 0 ? " " : null}
+                      <span className="inline-block whitespace-nowrap">
+                        {word.split("").map((char, charIndex) => (
+                          <motion.span
+                            key={`${word}-${charIndex}`}
+                            initial={{ opacity: 0, y: 50 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{
+                              duration: 0.5,
+                              delay: 0.8 + (wordIndex * word.length + charIndex) * 0.03,
+                              ease: [0.22, 1, 0.36, 1]
+                            }}
+                            style={{ display: "inline-block" }}
+                          >
+                            {char}
+                          </motion.span>
+                        ))}
+                      </span>
+                    </React.Fragment>
                   ))}
                 </motion.h1>
 
@@ -337,7 +375,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
                   style={{ transformStyle: "preserve-3d" }}
                 >
                   <motion.div
-                    className="bg-amber-400 dark:bg-blue-600 px-6 py-2.5 md:px-8 md:py-3 rounded shadow-xl"
+                    className="rounded bg-amber-400 px-4 py-2.5 shadow-xl dark:bg-blue-600 sm:px-6 md:px-8 md:py-3"
                     animate={{
                       boxShadow: [
                         "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
@@ -351,32 +389,39 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
                       ease: "easeInOut"
                     }}
                   >
-                    <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-blue-950 dark:text-white uppercase tracking-wide">
+                    <h2 className="text-xs font-bold uppercase leading-relaxed tracking-wide text-blue-950 dark:text-white sm:text-base md:text-lg lg:text-xl">
                       Agricultural and Fisheries Infrastructure Projects
                     </h2>
                   </motion.div>
                 </motion.div>
 
                 <motion.p
-                  className="text-4xl md:text-5xl text-white/90 dark:text-slate-300 font-medium"
+                  className="text-[1.75rem] font-medium leading-tight text-white/90 dark:text-slate-300 sm:text-4xl md:text-5xl"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 1.8, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  {"LIVE PROJECT PORTFOLIO".split("").map((char, i) => (
-                    <motion.span
-                      key={i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{
-                        duration: 0.4,
-                        delay: 1.8 + i * 0.05,
-                        ease: [0.22, 1, 0.36, 1]
-                      }}
-                      style={{ display: "inline-block" }}
-                    >
-                      {char === " " ? "\u00A0" : char}
-                    </motion.span>
+                  {"LIVE PROJECT PORTFOLIO".split(" ").map((word, wordIndex) => (
+                    <React.Fragment key={word}>
+                      {wordIndex > 0 ? " " : null}
+                      <span className="inline-block whitespace-nowrap">
+                        {word.split("").map((char, charIndex) => (
+                          <motion.span
+                            key={`${word}-${charIndex}`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{
+                              duration: 0.4,
+                              delay: 1.8 + (wordIndex * word.length + charIndex) * 0.05,
+                              ease: [0.22, 1, 0.36, 1]
+                            }}
+                            style={{ display: "inline-block" }}
+                          >
+                            {char}
+                          </motion.span>
+                        ))}
+                      </span>
+                    </React.Fragment>
                   ))}
                 </motion.p>
               </motion.div>
@@ -410,7 +455,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
                 >
                   <Link
                     href="/projects"
-                    className="group inline-flex items-center justify-center gap-2 px-8 py-3.5 md:px-10 md:py-4 bg-white hover:bg-gray-50 dark:bg-blue-600 dark:hover:bg-blue-500 text-blue-950 dark:text-white font-bold text-sm md:text-base rounded-lg transition-all duration-200 shadow-xl hover:shadow-2xl min-w-[200px]"
+                    className="group inline-flex w-[min(100%,20rem)] items-center justify-center gap-2 rounded-lg bg-white px-8 py-3.5 text-sm font-bold text-blue-950 shadow-xl transition-all duration-200 hover:bg-gray-50 hover:shadow-2xl dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500 sm:w-auto sm:min-w-[200px] md:px-10 md:py-4 md:text-base"
                   >
                     <span>Explore Projects</span>
                     <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
@@ -427,7 +472,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
                 >
                   <Link
                     href="/report-issue"
-                    className="group inline-flex items-center justify-center gap-2 px-8 py-3.5 md:px-10 md:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 text-white font-bold text-sm md:text-base rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl min-w-[200px]"
+                    className="group inline-flex w-[min(100%,20rem)] items-center justify-center gap-2 rounded-lg border border-white/30 bg-white/10 px-8 py-3.5 text-sm font-bold text-white shadow-lg backdrop-blur-md transition-all duration-200 hover:bg-white/20 hover:shadow-xl sm:w-auto sm:min-w-[200px] md:px-10 md:py-4 md:text-base"
                   >
                     <span>E-Reports</span>
                     <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform opacity-70" />
@@ -440,109 +485,178 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
       </section>
 
       {/* Program Coverage Section */}
-      <section className="py-20 px-4 max-w-7xl mx-auto">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Scope & Coverage</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-3 leading-relaxed">
+      <section className="relative mx-auto max-w-7xl px-4 py-16 md:py-28">
+        <motion.div
+          className="mx-auto mb-10 max-w-2xl text-center md:mb-14"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="mb-4 flex items-center justify-center gap-3">
+            <span aria-hidden className="h-px w-10 bg-gradient-to-r from-transparent to-amber-400" />
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-amber-600 dark:text-amber-400">Program Portfolio</span>
+            <span aria-hidden className="h-px w-10 bg-gradient-to-l from-transparent to-amber-400" />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Scope & Coverage</h2>
+          <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
             INFRA Watch aggregates and maps out agricultural and fisheries infrastructure projects under AMEFIP to ensure transparent resource allocation.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {/* Card 1 */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between rounded-xl overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition-all">
-            <CardHeader className="p-8 pb-4">
-              <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 flex items-center justify-center rounded-lg mb-4 text-slate-800 dark:text-slate-100 font-bold text-sm tracking-wide">
-                AMEFSS
-              </div>
-              <CardTitle className="text-xl font-bold text-slate-900 dark:text-white leading-snug">
-                Agricultural Machinery, Equipment and Facilities Support Services
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 pt-0">
-              <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-                Provision of post-harvest facilities, grain dryers, storage warehouses, tractors, and sorting/processing equipment directly to farmer cooperatives to secure food supply chains.
-              </p>
-            </CardContent>
-            <CardFooter className="p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-              <Link
-                href="/projects?program=amefip"
-                className={cn(buttonVariants({ variant: "default" }), "w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 rounded-lg flex items-center justify-center")}
-              >
-                View AMEFSS Projects
-              </Link>
-            </CardFooter>
-          </Card>
-
-          {/* Card 2 */}
-          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between rounded-xl overflow-hidden group hover:border-slate-300 dark:hover:border-slate-700 transition-all">
-            <CardHeader className="p-8 pb-4">
-              <div className="w-12 h-12 bg-primary/10 flex items-center justify-center rounded-lg mb-4 text-primary font-bold text-sm tracking-wide">
-                INS
-              </div>
-              <CardTitle className="text-xl font-bold text-slate-900 dark:text-white leading-snug">
-                Irrigation Network Services
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 pt-0">
-              <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-                Rehabilitation and construction of diversion dams, concrete distribution canals, solar powered water pumps, and local irrigation systems supporting farmer fields.
-              </p>
-            </CardContent>
-            <CardFooter className="p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-              <Link
-                href="/projects?program=ins"
-                className={cn(buttonVariants({ variant: "default" }), "w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold h-10 rounded-lg flex items-center justify-center")}
-              >
-                View INS Projects
-              </Link>
-            </CardFooter>
-          </Card>
+        <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-2 md:gap-8">
+          {programs.map((program, index) => (
+            <motion.div
+              key={program.code}
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.25 }}
+              transition={{ duration: 0.6, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
+              className="h-full"
+            >
+              <Card className="group relative h-full overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
+                <div aria-hidden className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${program.topBar}`} />
+                <CardHeader className="relative p-6 pb-4 md:p-8 md:pb-4">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${program.medallion}`}>
+                      <program.icon className="h-6 w-6" aria-hidden />
+                    </div>
+                    <span className={`rounded-md border px-2.5 py-1 font-mono text-[11px] font-bold tracking-[0.18em] ${program.chip}`}>
+                      {program.code}
+                    </span>
+                  </div>
+                  <CardTitle className="text-xl font-bold leading-snug text-slate-900 dark:text-white">
+                    {program.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="relative p-6 pt-0 md:p-8 md:pt-0">
+                  <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{program.desc}</p>
+                </CardContent>
+                <CardFooter className="relative border-t border-slate-100 bg-slate-50/60 p-6 dark:border-slate-800 dark:bg-slate-900/60 md:p-8">
+                  <Link href={program.href} className={cn(buttonVariants({ variant: "default" }), program.btn)}>
+                    <span>{program.cta}</span>
+                    <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" aria-hidden />
+                  </Link>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          ))}
         </div>
       </section>
 
       {/* Before/After Visual Slider */}
-      <section className="bg-white dark:bg-slate-900 py-20 px-4 border-t border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Illustrative Infrastructure Outcomes</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-3 max-w-xl mx-auto leading-relaxed">
-              This illustration explains a typical before-and-after outcome. It is not photographic evidence for a specific project.
-            </p>
+      <section className="border-y border-slate-200 bg-white px-4 py-16 dark:border-slate-800 dark:bg-slate-950 md:py-28">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid gap-4 md:hidden">
+            <article className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 p-6 text-center shadow-sm dark:border-slate-700 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800/60">
+              <CloudSun aria-hidden className="mx-auto mb-3 h-8 w-8 text-amber-600 dark:text-amber-400" />
+              <span className="mb-3 inline-block rounded-full bg-amber-500 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white">Illustrative Before</span>
+              <h3 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">Impassable & Dry Canals</h3>
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                Inoperative systems and dry soil fields prior to government intervention and construction.
+              </p>
+            </article>
+            <article className="rounded-2xl border border-primary/25 bg-gradient-to-br from-sky-50 via-teal-50 to-emerald-50 p-6 text-center shadow-sm dark:border-primary/30 dark:from-indigo-950/40 dark:via-slate-900 dark:to-slate-950">
+              <Waves aria-hidden className="mx-auto mb-3 h-8 w-8 text-sky-600 dark:text-sky-400" />
+              <span className="mb-3 inline-block rounded-full bg-primary px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary-foreground">Illustrative After</span>
+              <h3 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">Modern Concrete Infrastructure</h3>
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                Operational concrete canal networks flowing with water to irrigate adjacent farmland.
+              </p>
+            </article>
           </div>
 
-          <div className="relative w-full h-[400px] md:h-[480px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg select-none">
+          <div className="relative hidden h-[420px] w-full select-none overflow-hidden rounded-3xl border-2 border-slate-200 shadow-xl dark:border-slate-800 lg:h-[480px] md:block">
             {/* Before Stage */}
-            <div className="absolute inset-0 bg-slate-200 dark:bg-slate-850 flex flex-col items-center justify-center text-center p-8">
-              <div className="max-w-md">
-                <span className="inline-block px-3 py-1 rounded bg-slate-900/10 dark:bg-slate-100/10 text-slate-800 dark:text-slate-200 text-xs font-bold uppercase tracking-wider mb-3">Illustrative Before</span>
-                <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-150 mb-2">Impassable & Dry Canals</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-                  Inoperative systems and dry soil fields prior to government intervention and construction.
-                </p>
+            <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-amber-50 via-orange-100/70 to-amber-200 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+              <div aria-hidden className="absolute right-10 top-4 h-32 w-32 rounded-full bg-amber-300/60 blur-2xl dark:bg-amber-500/10" />
+              <div aria-hidden className="absolute right-24 top-12 h-12 w-12 rounded-full bg-amber-200 dark:bg-amber-400/20" />
+              <svg aria-hidden viewBox="0 0 1000 240" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-44 w-full lg:h-52">
+                <path d="M0 96 Q180 76 380 90 T720 86 T1000 92 L1000 240 L0 240 Z" fill="#E2BC85" opacity="0.9" />
+                <path d="M0 150 Q250 132 520 146 T1000 140 L1000 240 L0 240 Z" fill="#D3A66C" opacity="0.95" />
+                <polygon points="370,118 630,118 585,196 415,196" fill="#C08F55" />
+                <polygon points="392,126 608,126 574,188 426,188" fill="#A97843" />
+                <g stroke="#8A6134" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.55">
+                  <path d="M120 176 l34 -14 l28 12 l36 -16" />
+                  <path d="M210 198 l30 -10 l26 10 l32 -12" />
+                  <path d="M700 182 l32 -12 l26 10 l34 -14" />
+                  <path d="M800 204 l28 -10 l26 8 l30 -12" />
+                  <path d="M80 210 l26 -8 l22 8 l28 -10" />
+                </g>
+                <g stroke="#77602F" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.7">
+                  <path d="M170 112 q-8 -20 2 -34 q10 12 4 34" />
+                  <path d="M255 104 q-6 -16 4 -28 q8 10 2 28" />
+                  <path d="M745 108 q-8 -18 0 -32 q10 12 6 32" />
+                  <path d="M835 116 q-6 -14 2 -26 q8 10 4 26" />
+                </g>
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
+                <div className="max-w-md rounded-2xl border border-white/60 bg-white/60 p-6 shadow-lg backdrop-blur-md dark:border-slate-700/70 dark:bg-slate-900/70">
+                  <span className="inline-block rounded-full bg-amber-500 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white">Illustrative Before</span>
+                  <h3 className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">Impassable & Dry Canals</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                    Inoperative systems and dry soil fields prior to government intervention and construction.
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* After Stage (Teal theme overlay) */}
+            {/* After Stage */}
             <div
-              className="absolute inset-0 bg-primary/90 flex flex-col items-center justify-center text-center p-8 transition-all"
+              className="absolute inset-0 overflow-hidden bg-gradient-to-b from-sky-100 via-teal-50 to-emerald-100 transition-all dark:from-slate-950 dark:via-indigo-950/40 dark:to-slate-950"
               style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}
             >
-              <div className="max-w-md text-primary-foreground">
-                <span className="inline-block px-3 py-1 rounded bg-white/20 text-white text-xs font-bold uppercase tracking-wider mb-3">Illustrative After</span>
-                <h3 className="text-2xl font-bold text-white mb-2">Modern Concrete Infrastructure</h3>
-                <p className="text-primary-foreground/80 text-sm leading-relaxed">
-                  Operational concrete canal networks flowing with water to irrigate adjacent farmland.
-                </p>
+              <div aria-hidden className="absolute left-10 top-6 h-36 w-36 rounded-full bg-teal-200/60 blur-3xl dark:bg-sky-500/10" />
+              <svg aria-hidden viewBox="0 0 1000 240" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-44 w-full lg:h-52">
+                <defs>
+                  <linearGradient id="infrawatch-water-gradient" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#7DD3FC" />
+                    <stop offset="45%" stopColor="#38BDF8" />
+                    <stop offset="100%" stopColor="#0369A1" />
+                  </linearGradient>
+                </defs>
+                <path d="M0 92 Q180 74 380 86 T720 82 T1000 90 L1000 240 L0 240 Z" fill="#34D399" opacity="0.35" />
+                <path d="M0 128 Q250 112 500 122 T1000 120 L1000 240 L0 240 Z" fill="#4ADE80" opacity="0.45" />
+                <polygon points="320,134 680,134 622,216 378,216" fill="#CBD5E1" />
+                <polygon points="338,142 662,142 606,208 394,208" fill="url(#infrawatch-water-gradient)" />
+                <g stroke="#047857" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.65">
+                  <path d="M118 152 q6 -16 16 -24" />
+                  <path d="M148 162 q6 -14 14 -22" />
+                  <path d="M196 150 q5 -14 13 -21" />
+                  <path d="M806 154 q-6 -16 -16 -24" />
+                  <path d="M838 164 q-6 -14 -14 -22" />
+                  <path d="M884 152 q-5 -14 -13 -21" />
+                </g>
+                <g stroke="#BAE6FD" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.85">
+                  <motion.path d="M420 168 H582" strokeDasharray="16 40" animate={{ strokeDashoffset: [0, -56] }} transition={{ duration: 1.6, ease: "linear", repeat: Infinity }} />
+                  <motion.path d="M430 188 H572" strokeDasharray="12 44" animate={{ strokeDashoffset: [0, -56] }} transition={{ duration: 2, ease: "linear", repeat: Infinity }} />
+                </g>
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
+                <div className="max-w-md rounded-2xl border border-white/60 bg-white/60 p-6 shadow-lg backdrop-blur-md dark:border-slate-700/70 dark:bg-slate-900/70">
+                  <span className="inline-block rounded-full bg-primary px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary-foreground">Illustrative After</span>
+                  <h3 className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">Modern Concrete Infrastructure</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                    Operational concrete canal networks flowing with water to irrigate adjacent farmland.
+                  </p>
+                </div>
               </div>
             </div>
+
+            {/* Stage Labels */}
+            <span className="pointer-events-none absolute left-4 top-4 z-20 rounded-md bg-primary px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-primary-foreground shadow-md">After · Irrigated</span>
+            <span className="pointer-events-none absolute right-4 top-4 z-20 rounded-md bg-amber-500 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow-md">Before · Dry</span>
 
             {/* Slider Control Line */}
             <div
-              className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize z-20"
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 z-20"
               style={{ left: `${sliderPosition}%` }}
             >
-              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-md border-2 border-white select-none hover:bg-slate-800 transition-colors">↔</div>
+              <div className="absolute inset-y-0 -translate-x-1/2 w-[3px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.2)]" />
+              <div className="absolute top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[3px] border-white bg-slate-900 text-white shadow-xl">
+                <MoveHorizontal className="h-5 w-5" />
+              </div>
             </div>
 
             {/* Hidden range input overlay for dragging */}
@@ -552,6 +666,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
               max="100"
               value={sliderPosition}
               onChange={(e) => setSliderPosition(Number(e.target.value))}
+              aria-label="Compare illustrative before and after outcomes"
               className="absolute inset-0 opacity-0 cursor-ew-resize z-30 w-full h-full"
             />
           </div>
@@ -559,26 +674,46 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
       </section>
 
       {/* How it works */}
-      <section className="py-20 px-4 max-w-6xl mx-auto">
-        <div className="text-center max-w-xl mx-auto mb-16">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">How It Works</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-3 leading-relaxed">
+      <section className="relative mx-auto max-w-6xl px-4 py-16 md:py-28">
+        <motion.div
+          className="mx-auto mb-12 max-w-xl text-center md:mb-16"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">How It Works</h2>
+          <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
             INFRA Watch connects citizens, site monitors, and government administrators in a closed feedback loop.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {steps.map((step) => (
-            <Card key={step.num} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm p-6 rounded-xl relative hover:shadow-md transition-all">
-              <span className="absolute top-6 right-6 font-mono text-3xl font-bold text-slate-200 dark:text-slate-800">{step.num}</span>
-              <div className="flex flex-col h-full justify-between">
-                <div>
-                  <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2 mt-4">{step.title}</h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">{step.desc}</p>
+        <div className="relative">
+          <div
+            aria-hidden
+            className="absolute left-[12.5%] right-[12.5%] top-7 hidden border-t-2 border-dashed border-slate-300 dark:border-slate-700 lg:block"
+          />
+          <div className="grid gap-10 sm:grid-cols-2 md:gap-x-6 lg:grid-cols-4">
+            {steps.map((step, index) => (
+              <motion.div
+                key={step.num}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.55, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                className="group relative flex flex-col items-center text-center"
+              >
+                <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-200 bg-slate-50 text-primary shadow-sm transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary group-hover:bg-primary group-hover:text-white group-hover:shadow-lg dark:border-slate-700 dark:bg-slate-950 dark:text-indigo-300 dark:group-hover:border-primary dark:group-hover:bg-primary dark:group-hover:text-white">
+                  <step.icon className="h-6 w-6" aria-hidden />
+                  <span className="absolute -right-2.5 -top-2.5 rounded-full bg-slate-900 px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider text-white shadow-md dark:bg-amber-400 dark:text-slate-900">
+                    {step.num}
+                  </span>
                 </div>
-              </div>
-            </Card>
-          ))}
+                <h3 className="mt-5 font-bold text-base text-slate-900 dark:text-white">{step.title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{step.desc}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
     </div>

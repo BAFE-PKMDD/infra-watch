@@ -52,8 +52,25 @@ test("summarizes active filters with removable keyboard controls", () => {
     onChange: () => undefined,
   }));
 
+  assert.match(html, /Filters/);
   assert.match(html, /2 active filters/);
   assert.match(html, /Region: Region VIII/);
-  assert.match(html, /Schedule health: At risk/);
+  assert.match(html, /Timeline status: At risk/);
   assert.match(html, /Remove Region filter/);
+  assert.match(html, /Reset filters/);
+  assert.doesNotMatch(html, /All indicators and drill-downs/);
+  assert.doesNotMatch(html, /<details[^>]* open=/);
+});
+
+test("keeps filters expanded and hides reset when no filter is active", () => {
+  const html = renderToStaticMarkup(createElement(DashboardFilters, {
+    filters: {},
+    options: {
+      programs: [], years: [], regions: [], provinces: [], projectTypes: [], statuses: [],
+    },
+    onChange: () => undefined,
+  }));
+
+  assert.match(html, /<details[^>]* open=/);
+  assert.doesNotMatch(html, /Reset filters/);
 });

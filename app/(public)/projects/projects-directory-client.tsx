@@ -15,7 +15,9 @@ import {
   X,
   Loader2,
   Briefcase,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -54,6 +56,14 @@ type GeotagPhoto = {
   url?: string;
 };
 
+const SELECT_CHEVRON_STYLE: React.CSSProperties = {
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+  backgroundPosition: "right 0.65rem center",
+  backgroundRepeat: "no-repeat",
+  backgroundSize: "1em 1em",
+  paddingRight: "2rem",
+};
+
 function projectLocation(project: { barangay: string | null; municipality: string | null; province?: string | null }) {
   return [project.barangay, project.municipality, project.province].filter(Boolean).join(", ") || "Location unavailable";
 }
@@ -90,6 +100,9 @@ export default function ProjectsCatalog() {
   const [viewMode, setViewMode] = useState(initialState.view);
   const { theme } = useTheme();
   const [selectedPin, setSelectedPin] = useState<CatalogMapPin | null>(null);
+  const [mapProjectType, setMapProjectType] = useState("all");
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  const mapPanelRef = React.useRef<HTMLDivElement>(null);
 
   const { ref, inView } = useInView();
 
@@ -234,12 +247,50 @@ export default function ProjectsCatalog() {
         lat: p.latitude!,
         lng: p.longitude!,
         status: mapInternalToPublicStage(p.status).toLowerCase().replace(" ", ""),
-        type: p.program,
+        type: p.projectType,
         desc: projectLocation(p),
         progress: p.physicalProgress || 0
       }];
     });
   }, [allMapPins]);
+
+  const mapProjectTypes = React.useMemo(
+    () => [...new Set(mapPins.map((pin) => pin.type))].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" }),
+    ),
+    [mapPins],
+  );
+  const effectiveMapProjectType = mapProjectType === "all" || mapProjectTypes.includes(mapProjectType)
+    ? mapProjectType
+    : "all";
+  const filteredMapPins = React.useMemo(
+    () => effectiveMapProjectType === "all"
+      ? mapPins
+      : mapPins.filter((pin) => pin.type === effectiveMapProjectType),
+    [effectiveMapProjectType, mapPins],
+  );
+
+  React.useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsMapFullscreen(document.fullscreenElement === mapPanelRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  const toggleMapFullscreen = async () => {
+    const mapPanel = mapPanelRef.current;
+    if (!mapPanel) return;
+    try {
+      if (document.fullscreenElement === mapPanel) {
+        await document.exitFullscreen();
+      } else {
+        await mapPanel.requestFullscreen();
+      }
+    } catch {
+      setIsMapFullscreen(false);
+    }
+  };
 
   React.useEffect(() => {
     if (inView && hasNextPage && !isFetchingNextPage) {
@@ -256,6 +307,8 @@ export default function ProjectsCatalog() {
     setSelectedBarangay("all");
     setSelectedYear("all");
     setSelectedStatus("all");
+    setMapProjectType("all");
+    setSelectedPin(null);
     setSort("newest");
     setViewMode("list");
   };
@@ -338,28 +391,38 @@ export default function ProjectsCatalog() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl p-4 mb-8"
+          className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 rounded-xl mb-8"
         >
-          {/* Top Row: Results count & Views */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800/80 mb-4">
-            <div className="flex items-center gap-4 text-sm font-extrabold text-slate-900 dark:text-white">
-              <div>
-                <span>{totalCount.toLocaleString()} projects found</span>
-                <p className="mt-1 text-[10px] font-medium text-slate-500">
-                  Source: {directorySource?.name || "ABEMIS infrastructure project feed"}
-                  {directorySource?.lastSuccessfulSync ? ` · Last successful sync: ${directorySource.lastSuccessfulSync}` : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 font-semibold">
-                <Filter className="w-4 h-4" />
-                <span>Filters:</span>
-              </div>
+          {/* Header Row: Results count, sort & view switcher */}
+          <div className="flex flex-col gap-4 p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800/80 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-base font-extrabold leading-none text-slate-900 dark:text-white">
+                {totalCount.toLocaleString()} projects found
+              </p>
+              <p className="mt-1.5 text-[11px] font-medium text-slate-500 truncate">
+                Source: {directorySource?.name || "ABEMIS infrastructure project feed"}
+                {directorySource?.lastSuccessfulSync ? ` · Last successful sync: ${directorySource.lastSuccessfulSync}` : ""}
+              </p>
             </div>
 
-            <div className="flex items-center gap-4 text-sm w-full sm:w-auto justify-between sm:justify-end">
-              <span className="text-slate-500 font-semibold hidden sm:inline">Select a view:</span>
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <select
+                aria-label="Sort projects"
+                value={sort}
+                onChange={(event) => setSort(event.target.value as PublicProjectSort)}
+                className="w-full sm:w-auto max-w-[210px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
+              >
+                <option value="newest">Recently synchronized</option>
+                <option value="name-asc">Project name A–Z</option>
+                <option value="budget-desc">Approved budget: high to low</option>
+                <option value="budget-asc">Approved budget: low to high</option>
+                <option value="year-desc">Funding year: newest first</option>
+              </select>
 
-              <div className="flex items-center bg-slate-50 dark:bg-slate-950 rounded-lg p-1 border border-slate-200 dark:border-slate-800">
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
+
+              <div className="flex items-center bg-slate-50 dark:bg-slate-950 rounded-lg p-1 border border-slate-200 dark:border-slate-800" role="group" aria-label="Select a view">
                 <button
                   onClick={() => setViewMode("list")}
                   aria-label="List view"
@@ -395,18 +458,26 @@ export default function ProjectsCatalog() {
                 </button>
               </div>
 
-              <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
-
               <button disabled aria-label="Export is coming soon" className="p-2.5 rounded-lg border border-transparent text-slate-400 disabled:cursor-not-allowed disabled:opacity-60" title="Export (Coming Soon)">
                 <Download className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Bottom Row: Pill Tabs & Selects */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
+          {/* Filters Body */}
+          <div className="p-4 sm:p-5 space-y-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <Filter className="h-3.5 w-3.5" />
+                Filter by program &amp; location
+              </p>
+              {directoryQueryString && (
+                <Button variant="outline" size="sm" onClick={resetFilters}>Reset filters and view</Button>
+              )}
+            </div>
+
             {/* Program Pills */}
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
               {programs.map(prog => (
                 <button
                   key={prog.id}
@@ -423,9 +494,8 @@ export default function ProjectsCatalog() {
               ))}
             </div>
 
-            {/* Select Dropdowns Wrapper */}
-            <div className="flex-1 w-full flex flex-wrap gap-2.5">
-              <p className="w-full text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Filter by location, status, and funding year</p>
+            {/* Location / Status / Year Selects */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
               <select
                 aria-label="Region"
                 value={selectedRegion}
@@ -435,8 +505,8 @@ export default function ProjectsCatalog() {
                   setSelectedMunicipality("all");
                   setSelectedBarangay("all");
                 }}
-                className="flex-1 min-w-[120px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.2em 1.2em`, paddingRight: `1.8rem` }}
+                className="w-full min-w-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
               >
                 <option value="all">All Regions</option>
                 {regionsList.map((region) => (
@@ -454,8 +524,8 @@ export default function ProjectsCatalog() {
                   setSelectedMunicipality("all");
                   setSelectedBarangay("all");
                 }}
-                className="flex-1 min-w-[120px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.2em 1.2em`, paddingRight: `1.8rem` }}
+                className="w-full min-w-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
               >
                 <option value="all">All Provinces</option>
                 {provincesList.map((province) => (
@@ -472,8 +542,8 @@ export default function ProjectsCatalog() {
                   setSelectedMunicipality(e.target.value);
                   setSelectedBarangay("all");
                 }}
-                className="flex-1 min-w-[120px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.2em 1.2em`, paddingRight: `1.8rem` }}
+                className="w-full min-w-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
               >
                 <option value="all">All Cities/Municipalities</option>
                 {municipalitiesList.map((municipality) => (
@@ -487,8 +557,8 @@ export default function ProjectsCatalog() {
                 aria-label="Barangay"
                 value={selectedBarangay}
                 onChange={(e) => setSelectedBarangay(e.target.value)}
-                className="flex-1 min-w-[120px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.2em 1.2em`, paddingRight: `1.8rem` }}
+                className="w-full min-w-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
               >
                 <option value="all">All Barangays</option>
                 {barangaysList.map((barangay) => (
@@ -502,8 +572,8 @@ export default function ProjectsCatalog() {
                 aria-label="Project status"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value as typeof selectedStatus)}
-                className="flex-1 min-w-[120px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.2em 1.2em`, paddingRight: `1.8rem` }}
+                className="w-full min-w-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
               >
                 <option value="all">All Status</option>
                 <option value="not yet started">Not yet started</option>
@@ -515,8 +585,8 @@ export default function ProjectsCatalog() {
                 aria-label="Funding year"
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="flex-1 min-w-[80px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.2em 1.2em`, paddingRight: `1.8rem` }}
+                className="w-full min-w-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
               >
                 <option value="all">Year</option>
                 <option value="2026">2026</option>
@@ -524,29 +594,14 @@ export default function ProjectsCatalog() {
                 <option value="2024">2024</option>
                 <option value="2023">2023</option>
               </select>
-              <label className="flex min-w-[170px] flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 dark:border-slate-800 dark:bg-slate-950">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Sort</span>
-                <select
-                  aria-label="Sort projects"
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value as PublicProjectSort)}
-                  className="min-w-0 flex-1 bg-transparent py-2 text-xs font-semibold text-slate-700 outline-none dark:text-slate-300"
-                >
-                  <option value="newest">Recently synchronized</option>
-                  <option value="name-asc">Project name A–Z</option>
-                  <option value="budget-desc">Approved budget: high to low</option>
-                  <option value="budget-asc">Approved budget: low to high</option>
-                  <option value="year-desc">Funding year: newest first</option>
-                </select>
-              </label>
             </div>
+
+            {directoryQueryString && (
+              <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                Filters, sorting, and view are saved in this shareable URL.
+              </p>
+            )}
           </div>
-          {directoryQueryString && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Filters, sorting, and view are saved in this shareable URL.</p>
-              <Button variant="outline" size="sm" onClick={resetFilters}>Reset filters and view</Button>
-            </div>
-          )}
         </motion.div>
 
         {/* Loading State */}
@@ -655,7 +710,7 @@ export default function ProjectsCatalog() {
                         </div>
 
                         {/* Metadata Grid */}
-                        <div className="grid grid-cols-2 gap-y-3.5 gap-x-4 text-xs pt-4 border-t border-slate-100 dark:border-slate-850 mt-4">
+                        <div className="grid grid-cols-2 gap-y-3.5 gap-x-4 text-xs pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
                           <div>
                             <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Location</span>
                             <span className="text-slate-700 dark:text-slate-300 font-semibold truncate block mt-0.5">{projectLocation(project)}</span>
@@ -808,37 +863,82 @@ export default function ProjectsCatalog() {
         {/* Map View */}
         {viewMode === "map" && !directoryUnavailable && (
           <motion.div
+            ref={mapPanelRef}
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full h-[600px] mt-6 flex gap-4 relative z-0"
+            className={`mt-6 flex gap-4 relative z-0 ${
+              isMapFullscreen
+                ? "h-screen w-screen m-0 bg-slate-950"
+                : "w-full h-[600px]"
+            }`}
           >
-            <div className="flex-1 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm relative">
+            <div
+              className={`flex-1 overflow-hidden border border-slate-200 bg-slate-950 shadow-sm relative ${
+                isMapFullscreen
+                  ? "h-full rounded-none border-0"
+                  : "h-full rounded-2xl"
+              }`}
+            >
               {!isLoadingMapPins && (
-                <div className="absolute left-3 top-3 z-[1000] rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200">
-                  {mapPins.length.toLocaleString()} coordinate-backed projects shown
+                <div className="absolute left-3 top-3 z-[1000] max-w-[min(20rem,calc(100%-6rem))] rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200">
+                  <div>{filteredMapPins.length.toLocaleString()} {filteredMapPins.length === 1 ? "project" : "projects"} shown</div>
+                  {totalCount > filteredMapPins.length && (
+                    <div className="mt-1 text-[10px] font-normal leading-snug text-slate-500 dark:text-slate-400">
+                      Note: Not all projects are shown — {(totalCount - filteredMapPins.length).toLocaleString()} have no coordinates and aren&apos;t visible on the map.
+                    </div>
+                  )}
                 </div>
               )}
               {!isLoadingMapPins && (
-                <label className="absolute bottom-6 right-3 z-[1000] flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200">
-                  <span>Region</span>
-                  <select
-                    value={selectedRegion}
-                    onChange={(event) => {
-                      setSelectedRegion(event.target.value);
-                      setSelectedProvince("all");
-                      setSelectedMunicipality("all");
-                      setSelectedBarangay("all");
-                      setSelectedPin(null);
-                    }}
-                    className="max-w-[220px] rounded border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-950"
-                  >
-                    <option value="all">All Regions</option>
-                    {regionsList.map((region) => (
-                      <option key={region.value} value={region.value}>{region.label}</option>
-                    ))}
-                  </select>
-                </label>
+                <div className="absolute bottom-28 right-3 z-[1000] grid w-[min(22rem,calc(100%-1.5rem))] gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200 sm:bottom-6 sm:w-[22rem]">
+                  <label className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-2">
+                    <span>Region</span>
+                    <select
+                      aria-label="Map region"
+                      value={selectedRegion}
+                      onChange={(event) => {
+                        setSelectedRegion(event.target.value);
+                        setSelectedProvince("all");
+                        setSelectedMunicipality("all");
+                        setSelectedBarangay("all");
+                        setSelectedPin(null);
+                      }}
+                      className="min-w-0 rounded border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-950"
+                    >
+                      <option value="all">All Regions</option>
+                      {regionsList.map((region) => (
+                        <option key={region.value} value={region.value}>{region.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-2">
+                    <span>Project type</span>
+                    <select
+                      aria-label="Project type"
+                      value={effectiveMapProjectType}
+                      onChange={(event) => {
+                        setMapProjectType(event.target.value);
+                        setSelectedPin(null);
+                      }}
+                      className="min-w-0 rounded border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-950"
+                    >
+                      <option value="all">All project types</option>
+                      {mapProjectTypes.map((projectType) => (
+                        <option key={projectType} value={projectType}>{projectType}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               )}
+              <button
+                type="button"
+                onClick={() => void toggleMapFullscreen()}
+                aria-label={isMapFullscreen ? "Exit map fullscreen" : "View map fullscreen"}
+                title={isMapFullscreen ? "Exit fullscreen" : "View map fullscreen"}
+                className="absolute right-3 top-3 z-[1000] inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white/95 text-slate-700 shadow-sm backdrop-blur transition-colors hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200 dark:hover:bg-slate-900"
+              >
+                {isMapFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
               {!isLoadingMapPins && (
                 <div className="absolute bottom-6 left-3 z-[1000] rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-700 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200">
                   <p className="mb-1.5 font-bold">Project status</p>
@@ -859,7 +959,7 @@ export default function ProjectsCatalog() {
                 </div>
               ) : (
                 <GISMapCanvas
-                  filteredPins={mapPins}
+                  filteredPins={filteredMapPins}
                   selectedProject={selectedPin}
                   setSelectedProject={setSelectedPin}
                   watershedOverlay={false}
@@ -867,6 +967,7 @@ export default function ProjectsCatalog() {
                   theme={theme === "dark" ? "dark" : "light"}
                   mapCenter={[12.8797, 121.7740]}
                   mapZoom={6}
+                  selectedRegion={selectedRegion}
                 />
               )}
             </div>

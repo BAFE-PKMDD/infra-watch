@@ -63,27 +63,33 @@ export function shouldRetryExecutiveBrief(attempt: number, status: number, hasCo
   return attempt === 0 && !hasContent && (status === 429 || status >= 500);
 }
 
-export const EXECUTIVE_BRIEF_PROMPT = `Create a decision-focused analytical executive brief for the current authorized and filtered infrastructure portfolio.
+export const EXECUTIVE_BRIEF_PROMPT = `Write a simple, easy-to-read summary report for the selected projects.
+Write as if you are explaining this to a non-technical manager.
 
 Use exactly these six Markdown sections in this order:
 ## Executive Summary
-## Descriptive Analytics
-## Diagnostic Analytics
-## Predictive Analytics
-## Prescriptive Analytics
+## Current Status & Overview
+## Risk & Problem Areas
+## Forecast & Future Outlook
+## Action Items & Recommendations
 ## Data Limitations
 
-Analytical contract:
-- Descriptive Analytics explains what is happening using official KPIs, coverage, schedule health, and bounded portfolio distributions.
-- Diagnostic Analytics explains where material gaps are concentrated and which returned dimensions or project evidence contribute. Do not claim unobserved causation.
-- Predictive Analytics uses only forecast evidence explicitly returned by tools. State "Insufficient history" when a projection is unavailable. Rules-based schedule health is an explainable outlook, not predictive modeling.
-- Prescriptive Analytics gives concise advisory actions tied to returned deterministic insights and priority projects; identify the evidence supporting each action.
+Content Requirements:
+- Current Status & Overview: Explain the current totals, budget, completion rates, and timeline status. Use charts to visualize breakdowns if helpful.
+- Risk & Problem Areas: Explain where the main delays and issues are. Only state facts from the data without guessing why. Use charts to visualize risks if helpful.
+- Forecast & Future Outlook: Use only projections explicitly provided by the tools. State "Insufficient history" when a projection is unavailable.
+- Action Items & Recommendations: Give clear, simple next steps based on the factual data and priority projects; mention what data supports each action.
+- Data Limitations: List any missing data like missing budgets, outdated records, or incomplete timelines.
 
 Grounding rules:
-- Use only trusted dashboard tool results. Preserve official values and definitions exactly.
-- State quantitative risk, rankings, counts, percentages, currency, dates, or forecasts only when a dashboard tool returns them as official data. Never invent, recalculate, extrapolate, or estimate a metric.
-- If evidence is unavailable, say so explicitly; do not fill gaps with assumptions.
-- Use only canonical project links returned by tools.
-- Keep recommendations clearly advisory and tied to returned evidence.
-- Do not emit chart blocks. The interface renders charts deterministically from the same captured authorized dashboard response.
-- Do not include an AI disclaimer; the interface adds one exactly once.`;
+- Use only trusted dashboard tool results.
+- State totals, percentages, currency, and dates only when the tool provides them. Never invent or estimate numbers.
+- Treat rules-based timeline labels as current assessments, not predictive forecasts.
+- If data is missing, say so explicitly. Never use the word "null" in your output (use "Not specified" or "Unknown" instead).
+- Use only the provided project links.
+- Keep recommendations simple and tied to the data.
+- You MAY emit chart blocks using \`\`\`chart markdown syntax to visualize distributions, risks, or financial breakdowns.
+- Do not include an AI disclaimer.
+- CRITICAL: Write in simple, humanized, everyday language.
+- CRITICAL: NEVER use complex academic or technical words like "portfolio", "schedule-health", "deterministic", "aggregate", "comprises", or "assessments". Use simple terms instead (e.g., "all projects" instead of "portfolio", "timeline status" instead of "schedule health", "total" instead of "aggregate").
+- Humanize category and dimension names (e.g., format "SwineProduction" as "Swine Production").`;

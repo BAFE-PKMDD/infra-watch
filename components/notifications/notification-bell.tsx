@@ -4,15 +4,28 @@ import { useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { useNotifications } from "@/providers/notification-provider";
 
-export function NotificationBell() {
-  const [open, setOpen] = useState(false);
+interface NotificationBellProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function NotificationBell({ open: controlledOpen, onOpenChange }: NotificationBellProps = {}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
+  const open = controlledOpen ?? uncontrolledOpen;
+
+  const setOpen = (nextOpen: boolean) => {
+    if (controlledOpen === undefined) {
+      setUncontrolledOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  };
 
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen(!open)}
         className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         aria-label="Notifications"
       >

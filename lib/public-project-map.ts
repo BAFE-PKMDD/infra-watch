@@ -23,6 +23,7 @@ type SourceProjectPin = {
   longitude: number | null;
   status: string;
   program: string;
+  projectType?: string | null;
   barangay: string | null;
   municipality: string | null;
   physicalProgress: number;
@@ -39,7 +40,7 @@ export function toSourceBackedMapPins(rows: SourceProjectPin[]) {
       lat: latitude,
       lng: longitude,
       status: mapInternalToPublicStage(row.status).toLowerCase().replace(/\s+/g, ""),
-      type: row.program.toLowerCase(),
+      type: row.projectType?.trim() || "Unclassified",
       desc: [row.barangay, row.municipality].filter(Boolean).join(", ") || "Location unavailable",
       progress: row.physicalProgress,
     }];

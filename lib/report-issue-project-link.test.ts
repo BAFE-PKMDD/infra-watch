@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildReportIssuePath, projectPreviewToSelectedProject } from "./report-issue-project-link";
+import { buildReportIssuePath, projectPreviewToSelectedProject } from "./report-issue-project-link.ts";
 
 test("builds a project-linked report path without allowing query injection", () => {
   assert.equal(buildReportIssuePath("A&B?admin=true"), "/report-issue/new?projectId=A%26B%3Fadmin%3Dtrue");

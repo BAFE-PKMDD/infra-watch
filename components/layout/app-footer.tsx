@@ -133,7 +133,7 @@ export function AppFooter() {
           <p className="text-slate-400">
             {t("footer.rights")?.replace("FMR", "INFRA") || "© 2026 INFRA Watch. All Rights Reserved."}
           </p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             <Link href="/data-privacy" className="text-slate-400 hover:text-accent transition-colors">
               {t("footer.privacy")}
             </Link>

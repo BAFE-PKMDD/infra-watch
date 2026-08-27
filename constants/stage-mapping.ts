@@ -52,7 +52,8 @@ export function mapInternalToPublicStage(stage?: string | null): PublicStage {
  * Maps a public-facing stage term to a list of internal database stage strings.
  */
 export function mapPublicToInternalStages(publicStage: string): string[] {
+  const normalized = publicStage.trim().toLowerCase();
   return Object.entries(STAGE_MAPPING)
-    .filter(([, value]) => value === publicStage)
+    .filter(([, value]) => value.toLowerCase() === normalized)
     .map(([key]) => key);
 }

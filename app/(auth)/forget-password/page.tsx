@@ -113,7 +113,7 @@ function ForgetPasswordContent() {
                   step === "otp" ? "Verify Code" :
                     "New Password"}
               </CardTitle>
-              <p className="text-sm text-slate-650 dark:text-slate-300 pb-3">
+              <p className="text-sm text-slate-600 dark:text-slate-300 pb-3">
                 {step === "email" ? "Enter your email to receive a password reset code." :
                   step === "otp" ? `Enter the code we sent to ${email}` :
                     "Choose a strong new password for your account."}

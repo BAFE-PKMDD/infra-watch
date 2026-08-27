@@ -110,7 +110,7 @@ export default function SignUpPage() {
                     <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                       Create your account
                     </CardTitle>
-                    <p className="text-sm text-slate-650 dark:text-slate-300 pb-3">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 pb-3">
                       Join INFRA Watch to monitor projects and submit feedback.
                     </p>
                   </CardHeader>

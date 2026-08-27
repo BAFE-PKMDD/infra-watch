@@ -4,7 +4,8 @@ import { auth } from "@/lib/auth";
 import { getAuditContextFromRequest, logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { feedback, projects } from "@/lib/db/schema";
-import { publishNotification } from "@/lib/realtime-notifications";
+import { publishAndPersistNotification } from "@/lib/notification-persistence";
+import { getProjectNotificationRecipientIds } from "@/lib/staff-notification-recipients";
 import { assertCleanText } from "@/lib/services/content-moderation";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import type { FeedbackMedia } from "@/types/feedback.types";
@@ -17,6 +18,36 @@ const FEEDBACK_CATEGORIES = new Set(["quality", "progress", "concerns", "general
 const MAX_MEDIA_ITEMS = 5;
 const MAX_GEO_TRACK_POINTS = 10_000;
 const MAX_TRACK_TIME_SECONDS = 7 * 24 * 60 * 60;
+
+async function notifyStaffOfNewFeedback(feedbackItem: {
+  id: string;
+  projectId: string;
+  category: string | null;
+}) {
+  try {
+    const recipientUserIds = await getProjectNotificationRecipientIds(
+      feedbackItem.projectId,
+    );
+    await publishAndPersistNotification(
+      {
+        type: "feedback_submitted",
+        title: "New feedback submitted",
+        message: "A citizen submitted feedback for review.",
+        metadata: {
+          feedbackId: feedbackItem.id,
+          projectId: feedbackItem.projectId,
+          category: feedbackItem.category,
+        },
+      },
+      recipientUserIds,
+    );
+  } catch (error) {
+    console.error("Failed to persist scoped feedback notification", {
+      feedbackId: feedbackItem.id,
+      error: error instanceof Error ? error.name : "UnknownError",
+    });
+  }
+}
 
 type MediaNormalizationResult =
   | { success: true; data: FeedbackMedia[] }
@@ -287,15 +318,10 @@ export async function POST(
       })
       .returning();
 
-    publishNotification({
-      type: "feedback_submitted",
-      title: "New feedback submitted",
-      message: "A citizen submitted feedback for review.",
-      metadata: {
-        feedbackId: created.id,
-        projectId: projectKey,
-        category,
-      },
+    await notifyStaffOfNewFeedback({
+      id: created.id,
+      projectId: projectKey,
+      category,
     });
 
     await logAudit({

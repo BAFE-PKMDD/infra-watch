@@ -33,6 +33,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated ANIA speech-synthesis worker bundle (scripts/build-tts-worker.mts).
+    "public/ania/**",
     // One-off CommonJS database and repository maintenance utilities.
     "add_env.js",
     "append.js",

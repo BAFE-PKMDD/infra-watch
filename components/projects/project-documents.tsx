@@ -53,7 +53,7 @@ export function ProjectDocuments({ documents }: ProjectDocumentsProps) {
           {documents.map((doc, index) => (
             <div
               key={doc.id || index}
-              className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-500 hover:bg-slate-100 dark:hover:bg-slate-750 transition-all group"
+              className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all group"
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="p-2.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">

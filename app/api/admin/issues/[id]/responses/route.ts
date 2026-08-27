@@ -6,6 +6,7 @@ import { getAuditContextFromRequest, logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { issueResponses, issues } from "@/lib/db/schema";
 import { checkIssueScope } from "@/lib/scope";
+import { assertCleanText } from "@/lib/services/content-moderation";
 
 export const runtime = "nodejs";
 
@@ -32,9 +33,21 @@ export async function POST(
     const message = String(body.message || "").trim();
     const internalNotes = String(body.internalNotes || "").trim();
     const isInternalOnly = Boolean(body.isInternalOnly);
+    const publishToPublic = Boolean(body.publishToPublic);
+    const publicDescription = String(body.publicDescription || "").trim();
     const nextStatus = toDbIssueStatus(body.newStatus);
 
-    if (!message && !isInternalOnly) {
+    if (publishToPublic) {
+      if (isInternalOnly) {
+        return NextResponse.json({ success: false, error: "A public summary cannot accompany an internal-only response." }, { status: 400 });
+      }
+      if (publicDescription.length < 20 || publicDescription.length > 2_000) {
+        return NextResponse.json({ success: false, error: "Public summary must be between 20 and 2,000 characters." }, { status: 400 });
+      }
+      assertCleanText(publicDescription);
+    }
+
+    if (!message && !isInternalOnly && !publishToPublic) {
       return NextResponse.json({ success: false, error: "Response message is required." }, { status: 400 });
     }
 
@@ -56,15 +69,20 @@ export async function POST(
       })
       .returning();
 
-    if (nextStatus && nextStatus !== issue.status) {
+    if ((nextStatus && nextStatus !== issue.status) || publishToPublic) {
       const updatedAt = new Date();
       const resolvedAt = nextStatus === "resolved" ? updatedAt : issue.resolvedAt;
 
       await db
         .update(issues)
         .set({
-          status: nextStatus,
+          status: nextStatus ?? issue.status,
           resolvedAt,
+          ...(publishToPublic ? {
+            publicDescription,
+            publicApprovedAt: updatedAt,
+            publicApprovedBy: user.id,
+          } : {}),
           updatedAt,
         })
         .where(eq(issues.id, issue.id));
@@ -78,15 +96,24 @@ export async function POST(
           ticketNumber: issue.ticketNumber,
           status: issue.status,
           resolvedAt: issue.resolvedAt,
+          publicDescription: issue.publicDescription,
+          publicApprovedAt: issue.publicApprovedAt,
         },
         newValues: {
           id: issue.id,
           ticketNumber: issue.ticketNumber,
-          status: nextStatus,
+          status: nextStatus ?? issue.status,
           resolvedAt,
+          ...(publishToPublic ? {
+            publicDescription,
+            publicApprovedAt: updatedAt,
+            publicApprovedBy: user.id,
+          } : {}),
           updatedAt,
         },
-        notes: `Issue status changed: ${issue.status} -> ${nextStatus}`,
+        notes: publishToPublic
+          ? `Issue public summary approved${nextStatus && nextStatus !== issue.status ? `; status changed: ${issue.status} -> ${nextStatus}` : ""}`
+          : `Issue status changed: ${issue.status} -> ${nextStatus}`,
         context: getAuditContextFromRequest(request, user),
       });
     }

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import { formatCurrency } from "@/lib/format";
+import { getProjectLengthDisplay } from "@/lib/project-length-display";
 import type { ProjectDetail } from "@/types";
 import { useTranslation } from "@/i18n";
 import { getAgencyLogo } from "@/constants/agencies";
@@ -33,9 +34,9 @@ interface HighlightFieldProps {
 
 function HighlightField({ label, value, tooltip, className = "", isMono = false }: HighlightFieldProps) {
   return (
-    <div className={className}>
-      <div className="flex items-center gap-1 mb-1">
-        <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+    <div className={`min-w-0 ${className}`}>
+      <div className="mb-1.5 flex items-center gap-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{label}</p>
         <Tooltip>
           <TooltipTrigger>
             <HelpCircle className="w-3 h-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-help transition-colors" />
@@ -45,7 +46,7 @@ function HighlightField({ label, value, tooltip, className = "", isMono = false 
           </TooltipContent>
         </Tooltip>
       </div>
-      <p className={`text-sm font-semibold text-slate-900 dark:text-white ${isMono ? "font-mono" : ""}`}>
+      <p className={`break-words text-sm font-bold leading-5 text-slate-950 dark:text-white ${isMono ? "font-mono text-[13px]" : ""}`}>
         {value}
       </p>
     </div>
@@ -57,6 +58,7 @@ export function ProjectHighlights({ project }: ProjectHighlightsProps) {
 
   // Resolve agency logo for QR code
   const agencyLogo = getAgencyLogo(project.sourceAgency);
+  const projectLength = getProjectLengthDisplay(project);
 
   // Use a consistent URL for both server and client
   const projectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/projects/${project.id}`;
@@ -188,17 +190,18 @@ export function ProjectHighlights({ project }: ProjectHighlightsProps) {
   return (
     <TooltipProvider>
       <motion.div
-        className="relative z-0 bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-6 dark:bg-slate-900 dark:border-slate-800"
+        className="relative z-0 mb-6 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_22px_55px_-30px_rgba(15,23,42,0.55)] sm:p-6 dark:border-slate-800 dark:bg-slate-900"
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut" }}
       >
-        <div className="flex flex-col lg:flex-row items-start justify-between gap-6">
+        <div className="flex flex-col items-start justify-between gap-6 lg:flex-row">
           <div className="flex-1 w-full">
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t("projectDetail.title")}</h2>
+            <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+              <span aria-hidden="true" className="h-7 w-1 rounded-full bg-blue-600" />
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-950 dark:text-white">{t("projectDetail.title")}</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
               <HighlightField
                 label={t("projectDetail.overview.projectCode")}
                 tooltip={t("projectDetail.overview.projectCodeTooltip")}
@@ -226,9 +229,9 @@ export function ProjectHighlights({ project }: ProjectHighlightsProps) {
                 value={project.budget === null ? "Unavailable" : formatCurrency(project.budget)}
               />
               <HighlightField
-                label={project.postGeotaggedLength ? t("projectDetail.overview.postGeotaggedLength") : t("projectDetail.overview.targetLength")}
-                tooltip={project.postGeotaggedLength ? t("projectDetail.overview.postGeotaggedLengthTooltip") : t("projectDetail.overview.targetLengthTooltip")}
-                value={parseFloat(project.postGeotaggedLength || project.projectLength).toFixed(2) + " km"}
+                label={projectLength.source === "post-geotagged" ? t("projectDetail.overview.postGeotaggedLength") : t("projectDetail.overview.targetLength")}
+                tooltip={projectLength.source === "post-geotagged" ? t("projectDetail.overview.postGeotaggedLengthTooltip") : t("projectDetail.overview.targetLengthTooltip")}
+                value={projectLength.value}
               />
               <HighlightField
                 label={t("projectDetail.overview.contractor")}
@@ -242,7 +245,7 @@ export function ProjectHighlights({ project }: ProjectHighlightsProps) {
               />
             </div>
 
-            <div className="border-t border-slate-200 mt-6 pt-4">
+            <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">
               <HighlightField
                 label={t("projectDetail.overview.implementingAgency")}
                 tooltip={t("projectDetail.overview.implementingAgencyTooltip")}
@@ -252,34 +255,43 @@ export function ProjectHighlights({ project }: ProjectHighlightsProps) {
           </div>
 
           {/* QR Code Section */}
-          <div className="flex flex-col items-center gap-2 w-full lg:w-auto">
+          <div className="flex w-full flex-col items-center gap-2 border-t border-slate-100 pt-5 lg:mr-20 lg:w-auto lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0 dark:border-slate-800">
             <div
               ref={qrRef}
-              className="relative bg-white p-3 rounded-lg shadow-sm group cursor-pointer"
+              className="group relative cursor-pointer rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm transition-shadow hover:shadow-md"
               onClick={() => setShowQRZoom(true)}
+              role="button"
+              tabIndex={0}
+              aria-label={t("projectDetail.overview.scanToView")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setShowQRZoom(true);
+                }
+              }}
             >
               {isMounted ? (
                 <>
                   <QRCodeSVG
                     value={projectUrl}
-                    size={128}
+                    size={112}
                     level="H"
                     imageSettings={{
                       src: agencyLogo,
                       x: undefined,
                       y: undefined,
-                      height: 40,
-                      width: 45,
+                      height: 34,
+                      width: 39,
                       excavate: true,
                     }}
                   />
                   {/* Hover Overlay with Eye Icon */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                     <Eye className="w-8 h-8 text-white" />
                   </div>
                 </>
               ) : (
-                <div className="w-32 h-32 bg-slate-100 animate-pulse rounded" />
+                <div className="h-28 w-28 animate-pulse rounded bg-slate-100" />
               )}
             </div>
             {isMounted && (

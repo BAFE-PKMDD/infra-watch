@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useMemo, type ReactNode } from "react";
+import { use, useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -13,19 +13,13 @@ import {
   FileImage,
   MapPin,
   MessageSquare,
-  Phone,
   TriangleAlert,
-  User,
   XCircle,
 } from "lucide-react";
 
-import { EvidenceLocationMap } from "@/components/shared/evidence-location-map";
-import { GeoVideoPlayer } from "@/components/shared/geo-video-player";
-import { IssueEvidenceGallery } from "@/components/shared/issue-evidence-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -46,9 +40,6 @@ type IssueDetails = {
   projectId: string | null;
   projectName: string;
   project?: { id: string | null; name: string; code: string | null } | null;
-  reporterName: string;
-  reporterPhone: string | null;
-  isAnonymous: boolean;
   issueType: string;
   issueDescription: string;
   status: string;
@@ -57,12 +48,6 @@ type IssueDetails = {
   province: string;
   city: string;
   barangay: string;
-  streetLandmark: string;
-  photoUrls: string[];
-  videoUrls: string[];
-  evidence: StoredIssueEvidenceItem[];
-  geoVideoTrack: GeoTrackPoint[] | null;
-  geoVideoUrl: string | null;
   date?: string;
   dateNoticed?: string;
   createdAt: string;
@@ -176,26 +161,16 @@ export default function IssueDetailPage({ params }: PageProps) {
                 <DetailCell label="City / Municipality" value={issue.city || "N/A"} />
                 <DetailCell label="Barangay" value={issue.barangay || "N/A"} />
               </div>
-              <div className="mt-4 border-t border-slate-200 pt-3 dark:border-slate-700">
-                <DetailCell label="Landmark" value={issue.streetLandmark || "N/A"} />
-              </div>
             </Card>
 
             <Card className="rounded-xl border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-              <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-slate-950 dark:text-white">
-                <FileImage className="size-4 text-emerald-400" /> Evidence
+              <h2 className="mb-2 flex items-center gap-2 text-base font-bold text-slate-950 dark:text-white">
+                <FileImage className="size-4 text-emerald-400" /> Evidence privacy
               </h2>
-              <IssueEvidenceGallery evidence={issue.evidence} photoUrls={issue.photoUrls} videoUrls={issue.videoUrls} />
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                Submitted evidence is retained for authorized review and is not published until an explicit evidence-publication workflow is available.
+              </p>
             </Card>
-
-            <EvidenceLocationMap
-              evidence={issue.evidence}
-              geoVideoTrack={issue.geoVideoTrack}
-              geoVideoUrl={issue.geoVideoUrl}
-            />
-            {issue.geoVideoTrack?.length && issue.geoVideoUrl ? (
-              <GeoVideoPlayer url={issue.geoVideoUrl} track={issue.geoVideoTrack} name="Reported GeoVideo" />
-            ) : null}
 
             {issue.project && (
               <Card className="rounded-xl border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -249,20 +224,14 @@ export default function IssueDetailPage({ params }: PageProps) {
               </div>
             </Card>
 
-            {issue.isAnonymous ? (
-              <Card className="rounded-xl border-orange-300 bg-orange-50 p-5 dark:border-orange-500 dark:bg-orange-950/40">
-                <h2 className="mb-2 flex items-center gap-2 text-sm font-bold text-orange-700 dark:text-orange-300">
-                  <AlertCircle className="size-4" /> Anonymous Report
-                </h2>
-                <p className="text-xs leading-relaxed text-orange-700 dark:text-orange-200">This issue was reported anonymously. Reporter details are not available.</p>
-              </Card>
-            ) : (
-              <Card className="rounded-xl border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <h2 className="mb-4 text-base font-bold text-slate-950 dark:text-white">Reporter</h2>
-                <SidebarRow icon={<User className="size-4" />} label="Name" value={issue.reporterName || "Citizen"} />
-                <SidebarRow icon={<Phone className="size-4" />} label="Contact" value={issue.reporterPhone || "Hidden from public view"} />
-              </Card>
-            )}
+            <Card className="rounded-xl border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-950 dark:text-white">
+                <AlertCircle className="size-4 text-emerald-500" /> Reporter privacy
+              </h2>
+              <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                Reporter identity and contact details are protected and are never included in the public issue record.
+              </p>
+            </Card>
           </aside>
         </div>
       </div>
@@ -284,18 +253,6 @@ function TimelineRow({ label, value }: { label: string; value: string }) {
     <div>
       <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
       <p className="text-sm font-semibold text-slate-950 dark:text-white">{value}</p>
-    </div>
-  );
-}
-
-function SidebarRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return (
-    <div className="mb-4 flex gap-3 last:mb-0">
-      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-emerald-600 dark:bg-slate-800 dark:text-emerald-400">{icon}</div>
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
-        <p className="mt-0.5 text-sm font-medium text-slate-800 dark:text-slate-200">{value}</p>
-      </div>
     </div>
   );
 }

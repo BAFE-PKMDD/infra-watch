@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, ReactNode, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { notificationQueryKey } from "@/lib/notification-query-key";
 import { useAuth } from "@/providers/auth-provider";
 import { toast } from "sonner";
 
@@ -35,14 +36,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   // Only fetch if user is logged in
   const isLoggedIn = !!user;
+  const notificationKey = useMemo(
+    () => notificationQueryKey(user?.id),
+    [user?.id],
+  );
 
-  // Initial fetch of recent in-memory notifications.
+  // Initial fetch of durable notifications scoped to the signed-in recipient.
   const {
     data: notificationsData,
     isLoading: notificationsLoading,
     refetch,
   } = useQuery({
-    queryKey: ["notifications"],
+    queryKey: notificationKey,
     queryFn: async () => {
       const response = await fetch("/api/notifications", { cache: "no-store" });
       if (!response.ok) throw new Error("Failed to fetch notifications");
@@ -59,8 +64,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   );
 
   const handleIncomingNotification = useCallback((notification: Notification) => {
-    const currentNotifications = queryClient.getQueryData<Notification[]>(["notifications"]) || [];
-    const notificationKey = `${notification.type}:${String(
+    const currentNotifications = queryClient.getQueryData<Notification[]>(notificationKey) || [];
+    const deduplicationKey = `${notification.type}:${String(
       notification.metadata?.feedbackId ||
       notification.metadata?.issueId ||
       notification.metadata?.ticketNumber ||
@@ -73,12 +78,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         item.metadata?.ticketNumber ||
         item.id
       )}`;
-      return itemKey === notificationKey;
+      return itemKey === deduplicationKey;
     });
 
     if (isDuplicate) return;
 
-    queryClient.setQueryData<Notification[]>(["notifications"], (current = []) => {
+    queryClient.setQueryData<Notification[]>(notificationKey, (current = []) => {
       return [notification, ...current].slice(0, 50);
     });
 
@@ -93,7 +98,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       description: notification.message,
       duration: 6000,
     });
-  }, [queryClient]);
+  }, [notificationKey, queryClient]);
 
   // Setup SSE connection for realtime feedback/E-Report notifications.
   useEffect(() => {
@@ -107,13 +112,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     });
 
     source.onerror = () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: notificationKey });
     };
 
     return () => {
       source.close();
     };
-  }, [handleIncomingNotification, isLoggedIn, queryClient]);
+  }, [handleIncomingNotification, isLoggedIn, notificationKey, queryClient]);
 
   useEffect(() => {
     const listener = (event: Event) => {
@@ -126,25 +131,54 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
 
   // Mark notification as read mutation
-  const markAsRead = async (notificationId: string) => {
-    queryClient.setQueryData<Notification[]>(["notifications"], (current = []) =>
-      current.map((notification) =>
-        notification.id === notificationId
-          ? { ...notification, isRead: true, readAt: new Date().toISOString() }
-          : notification,
-      ),
-    );
-  };
+  const persistRead = useCallback(
+    async (payload: { id?: string; all?: boolean }) => {
+      const response = await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to persist notification read state");
+      }
+    },
+    [],
+  );
 
-  const markAllAsRead = async () => {
-    queryClient.setQueryData<Notification[]>(["notifications"], (current = []) =>
+  const markAsRead = useCallback(
+    async (notificationId: string) => {
+      queryClient.setQueryData<Notification[]>(notificationKey, (current = []) =>
+        current.map((notification) =>
+          notification.id === notificationId && !notification.isRead
+            ? { ...notification, isRead: true, readAt: new Date().toISOString() }
+            : notification,
+        ),
+      );
+      try {
+        await persistRead({ id: notificationId });
+      } catch {
+        await queryClient.invalidateQueries({ queryKey: notificationKey });
+        toast.error("Could not update the notification. Please try again.");
+      }
+    },
+    [notificationKey, persistRead, queryClient],
+  );
+
+  const markAllAsRead = useCallback(async () => {
+    queryClient.setQueryData<Notification[]>(notificationKey, (current = []) =>
       current.map((notification) => ({
         ...notification,
         isRead: true,
         readAt: notification.readAt || new Date().toISOString(),
       })),
     );
-  };
+    try {
+      await persistRead({ all: true });
+    } catch {
+      await queryClient.invalidateQueries({ queryKey: notificationKey });
+      toast.error("Could not update notifications. Please try again.");
+    }
+  }, [notificationKey, persistRead, queryClient]);
 
   const value: NotificationContextValue = {
     notifications: notificationsData || [],

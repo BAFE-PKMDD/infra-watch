@@ -28,7 +28,7 @@ const FILTER_LABELS: Record<keyof ManagerialDashboardFilters, string> = {
   province: "Province",
   projectType: "Project type",
   status: "Project status",
-  health: "Schedule health",
+  health: "Timeline status",
 };
 
 export function dashboardFiltersToSearchParams(
@@ -73,6 +73,7 @@ export function DashboardFilters({ filters, options, onChange }: DashboardFilter
     const value = filters[key];
     return value ? [{ key, value }] : [];
   });
+  const filterStateKey = activeFilters.map(({ key, value }) => `${key}:${value}`).join("|");
   const update =
     <K extends keyof ManagerialDashboardFilters>(key: K) =>
     (event: ChangeEvent<HTMLSelectElement>) =>
@@ -87,64 +88,67 @@ export function DashboardFilters({ filters, options, onChange }: DashboardFilter
   return (
     <section
       aria-label="Dashboard filters"
-      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+      className="rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
     >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-extrabold text-slate-950 dark:text-white">Portfolio scope</h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">All indicators and drill-downs use the same authorized filter scope.</p>
+      <details key={filterStateKey} open={activeFilters.length === 0} className="group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
+          <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-950 dark:text-white">
+            <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-90">›</span>
+            Filters
+          </span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            {activeFilters.length === 0 ? "No active filters" : `${activeFilters.length} active ${activeFilters.length === 1 ? "filter" : "filters"}`}
+          </span>
+        </summary>
+        <div className="grid gap-3 border-t border-slate-200 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800">
+          <Filter label="Program" value={filters.program} options={options.programs} onChange={update("program")} />
+          <Filter label="Funding year" value={filters.year} options={options.years} onChange={update("year")} />
+          <Filter label="Region" value={filters.region} options={options.regions} onChange={update("region")} />
+          <Filter
+            label="Province"
+            value={filters.province}
+            options={options.provinces}
+            onChange={update("province")}
+            disabled={!filters.region && options.provinces.length === 0}
+          />
+          <Filter label="Project type" value={filters.projectType} options={options.projectTypes} onChange={update("projectType")} />
+          <Filter
+            label="Project status"
+            value={filters.status}
+            options={options.statuses}
+            onChange={update("status")}
+            format={formatStatus}
+          />
+          <Filter
+            label="Timeline status"
+            value={filters.health}
+            options={["onTrack", "atRisk", "delayed", "notAssessed"] satisfies ScheduleHealth[]}
+            onChange={update("health")}
+            format={formatHealth}
+          />
         </div>
-        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-          {activeFilters.length === 0 ? "No active filters" : `${activeFilters.length} active ${activeFilters.length === 1 ? "filter" : "filters"}`}
-        </span>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Filter label="Program" value={filters.program} options={options.programs} onChange={update("program")} />
-        <Filter label="Funding year" value={filters.year} options={options.years} onChange={update("year")} />
-        <Filter label="Region" value={filters.region} options={options.regions} onChange={update("region")} />
-        <Filter
-          label="Province"
-          value={filters.province}
-          options={options.provinces}
-          onChange={update("province")}
-          disabled={!filters.region && options.provinces.length === 0}
-        />
-        <Filter label="Project type" value={filters.projectType} options={options.projectTypes} onChange={update("projectType")} />
-        <Filter
-          label="Project status"
-          value={filters.status}
-          options={options.statuses}
-          onChange={update("status")}
-          format={formatStatus}
-        />
-        <Filter
-          label="Schedule health"
-          value={filters.health}
-          options={["onTrack", "atRisk", "delayed", "notAssessed"] satisfies ScheduleHealth[]}
-          onChange={update("health")}
-          format={formatHealth}
-        />
-      </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <div className="flex flex-wrap gap-2" aria-label="Active dashboard filters">
-          {activeFilters.map(({ key, value }) => (
-            <button
-              key={key}
-              type="button"
-              aria-label={`Remove ${FILTER_LABELS[key]} filter`}
-              onClick={() => onChange(mergeDashboardFilter(filters, key, "all"))}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary/8 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              {FILTER_LABELS[key]}: {key === "status" ? formatStatus(value) : key === "health" ? formatHealth(value) : value}
-              <X className="size-3" aria-hidden="true" />
-            </button>
-          ))}
-          {activeFilters.length === 0 && <span className="text-xs text-slate-500 dark:text-slate-400">Showing the full authorized portfolio</span>}
+      </details>
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+          <div className="flex flex-wrap gap-2" aria-label="Active dashboard filters">
+            {activeFilters.map(({ key, value }) => (
+              <button
+                key={key}
+                type="button"
+                aria-label={`Remove ${FILTER_LABELS[key]} filter`}
+                onClick={() => onChange(mergeDashboardFilter(filters, key, "all"))}
+                className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-primary hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-blue-900 dark:bg-blue-950/30"
+              >
+                {FILTER_LABELS[key]}: {key === "status" ? formatStatus(value) : key === "health" ? formatHealth(value) : value}
+                <X className="size-3" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => onChange(resetDashboardFilters())}>
+            Reset filters
+          </Button>
         </div>
-        <Button variant="outline" onClick={() => onChange(resetDashboardFilters())} disabled={Object.keys(filters).length === 0}>
-          Reset filters
-        </Button>
-      </div>
+      )}
     </section>
   );
 }
@@ -173,7 +177,7 @@ function Filter({
         value={value ?? "all"}
         onChange={onChange}
         disabled={disabled}
-        className="h-9 min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-2 text-sm font-medium text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
       >
         <option value="all">All</option>
         {options.map((option) => (

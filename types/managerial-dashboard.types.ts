@@ -26,6 +26,32 @@ export type ManagerialDashboardFilters = {
   health?: ScheduleHealth;
 };
 
+export type ManagerialDashboardDrillthroughProject = {
+  projectId: string;
+  projectName: string;
+  program: string;
+  region: string | null;
+  province: string | null;
+  projectType: string;
+  status: ProjectStatusFilter;
+  health: ScheduleHealth;
+  allocatedBudget: number | null;
+  physicalProgress: number | null;
+  expectedProgress: number | null;
+  variance: number | null;
+  targetCompletionDate: string | null;
+  ntpDate: string | null;
+  calendarDays: number | null;
+};
+
+export type ManagerialDashboardDrillthroughData = {
+  asOf: string;
+  total: number;
+  page: number;
+  pageSize: number;
+  projects: ManagerialDashboardDrillthroughProject[];
+};
+
 export type ManagerialDashboardData = {
   asOf: string;
   freshness: {

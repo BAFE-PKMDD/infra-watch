@@ -19,6 +19,7 @@ import useMediaQuery from "@/hooks/use-media-query";
 import { getProjectPreview } from "@/actions/query/project-preview.query";
 import { formatCurrency } from "@/lib/format";
 import { getBlurDataURL } from "@/lib/image-utils";
+import { getProjectLengthDisplay } from "@/lib/project-length-display";
 import {
   getProjectPreviewView,
   type ProjectPreviewRequestState,
@@ -150,6 +151,8 @@ function PreviewContent({
     );
   }
 
+  const projectLength = getProjectLengthDisplay(project);
+
   return (
     <>
       {/* Hero Carousel */}
@@ -253,12 +256,8 @@ function PreviewContent({
           <InfoField icon={Banknote} label="Budget" value={project.budget === null ? "Unavailable" : formatCurrency(project.budget)} />
           <InfoField
             icon={Ruler}
-            label={project.postGeotaggedLength ? "Post-Geotagged" : "Target Length"}
-            value={
-              project.postGeotaggedLength
-                ? `${parseFloat(project.postGeotaggedLength).toFixed(2)} km`
-                : project.projectLength
-            }
+            label={projectLength.source === "post-geotagged" ? "Post-Geotagged" : "Target Length"}
+            value={projectLength.value}
           />
           <InfoField icon={HardHat} label="Contractor" value={project.contractor} />
           <InfoField icon={MapPin} label="Region" value={project.region || "N/A"} />

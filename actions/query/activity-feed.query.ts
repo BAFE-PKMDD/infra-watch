@@ -2,6 +2,7 @@
 
 import { user as authUser } from "@/auth-schema";
 import { db } from "@/lib/db";
+import { formatPublicIssueActivity } from "@/lib/public-issue-activity";
 import { feedback, issues, projects } from "@/lib/db/schema";
 import type {
   ActivityFeedFilter,
@@ -9,7 +10,7 @@ import type {
   FeedbackActivityItem,
   IssueActivityItem,
 } from "@/types/activity-feed.types";
-import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNotNull, or } from "drizzle-orm";
 
 type ActivityFeedParams = {
   page?: number;
@@ -35,27 +36,6 @@ function createPagination(page: number, limit: number, total: number) {
 function toPositiveInteger(value: number | undefined, fallback: number, max: number) {
   if (!Number.isFinite(value) || !value || value < 1) return fallback;
   return Math.min(Math.floor(value), max);
-}
-
-function normalizeIssueStatus(status: string): IssueActivityItem["status"] {
-  if (status === "reviewing" || status === "resolved" || status === "closed") {
-    return status;
-  }
-
-  return "pending";
-}
-
-function normalizeIssueType(category: string): string {
-  const lower = category.toLowerCase();
-
-  if (lower.includes("damage")) return "damage";
-  if (lower.includes("delay") || lower.includes("stopped") || lower.includes("stalled")) return "stopped";
-  if (lower.includes("safety") || lower.includes("hazard")) return "safety";
-  if (lower.includes("flood") || lower.includes("water")) return "flooding";
-  if (lower.includes("block")) return "blocked";
-  if (lower.includes("quality")) return "quality";
-
-  return "other";
 }
 
 export async function getActivityFeed(params: ActivityFeedParams = {}): Promise<{
@@ -193,17 +173,19 @@ async function fetchIssueItems(params: ActivityFeedParams): Promise<IssueActivit
   const sort = params.sort ?? "newest";
   const conditions = [];
 
+  // Workflow state is not publication approval. Public activity uses only an
+  // explicitly approved moderator-written summary.
+  conditions.push(isNotNull(issues.publicApprovedAt));
+  conditions.push(isNotNull(issues.publicDescription));
+
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(
       or(
         ilike(issues.ticketNumber, pattern),
-        ilike(issues.description, pattern),
+        ilike(issues.publicDescription, pattern),
         ilike(issues.category, pattern),
         ilike(issues.province, pattern),
-        ilike(issues.municipality, pattern),
-        ilike(issues.barangay, pattern),
-        ilike(issues.landmark, pattern),
         ilike(projects.name, pattern),
       ),
     );
@@ -212,18 +194,10 @@ async function fetchIssueItems(params: ActivityFeedParams): Promise<IssueActivit
   const rows = await db
     .select({
       id: issues.id,
-      ticketNumber: issues.ticketNumber,
-      projectId: issues.projectId,
-      reporterName: issues.reporterName,
-      isAnonymous: issues.isAnonymous,
       category: issues.category,
       status: issues.status,
-      description: issues.description,
+      description: issues.publicDescription,
       province: issues.province,
-      municipality: issues.municipality,
-      barangay: issues.barangay,
-      landmark: issues.landmark,
-      evidence: issues.evidence,
       resolvedAt: issues.resolvedAt,
       createdAt: issues.createdAt,
       projectName: projects.name,
@@ -234,33 +208,5 @@ async function fetchIssueItems(params: ActivityFeedParams): Promise<IssueActivit
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(sort === "oldest" ? asc(issues.createdAt) : desc(issues.createdAt));
 
-  return rows.map((row): IssueActivityItem => {
-    const evidence = Array.isArray(row.evidence) ? row.evidence : [];
-
-    return {
-      type: "issue",
-      id: row.id,
-      issueType: normalizeIssueType(row.category),
-      issueDescription: row.description,
-      status: normalizeIssueStatus(row.status),
-      province: row.province ?? "Unknown Province",
-      city: row.municipality ?? "Unknown Municipality",
-      barangay: row.barangay ?? "Unknown Barangay",
-      streetLandmark: row.landmark ?? "",
-      reporterName: row.reporterName ?? "Citizen",
-      isAnonymous: row.isAnonymous,
-      photoUrls: evidence.filter((item) => item.type === "image").map((item) => item.url),
-      videoUrls: [],
-      responseCount: 0,
-      recentResponses: [],
-      createdAt: row.createdAt,
-      resolvedAt: row.resolvedAt,
-      project: row.projectAbemisId && row.projectName
-        ? {
-          id: row.projectAbemisId,
-          name: row.projectName,
-        }
-        : null,
-    };
-  });
+  return rows.map(formatPublicIssueActivity);
 }

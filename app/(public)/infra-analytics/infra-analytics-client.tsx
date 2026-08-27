@@ -38,7 +38,7 @@ type TooltipItem = {
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipItem[]; label?: React.ReactNode }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-slate-900 dark:bg-slate-800 text-white rounded-xl p-3.5 text-xs shadow-xl border border-slate-850 dark:border-slate-700/60 pointer-events-none">
+    <div className="bg-slate-900 dark:bg-slate-800 text-white rounded-xl p-3.5 text-xs shadow-xl border border-slate-700 dark:border-slate-700/60 pointer-events-none">
       <p className="font-extrabold text-slate-200 border-b border-slate-800 dark:border-slate-700/80 pb-1.5 mb-2 text-[11px] uppercase tracking-wider">{label}</p>
       <div className="space-y-1.5">
         {payload.map((item, index) => (
@@ -137,7 +137,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="h-2 w-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-450 dark:text-slate-500">
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500">
                 BAFE Monitoring System
               </span>
             </div>
@@ -151,7 +151,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
           
           <div className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 px-3.5 shadow-sm hover:shadow transition-shadow">
             <TrendingUp className="w-4 h-4 text-primary" />
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-350">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
               {data.scopeLabel}
             </span>
           </div>
@@ -183,7 +183,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="relative border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm transition-all flex flex-col justify-between group overflow-hidden"
+            className="relative border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm transition-all flex flex-col justify-between group overflow-hidden"
           >
             <div className="absolute top-0 left-0 right-0 h-1 bg-slate-900 dark:bg-white" />
             <div>
@@ -191,7 +191,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
                 <span className="text-[10px] font-extrabold uppercase tracking-wider">
                   {t("infraAnalytics.target")}
                 </span>
-                <Target className="w-5 h-5 text-slate-700 dark:text-slate-350" />
+                <Target className="w-5 h-5 text-slate-700 dark:text-slate-300" />
               </div>
               <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white">
                 {formatNumber(data.totalTarget)}
@@ -220,7 +220,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
               tabIndex={0}
               aria-expanded={activeStageDetails === card.key}
               className={`relative border rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer overflow-hidden bg-white dark:bg-slate-900 ${
-                activeStageDetails === card.key ? "ring-2 ring-primary border-transparent" : "border-slate-250 dark:border-slate-850"
+                activeStageDetails === card.key ? "ring-2 ring-primary border-transparent" : "border-slate-200 dark:border-slate-800"
               }`}
             >
               <div className={`absolute top-0 left-0 right-0 h-1 ${card.accentClass}`} />
@@ -239,7 +239,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
                 <span className="group-hover:text-primary transition-colors">
                   {formatNumber(card.count)} {t("infraAnalytics.target").toLowerCase()}
                 </span>
-                <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform text-slate-300 dark:text-slate-650" />
+                <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform text-slate-400 dark:text-slate-500" />
               </div>
             </motion.div>
           ))}
@@ -254,7 +254,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/20 dark:bg-blue-950/10 text-xs text-slate-650 dark:text-slate-350 flex items-center justify-between">
+              <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/20 dark:bg-blue-950/10 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between">
                 <div>
                   <span className="font-extrabold uppercase text-primary mr-2">
                     {t(`infraAnalytics.${activeStageDetails}`)} Detailed Breakdown:
@@ -283,7 +283,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
                   <BarChart4 className="w-5 h-5 text-primary" />
-                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-850 dark:text-white">
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
                     {t("infraAnalytics.charts.regionalTitle")}
                   </h2>
                 </div>
@@ -347,7 +347,7 @@ export function InfraAnalyticsClient({ initialResult }: ClientProps) {
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
                   <BarChart4 className="w-5 h-5 text-primary" />
-                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-850 dark:text-white">
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
                     {t("infraAnalytics.charts.bannerTitle")}
                   </h2>
                 </div>

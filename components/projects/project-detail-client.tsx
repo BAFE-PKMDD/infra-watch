@@ -4,8 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { ProjectHero } from "@/components/projects/project-hero";
 import { ProjectHighlights } from "@/components/projects/project-highlights";
-import { ProjectPassport } from "./project-passport";
-import { safeProjectsReturnHref } from "@/lib/public-project-directory";
 import { ProjectSidebar } from "@/components/projects/project-sidebar";
 import { ProjectTabPanels } from "@/components/projects/project-tab-panels";
 import type { ProjectDetail, ProjectTabKey } from "@/types";
@@ -38,8 +36,6 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
 
   const tabFromUrl = searchParams.get("tab") as ProjectTabKey | null;
   const activeTab = tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : "overview";
-  const requestedReturn = searchParams.get("return");
-  const returnHref = safeProjectsReturnHref(requestedReturn);
 
   // Update URL when tab changes
   const handleTabChange = (tab: ProjectTabKey) => {
@@ -73,8 +69,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <ProjectHero project={project} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative">
-        <ProjectPassport project={project} returnHref={returnHref} />
+      <div className="relative z-20 mx-auto -mt-14 max-w-7xl px-4 sm:px-6 lg:px-8">
         <ProjectHighlights project={project} />
       </div>
 

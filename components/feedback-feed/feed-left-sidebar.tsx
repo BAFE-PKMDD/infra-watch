@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Info,
   MessageSquare,
+  MapPin,
   Bell,
   LogIn,
   User as UserIcon,
@@ -19,6 +20,7 @@ const NAV_LINKS = [
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/report-issue", label: "Report Issue", icon: AlertTriangle },
   { href: "/citizen-feed", label: "Citizen Feed", icon: MessageSquare },
+  { href: "/evidence-map", label: "Citizen Reports Map", icon: MapPin },
   { href: "/about", label: "About", icon: Info },
 ] as const;
 

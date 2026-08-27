@@ -2,17 +2,46 @@ export const VOICE_MAX_OUTPUT_TOKENS = 768;
 
 export const VOICE_RESPONSE_INSTRUCTION = `This request is spoken through ANIA—Agricultural Network Intelligence Assistant. Identify yourself as ANIA if asked. Give a complete answer in concise, natural language. For project-list requests, name and summarize every returned project when the result set is small; for larger sets, cover up to five projects and state how many additional matches exist. Prefer short sentences and avoid Markdown tables, charts, headings, raw URLs, repeated caveats, and unnecessarily long lists because the answer will be read aloud.`;
 
-export function prepareSpeechChunks(text: string, maxChars = 280) {
-  if (!Number.isFinite(maxChars) || maxChars < 20) {
-    throw new Error("Speech chunks must allow at least 20 characters.");
-  }
+export const SPEECH_SUMMARY_MAX_CHARS = 400;
 
-  const speech = text
+export const SPEECH_SUMMARY_NOTICE =
+  "That is the short version. The full details are in the chat panel.";
+
+function cleanSpokenText(text: string) {
+  return text
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
     .replace(/[*_#>`|]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function summarizeForSpeech(
+  text: string,
+  maxChars = SPEECH_SUMMARY_MAX_CHARS,
+): string {
+  const speech = cleanSpokenText(text);
+  if (!speech || speech.length <= maxChars) return speech;
+
+  let selected = "";
+  for (const sentence of speech.split(/(?<=[.!?])\s+/)) {
+    const candidate = selected ? `${selected} ${sentence}` : sentence;
+    if (candidate.length > maxChars) break;
+    selected = candidate;
+  }
+  if (!selected) {
+    const boundary = speech.lastIndexOf(" ", maxChars);
+    selected = `${speech.slice(0, boundary > 0 ? boundary : maxChars).trim()}…`;
+  }
+  return `${selected} ${SPEECH_SUMMARY_NOTICE}`;
+}
+
+export function prepareSpeechChunks(text: string, maxChars = 280) {
+  if (!Number.isFinite(maxChars) || maxChars < 20) {
+    throw new Error("Speech chunks must allow at least 20 characters.");
+  }
+
+  const speech = cleanSpokenText(text);
   if (!speech) return [];
 
   const sentences = speech.split(/(?<=[.!?])\s+/);
@@ -35,6 +64,133 @@ export function clearOwnedPlaybackSettlement(
   owner: (() => void) | null,
 ) {
   if (owner && settlementRef.current === owner) settlementRef.current = null;
+}
+
+export function extractCompleteSentences(buffer: string) {
+  const sentences: string[] = [];
+  let start = 0;
+  for (let index = 0; index < buffer.length; index += 1) {
+    const char = buffer[index];
+    if (char !== "." && char !== "!" && char !== "?") continue;
+    const next = buffer[index + 1];
+    if (next === undefined || next === " " || next === "\n") {
+      const sentence = buffer.slice(start, index + 1).trim();
+      if (sentence) sentences.push(sentence);
+      start = index + 1;
+    }
+  }
+  return { sentences, rest: buffer.slice(start).trim() };
+}
+
+export type SpokenBudget = {
+  take(sentence: string): string | null;
+};
+
+export function createSpokenBudget(
+  maxChars = SPEECH_SUMMARY_MAX_CHARS,
+): SpokenBudget {
+  let used = 0;
+  return {
+    take(sentence) {
+      const trimmed = sentence.trim();
+      if (!trimmed) return null;
+      if (used > 0 && used + trimmed.length + 1 > maxChars) return null;
+      if (trimmed.length > maxChars) {
+        const boundary = trimmed.lastIndexOf(" ", maxChars);
+        used = maxChars + 1;
+        return `${trimmed.slice(0, boundary > 0 ? boundary : maxChars).trim()}…`;
+      }
+      used += trimmed.length + 1;
+      return trimmed;
+    },
+  };
+}
+
+export function createStreamingSpeechRunner<T>({
+  generate,
+  play,
+  shouldContinue,
+  maxChars = SPEECH_SUMMARY_MAX_CHARS,
+}: {
+  generate: (chunk: string) => Promise<T>;
+  play: (audio: T) => Promise<boolean>;
+  shouldContinue: () => boolean;
+  maxChars?: number;
+}) {
+  const budget = createSpokenBudget(maxChars);
+  let buffer = "";
+  let synthesisChain = Promise.resolve();
+  let playbackChain = Promise.resolve();
+  let lastSettled = playbackChain;
+  let truncated = false;
+  let streamEnded = false;
+  let stopped = false;
+  let failure: unknown = null;
+  let endPromise: Promise<boolean> | null = null;
+
+  const enqueue = (sentence: string) => {
+    const generation = synthesisChain.then(() =>
+      failure || stopped || !shouldContinue() ? null : generate(sentence),
+    );
+    synthesisChain = generation.then(
+      () => undefined,
+      () => undefined,
+    );
+    const playback = playbackChain.then(async () => {
+      const audio = await generation;
+      if (!audio || failure || stopped || !shouldContinue()) return;
+      const played = await play(audio);
+      if (!played || !shouldContinue()) stopped = true;
+    });
+    const settled = playback.then(
+      () => undefined,
+      (error: unknown) => {
+        failure ??= error;
+      },
+    );
+    playbackChain = settled;
+    lastSettled = settled;
+  };
+
+  const deliver = (sentence: string) => {
+    if (truncated || !sentence.trim()) return;
+    const piece = budget.take(sentence);
+    if (piece === null) {
+      truncated = true;
+      return;
+    }
+    enqueue(piece);
+  };
+
+  const push = (delta: string) => {
+    if (streamEnded || !delta) return;
+    buffer += delta;
+    const extracted = extractCompleteSentences(buffer);
+    buffer = extracted.rest;
+    for (const sentence of extracted.sentences) deliver(sentence);
+    if (buffer.length >= maxChars) {
+      deliver(buffer);
+      buffer = "";
+    }
+  };
+
+  const end = () => {
+    if (endPromise) return endPromise;
+    streamEnded = true;
+    endPromise = (async () => {
+      if (buffer.trim()) {
+        deliver(buffer);
+        buffer = "";
+      }
+      if (truncated) enqueue(SPEECH_SUMMARY_NOTICE);
+      await lastSettled;
+      if (failure) throw failure;
+      return !stopped && shouldContinue();
+    })();
+    return endPromise;
+  };
+
+  return { push, end };
 }
 
 export async function runSpeechChunkPipeline<T>({
@@ -96,7 +252,7 @@ export function reconnectDelayMs(attempt: number) {
 
 export function getKokoroInferenceOptions() {
   return {
-    dtype: "q8" as const,
+    dtype: "q4" as const,
     device: "wasm" as const,
   };
 }

@@ -29,6 +29,13 @@ export function useKmlLoader({ projectId }: UseKmlLoaderProps) {
         const proxyUrl = `/api/kml-proxy?projectId=${projectId}`;
         const response = await fetch(proxyUrl);
 
+        if (response.status === 404) {
+          if (!cancelled) {
+            setGeoJsonData(null);
+          }
+          return;
+        }
+
         if (!response.ok) {
           const errorData = (await response.json().catch(() => ({}))) as {
             error?: string;

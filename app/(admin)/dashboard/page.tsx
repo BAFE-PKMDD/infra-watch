@@ -5,7 +5,7 @@ import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { DashboardSkeleton } from "@/components/admin/dashboard/dashboard-skeleton";
 import { ManagerialDashboardClient } from "@/components/admin/dashboard/managerial-dashboard-client";
 
-export const DASHBOARD_TITLE = "Infrastructure Analytics Dashboard";
+export const DASHBOARD_TITLE = "Infrastructure Monitoring";
 
 export default async function DashboardPage() {
   await connection();
@@ -13,7 +13,7 @@ export default async function DashboardPage() {
     <AdminPageWrapper
       breadcrumbs={[{ label: "Admin" }, { label: "Analytics" }]}
       title={DASHBOARD_TITLE}
-      description="Interactive portfolio intelligence for project performance, schedule risk, budget oversight, and regional delivery—designed to support executive decisions and surface bottlenecks early."
+      description="Monitor project status, budget utilization, and regional performance."
     >
       <Suspense fallback={<DashboardSkeleton />}>
         <ManagerialDashboardClient

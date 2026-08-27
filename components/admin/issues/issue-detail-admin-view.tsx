@@ -60,6 +60,9 @@ type AdminIssueDetail = {
   projectName: string | null;
   issueType: string;
   issueDescription: string;
+  publicDescription: string | null;
+  publicApprovedAt: string | null;
+  publicApprovedBy: string | null;
   status: AdminIssueStatus;
   rawStatus: string;
   priority: string | null;
@@ -140,6 +143,8 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
   const [internalNotes, setInternalNotes] = useState("");
   const [status, setStatus] = useState<AdminIssueStatus | "">("");
   const [internalOnly, setInternalOnly] = useState(false);
+  const [publishToPublic, setPublishToPublic] = useState(false);
+  const [publicDescription, setPublicDescription] = useState("");
   const [viewingMedia, setViewingMedia] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
@@ -187,6 +192,8 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
           internalNotes: internalNotes.trim(),
           newStatus: status || undefined,
           isInternalOnly: internalOnly,
+          publishToPublic,
+          publicDescription: publicDescription.trim(),
         }),
       });
       const result = await response.json();
@@ -198,6 +205,8 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
       setInternalNotes("");
       setStatus("");
       setInternalOnly(false);
+      setPublishToPublic(false);
+      setPublicDescription("");
       queryClient.invalidateQueries({ queryKey: ["admin-issue", issueId] });
       queryClient.invalidateQueries({ queryKey: ["admin-issues"] });
       queryClient.invalidateQueries({ queryKey: ["admin-issue-stats"] });
@@ -207,7 +216,7 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
     onError: (mutationError: Error) => toast.error(mutationError.message),
   });
 
-  const canSubmit = responseMessage.trim().length > 0 || internalNotes.trim().length > 0 || Boolean(status);
+  const canSubmit = responseMessage.trim().length > 0 || internalNotes.trim().length > 0 || Boolean(status) || (publishToPublic && publicDescription.trim().length >= 20);
 
   return (
     <AdminPageWrapper
@@ -454,8 +463,47 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                         />
                       </div>
 
+                      <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/20">
+                        <label className="flex items-start gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                          <Checkbox checked={publishToPublic} onCheckedChange={(checked) => {
+                            const next = Boolean(checked);
+                            setPublishToPublic(next);
+                            if (next) setInternalOnly(false);
+                          }} />
+                          <span>
+                            Approve for public view
+                            <span className="block text-xs font-medium text-slate-500">Publishes only the reviewed summary below. The citizen&apos;s raw description, exact locality, reporter details, and evidence remain private.</span>
+                          </span>
+                        </label>
+                        {publishToPublic && (
+                          <div className="space-y-2">
+                            <label htmlFor="public-description" className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                              Reviewed public summary
+                            </label>
+                            <Textarea
+                              id="public-description"
+                              value={publicDescription}
+                              onChange={(event) => setPublicDescription(event.target.value)}
+                              placeholder="Write a privacy-reviewed summary without names, contact details, precise addresses, or other sensitive facts..."
+                              minLength={20}
+                              maxLength={2000}
+                              rows={4}
+                            />
+                          </div>
+                        )}
+                        {issue.publicApprovedAt && (
+                          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                            A public summary was approved on {formatDate(issue.publicApprovedAt, true)}. Publishing again replaces that summary.
+                          </p>
+                        )}
+                      </div>
+
                       <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
-                        <Checkbox checked={internalOnly} onCheckedChange={(checked) => setInternalOnly(Boolean(checked))} />
+                        <Checkbox checked={internalOnly} onCheckedChange={(checked) => {
+                          const next = Boolean(checked);
+                          setInternalOnly(next);
+                          if (next) setPublishToPublic(false);
+                        }} />
                         <span>
                           Internal only
                           <span className="block text-xs font-medium text-slate-500">Hide this response from the public issue details page.</span>

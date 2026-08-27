@@ -75,6 +75,11 @@ export function useExtractExif({ geotags, projectId, onExtractionComplete }: Use
             body: JSON.stringify({ projectId }),
           });
 
+          const contentType = response.headers.get("content-type") ?? "";
+          if (!response.ok || !contentType.includes("application/json")) {
+            throw new Error(`GPS extraction service unavailable (${response.status})`);
+          }
+
           const data = (await response.json()) as ExtractionResponse;
 
           if (data.success && Array.isArray(data.results)) {
@@ -102,7 +107,7 @@ export function useExtractExif({ geotags, projectId, onExtractionComplete }: Use
             onExtractionComplete?.();
           }
         } catch (error) {
-          console.error("GPS extraction error:", error);
+          console.warn("GPS extraction skipped:", error);
         }
       }
 

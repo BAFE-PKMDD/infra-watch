@@ -126,39 +126,44 @@ export async function checkChatRateLimits(identity: string) {
     1_000_000,
   );
 
-  await db
-    .delete(chatRateLimits)
-    .where(lt(chatRateLimits.updatedAt, new Date(now.getTime() - 48 * 60 * 60 * 1_000)));
+  try {
+    await db
+      .delete(chatRateLimits)
+      .where(lt(chatRateLimits.updatedAt, new Date(now.getTime() - 48 * 60 * 60 * 1_000)));
 
-  const client = await incrementWindow(
-    `minute:${identityHash}`,
-    perMinuteLimit,
-    60_000,
-    now,
-  );
-  if (!client.allowed) {
+    const client = await incrementWindow(
+      `minute:${identityHash}`,
+      perMinuteLimit,
+      60_000,
+      now,
+    );
+    if (!client.allowed) {
+      return {
+        allowed: false,
+        limit: client.limit,
+        remaining: client.remaining,
+        resetAt: client.resetAt,
+        globalLimitReached: false,
+      };
+    }
+
+    const dayKey = now.toISOString().slice(0, 10);
+    const global = await incrementWindow(
+      `global:${dayKey}`,
+      dailyGlobalLimit,
+      24 * 60 * 60 * 1_000,
+      now,
+    );
+
     return {
-      allowed: false,
+      allowed: client.allowed && global.allowed,
       limit: client.limit,
       remaining: client.remaining,
       resetAt: client.resetAt,
-      globalLimitReached: false,
+      globalLimitReached: !global.allowed,
     };
+  } catch (error) {
+    console.error("[Rate Limit] DB check failed; rejecting chat request:", error);
+    throw error;
   }
-
-  const dayKey = now.toISOString().slice(0, 10);
-  const global = await incrementWindow(
-    `global:${dayKey}`,
-    dailyGlobalLimit,
-    24 * 60 * 60 * 1_000,
-    now,
-  );
-
-  return {
-    allowed: client.allowed && global.allowed,
-    limit: client.limit,
-    remaining: client.remaining,
-    resetAt: client.resetAt,
-    globalLimitReached: !global.allowed,
-  };
 }

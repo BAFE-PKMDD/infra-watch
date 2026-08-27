@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookOpen,
   CircleAlert,
   DatabaseZap,
   FileText,
@@ -41,6 +42,7 @@ const menu = [
       { label: "ABEMIS Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view" },
       { label: "Data Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view" },
       { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view" },
+      { label: "Knowledge Base", href: "/knowledge-base", icon: BookOpen, resource: "knowledge_base", action: "list" },
       { label: "User Management", href: "/user-management", icon: Users, resource: "user", action: "list" },
     ],
   },

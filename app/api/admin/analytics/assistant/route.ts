@@ -72,6 +72,7 @@ const assistantRequestSchema = z
     message: z.string().trim().min(1).max(4_000),
     filters: managerialDashboardFilterSchema.default({}),
     purpose: z.enum(["chat", "executive-brief"]).default("chat"),
+    briefContext: z.string().max(15_000).optional(),
     dashboardContext: z.object({
       asOf: z.iso.date(),
       lastSuccessfulSyncAt: z.iso.datetime({ offset: true }).nullable(),
@@ -90,6 +91,7 @@ type AssistantInput = {
   filters: ManagerialDashboardFilters;
   user: AssistantUser;
   purpose?: "chat" | "executive-brief";
+  briefContext?: string;
   dashboardContext?: DashboardContext;
 };
 type RateLimitResult = Awaited<ReturnType<typeof checkChatRateLimits>>;
@@ -197,7 +199,12 @@ async function invokeManagerialAssistant(
       surface: "managerial_ai",
       userId: input.user.id,
     })),
-    { role: "user" as const, content: input.message },
+    {
+      role: "user" as const,
+      content: input.briefContext
+        ? `The following is the executive brief generated for this session. Use it to answer follow-up questions:\n\n---\n${input.briefContext}\n---\n\nUser question: ${input.message}`
+        : input.message,
+    },
   ];
   const terminalState = createChatStreamTerminalState();
   const historyLifecycle = createChatHistoryLifecycle();
@@ -375,9 +382,10 @@ export function createManagerialAssistantPostHandler(
       filters: parsed.data.filters,
       user,
       ...(purpose === "executive-brief" ? { purpose } : {}),
+      ...(parsed.data.briefContext ? { briefContext: parsed.data.briefContext } : {}),
       ...(parsed.data.dashboardContext ? { dashboardContext: parsed.data.dashboardContext } : {}),
     };
-    const refusal = getManagerialAiPolicyRefusal(input.message, purpose);
+    const refusal = getManagerialAiPolicyRefusal(parsed.data.message, purpose);
     if (refusal) {
       try {
         await dependencies.recordRefusal({ ...input, refusal });

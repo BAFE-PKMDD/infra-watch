@@ -13,12 +13,13 @@ const baseline = {
 };
 
 test("renders fresh, stale, failed, and never-synced states truthfully", () => {
-  const fresh = renderToStaticMarkup(createElement(DataFreshness, { freshness: baseline }));
+  const fresh = renderToStaticMarkup(createElement(DataFreshness, { freshness: baseline, asOf: "2026-08-25" }));
   const stale = renderToStaticMarkup(createElement(DataFreshness, { freshness: { ...baseline, isStale: true } }));
   const failed = renderToStaticMarkup(createElement(DataFreshness, { freshness: { ...baseline, latestSyncStatus: "failed" } }));
   const never = renderToStaticMarkup(createElement(DataFreshness, { freshness: { ...baseline, lastSuccessfulSyncAt: null } }));
 
   assert.match(fresh, /Fresh/);
+  assert.match(fresh, /Data age: 14 days/);
   assert.match(stale, /Stale/);
   assert.match(failed, /Latest sync failed/);
   assert.match(failed, /Last successful sync/);

@@ -9,6 +9,7 @@ import {
   getRecordingDecision,
   canStartVoiceRecording,
   clearOwnedPlaybackSettlement,
+  createStreamingSpeechRunner,
   isSleepCommand,
   isVoiceExplicitlyDisabled,
   prepareSpeechChunks,
@@ -17,7 +18,12 @@ import {
   shouldAutoEnableVoice,
   shouldReconnectWakeSocket,
   shouldStartConversationalFollowup,
+  summarizeForSpeech,
 } from "@/lib/voice/runtime-policy";
+import {
+  createWorkerSpeechEngine,
+  type SpeechSynthesisEngine,
+} from "@/lib/voice/tts-worker-client";
 import {
   getVoiceStatusLabel,
   reduceVoiceState,
@@ -32,7 +38,10 @@ const WAKE_SOCKET_CONNECT_TIMEOUT_MS = 10_000;
 
 type UseVoiceAssistantOptions = {
   config: VoiceAssistantClientConfig;
-  submitCommand: (text: string) => Promise<string | undefined>;
+  submitCommand: (
+    text: string,
+    onSpeechDelta?: (delta: string) => void,
+  ) => Promise<string | undefined>;
   cancelCommand?: () => void;
   onWakeDetected?: () => void;
   onTranscription?: (text: string) => void;
@@ -115,6 +124,7 @@ export function useVoiceAssistant({
   const reconnectAttemptRef = useRef(0);
   const connectWakeSocketRef = useRef<((operation: number) => Promise<void>) | null>(null);
   const kokoroRef = useRef<Promise<KokoroTTS> | null>(null);
+  const speechEngineRef = useRef<SpeechSynthesisEngine | null>(null);
   const explicitlyDisabledRef = useRef(false);
   const startRecordingRef = useRef<((retryAttempt?: number) => void) | null>(null);
 
@@ -138,6 +148,8 @@ export function useVoiceAssistant({
   const stopResources = useCallback(() => {
     operationRef.current += 1;
     enablingRef.current = false;
+    speechEngineRef.current?.dispose();
+    speechEngineRef.current = null;
     if (reconnectTimerRef.current !== null) clearTimeout(reconnectTimerRef.current);
     reconnectTimerRef.current = null;
     reconnectAttemptRef.current = 0;
@@ -185,65 +197,123 @@ export function useVoiceAssistant({
     return kokoroRef.current;
   }, [config.kokoroModel]);
 
+  const createMainThreadSpeechEngine = useCallback((): SpeechSynthesisEngine => {
+    const voice = config.kokoroVoice as "af_heart";
+    return {
+      preload: () => loadKokoro().then(() => undefined),
+      generate: async (text) => {
+        const tts = await loadKokoro();
+        const audio = await tts.generate(text, { voice });
+        return audio.toBlob();
+      },
+      isAlive: () => true,
+      dispose: () => undefined,
+    };
+  }, [config.kokoroVoice, loadKokoro]);
+
+  const getSpeechEngine = useCallback(() => {
+    const current = speechEngineRef.current;
+    if (current && !current.isAlive()) {
+      current.dispose();
+      speechEngineRef.current = null;
+    }
+    if (!speechEngineRef.current) {
+      const inferenceOptions = getKokoroInferenceOptions();
+      speechEngineRef.current =
+        createWorkerSpeechEngine({
+          model: config.kokoroModel,
+          dtype: inferenceOptions.dtype,
+          voice: config.kokoroVoice,
+        }) ?? createMainThreadSpeechEngine();
+    }
+    return speechEngineRef.current;
+  }, [config.kokoroModel, config.kokoroVoice, createMainThreadSpeechEngine]);
+
+  const makePlay = useCallback(
+    (operation: number, onStarted: () => void) => {
+      let speechStarted = false;
+      return async (blob: Blob) => {
+        const url = URL.createObjectURL(blob);
+        let audio: HTMLAudioElement | null = null;
+        let ownedSettlement: (() => void) | null = null;
+        try {
+          if (operationRef.current !== operation) return false;
+          audio = new Audio(url);
+          const playback = audio;
+          audioRef.current = playback;
+          const playbackEnded = new Promise<void>((resolve, reject) => {
+            const settle = () => {
+              if (settlePlaybackRef.current === settle) settlePlaybackRef.current = null;
+              resolve();
+            };
+            ownedSettlement = settle;
+            settlePlaybackRef.current = settle;
+            playback.onended = settle;
+            playback.onerror = () => {
+              if (settlePlaybackRef.current === settle) settlePlaybackRef.current = null;
+              reject(new Error("ANIA audio playback failed."));
+            };
+          });
+          void playbackEnded.catch(() => undefined);
+          await playback.play();
+          if (operationRef.current !== operation) {
+            playback.pause();
+            return false;
+          }
+          if (!speechStarted) {
+            speechStarted = true;
+            onStarted();
+          }
+          await playbackEnded;
+          return operationRef.current === operation;
+        } finally {
+          URL.revokeObjectURL(url);
+          if (audioRef.current === audio) audioRef.current = null;
+          clearOwnedPlaybackSettlement(settlePlaybackRef, ownedSettlement);
+        }
+      };
+    },
+    [],
+  );
+
   const speak = useCallback(
     async (text: string, operation: number) => {
-      const speechChunks = prepareSpeechChunks(text);
+      const speechChunks = prepareSpeechChunks(summarizeForSpeech(text));
       if (!speechChunks.length || operationRef.current !== operation) return false;
 
-      const tts = await loadKokoro();
+      const engine = getSpeechEngine();
       if (operationRef.current !== operation) return false;
-      let speechStarted = false;
       return runSpeechChunkPipeline({
         chunks: speechChunks,
-        generate: (speech) =>
-          tts.generate(speech, {
-            voice: config.kokoroVoice as "af_heart",
-          }),
+        generate: (speech) => engine.generate(speech),
         shouldContinue: () => operationRef.current === operation,
-        play: async (generated, onStarted) => {
-          const url = URL.createObjectURL(generated.toBlob());
-          let audio: HTMLAudioElement | null = null;
-          let ownedSettlement: (() => void) | null = null;
-          try {
-            if (operationRef.current !== operation) return false;
-            audio = new Audio(url);
-            const playback = audio;
-            audioRef.current = playback;
-            const playbackEnded = new Promise<void>((resolve, reject) => {
-              const settle = () => {
-                if (settlePlaybackRef.current === settle) settlePlaybackRef.current = null;
-                resolve();
-              };
-              ownedSettlement = settle;
-              settlePlaybackRef.current = settle;
-              playback.onended = settle;
-              playback.onerror = () => {
-                if (settlePlaybackRef.current === settle) settlePlaybackRef.current = null;
-                reject(new Error("ANIA audio playback failed."));
-              };
-            });
-            void playbackEnded.catch(() => undefined);
-            await playback.play();
-            if (operationRef.current !== operation) {
-              playback.pause();
-              return false;
-            }
+        play: (blob, onStarted) => {
+          let speechStarted = false;
+          const play = makePlay(operation, () => {
             if (!speechStarted) {
               speechStarted = true;
               dispatch({ type: "SPEECH_STARTED" });
             }
             onStarted();
-            await playbackEnded;
-            return operationRef.current === operation;
-          } finally {
-            URL.revokeObjectURL(url);
-            if (audioRef.current === audio) audioRef.current = null;
-            clearOwnedPlaybackSettlement(settlePlaybackRef, ownedSettlement);
-          }
+          });
+          return play(blob);
         },
       });
     },
-    [config.kokoroVoice, loadKokoro],
+    [getSpeechEngine, makePlay],
+  );
+
+  const beginStreamingSpeech = useCallback(
+    (operation: number) => {
+      const engine = getSpeechEngine();
+      const play = makePlay(operation, () => dispatch({ type: "SPEECH_STARTED" }));
+      return createStreamingSpeechRunner({
+        generate: (speech) => engine.generate(speech),
+        play,
+        shouldContinue: () => operationRef.current === operation,
+      });
+    },
+    [getSpeechEngine, makePlay],
   );
 
   const processRecording = useCallback(
@@ -276,11 +346,14 @@ export function useVoiceAssistant({
       }
       onTranscriptionRef.current?.(payload.text);
       dispatch({ type: "TRANSCRIPTION_READY" });
-      const answer = await submitCommandRef.current(payload.text);
+      const speech = beginStreamingSpeech(operation);
+      const answer = await submitCommandRef.current(payload.text, (delta) =>
+        speech.push(delta),
+      );
       if (operationRef.current !== operation) return;
       if (!answer?.trim()) throw new Error("ANIA did not receive a complete response.");
       dispatch({ type: "RESPONSE_READY" });
-      const spoken = await speak(answer, operation);
+      const spoken = await speech.end();
       if (!spoken || operationRef.current !== operation) return;
       dispatch({ type: "SPEECH_ENDED" });
       if (
@@ -293,7 +366,7 @@ export function useVoiceAssistant({
         setTimeout(() => startRecordingRef.current?.(2), 0);
       }
     },
-    [speak],
+    [beginStreamingSpeech],
   );
 
   const startRecording = useCallback((retryAttempt = 0) => {
@@ -591,9 +664,11 @@ export function useVoiceAssistant({
         scheduleWakeReconnect(operation, true);
       }
       if (operationRef.current !== operation) return;
-      void loadKokoro().catch(() => {
-        // Retry lazily when speech is actually requested.
-      });
+      void getSpeechEngine()
+        .preload()
+        .catch(() => {
+          // Retry lazily when speech is actually requested.
+        });
     } catch (error) {
       if (operationRef.current === operation) stopResources();
       throw error;
@@ -608,7 +683,7 @@ export function useVoiceAssistant({
     config.enabled,
     config.wakeWordWsUrl,
     connectWakeSocket,
-    loadKokoro,
+    getSpeechEngine,
     scheduleWakeReconnect,
     stopResources,
   ]);

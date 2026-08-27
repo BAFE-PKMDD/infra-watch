@@ -9,6 +9,7 @@ import {
   buildDashboardConditions,
   buildDashboardConditionDescriptors,
   buildDashboardScopeCountQuery,
+  buildDashboardDrillthroughQueryPlan,
   comparePriorityProjects,
   currencyFromCents,
   enforceDashboardRowLimit,
@@ -50,6 +51,27 @@ test("builds PostgreSQL aggregate and bounded detail queries instead of a portfo
     assert.match(sqlText, /count\(|sum\(|group by|array_agg\(/i);
     assert.match(sqlText, /case when/i);
   }
+});
+
+test("builds a scoped and paginated project drill-through query", () => {
+  const plan = buildDashboardDrillthroughQueryPlan(
+    { region: "Region VIII", health: "delayed" },
+    { role: "moderator", region: "Region VIII", assignedAgency: "AMEFIP" },
+    "2026-08-26",
+    { page: 2, pageSize: 20 },
+    { otherProjectTypes: { excluded: ["Warehouse", "Diversion Dam"] } },
+  );
+  const total = plan.total.toSQL();
+  const rows = plan.rows.toSQL();
+  assert.match(total.sql, /count\(\*\)/i);
+  assert.match(total.sql, /"health" =/i);
+  assert.match(total.sql, /not in/i);
+  assert.match(total.sql, /btrim/i);
+  assert.match(rows.sql, /order by/i);
+  assert.match(rows.sql, /limit/i);
+  assert.match(rows.sql, /offset/i);
+  assert.deepEqual(rows.params.slice(-2), [20, 20]);
+  assert.doesNotMatch(rows.sql, /select \*/i);
 });
 
 test("translates Unknown dimension filters to null-or-blank SQL predicates", () => {

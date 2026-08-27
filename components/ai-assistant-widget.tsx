@@ -133,7 +133,11 @@ export function AiAssistantWidget({
   );
 
   const handleSend = useCallback(
-    async (textToSend?: string, responseMode: "text" | "voice" = "text") => {
+    async (
+      textToSend?: string,
+      responseMode: "text" | "voice" = "text",
+      onSpeechDelta?: (delta: string) => void,
+    ) => {
       const text = textToSend ?? inputValue;
       if (!text.trim() || isLoading) return;
 
@@ -192,6 +196,7 @@ export function AiAssistantWidget({
           }
           const chunk = decoder.decode(value, { stream: true });
           assistantText += chunk;
+          onSpeechDelta?.(chunk);
 
           setMessages((prev) => appendToLastAssistantMessage(prev, chunk));
         }
@@ -225,7 +230,7 @@ export function AiAssistantWidget({
 
   const voice = useVoiceAssistant({
     config: safeVoiceConfig,
-    submitCommand: (text) => handleSend(text, "voice"),
+    submitCommand: (text, onSpeechDelta) => handleSend(text, "voice", onSpeechDelta),
     cancelCommand: () => abortControllerRef.current?.abort(),
     onWakeDetected: () => setIsOpen(true),
     onTranscription: setInputValue,

@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, isNull, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, notInArray, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 
 import { mapInternalToPublicStage } from "@/constants/stage-mapping";
 import { db } from "@/lib/db";
@@ -6,6 +6,7 @@ import { projectMetricSnapshots, projects, syncLogs } from "@/lib/db/schema";
 import { getProjectScopeConditions, type ScopedUser } from "@/lib/scope";
 import type {
   ManagerialDashboardData,
+  ManagerialDashboardDrillthroughData,
   ManagerialDashboardFilters,
   ProjectStatusFilter,
   ScheduleHealth,
@@ -241,6 +242,7 @@ function dashboardBaseQuery(
       physicalProgress: sql<number | null>`case when ${expressions.hasProgressEvidence} then ${projects.physicalProgress} else null end`.as("physical_progress"),
       startDate: projects.startDate,
       targetCompletionDate: projects.targetCompletionDate,
+      calendarDays: projects.calendarDays,
       canonicalStatus: expressions.canonicalStatus.as("canonical_status"),
       health: expressions.health.as("health"),
       expectedProgress: sql<number | null>`case when ${expressions.health} in ('onTrack', 'atRisk') then ${expressions.expectedProgress} else null end`.as("expected_progress"),
@@ -274,6 +276,93 @@ export function buildDashboardScopeCountQuery(
     .select({ total: numberSql(sql`count(*)::int`) })
     .from(base)
     .where(filteredBaseCondition(base, filters));
+}
+
+export function buildDashboardDrillthroughQueryPlan(
+  filters: ManagerialDashboardFilters,
+  user: ScopedUser,
+  asOf: string,
+  pagination: { page: number; pageSize: number },
+  options?: { otherProjectTypes?: { excluded: string[] } },
+) {
+  const base = dashboardBaseQuery(filters, user, asOf);
+  const filtered = filteredBaseCondition(base, filters);
+  const normalizedProjectType = sql<string>`coalesce(nullif(btrim(${base.projectType}), ''), ${UNKNOWN})`;
+  const otherProjectTypes = options?.otherProjectTypes;
+  const drillthroughCondition = otherProjectTypes && otherProjectTypes.excluded.length > 0
+    ? and(
+        sql`${normalizedProjectType} <> ${UNKNOWN}`,
+        notInArray(normalizedProjectType, otherProjectTypes.excluded),
+      )
+    : undefined;
+  const where = and(filtered, drillthroughCondition);
+  const total = db
+    .select({ total: numberSql(sql`count(*)::int`) })
+    .from(base)
+    .where(where);
+  const rows = db
+    .select({
+      projectId: base.projectId,
+      projectName: base.projectName,
+      program: base.program,
+      region: base.region,
+      province: base.province,
+      projectType: base.projectType,
+      status: base.canonicalStatus,
+      health: base.health,
+      allocatedBudget: base.allocatedBudget,
+      physicalProgress: base.physicalProgress,
+      expectedProgress: base.expectedProgress,
+      variance: base.variance,
+      targetCompletionDate: base.targetCompletionDate,
+      startDate: base.startDate,
+      calendarDays: base.calendarDays,
+    })
+    .from(base)
+    .where(where)
+    .orderBy(
+      sql`case when ${base.health} = 'delayed' then 0 when ${base.health} = 'atRisk' then 1 else 2 end`,
+      sql`${base.variance} asc nulls last`,
+      base.projectName,
+      base.projectId,
+    )
+    .limit(pagination.pageSize)
+    .offset((pagination.page - 1) * pagination.pageSize);
+  return { total, rows };
+}
+
+export async function getManagerialDashboardDrillthrough(
+  filters: ManagerialDashboardFilters,
+  user: ScopedUser,
+  pagination: { page: number; pageSize: number },
+  options?: { otherProjectTypes?: { excluded: string[] } },
+): Promise<ManagerialDashboardDrillthroughData> {
+  const asOf = manilaDateKey(new Date());
+  const plan = buildDashboardDrillthroughQueryPlan(filters, user, asOf, pagination, options);
+  const [totalRows, projectRows] = await Promise.all([plan.total, plan.rows]);
+  return {
+    asOf,
+    total: totalRows[0]?.total ?? 0,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    projects: projectRows.map((row) => ({
+      projectId: row.projectId,
+      projectName: row.projectName,
+      program: normalizedLabel(row.program),
+      region: row.region,
+      province: row.province,
+      projectType: normalizedLabel(row.projectType),
+      status: row.status,
+      health: row.health,
+      allocatedBudget: toNumber(row.allocatedBudget),
+      physicalProgress: row.physicalProgress === null ? null : Number(row.physicalProgress),
+      expectedProgress: row.expectedProgress === null ? null : round(Number(row.expectedProgress)),
+      variance: row.variance === null ? null : round(Number(row.variance)),
+      targetCompletionDate: row.targetCompletionDate?.toISOString() ?? null,
+      ntpDate: row.startDate?.toISOString() ?? null,
+      calendarDays: row.calendarDays === null ? null : Number(row.calendarDays),
+    })),
+  };
 }
 
 /** Query plan kept public so tests can prove every portfolio read is aggregate or bounded. */

@@ -290,7 +290,7 @@ export function SystemEvidenceMapClient() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-400">Field evidence atlas</p>
-                <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950 dark:text-white">Evidence Map</h1>
+                <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950 dark:text-white">Citizen Reports Map</h1>
                 <p className="mt-1 max-w-xs text-xs leading-5 text-slate-500 dark:text-slate-400">Explore citizen-submitted photos and GeoVideo routes by location.</p>
               </div>
               <Button type="button" variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobilePanelOpen(false)} aria-label="Close filters">
@@ -428,7 +428,7 @@ export function SystemEvidenceMapClient() {
 
           <div className="absolute left-14 right-14 top-3 z-[1000] flex items-center justify-between gap-3 lg:hidden">
             <div className="min-w-0 rounded-xl border border-white/70 bg-white/92 px-3 py-2 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-950/92">
-              <p className="truncate text-sm font-black text-slate-950 dark:text-white">Evidence Map</p>
+              <p className="truncate text-sm font-black text-slate-950 dark:text-white">Citizen Reports Map</p>
               <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{filteredIssues.length} geotagged report{filteredIssues.length === 1 ? "" : "s"}</p>
             </div>
             <Button type="button" onClick={() => setMobilePanelOpen(true)} className="h-10 bg-slate-950 text-white shadow-lg hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">

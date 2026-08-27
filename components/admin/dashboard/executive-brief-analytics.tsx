@@ -64,12 +64,16 @@ export function ExecutiveBriefAnalytics({ data }: { data: ManagerialDashboardDat
       <section aria-labelledby="brief-descriptive-heading">
         <LensHeading
           icon={<ScanSearch className="size-5" />}
-          eyebrow="Descriptive analytics"
-          title="What is happening across the authorized portfolio?"
-          description="Official portfolio totals, financial values, completion, and rules-based schedule-health distribution from the captured executive-brief scope."
+          eyebrow="Current Status & Overview"
+          title="What is the current status of all projects?"
+          description="Official totals, allocated budget, completion, and current project schedule status from the captured scope."
         />
         <div id="brief-descriptive-heading" className="space-y-4">
-          <ExecutiveKpis kpis={data.kpis} coverage={data.coverage} />
+          <ExecutiveKpis
+            kpis={data.kpis}
+            coverage={data.coverage}
+            assessedProjects={data.scheduleHealth.reduce((total, entry) => entry.key === "notAssessed" ? total : total + entry.count, 0)}
+          />
           <ScheduleHealthChart data={data.scheduleHealth} />
         </div>
       </section>
@@ -77,9 +81,9 @@ export function ExecutiveBriefAnalytics({ data }: { data: ManagerialDashboardDat
       <section aria-labelledby="brief-diagnostic-heading">
         <LensHeading
           icon={<BrainCircuit className="size-5" />}
-          eyebrow="Diagnostic analytics"
-          title="Where are the material gaps and likely contributors?"
-          description="Regional performance and project-level progress variance expose concentration, schedule deficits, and evidence gaps without claiming causation that the source does not establish."
+          eyebrow="Risk & Problem Areas"
+          title="Where are the main problem areas?"
+          description="Regional comparisons and reported-versus-expected project progress show where delivery may need closer review."
         />
         <div id="brief-diagnostic-heading" className="grid gap-4 xl:grid-cols-2">
           <RegionalPerformanceChart data={data.regions} />
@@ -90,9 +94,9 @@ export function ExecutiveBriefAnalytics({ data }: { data: ManagerialDashboardDat
       <section aria-labelledby="brief-predictive-heading">
         <LensHeading
           icon={<AlertTriangle className="size-5" />}
-          eyebrow="Predictive analytics"
-          title="What does approved historical evidence support?"
-          description="Forecasts appear only where approved snapshot history supports a projection. Current schedule-health rules are an outlook, not a trained prediction."
+          eyebrow="Forecast & Future Outlook"
+          title="What does the project history project?"
+          description="Forecasts appear only where approved snapshot history supports a projection. Current on-schedule and at-risk labels are based on rules, not a trained prediction."
         />
         <div id="brief-predictive-heading" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <ForecastCard label="Projected dates available" value={forecasts.projected} detail={projectedLabel} />
@@ -105,9 +109,9 @@ export function ExecutiveBriefAnalytics({ data }: { data: ManagerialDashboardDat
       <section aria-labelledby="brief-prescriptive-heading">
         <LensHeading
           icon={<ClipboardCheck className="size-5" />}
-          eyebrow="Prescriptive analytics"
+          eyebrow="Action Items & Recommendations"
           title="What should management examine or act on next?"
-          description="Advisory actions are tied to deterministic insights and ranked priority projects. They do not modify records or replace official management decisions."
+          description="Advisory actions are tied to priority projects and risks. They do not modify records or replace official management decisions."
         />
         <div id="brief-prescriptive-heading" className="space-y-4">
           <ExecutiveInsights insights={data.insights} onApplyFilter={() => undefined} interactive={false} />

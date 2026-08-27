@@ -18,9 +18,10 @@ test("shows assessed denominators and distinguishes unavailable financial data",
       },
     }),
   );
-  assert.match(html, /8 of 10/);
-  assert.match(html, /5 of 10/);
-  assert.match(html, /Supplier actual bid amount/);
+  assert.match(html, /Data Completeness/);
+  assert.match(html, /8 of 10 \(80%\)/);
+  assert.match(html, /5 of 10 \(50%\)/);
+  assert.match(html, /Supplier Actual Bid Amount/);
   assert.doesNotMatch(html, /Approved Budget for Contract/i);
   assert.match(html, /7 of 10/);
   assert.match(html, /6 of 10/);
