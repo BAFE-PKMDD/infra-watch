@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="InfraWatch reference for ABEMIS fields, page usage, project schedule terms, computations, classification rules, and data limitations.">
+  <title>InfraWatch ABEMIS Fields and Schedule Metrics Reference</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #5f6b7a;
+      --line: #dbe2ea;
+      --soft: #f5f7fa;
+      --brand: #155e45;
+      --brand-soft: #e9f5ef;
+      --amber: #9a5b00;
+      --amber-soft: #fff7e6;
+      --red: #a12622;
+      --red-soft: #fff0ef;
+      --slate: #465468;
+      --slate-soft: #eef2f6;
+      --blue: #1d4f91;
+      --blue-soft: #edf5ff;
+      --max: 1120px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: #fff;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+    a { color: var(--brand); text-underline-offset: 3px; }
+    a:hover { text-decoration-thickness: 2px; }
+    code, .formula {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    code {
+      border-radius: 4px;
+      background: var(--slate-soft);
+      padding: 0.08rem 0.32rem;
+      font-size: 0.9em;
+    }
+
+    .topbar {
+      border-bottom: 1px solid #ffffff24;
+      background: #103b2e;
+      color: #fff;
+    }
+    .topbar-inner {
+      display: flex;
+      max-width: var(--max);
+      min-height: 52px;
+      margin: 0 auto;
+      padding: 0 24px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .product { font-weight: 750; letter-spacing: 0.01em; }
+    .doc-label { color: #c7ded5; font-size: 0.86rem; }
+
+    .hero {
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(135deg, #f0f8f4 0%, #fff 68%);
+    }
+    .hero-inner {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 56px 24px 48px;
+    }
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--brand);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 820px;
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 1.08;
+      letter-spacing: -0.035em;
+    }
+    .lead {
+      max-width: 820px;
+      margin: 18px 0 0;
+      color: #405064;
+      font-size: 1.08rem;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr);
+      gap: 52px;
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 40px 24px 72px;
+    }
+    nav {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      border-left: 2px solid var(--line);
+      padding-left: 16px;
+    }
+    nav strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.76rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    nav a {
+      display: block;
+      padding: 5px 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      text-decoration: none;
+    }
+    nav a:hover { color: var(--brand); }
+    main { min-width: 0; }
+
+    section {
+      padding: 8px 0 42px;
+      scroll-margin-top: 20px;
+    }
+    section + section { border-top: 1px solid var(--line); padding-top: 42px; }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.65rem;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+    h3 {
+      margin: 30px 0 10px;
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
+    p { margin: 10px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li + li { margin-top: 7px; }
+
+    .callout {
+      margin: 18px 0;
+      border-left: 4px solid var(--blue);
+      background: var(--blue-soft);
+      padding: 14px 18px;
+    }
+    .callout.warning { border-color: var(--amber); background: var(--amber-soft); }
+    .callout strong { display: block; margin-bottom: 3px; }
+
+    .formula {
+      overflow-x: auto;
+      margin: 16px 0;
+      border: 1px solid #c7d6cf;
+      background: var(--brand-soft);
+      padding: 16px 18px;
+      color: #114333;
+      font-size: 0.96rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .formula-stack {
+      display: grid;
+      gap: 8px;
+      margin: 16px 0;
+    }
+    .formula-stack .formula { margin: 0; }
+
+    .status-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .status {
+      display: grid;
+      grid-template-columns: 145px minmax(0, 1fr);
+      border: 1px solid var(--line);
+      border-left-width: 5px;
+      background: #fff;
+    }
+    .status-name, .status-detail { padding: 15px 16px; }
+    .status-name { font-weight: 800; }
+    .status-detail { border-left: 1px solid var(--line); }
+    .status.on-track { border-left-color: #168052; }
+    .status.at-risk { border-left-color: #d18200; }
+    .status.delayed { border-left-color: #ca3932; }
+    .status.unassessed { border-left-color: #78869a; }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 18px 0;
+      border: 1px solid var(--line);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.91rem; }
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--soft); font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+
+    .example {
+      margin: 20px 0;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .example-title {
+      margin: 0;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+      padding: 12px 16px;
+      font-size: 0.95rem;
+    }
+    .example-body { padding: 14px 16px; }
+    .example-body p:first-child { margin-top: 0; }
+    .example-body p:last-child { margin-bottom: 0; }
+
+    .glossary dt { margin-top: 20px; font-weight: 800; }
+    .glossary dd { margin: 3px 0 0; color: #435064; }
+    .sources { color: var(--muted); font-size: 0.9rem; }
+    footer {
+      border-top: 1px solid var(--line);
+      background: var(--soft);
+      color: var(--muted);
+    }
+    footer div { max-width: var(--max); margin: 0 auto; padding: 24px; font-size: 0.85rem; }
+
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 1fr; gap: 22px; }
+      nav { position: static; border-left: 0; border-bottom: 1px solid var(--line); padding: 0 0 22px; }
+      nav a { display: inline-block; margin-right: 15px; }
+      .status { grid-template-columns: 1fr; }
+      .status-detail { border-top: 1px solid var(--line); border-left: 0; }
+    }
+    @media print {
+      @page { margin: 14mm; }
+      .topbar, nav { display: none; }
+      .hero-inner, .layout { max-width: none; padding-left: 0; padding-right: 0; }
+      .layout { display: block; }
+      section { break-inside: avoid; }
+      .status, .example, .table-wrap, .formula { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="product">InfraWatch</span>
+      <span class="doc-label">Methodology documentation</span>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Data dictionary and schedule methodology</p>
+      <h1>Terms, fields, computations, and classification details</h1>
+      <p class="lead">
+        This reference explains how InfraWatch derives target completion, expected progress, schedule gap,
+        delayed and at-risk classifications, and how ABEMIS API fields are stored, derived, and used across pages.
+      </p>
+      <div class="meta">
+        <span><strong>Effective reference:</strong> 27 August 2026</span>
+        <span><strong>Date basis:</strong> Asia/Manila calendar dates</span>
+        <span><strong>Scope:</strong> ABEMIS-backed public and administrative project pages</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav aria-label="On this page">
+      <strong>On this page</strong>
+      <a href="#overview">Overview</a>
+      <a href="#inputs">Source inputs</a>
+      <a href="#target-completion">Target completion</a>
+      <a href="#expected-progress">Expected progress</a>
+      <a href="#schedule-gap">Schedule gap</a>
+      <a href="#classification">Schedule status</a>
+      <a href="#examples">Worked examples</a>
+      <a href="#forecast">Forecast vs target</a>
+      <a href="#limitations">Limitations</a>
+      <a href="#glossary">Glossary</a>
+      <a href="#data-flow">Field data flow</a>
+      <a href="#page-fields">Fields by page</a>
+      <a href="#field-dictionary">ABEMIS field dictionary</a>
+      <a href="#derived-values">Derived values</a>
+      <a href="#sources">Implementation sources</a>
+    </nav>
+
+    <main>
+      <section id="overview">
+        <h2>1. Overview</h2>
+        <p>
+          InfraWatch uses deterministic rules for its schedule status. The classification is not generated by AI
+          and does not represent an engineering certification. It compares reported dates and reported physical
+          progress against a simple assumption: work advances evenly from the recorded project start date to the
+          target completion date.
+        </p>
+        <div class="callout">
+          <strong>Important interpretation</strong>
+          “Expected progress” is a schedule comparison baseline. It is not the contractor’s official Program of Work
+          curve, and it is not a prediction of the date on which construction will finish.
+        </div>
+      </section>
+
+      <section id="inputs">
+        <h2>2. Source inputs</h2>
+        <p>The schedule computation depends on these fields synchronized from ABEMIS:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Input</th><th>How InfraWatch obtains it</th><th>Use</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Start date / NTP date</strong></td>
+                <td>The first procurement milestone containing “Notice to Proceed”; the actual date is preferred, otherwise its target date is used.</td>
+                <td>Beginning of the project schedule.</td>
+              </tr>
+              <tr>
+                <td><strong>Calendar days</strong></td>
+                <td>The reported <code>calendar_days</code> value, parsed as a number and rounded to the nearest whole day.</td>
+                <td>Contract duration used to derive target completion.</td>
+              </tr>
+              <tr>
+                <td><strong>Actual physical progress</strong></td>
+                <td>Numeric <code>actual</code> values from Program of Work (POW) rows are added, rounded, and constrained to 0–100% during import.</td>
+                <td>Compared with expected progress.</td>
+              </tr>
+              <tr>
+                <td><strong>Project status</strong></td>
+                <td>The source status/stage is normalized into planned, ongoing, completed, or suspended.</td>
+                <td>Determines whether an active schedule comparison is appropriate.</td>
+              </tr>
+              <tr>
+                <td><strong>As-of date</strong></td>
+                <td>The dashboard’s reporting date, evaluated as a calendar date in Asia/Manila.</td>
+                <td>Represents “today” in all schedule calculations.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          A stored zero is not treated as proof of reported progress by itself. The dashboard checks for at least one
+          numeric POW <code>actual</code> value before treating physical progress as available evidence.
+        </p>
+      </section>
+
+      <section id="target-completion">
+        <h2>3. How Target Completion is computed</h2>
+        <p>
+          Target Completion is derived from the Notice to Proceed date and the reported contract duration. It is not
+          independently estimated by InfraWatch.
+        </p>
+        <div class="formula">Target Completion Date = NTP Start Date + Calendar Days</div>
+        <ol>
+          <li>Find the first procurement milestone whose name contains “Notice to Proceed.”</li>
+          <li>Use its actual date. If the actual date is absent, use its target date.</li>
+          <li>Parse and round the reported calendar-day duration to a whole number.</li>
+          <li>Add that duration to the NTP date using calendar days.</li>
+        </ol>
+        <div class="example">
+          <h3 class="example-title">Example: target completion</h3>
+          <div class="example-body">
+            <p>NTP date: <strong>1 July 2026</strong> &nbsp;·&nbsp; Contract duration: <strong>90 calendar days</strong></p>
+            <p><strong>Target Completion = 29 September 2026.</strong></p>
+          </div>
+        </div>
+        <p>
+          If the NTP date or calendar days are missing, Target Completion cannot be computed. A schedule whose target
+          is the same as or earlier than its start is treated as invalid for schedule assessment.
+        </p>
+      </section>
+
+      <section id="expected-progress">
+        <h2>4. How “Expected by now” is computed</h2>
+        <p>
+          Expected progress is the share of the contract duration that has elapsed as of the reporting date. The value
+          is limited to the range 0–100%.
+        </p>
+        <div class="formula-stack">
+          <div class="formula">Duration Days = Target Completion Date − Start Date</div>
+          <div class="formula">Elapsed Days = As-of Date − Start Date</div>
+          <div class="formula">Expected Progress (%) = clamp(0, 100, Elapsed Days ÷ Duration Days × 100)</div>
+        </div>
+        <p>
+          The calculation uses date-only Manila calendar boundaries. If the start is in the future, either schedule
+          date is missing, or duration is zero/negative, Expected Progress is not assessed.
+        </p>
+      </section>
+
+      <section id="schedule-gap">
+        <h2>5. What Schedule Gap means</h2>
+        <p>
+          Schedule Gap is the difference between reported actual physical progress and the progress expected by the
+          current date under the even-progress assumption.
+        </p>
+        <div class="formula">Schedule Gap (percentage points) = Actual Physical Progress − Expected Progress</div>
+        <ul>
+          <li><strong>Positive gap:</strong> reported work is ahead of the even schedule baseline.</li>
+          <li><strong>Zero gap:</strong> reported work is exactly at the expected pace.</li>
+          <li><strong>Negative gap:</strong> reported work is behind the expected pace.</li>
+        </ul>
+        <div class="callout warning">
+          <strong>Percentage points, not percent change</strong>
+          If actual progress is 32% and expected progress is 50%, the Schedule Gap is −18 percentage points. It is not
+          described as “18% behind.”
+        </div>
+        <p>
+          In the dashboard, Schedule Gap is displayed only when both actual progress evidence and a valid active
+          schedule comparison are available. Delayed, completed, inactive, or unassessable records may show no gap.
+        </p>
+      </section>
+
+      <section id="classification">
+        <h2>6. How schedule status is classified</h2>
+        <p>Rules are evaluated in the following order. An earlier matching rule takes precedence.</p>
+        <div class="status-list">
+          <div class="status unassessed">
+            <div class="status-name">Cannot be assessed</div>
+            <div class="status-detail">
+              Used for completed projects; missing or invalid schedule dates; future starts; inactive/non-ongoing
+              projects that are not already past target; missing progress evidence; or progress outside 0–100%.
+              Completed-late history may be recorded separately, but a completed project is not counted as an active delay.
+            </div>
+          </div>
+          <div class="status delayed">
+            <div class="status-name">Delayed</div>
+            <div class="status-detail">
+              The project is not completed, has a valid schedule, and its Target Completion Date is earlier than the
+              as-of date. The target date itself is not late; delay begins on the following Manila calendar day.
+            </div>
+          </div>
+          <div class="status at-risk">
+            <div class="status-name">At risk of delay</div>
+            <div class="status-detail">
+              For an ongoing project that is not yet past target, either (a) actual progress is at least
+              <strong>15 percentage points behind</strong> expected progress, or (b) the target is
+              <strong>0–30 days away inclusive</strong> and actual progress is <strong>below 80%</strong>.
+            </div>
+          </div>
+          <div class="status on-track">
+            <div class="status-name">On schedule</div>
+            <div class="status-detail">
+              The project is ongoing, assessable, not past target, less than 15 percentage points behind the expected
+              pace, and does not meet the due-soon/low-progress rule.
+            </div>
+          </div>
+        </div>
+
+        <h3>Threshold details</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Rule</th><th>Boundary</th><th>Interpretation</th></tr></thead>
+            <tbody>
+              <tr><td>Past target</td><td><code>target date &lt; as-of date</code></td><td>Strictly earlier; one day past target is delayed.</td></tr>
+              <tr><td>Schedule deficit</td><td><code>expected − actual ≥ 15</code></td><td>Exactly 15 points behind is at risk.</td></tr>
+              <tr><td>Due soon</td><td><code>0 ≤ days to target ≤ 30</code></td><td>Includes the target date and exactly 30 days before it.</td></tr>
+              <tr><td>Low progress near target</td><td><code>actual &lt; 80%</code></td><td>79.9% is at risk; exactly 80% does not trigger this rule.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="examples">
+        <h2>7. Worked examples</h2>
+        <div class="example">
+          <h3 class="example-title">Example A: at risk because of a schedule deficit</h3>
+          <div class="example-body">
+            <p>Start: 1 July 2026 &nbsp;·&nbsp; Target: 29 September 2026 &nbsp;·&nbsp; As of: 15 August 2026</p>
+            <p>Duration = 90 days; elapsed = 45 days; expected = 45 ÷ 90 × 100 = <strong>50%</strong>.</p>
+            <p>Actual = 32%; Schedule Gap = 32 − 50 = <strong>−18 percentage points</strong>.</p>
+            <p><strong>Result: At risk of delay</strong>, because the deficit is at least 15 percentage points.</p>
+          </div>
+        </div>
+
+        <div class="example">
+          <h3 class="example-title">Example B: at risk because completion is due soon</h3>
+          <div class="example-body">
+            <p>Start: 8 May 2026 &nbsp;·&nbsp; Target: 5 September 2026 &nbsp;·&nbsp; As of: 15 August 2026</p>
+            <p>Expected = 82.5%; actual = 75%; Schedule Gap = <strong>−7.5 percentage points</strong>.</p>
+            <p>The gap alone is below the 15-point threshold, but the target is 21 days away and actual progress is below 80%.</p>
+            <p><strong>Result: At risk of delay.</strong></p>
+          </div>
+        </div>
+
+        <div class="example">
+          <h3 class="example-title">Example C: delayed</h3>
+          <div class="example-body">
+            <p>Target: 1 August 2026 &nbsp;·&nbsp; As of: 10 August 2026 &nbsp;·&nbsp; Project is not completed.</p>
+            <p>Days to target = 1 August − 10 August = <strong>−9 days</strong>.</p>
+            <p><strong>Result: Delayed</strong>, because the target date has passed.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="forecast">
+        <h2>8. Target Completion vs Projected Completion</h2>
+        <p>These are different values and should not be used interchangeably:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Term</th><th>Meaning</th><th>Method</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>Target Completion</strong></td>
+                <td>The schedule date derived from NTP plus reported calendar days.</td>
+                <td>Contract-schedule arithmetic; it does not use observed work velocity.</td>
+              </tr>
+              <tr>
+                <td><strong>Projected Completion</strong></td>
+                <td>A forecast based on the trend in historical physical-progress snapshots.</td>
+                <td>Linear regression; requires at least 3 valid daily snapshots spanning at least 14 days and a positive progress slope.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          For a valid forecast, InfraWatch estimates progress velocity in percentage points per day and calculates the
+          remaining days needed to reach 100%. A projected date later than Target Completion is flagged as target risk.
+          Stalled, completed, inactive, or insufficient-history projects do not receive a projected completion date.
+        </p>
+      </section>
+
+      <section id="limitations">
+        <h2>9. Data and interpretation limitations</h2>
+        <ul>
+          <li>Results depend on the accuracy and freshness of ABEMIS dates, statuses, calendar days, and POW progress.</li>
+          <li>The even-progress baseline does not model mobilization, weather, sequencing, milestone weights, approved extensions, suspensions, or a project-specific S-curve.</li>
+          <li>A “Cannot be assessed” result is a disclosure of insufficient or inapplicable inputs, not evidence that the project is on schedule.</li>
+          <li>“At risk” is an analytical early-warning classification, not a formal finding of contractor default.</li>
+          <li>“Delayed” means an incomplete record is past its stored target date. It does not, by itself, determine cause, liability, or whether a time extension is pending.</li>
+          <li>Source corrections can change historical classifications after synchronization.</li>
+        </ul>
+      </section>
+
+      <section id="glossary">
+        <h2>10. Glossary</h2>
+        <dl class="glossary">
+          <dt>Actual Physical Progress</dt>
+          <dd>Reported completion percentage derived from numeric POW actual values.</dd>
+          <dt>As-of Date</dt>
+          <dd>The Manila calendar date against which the dashboard evaluates schedule health.</dd>
+          <dt>Calendar Days</dt>
+          <dd>The reported whole-day contract duration; weekends and holidays are not removed by this arithmetic.</dd>
+          <dt>Days to Target</dt>
+          <dd>Target Completion Date minus As-of Date. Positive means days remaining; zero means due today; negative means days past target.</dd>
+          <dt>Expected Progress / Target Today</dt>
+          <dd>The linearly elapsed share of the recorded start-to-target period.</dd>
+          <dt>NTP</dt>
+          <dd>Notice to Proceed, used as the schedule start date.</dd>
+          <dt>Schedule Gap / Variance</dt>
+          <dd>Actual progress minus expected progress, expressed in percentage points.</dd>
+        </dl>
+      </section>
+
+      <section id="data-flow">
+        <h2>11. How ABEMIS fields flow into InfraWatch</h2>
+        <p>
+          InfraWatch reads infrastructure records from the ABEMIS endpoint
+          <code>/api/infra-amefip-list</code>. The API uses snake-case field names such as
+          <code>project_title</code> and <code>allocated_amount</code>. During synchronization, InfraWatch validates,
+          normalizes, or derives those values and stores them in its local <code>projects</code> table. Pages read the
+          local database; they do not call ABEMIS separately on every page view.
+        </p>
+        <div class="formula" style="white-space: normal;">ABEMIS API field → import/derivation rule → InfraWatch database field → page display or metric</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field classification</th><th>Meaning in this document</th><th>Example</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Direct</strong></td><td>Copied after basic type parsing or validation.</td><td><code>project_title</code> → <code>name</code></td></tr>
+              <tr><td><strong>Fallback</strong></td><td>Uses the first available source value in a stated order.</td><td><code>province || psgc.province</code> → <code>province</code></td></tr>
+              <tr><td><strong>Derived</strong></td><td>Computed or classified from one or more source fields.</td><td>NTP date + calendar days → <code>targetCompletionDate</code></td></tr>
+              <tr><td><strong>Metadata</strong></td><td>Nested source rows retained as JSON for rich project tabs.</td><td><code>pow_relation</code> → <code>metadata.powRelation</code></td></tr>
+              <tr><td><strong>InfraWatch-local</strong></td><td>Created by InfraWatch rather than supplied by ABEMIS.</td><td><code>lastSyncedAt</code>, feedback, issues, schedule health</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout warning">
+          <strong>API field, database field, and screen label may differ</strong>
+          For example, ABEMIS <code>allocated_amount</code> is stored as <code>budget</code> and shown as
+          “Approved/Allocated Budget.” ABEMIS <code>abc</code> is treated in this integration as the supplier’s actual
+          bid amount despite the source field name.
+        </div>
+      </section>
+
+      <section id="page-fields">
+        <h2>12. ABEMIS-backed fields used by page</h2>
+        <p>
+          This matrix lists the principal source-backed fields used by each live project or analytics page. A page may
+          also use InfraWatch-local information such as feedback, issue reports, user accounts, sync logs, or audit logs;
+          those values are not ABEMIS project fields.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Page or feature</th><th>Database/application fields used</th><th>Original ABEMIS fields</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>Public landing statistics and Infrastructure Analytics</strong></td>
+                <td><code>status</code>, <code>stage</code>, <code>region</code>, <code>bannerProgram</code>, <code>program</code>, <code>yearFunded</code>, <code>budget</code>, coordinates, <code>lastSyncedAt</code></td>
+                <td><code>status</code>/<code>stage</code>, <code>region</code>/<code>psgc.region</code>, <code>banner_program</code>, derived program, <code>year_funded</code>, <code>allocated_amount</code>, <code>latitude</code>, <code>longitude</code></td>
+              </tr>
+              <tr>
+                <td><strong>Public Projects directory</strong></td>
+                <td>ID/code, name, program, project type, location, approved budget, physical/target progress, status/public stage, agency, contractor, funding year, sync date</td>
+                <td><code>id</code>, <code>project_id</code>, <code>project_title</code>, <code>sub_program</code>, <code>project_type</code>, location fields, <code>allocated_amount</code>, POW rows, <code>status</code>/<code>stage</code>, <code>operating_unit</code>, <code>contractor</code>, <code>year_funded</code></td>
+              </tr>
+              <tr>
+                <td><strong>Public project map and map preview</strong></td>
+                <td>ID, name, program, type, municipality, barangay, status, physical progress, coordinates; preview also uses region, province, budget, quantity, unit, and geotag photos</td>
+                <td><code>project_id</code>/<code>id</code>, <code>project_title</code>, derived program, <code>project_type</code>, location fields, <code>status</code>, POW <code>actual</code>, coordinates, <code>allocated_amount</code>, <code>quantity</code>, <code>quantity_unit</code>, <code>geotag</code></td>
+              </tr>
+              <tr>
+                <td><strong>Project detail — header and overview</strong></td>
+                <td>Code, title, description, public status, location, verified coordinates, contractor, approved budget, bid amount, start/target/actual completion, duration, type/scope, lengths, agency, year, program fields, procurement/implementation details</td>
+                <td>Core project fields plus <code>allocated_amount</code>, <code>abc</code>, <code>calendar_days</code>, NTP procurement row, completion/turnover dates, <code>proposed_length</code>, <code>post_geotagged_length</code>, <code>operating_unit</code>, <code>banner_program</code>, <code>prexc_program</code>, <code>sub_program</code>, <code>procurement_mode</code>, <code>implementation_type</code></td>
+              </tr>
+              <tr>
+                <td><strong>Project detail — Photos</strong></td>
+                <td>Geotag photo URL/name/category, project coordinates, and KML link</td>
+                <td><code>geotag[].url</code>, <code>photo_name</code>, <code>category</code>, coordinates, <code>kmllink.url</code>/<code>kml_link.url</code></td>
+              </tr>
+              <tr>
+                <td><strong>Project detail — Documents</strong></td>
+                <td>Document name, category, URL, and source identifier</td>
+                <td><code>proposalDocuments[]</code> or <code>proposal_documents[]</code>: <code>id</code>, <code>file_name</code>, <code>category</code>, <code>url</code></td>
+              </tr>
+              <tr>
+                <td><strong>Project detail — POW / S-curve</strong></td>
+                <td>Report date, monthly and cumulative target/actual progress, attachment</td>
+                <td><code>powRelation[]</code> or <code>pow_relation[]</code>: <code>date</code>, <code>target</code>, <code>actual</code>, <code>attachment_url</code>; IDs are retained. <code>contract_cost</code> is retained but its display is currently disabled.</td>
+              </tr>
+              <tr>
+                <td><strong>Project detail — Procurement</strong></td>
+                <td>Milestone, target/actual dates, factors affecting progress, measures undertaken, and remarks</td>
+                <td><code>procurementRelation[]</code> or <code>procurement_relation[]</code> with the corresponding nested fields</td>
+              </tr>
+              <tr>
+                <td><strong>Managerial Dashboard and Executive Brief</strong></td>
+                <td>Program, year, region/province, type, canonical status, approved budget, actual bid, physical progress evidence, start/target dates, schedule health, variance, forecast, and source freshness</td>
+                <td>Derived from program/status rules, <code>allocated_amount</code>, <code>abc</code>, POW <code>actual</code>, NTP procurement row, <code>calendar_days</code>, and synchronized dimensions</td>
+              </tr>
+              <tr>
+                <td><strong>Admin Projects</strong></td>
+                <td>The normalized project record used for project search, filters, tables, and detail links</td>
+                <td>Core identity, status, location, program/type, financial, progress, agency, contractor, and year fields listed below</td>
+              </tr>
+              <tr>
+                <td><strong>Admin Data Quality</strong></td>
+                <td>Project name/code/ABEMIS ID, approved budget, actual bid, location, coordinates, duplicates, and source-record freshness</td>
+                <td><code>project_title</code>, <code>project_id</code>/<code>id</code>, <code>allocated_amount</code>, <code>abc</code>, location fields, coordinates; sync timestamp is InfraWatch-local</td>
+              </tr>
+              <tr>
+                <td><strong>Issue/report project selector and preview</strong></td>
+                <td>Project ID, name, location, agency, approved budget, status/public stage, quantity, and source geotag photos</td>
+                <td>Corresponding core ABEMIS fields and geotag metadata; the submitted issue itself is InfraWatch-local</td>
+              </tr>
+              <tr>
+                <td><strong>Pages without ABEMIS project fields</strong></td>
+                <td>Authentication, account management, privacy/terms/about/contact, notifications, feedback administration, issue administration, and audit logs primarily use InfraWatch-local data.</td>
+                <td>None directly, except where a local feedback/issue record links back to an ABEMIS project ID for context.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="field-dictionary">
+        <h2>13. ABEMIS API-to-database field dictionary</h2>
+        <p>
+          The tables below cover the ABEMIS project payload accepted by the current integration. “Stored, limited UI”
+          means the value is synchronized but is not necessarily exposed by the current public project response or every page.
+        </p>
+
+        <h3>API response envelope and request fields</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ABEMIS API field</th><th>Purpose in synchronization</th></tr></thead>
+            <tbody>
+              <tr><td><code>success</code></td><td>The response is rejected when this is false.</td></tr>
+              <tr><td><code>data[]</code></td><td>Array of project records transformed into the local projects table.</td></tr>
+              <tr><td><code>pagination.page</code>, <code>page_size</code>, <code>total_count</code>, <code>total_pages</code></td><td>Controls paged synchronization; InfraWatch follows <code>total_pages</code> until all pages are fetched.</td></tr>
+              <tr><td><code>filter.year_funded</code>, <code>filter.project_types</code>, top-level <code>count</code></td><td>Accepted response metadata. The current full sync relies on the returned project array and pagination rather than storing these values per project.</td></tr>
+              <tr><td>Request query: <code>page</code>, <code>page_size</code>, optional <code>year_funded</code></td><td>Sent by the ABEMIS client. The full infrastructure sync uses page size 500 and the infrastructure-specific endpoint.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Core identity, classification, and organization</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ABEMIS API field</th><th>InfraWatch field</th><th>Rule and use</th></tr></thead>
+            <tbody>
+              <tr><td><code>id</code></td><td><code>abemisRawId</code></td><td>Direct source-row identifier; also a fallback ID when <code>project_id</code> is absent.</td></tr>
+              <tr><td><code>project_id</code></td><td><code>abemisId</code>, <code>projectCode</code></td><td><code>abemisId = project_id || id</code>; <code>projectCode = project_id || null</code>. Used in URLs, lookup, search, and linking local feedback/issues.</td></tr>
+              <tr><td><code>project_title</code></td><td><code>name</code></td><td><code>project_title || abemisId</code>. Used throughout directory, maps, detail, dashboard, and selectors.</td></tr>
+              <tr><td><code>description</code></td><td><code>description</code></td><td>Direct; project detail falls back to a source-unavailable disclosure.</td></tr>
+              <tr><td><code>status || stage</code></td><td><code>status</code></td><td>Normalized by the status rules in Section 14. The first truthy value is used.</td></tr>
+              <tr><td><code>stage</code></td><td><code>stage</code></td><td>Original stage retained separately for analytics and stored detail context.</td></tr>
+              <tr><td><code>project_type</code></td><td><code>projectType</code></td><td>Direct, with “Infrastructure” fallback. Farm-to-Market Road records are excluded because they belong to FMR Watch.</td></tr>
+              <tr><td><code>operating_unit</code></td><td><code>operatingUnit</code></td><td>Direct.</td></tr>
+              <tr><td><code>operating_unit || prexc_program</code></td><td><code>implementingAgency</code></td><td>Fallback used for project cards and detail displays.</td></tr>
+              <tr><td><code>banner_program</code></td><td><code>bannerProgram</code></td><td>Direct; used in public analytics breakdowns.</td></tr>
+              <tr><td><code>prexc_program</code></td><td><code>prexcProgram</code></td><td>Direct; also an agency fallback.</td></tr>
+              <tr><td><code>sub_program</code></td><td><code>subProgram</code>, derived <code>program</code></td><td>Direct detail plus program derivation: contains “irrigation” → INS; otherwise AMEFIP.</td></tr>
+              <tr><td><code>year_funded</code></td><td><code>yearFunded</code></td><td>Direct; directory filter/sort, project detail, analytics, and dashboard.</td></tr>
+              <tr><td><code>author</code></td><td><code>author</code></td><td>Direct; stored, limited current UI.</td></tr>
+              <tr><td><code>sourceId</code></td><td>Not mapped by the current transform</td><td>The accepted API type declares this numeric field, but it is not synchronized into the current projects table.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Location and mapping</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ABEMIS API field</th><th>InfraWatch field</th><th>Rule and use</th></tr></thead>
+            <tbody>
+              <tr><td><code>region || psgc.region</code></td><td><code>region</code></td><td>Fallback; directory/dashboard filters and analytics grouping.</td></tr>
+              <tr><td><code>province || psgc.province</code></td><td><code>province</code></td><td>Fallback; location display and filters.</td></tr>
+              <tr><td><code>municipality || psgc.municipality</code></td><td><code>municipality</code></td><td>Fallback; public directory, map preview, and project detail.</td></tr>
+              <tr><td><code>barangay || psgc.barangay</code></td><td><code>barangay</code></td><td>Fallback; public directory, map preview, and project detail.</td></tr>
+              <tr><td><code>district</code></td><td><code>district</code></td><td>Direct; stored, limited current UI.</td></tr>
+              <tr><td><code>psgc.psgc_code</code></td><td><code>psgcCode</code></td><td>Direct; prefix-based region/province/municipality/barangay filtering.</td></tr>
+              <tr><td><code>latitude</code>, <code>longitude</code></td><td><code>latitude</code>, <code>longitude</code>, <code>geom</code></td><td>Parsed only when each value is within valid latitude/longitude ranges; a geometry point is derived only from a valid pair. Public maps further require Philippine bounds. Missing/invalid coordinates are omitted, never fabricated.</td></tr>
+              <tr><td><code>psgc.district</code></td><td>Not mapped by the current transform</td><td>The type accepts it, but the stored <code>district</code> currently comes from top-level <code>district</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Budget, progress, and schedule</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ABEMIS API field</th><th>InfraWatch field</th><th>Rule and use</th></tr></thead>
+            <tbody>
+              <tr><td><code>allocated_amount</code></td><td><code>budget</code></td><td>Commas removed and parsed as a number; stored to two decimals. Semantics: approved/allocated project budget.</td></tr>
+              <tr><td><code>abc</code></td><td><code>abc</code></td><td>Parsed number. In this ABEMIS integration it represents the supplier’s actual bid amount.</td></tr>
+              <tr><td><code>calendar_days</code></td><td><code>calendarDays</code></td><td>Parsed and rounded to a whole number; contract duration in calendar days.</td></tr>
+              <tr><td><code>pow*.actual</code></td><td><code>physicalProgress</code></td><td>All POW actual values are parsed and added; result is rounded and clamped to 0–100. Dashboard assessment additionally requires at least one numeric actual value as evidence.</td></tr>
+              <tr><td><code>pow*.target</code></td><td><code>financialProgress</code></td><td>All POW target values are added, rounded, and clamped to 0–100. The database name is historical/misleading: this is source target progress, not a peso-based financial disbursement calculation.</td></tr>
+              <tr><td>NTP procurement milestone</td><td><code>startDate</code></td><td>First milestone containing “Notice to Proceed”; <code>actual_date</code> preferred, then <code>target_date</code>.</td></tr>
+              <tr><td>NTP date + <code>calendar_days</code></td><td><code>targetCompletionDate</code></td><td>Derived as explained in Section 3.</td></tr>
+              <tr><td><code>date_completed || date_turn_over</code></td><td><code>actualCompletionDate</code></td><td>First truthy date is parsed as actual completion.</td></tr>
+              <tr><td><code>date_turn_over</code></td><td><code>dateTurnOver</code></td><td>Original text retained separately for detail use.</td></tr>
+              <tr><td>Dates, progress, status, and snapshots</td><td>Expected progress, schedule gap, days to target, schedule health, projected completion</td><td>InfraWatch-derived analytics; not ABEMIS columns. See Sections 3–8 and 14.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Specifications and delivery details</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ABEMIS API field</th><th>InfraWatch field</th><th>Rule and current exposure</th></tr></thead>
+            <tbody>
+              <tr><td><code>quantity</code>, <code>quantity_unit</code></td><td><code>quantity</code>, <code>quantityUnit</code></td><td>Direct; map preview and project detail/specification formatting.</td></tr>
+              <tr><td><code>beneficiary</code></td><td><code>beneficiary</code></td><td>Direct; stored, but not currently returned by the main public project-detail query.</td></tr>
+              <tr><td><code>recipient_type</code></td><td><code>recipientType</code></td><td>Direct; returned as optional project-detail data.</td></tr>
+              <tr><td><code>indicator_level1</code>, <code>indicator_level3</code></td><td><code>indicatorLevel1</code>, <code>indicatorLevel3</code></td><td>Direct; returned as optional project-detail data.</td></tr>
+              <tr><td><code>budget_process</code></td><td><code>budgetProcess</code></td><td>Direct; stored, but not currently returned by the main public project-detail query.</td></tr>
+              <tr><td><code>road_class</code>, <code>road_type</code>, <code>road_used</code></td><td><code>roadClass</code>, <code>roadType</code>, <code>roadUsed</code></td><td>Direct; stored. Current overview supports these fields, but the main public detail query does not presently supply them.</td></tr>
+              <tr><td><code>contractor</code></td><td><code>contractorName</code></td><td>Direct; search, directory, detail, and dashboard priority context.</td></tr>
+              <tr><td><code>implementation_type</code></td><td><code>implementationType</code></td><td>Direct; optional project-detail data.</td></tr>
+              <tr><td><code>proposed_length</code></td><td><code>proposedLength</code></td><td>Direct; target/project length, combined with <code>quantity_unit</code> for display.</td></tr>
+              <tr><td><code>post_geotagged_length</code></td><td><code>postGeotaggedLength</code></td><td>Direct; preferred by the project highlight length display when available.</td></tr>
+              <tr><td><code>procurement_mode</code></td><td><code>procurementMode</code></td><td>Direct; optional project-detail data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Nested relations retained in metadata</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ABEMIS relation and fields</th><th>Stored path</th><th>Current use</th></tr></thead>
+            <tbody>
+              <tr><td><code>geotag[]</code>: <code>id</code>, <code>project_id</code>, <code>photo_name</code>, <code>url</code>, optional <code>category</code></td><td><code>metadata.geotag</code></td><td>Sanitized source photos on map preview and project Photos tab.</td></tr>
+              <tr><td><code>proposalDocuments[]</code> or <code>proposal_documents[]</code>: <code>id</code>, <code>project_id</code>, <code>file_name</code>, <code>category</code>, <code>url</code></td><td><code>metadata.proposalDocuments</code></td><td>Project Documents tab.</td></tr>
+              <tr><td><code>powRelation[]</code> or <code>pow_relation[]</code>: <code>id</code>, <code>project_index</code>, <code>total_quantity</code>, <code>contract_cost</code>, <code>date</code>, <code>target</code>, <code>actual</code>, <code>attachment_url</code></td><td><code>metadata.powRelation</code></td><td>Progress derivation, evidence check, S-curve, progress timeline, and attachments. Some retained fields are not currently displayed.</td></tr>
+              <tr><td><code>procurementRelation[]</code> or <code>procurement_relation[]</code>: <code>id</code>, <code>project_id</code>, <code>milestone</code>, <code>target_date</code>, <code>actual_date</code>, <code>factors_affecting_progress</code>, <code>measures_undertaken</code>, <code>remarks</code></td><td><code>metadata.procurementRelation</code></td><td>NTP/start-date derivation and Procurement timeline.</td></tr>
+              <tr><td><code>kmllink</code> or <code>kml_link</code>: <code>id</code>, <code>project_id</code>, <code>file_name</code>, <code>url</code>, <code>status</code>, <code>remarks</code></td><td><code>metadata.kmllink</code></td><td>KML overlay link in the Photos/map experience; supporting fields are retained.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>InfraWatch-local project fields</h3>
+        <p>
+          The local database also contains a generated UUID <code>id</code>, <code>lastSyncedAt</code>,
+          <code>createdAt</code>, <code>updatedAt</code>, metric snapshots, and local relations for feedback, votes,
+          comments, issue reports, notifications, articles, corrections, and audit history. These are not fields from
+          the ABEMIS project payload. <code>contractAmount</code> exists locally but the current ABEMIS transform does not
+          populate it. <code>commodities</code> is initialized as an empty local array by this transform.
+        </p>
+      </section>
+
+      <section id="derived-values">
+        <h2>14. Derived values and status examples</h2>
+        <h3>Source status → stored status</h3>
+        <p>
+          InfraWatch first uses <code>ABEMIS status || ABEMIS stage</code>, trims it, and converts it to lowercase.
+          It then applies the following normalization:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Source value, case-insensitive</th><th>Stored <code>status</code></th><th>Public label</th><th>Admin canonical status</th></tr></thead>
+            <tbody>
+              <tr><td><code>completed</code>, <code>turned over</code>, <code>turned-over</code></td><td><code>completed</code></td><td>Completed</td><td>completed</td></tr>
+              <tr><td><code>ongoing</code>, <code>on going</code>, <code>under construction</code>, <code>implementation</code></td><td><code>ongoing</code></td><td>On going</td><td>ongoing</td></tr>
+              <tr><td><code>suspended</code>, <code>cancelled</code>, <code>canceled</code>, <code>terminated</code></td><td><code>suspended</code></td><td>On going in the general public stage mapping</td><td>suspended; excluded from active schedule assessment</td></tr>
+              <tr><td><code>not yet started</code>, <code>planned</code>, <code>for implementation</code>, <code>approved</code></td><td><code>planned</code></td><td>Not yet started</td><td>planned</td></tr>
+              <tr><td>Another non-empty value, for example <code>Procurement</code></td><td>Lowercased original, for example <code>procurement</code></td><td>Mapped by known public-stage rules or heuristics; Procurement → Not yet started</td><td>Mapped to planned/ongoing/completed where recognized; otherwise planned</td></tr>
+              <tr><td>Missing/blank</td><td><code>planned</code></td><td>Not yet started</td><td>planned</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="example">
+          <h3 class="example-title">Example: what “status = ongoing” means</h3>
+          <div class="example-body">
+            <p>ABEMIS sends <code>status: "Ongoing"</code>.</p>
+            <p>Import normalization trims and lowercases it, then stores <code>projects.status = "ongoing"</code>.</p>
+            <p>The public directory/detail label becomes <strong>On going</strong>. The managerial dashboard canonical status is <strong>ongoing</strong>.</p>
+            <p>If valid start/target dates and physical-progress evidence exist, the project can then be classified as <strong>On schedule</strong>, <strong>At risk of delay</strong>, or <strong>Delayed</strong>. “Ongoing” alone does not determine schedule health.</p>
+          </div>
+        </div>
+
+        <h3>Other important derivations</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Derived value</th><th>Inputs</th><th>Rule/example</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Program</strong></td><td><code>sub_program</code></td><td>Contains “irrigation” (case-insensitive) → <strong>INS</strong>; every other or missing value → <strong>AMEFIP</strong>.</td></tr>
+              <tr><td><strong>Implementing agency</strong></td><td><code>operating_unit</code>, <code>prexc_program</code></td><td>Use operating unit first, otherwise PREXC program. Some display layers then fall back to derived program or “Unavailable.”</td></tr>
+              <tr><td><strong>Project ID shown in URLs</strong></td><td><code>project_id</code>, source <code>id</code>, local UUID</td><td>Prefer ABEMIS project ID/code; use source ID/local ID only as fallback.</td></tr>
+              <tr><td><strong>Location text</strong></td><td>Barangay, municipality, province</td><td>Join available parts; project detail prefixes a known barangay with “Brgy.” Missing parts are omitted.</td></tr>
+              <tr><td><strong>Verified map point</strong></td><td>Latitude and longitude</td><td>Both coordinates must parse and pass valid ranges; public maps additionally require Philippine bounds. No fallback/fabricated point is created.</td></tr>
+              <tr><td><strong>Actual physical progress</strong></td><td>All POW <code>actual</code> values</td><td>Example: 20 + 35 + 10 = 65%; then round and clamp to 0–100.</td></tr>
+              <tr><td><strong>Target/source progress</strong></td><td>All POW <code>target</code> values</td><td>Example: 25 + 40 + 15 = 80%; stored under the historical name <code>financialProgress</code>.</td></tr>
+              <tr><td><strong>Public stage</strong></td><td>Normalized status</td><td>Known mappings produce Not yet started, On going, or Completed; unknown values use keyword heuristics, otherwise Not yet started.</td></tr>
+              <tr><td><strong>Public analytics stage</strong></td><td>Stored status and original stage</td><td>Stage containing turn/over → turned over; containing procure → procurement; completed mapping → completed; ongoing/construction mapping → construction; otherwise pre-implementation.</td></tr>
+              <tr><td><strong>Approved budget total</strong></td><td>Non-missing <code>budget</code></td><td>Sum only reported approved budgets; missing values are not replaced with bid amounts.</td></tr>
+              <tr><td><strong>Completion rate</strong></td><td>Canonical completed count and total scoped projects</td><td>Completed ÷ all projects in the authorized filtered scope × 100.</td></tr>
+              <tr><td><strong>Schedule status</strong></td><td>Status, dates, progress evidence, thresholds</td><td>Deterministic rules in Section 6; separate from lifecycle status such as ongoing/completed.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <strong>Lifecycle status and schedule status are different</strong>
+          “Ongoing” describes the project lifecycle. “On schedule,” “At risk of delay,” “Delayed,” and “Cannot be assessed”
+          describe schedule health. An ongoing project can have any of those four schedule results depending on its dates
+          and reported progress evidence.
+        </div>
+      </section>
+
+      <section id="sources">
+        <h2>15. Implementation sources</h2>
+        <p class="sources">
+          This document is aligned with the application implementation in
+          <code>types/api.types.ts</code> (accepted ABEMIS payload),
+          <code>lib/abemis/transform.ts</code> (source transformation and target completion),
+          <code>lib/db/schema.ts</code> (normalized database fields),
+          <code>actions/query/public-projects.query.ts</code> and <code>lib/public-project-record.ts</code> (public page fields),
+          <code>constants/stage-mapping.ts</code> (public status labels),
+          <code>actions/query/analytics.query.ts</code> (public analytics derivations),
+          <code>lib/analytics/schedule-health.ts</code> (shared schedule calculations and thresholds),
+          <code>lib/analytics/managerial-dashboard-query.ts</code> (dashboard SQL classification), and
+          <code>lib/analytics/completion-forecast.ts</code> (projected completion). If implementation rules change,
+          this reference should be reviewed and versioned at the same time.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div>InfraWatch · ABEMIS Fields and Schedule Metrics Reference · Methodology documentation</div>
+  </footer>
+</body>
+</html>
