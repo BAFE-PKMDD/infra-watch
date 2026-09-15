@@ -63,6 +63,11 @@ export function AppFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/live" className="text-slate-400 hover:text-accent transition-colors">
+                  {t("nav.live")}
+                </Link>
+              </li>
+              <li>
                 <Link href="/infra-analytics" className="text-slate-400 hover:text-accent transition-colors">
                   {t("nav.infraAnalytics")}
                 </Link>

@@ -10,8 +10,16 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { InfraAnalyticsResult } from "@/actions/query/analytics.query";
 import { PublicPortfolioStatistics } from "@/components/public/public-portfolio-statistics";
+import { LiveVideoPopup } from "@/components/landing/live-video-popup";
+import type { PublicLiveVideo } from "@/types/live-video.types";
 
-export function LandingPageClient({ initialAnalytics }: { initialAnalytics: InfraAnalyticsResult }) {
+export function LandingPageClient({
+  initialAnalytics,
+  liveVideo = null,
+}: {
+  initialAnalytics: InfraAnalyticsResult;
+  liveVideo?: PublicLiveVideo | null;
+}) {
   const [sliderPosition, setSliderPosition] = useState(50);
 
   const programs = [
@@ -716,6 +724,7 @@ export function LandingPageClient({ initialAnalytics }: { initialAnalytics: Infr
           </div>
         </div>
       </section>
+      <LiveVideoPopup video={liveVideo} />
     </div>
   );
 }

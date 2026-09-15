@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -457,6 +458,46 @@ export const notificationRecipients = pgTable(
     ),
   }),
 );
+
+export const liveVideos = pgTable(
+  "live_videos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    description: text("description"),
+    videoType: text("video_type").notNull().default("facebook_live"),
+    facebookVideoUrl: text("facebook_video_url"),
+    videoPath: text("video_path"),
+    thumbnailPath: text("thumbnail_path"),
+    duration: integer("duration"),
+    isActive: boolean("is_active").notNull().default(false),
+    isFeatured: boolean("is_featured").notNull().default(false),
+    isLive: boolean("is_live").notNull().default(false),
+    displayOrder: integer("display_order").notNull().default(0),
+    publishedAt: timestamp("published_at", { mode: "date" }),
+    expiresAt: timestamp("expires_at", { mode: "date" }),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    activeScheduleIdx: index("live_videos_active_schedule_idx").on(
+      table.isActive,
+      table.publishedAt,
+      table.expiresAt,
+    ),
+    createdAtIdx: index("live_videos_created_at_idx").on(table.createdAt),
+    singleLiveIdx: uniqueIndex("live_videos_single_live_uidx")
+      .on(table.isLive)
+      .where(sql`${table.isLive} = true`),
+  }),
+);
+
+export type LiveVideo = typeof liveVideos.$inferSelect;
+export type NewLiveVideo = typeof liveVideos.$inferInsert;
 
 export type NotificationRow = typeof notifications.$inferSelect;
 export type NewNotificationRow = typeof notifications.$inferInsert;

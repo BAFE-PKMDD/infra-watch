@@ -1,0 +1,40 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { X } from "lucide-react";
+
+import { LiveBroadcastPlayer } from "@/components/live/live-broadcast-player";
+import { Button } from "@/components/ui/button";
+import type { PublicLiveVideo } from "@/types/live-video.types";
+
+export function LiveVideoPopup({ video }: { video: PublicLiveVideo | null }) {
+  const [visibleVideoId, setVisibleVideoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!video) return;
+    if (sessionStorage.getItem("infra-watch-dismissed-live-video") === video.id) return;
+    const timer = window.setTimeout(() => setVisibleVideoId(video.id), 1_500);
+    return () => window.clearTimeout(timer);
+  }, [video]);
+
+  if (!video || visibleVideoId !== video.id) return null;
+
+  const dismiss = () => {
+    sessionStorage.setItem("infra-watch-dismissed-live-video", video.id);
+    setVisibleVideoId(null);
+  };
+
+  return (
+    <div className="fixed inset-x-3 bottom-3 z-50 ml-auto max-h-[calc(100vh-1.5rem)] max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl ring-1 ring-black/10 dark:bg-slate-950 dark:ring-white/10 sm:bottom-6 sm:right-6" role="dialog" aria-modal="false" aria-label="Live broadcast">
+      <button type="button" onClick={dismiss} className="absolute right-3 top-3 z-10 rounded-full bg-black/70 p-2 text-white transition-colors hover:bg-black" aria-label="Dismiss live broadcast">
+        <X className="size-4" />
+      </button>
+      <LiveBroadcastPlayer video={video} />
+      <div className="flex gap-2 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+        <Button render={<Link href="/live" />} className="flex-1 bg-red-600 text-white hover:bg-red-700">Open Live page</Button>
+        <Button type="button" variant="outline" onClick={dismiss}>Not now</Button>
+      </div>
+    </div>
+  );
+}

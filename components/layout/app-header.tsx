@@ -21,6 +21,7 @@ import {
 const navItems = [
   { label: "Home", href: "/", key: "home" },
   { label: "Projects", href: "/projects", key: "projects" },
+  { label: "Live", href: "/live", key: "live" },
   { label: "About", href: "/about", key: "about" },
   { label: "Citizen Feed", href: "/citizen-feed", key: "citizen-feed" },
   { label: "E-Report", href: "/report-issue", key: "report-issue" },
