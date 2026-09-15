@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { LiveVideo } from "@/lib/db/schema";
 import { getFullUrl } from "@/lib/minio-url";
 import { cn } from "@/lib/utils";
+import { uploadLiveVideoAsset } from "@/lib/live-video-upload";
 import { getVideoEmbedUrl } from "@/lib/video-utils";
 
 interface LiveVideoFormProps {
@@ -79,20 +80,7 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
     setUploading(true);
 
     try {
-      const presignResponse = await fetch(
-        `/api/upload/presign?fileName=${encodeURIComponent(file.name)}&folder=live-videos`
-      );
-      if (!presignResponse.ok) throw new Error("Failed to get upload URL");
-      const { url, path } = await presignResponse.json();
-
-      const uploadResponse = await fetch(url, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
-
-      if (!uploadResponse.ok) throw new Error("Failed to upload video");
-
+      const path = await uploadLiveVideoAsset(file);
       setVideoPath(path);
       toast.success("Video uploaded successfully");
     } catch (error) {
@@ -110,20 +98,7 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
     setUploading(true);
 
     try {
-      const presignResponse = await fetch(
-        `/api/upload/presign?fileName=${encodeURIComponent(file.name)}&folder=live-videos`
-      );
-      if (!presignResponse.ok) throw new Error("Failed to get upload URL");
-      const { url, path } = await presignResponse.json();
-
-      const uploadResponse = await fetch(url, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
-
-      if (!uploadResponse.ok) throw new Error("Failed to upload thumbnail");
-
+      const path = await uploadLiveVideoAsset(file);
       setThumbnailPath(path);
       toast.success("Thumbnail uploaded successfully");
     } catch (error) {
