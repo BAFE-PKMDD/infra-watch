@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { and, count, eq, ilike, or, sum, desc } from "drizzle-orm";
+import { searchKnowledgeBase as kbSearch } from "@/lib/kb-search";
 
 function projectOverviewUrl(...identifiers: Array<string | null>) {
   const identifier = identifiers.find((value): value is string => Boolean(value));
@@ -345,6 +346,53 @@ export const getDelayedProjectsSummary = tool({
   },
 });
 
+
+// ---------------------------------------------------------------------------
+// searchKnowledgeBase — semantic search over uploaded documents, FAQs, policies
+// ---------------------------------------------------------------------------
+
+const searchKnowledgeBaseSchema = z.object({
+  query: z
+    .string()
+    .describe(
+      "The search query to find relevant knowledge base content. Use natural language.",
+    ),
+  category: z
+    .string()
+    .optional()
+    .describe("Optional exact knowledge-base category filter; categories are admin-defined"),
+});
+
+export const searchKnowledgeBase = tool({
+  description:
+    "Search uploaded knowledge-base guidelines, FAQs, policies, technical specs, and reference/test documents. Use this for background, history, rules, procedures, and questions explicitly about uploaded references. Content marked synthetic or test-only is reference data, not an official project database record; do not combine it with project-search results unless the user separately asks for official project data.",
+  inputSchema: searchKnowledgeBaseSchema,
+  execute: async (params: z.infer<typeof searchKnowledgeBaseSchema>) => {
+    const results = await kbSearch(params.query, {
+      limit: 5,
+      category: params.category,
+    });
+
+    if (results.length === 0) {
+      return {
+        found: false,
+        message: "No relevant knowledge base content found for this query.",
+      };
+    }
+
+    return {
+      found: true,
+      resultCount: results.length,
+      results: results.map((r) => ({
+        documentTitle: r.documentTitle,
+        category: r.documentCategory,
+        content: r.chunkContent,
+        relevance: `${Math.round(r.similarity * 100)}%`,
+      })),
+    };
+  },
+});
+
 // ---------------------------------------------------------------------------
 // All tools bundled for the chat route
 // ---------------------------------------------------------------------------
@@ -354,4 +402,5 @@ export const chatTools = {
   getProjectStats,
   getDelayedProjectsSummary,
   getProjectById,
+  searchKnowledgeBase,
 };

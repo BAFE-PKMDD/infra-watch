@@ -25,9 +25,16 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { LiveVideo } from "@/lib/db/schema";
+import {
+  formatLiveVideoDateInput,
+  parseLiveVideoDateInput,
+} from "@/lib/live-video-input";
 import { getFullUrl } from "@/lib/minio-url";
 import { cn } from "@/lib/utils";
-import { uploadLiveVideoAsset } from "@/lib/live-video-upload";
+import {
+  getLiveVideoUploadPreviewUrl,
+  uploadLiveVideoAsset,
+} from "@/lib/live-video-upload";
 import { getVideoEmbedUrl } from "@/lib/video-utils";
 
 interface LiveVideoFormProps {
@@ -46,15 +53,16 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
   const [facebookVideoUrl, setFacebookVideoUrl] = useState(initialData?.facebookVideoUrl || "");
   const [videoPath, setVideoPath] = useState(initialData?.videoPath || "");
   const [thumbnailPath, setThumbnailPath] = useState(initialData?.thumbnailPath || "");
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(initialData?.isActive || false);
   const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured || false);
   const [isLive, setIsLive] = useState(initialData?.isLive || false);
   const [displayOrder, setDisplayOrder] = useState(initialData?.displayOrder || 0);
   const [publishedAt, setPublishedAt] = useState(
-    initialData?.publishedAt ? new Date(initialData.publishedAt).toISOString().split("T")[0] : ""
+    formatLiveVideoDateInput(initialData?.publishedAt)
   );
   const [expiresAt, setExpiresAt] = useState(
-    initialData?.expiresAt ? new Date(initialData.expiresAt).toISOString().split("T")[0] : ""
+    formatLiveVideoDateInput(initialData?.expiresAt)
   );
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -70,6 +78,7 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
 
   const handleRemoveThumbnail = () => {
     setThumbnailPath("");
+    setThumbnailPreviewUrl(null);
     toast.success("Thumbnail removed");
   };
 
@@ -100,6 +109,7 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
     try {
       const path = await uploadLiveVideoAsset(file);
       setThumbnailPath(path);
+      setThumbnailPreviewUrl(getLiveVideoUploadPreviewUrl(path));
       toast.success("Thumbnail uploaded successfully");
     } catch (error) {
       console.error("Thumbnail upload error:", error);
@@ -140,8 +150,8 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
       isFeatured,
       isLive: videoType !== "recorded" ? isLive : false,
       displayOrder,
-      publishedAt: publishedAt ? new Date(publishedAt) : null,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      publishedAt: parseLiveVideoDateInput(publishedAt, "start"),
+      expiresAt: parseLiveVideoDateInput(expiresAt, "end"),
     };
 
     let result;
@@ -260,7 +270,12 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
                         <div className="group relative">
                           <div className="relative h-40 w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
                             <Image
-                              src={getFullUrl(thumbnailPath) || ""}
+                              src={
+                                thumbnailPreviewUrl ||
+                                getLiveVideoUploadPreviewUrl(thumbnailPath) ||
+                                getFullUrl(thumbnailPath) ||
+                                ""
+                              }
                               alt="Thumbnail"
                               fill
                               sizes="(max-width: 768px) 100vw, 50vw"

@@ -106,7 +106,7 @@ export function useVoiceAssistant({
   const streamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const processorRef = useRef<AudioWorkletNode | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingClaimRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -166,7 +166,11 @@ export function useVoiceAssistant({
     }
     recorderRef.current = null;
     recordingClaimRef.current = false;
-    processorRef.current?.disconnect();
+    if (processorRef.current) {
+      processorRef.current.port.onmessage = null;
+      processorRef.current.port.close();
+      processorRef.current.disconnect();
+    }
     processorRef.current = null;
     void audioContextRef.current?.close();
     audioContextRef.current = null;
@@ -637,9 +641,15 @@ export function useVoiceAssistant({
 
       const activeContext = context;
       const source = activeContext.createMediaStreamSource(stream);
-      const processor = activeContext.createScriptProcessor(4096, 1, 1);
+      await activeContext.audioWorklet.addModule("/voice-input-processor.js");
+      if (operationRef.current !== operation) return;
+      const processor = new AudioWorkletNode(activeContext, "voice-input-processor", {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+      });
       processorRef.current = processor;
-      processor.onaudioprocess = (event) => {
+      processor.port.onmessage = (event: MessageEvent<Float32Array>) => {
         const activeSocket = socketRef.current;
         if (
           activeSocket?.readyState !== WebSocket.OPEN ||
@@ -648,7 +658,7 @@ export function useVoiceAssistant({
           return;
         }
         const samples = downsampleTo16Khz(
-          event.inputBuffer.getChannelData(0),
+          event.data,
           activeContext.sampleRate,
         );
         activeSocket.send(floatToPcm16(samples));

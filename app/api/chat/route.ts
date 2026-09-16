@@ -27,6 +27,10 @@ import {
 } from "@/lib/chat-rate-limit";
 import { chatTools } from "@/lib/chat-tools";
 import {
+  KNOWLEDGE_BASE_GROUNDING_INSTRUCTION,
+  getChatActiveToolsForMessage,
+} from "@/lib/chat-grounding";
+import {
   GENERIC_CHAT_ERROR,
   createChatResponseStream,
   createChatStreamTerminalState,
@@ -68,7 +72,9 @@ Guidelines:
 - For statistical questions, use getProjectStats to get aggregate data.
 - For a project-listing request, call searchProjects once with the requested filters and answer directly from those results. Do not repeatedly broaden the search or call getProjectById for every listed project because searchProjects already returns the relevant details.
 - You can call multiple tools if needed to answer a complex question.
-- Do not make up project data. Only report what the tools return.`;
+- Do not make up project data. Only report what the tools return.
+- ${KNOWLEDGE_BASE_GROUNDING_INSTRUCTION}
+- VERY IMPORTANT: For ANY questions about background information, history (e.g. "Bakit ginawa ang Infra Watch?", "What is BAFE?"), guidelines, policies, FAQs, procedures, technical specifications, or uploaded test/reference documents, you MUST use the searchKnowledgeBase tool before answering.`;
 
 function logChatError(requestId: string, code: string, error: unknown) {
   const details =
@@ -351,6 +357,7 @@ export async function POST(request: NextRequest) {
         .join("\n\n"),
       messages,
       tools: chatTools,
+      activeTools: getChatActiveToolsForMessage(message),
       maxOutputTokens: responseMode === "voice" ? VOICE_MAX_OUTPUT_TOKENS : undefined,
       prepareStep: ({ stepNumber }) =>
         stepNumber >= 3 ? { toolChoice: "none" as const } : undefined,

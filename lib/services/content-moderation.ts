@@ -2,6 +2,7 @@ import "server-only";
 
 import { Filter } from "bad-words";
 import type * as nsfwjs from "nsfwjs";
+import { initializeImageModerationRuntime } from "./image-moderation-runtime";
 
 type ClassifiableImage = Parameters<nsfwjs.NSFWJS["classify"]>[0];
 
@@ -145,37 +146,6 @@ function findFlaggedPrediction(predictions: nsfwjs.PredictionType[]) {
   });
 }
 
-async function prepareTensorflowNativeRuntime() {
-  if (process.platform !== "win32") return;
-
-  try {
-    const fs = await import("node:fs/promises");
-    const path = await import("node:path");
-    const tfjsNodeRoot = path.dirname(require.resolve("@tensorflow/tfjs-node/package.json"));
-    const sourceDll = path.join(tfjsNodeRoot, "deps", "lib", "tensorflow.dll");
-    const libRoot = path.join(tfjsNodeRoot, "lib");
-    const entries = await fs.readdir(libRoot, { withFileTypes: true });
-
-    await Promise.all(
-      entries
-        .filter((entry) => entry.isDirectory() && entry.name.startsWith("napi-v"))
-        .map(async (entry) => {
-          const bindingPath = path.join(libRoot, entry.name, "tfjs_binding.node");
-          const dllPath = path.join(libRoot, entry.name, "tensorflow.dll");
-
-          try {
-            await fs.access(bindingPath);
-            await fs.access(dllPath);
-          } catch {
-            await fs.copyFile(sourceDll, dllPath);
-          }
-        }),
-    );
-  } catch (error) {
-    console.warn("Unable to prepare TensorFlow native runtime", error);
-  }
-}
-
 export async function moderateImageBuffer(buffer: Buffer): Promise<ImageModerationResult> {
   if (!isImageModerationEnabled()) {
     return { isNSFW: false, predictions: [] };
@@ -184,11 +154,12 @@ export async function moderateImageBuffer(buffer: Buffer): Promise<ImageModerati
   let imageTensor: { dispose?: () => void } | null = null;
 
   try {
-    const nsfwModel = await getNSFWModel();
+    const { runtime: tf, model: nsfwModel } = await initializeImageModerationRuntime({
+      loadRuntime: () => import("@tensorflow/tfjs-node"),
+      loadModel: getNSFWModel,
+    });
     if (!nsfwModel) throw new Error("NSFW model could not be loaded");
 
-    await prepareTensorflowNativeRuntime();
-    const tf = await import("@tensorflow/tfjs-node");
     const sharp = (await import("sharp")).default;
 
     const pngBuffer = await sharp(buffer).png().toBuffer();

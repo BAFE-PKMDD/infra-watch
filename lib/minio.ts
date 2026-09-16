@@ -1,6 +1,9 @@
 import * as Minio from "minio";
 import { randomBytes } from "crypto";
+import { createWriteStream, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
+import path from "path";
 import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 
 export { getFileUrl, getFullUrl, isFullUrl } from "./minio-url";
 
@@ -19,6 +22,12 @@ type BucketCorsConfiguration = {
 type MinioClientWithCors = Minio.Client & {
   setBucketCors(bucket: string, configuration: BucketCorsConfiguration): Promise<void>;
 };
+
+function getStorageErrorCode(error: unknown): string | undefined {
+  return typeof error === "object" && error !== null && "code" in error
+    ? String(error.code)
+    : undefined;
+}
 
 function isWebReadableStream(value: unknown): value is ReadableStream<Uint8Array> {
   if (typeof value !== "object" || value === null || !("getReader" in value)) {
@@ -84,8 +93,6 @@ export async function uploadFile(
   contentType: string,
   size: number,
 ): Promise<string> {
-  await ensureBucketExists();
-
   let stream: Readable | Buffer;
 
   if (Buffer.isBuffer(content)) {
@@ -102,15 +109,64 @@ export async function uploadFile(
     throw new Error("Invalid upload content");
   }
 
-  await minioClient.putObject(bucketName, fileName, stream, size, {
-    "Content-Type": contentType,
-  });
+  try {
+    await ensureBucketExists();
+    await minioClient.putObject(bucketName, fileName, stream, size, {
+      "Content-Type": contentType,
+    });
+  } catch (error: unknown) {
+    const code = getStorageErrorCode(error);
+    if (code === "ECONNREFUSED" || code === "ENOTFOUND") {
+      console.warn("MinIO unreachable, falling back to local file system.");
+      const storageDir = path.join(process.cwd(), ".storage");
+      const fullPath = path.join(storageDir, fileName);
+      mkdirSync(path.dirname(fullPath), { recursive: true });
+
+      if (Buffer.isBuffer(stream)) {
+        writeFileSync(fullPath, stream);
+      } else {
+        await pipeline(stream, createWriteStream(fullPath));
+      }
+    } else {
+      throw error;
+    }
+  }
 
   return fileName;
 }
 
 export async function deleteFile(fileName: string): Promise<void> {
-  await minioClient.removeObject(bucketName, fileName);
+  try {
+    await minioClient.removeObject(bucketName, fileName);
+  } catch (error: unknown) {
+    const code = getStorageErrorCode(error);
+    if (code === "ECONNREFUSED" || code === "ENOTFOUND") {
+      const fullPath = path.join(process.cwd(), ".storage", fileName);
+      if (existsSync(fullPath)) {
+        unlinkSync(fullPath);
+      }
+    } else {
+      throw error;
+    }
+  }
+}
+
+export async function downloadFile(fileName: string): Promise<Buffer> {
+  try {
+    const fileStream = await minioClient.getObject(bucketName, fileName);
+    const chunks: Buffer[] = [];
+    for await (const chunk of fileStream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  } catch (error: unknown) {
+    const code = getStorageErrorCode(error);
+    if (code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "NoSuchKey") {
+      const fullPath = path.join(process.cwd(), ".storage", fileName);
+      if (existsSync(fullPath)) return readFileSync(fullPath);
+    }
+    throw error;
+  }
 }
 
 export function generateUniqueFileName(

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { uploadLiveVideoAsset } from "./live-video-upload";
+import {
+  getLiveVideoUploadPreviewUrl,
+  isLiveVideoUploadPath,
+  uploadLiveVideoAsset,
+} from "./live-video-upload";
 
 test("uploads a live-video asset through the existing authenticated upload route", async () => {
   const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], "thumbnail.jpg", {
@@ -38,4 +42,27 @@ test("surfaces the upload endpoint error", async () => {
     )),
     /Video size exceeds 100MB limit/,
   );
+});
+
+test("builds an authenticated preview URL for a newly uploaded live-video image", () => {
+  const path = "live-videos/1789523430216-3a06bb5dacd481ab0bc359c6f088a011.png";
+
+  assert.equal(isLiveVideoUploadPath(path), true);
+  assert.equal(
+    getLiveVideoUploadPreviewUrl(path),
+    `/api/upload/preview?path=${encodeURIComponent(path)}`,
+  );
+});
+
+test("rejects traversal, unrelated folders, and unsupported preview files", () => {
+  for (const path of [
+    "../.env",
+    "live-videos/../../.env",
+    "knowledge-base/private.pdf",
+    "live-videos/not-generated.png",
+    "live-videos/1789523430216-3a06bb5dacd481ab0bc359c6f088a011.svg",
+  ]) {
+    assert.equal(isLiveVideoUploadPath(path), false, path);
+    assert.equal(getLiveVideoUploadPreviewUrl(path), null, path);
+  }
 });

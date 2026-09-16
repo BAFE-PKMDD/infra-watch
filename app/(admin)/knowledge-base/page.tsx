@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   BookOpen,
   BrainCircuit,
@@ -17,199 +17,267 @@ import {
   Trash2,
   Upload,
   X,
+  AlertTriangle,
+  Archive,
+  ArchiveRestore,
+  ExternalLink,
 } from "lucide-react";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { Button } from "@/components/ui/button";
+import { addFaqEntry, archiveKbDocument, deleteKbDocument, reindexDocument, restoreKbDocument } from "@/actions/mutation/knowledge-base.mutation";
+import { getKbCategories, getKbDocuments, getKbStats, getKbDocumentWithChunks } from "@/actions/query/knowledge-base.query";
 
-type DocumentCategory = "all" | "faq" | "guidelines" | "technical" | "policy";
-type StatusFilter = "all" | "embedded" | "indexing" | "pending";
+type StatusFilter = "all" | "embedded" | "indexing" | "pending" | "failed";
+type RepositoryView = "active" | "archived";
 
-interface KnowledgeDocument {
+interface KbDocument {
   id: string;
   title: string;
-  category: "FAQ" | "Guidelines" | "Technical Spec" | "Policy";
-  fileType: "PDF" | "TXT" | "FAQ Entry" | "Markdown";
-  fileName?: string;
-  fileSize?: string;
+  category: string;
+  fileType: string;
+  fileName: string | null;
+  fileSize: number | null;
   chunkCount: number;
-  status: "embedded" | "indexing" | "pending" | "failed";
-  uploadedBy: string;
-  updatedAt: string;
-  contentPreview: string;
-  faqAnswer?: string;
+  status: string;
+  faqQuestion: string | null;
+  faqAnswer: string | null;
+  contentPreview: string | null;
+  errorMessage: string | null;
+  uploadedByName: string;
+  archivedAt: Date | null;
+  archivedBy: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const INITIAL_DOCUMENTS: KnowledgeDocument[] = [
-  {
-    id: "kb-001",
-    title: "ABEMIS Offline Remarks & Sync Protocol Manual",
-    category: "Technical Spec",
-    fileType: "PDF",
-    fileName: "abemis_sync_protocol_v2.pdf",
-    fileSize: "2.4 MB",
-    chunkCount: 28,
-    status: "embedded",
-    uploadedBy: "System Administrator",
-    updatedAt: "2026-08-26 14:20",
-    contentPreview: "Details manual sync retry policies, handling missing remarks, offline queue resolution, and PSGC location mapping fallbacks for regional offices.",
-  },
-  {
-    id: "kb-002",
-    title: "Why are project schedule updates missing or delayed?",
-    category: "FAQ",
-    fileType: "FAQ Entry",
-    chunkCount: 2,
-    status: "embedded",
-    uploadedBy: "DA-BAFE Admin",
-    updatedAt: "2026-08-25 09:15",
-    contentPreview: "Q: Why are project schedule updates missing or delayed?",
-    faqAnswer: "Schedule updates depend on field engineer submissions through the ABEMIS mobile app. Projects in remote areas without cellular connection sync automatically once connectivity is restored.",
-  },
-  {
-    id: "kb-003",
-    title: "DA-BAFE Infrastructure Quality Guidelines (2025 Revised Edition)",
-    category: "Guidelines",
-    fileType: "PDF",
-    fileName: "bafe_infra_quality_standards_2025.pdf",
-    fileSize: "5.8 MB",
-    chunkCount: 64,
-    status: "embedded",
-    uploadedBy: "Regional Coordinator",
-    updatedAt: "2026-08-24 16:45",
-    contentPreview: "Standard technical specifications for Farm-to-Market Roads (FMR), Solar-Powered Irrigation Systems (SPIS), and Post-Harvest Warehouse Facilities.",
-  },
-  {
-    id: "kb-004",
-    title: "How to interpret Project Completion Rate vs Physical Progress?",
-    category: "FAQ",
-    fileType: "FAQ Entry",
-    chunkCount: 3,
-    status: "embedded",
-    uploadedBy: "Analytics Officer",
-    updatedAt: "2026-08-23 11:30",
-    contentPreview: "Q: How to interpret Project Completion Rate vs Physical Progress?",
-    faqAnswer: "Completion Rate represents the percentage of projects marked fully finished (100%), whereas Physical Progress measures the overall weighted work done across all active projects.",
-  },
-  {
-    id: "kb-005",
-    title: "National Agricultural Infrastructure Policy & Procurement Rules",
-    category: "Policy",
-    fileType: "Markdown",
-    fileName: "national_agri_infra_procurement_policy.md",
-    fileSize: "840 KB",
-    chunkCount: 42,
-    status: "embedded",
-    uploadedBy: "Legal & Compliance Unit",
-    updatedAt: "2026-08-20 10:00",
-    contentPreview: "RA 9184 compliance guidelines for agricultural infrastructure projects, bid evaluation criteria, and liquidated damages formulas for delayed timelines.",
-  },
-  {
-    id: "kb-006",
-    title: "Region III & Region VI Delayed Project Emergency Resolution Circular",
-    category: "Guidelines",
-    fileType: "PDF",
-    fileName: "circular_2026_delayed_projects_resolution.pdf",
-    fileSize: "1.2 MB",
-    chunkCount: 16,
-    status: "indexing",
-    uploadedBy: "Monitoring Bureau",
-    updatedAt: "2026-08-27 06:10",
-    contentPreview: "Directive requiring regional offices to issue formal progress warnings for infrastructure projects exceeding 15% schedule variance.",
-  },
-];
+interface KbStats {
+  totalDocuments: number;
+  totalChunks: number;
+  embeddedCount: number;
+  archivedDocuments: number;
+  embeddingHealth: number;
+  activeCategories: number;
+}
+
+interface ChunkData {
+  id: string;
+  chunkIndex: number;
+  content: string;
+  tokenCount: number | null;
+  createdAt: Date;
+}
+
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(date: Date): string {
+  return new Date(date).toLocaleString("en-PH", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function KnowledgeBasePage() {
-  const [documents, setDocuments] = useState<KnowledgeDocument[]>(INITIAL_DOCUMENTS);
+  const [documents, setDocuments] = useState<KbDocument[]>([]);
+  const [stats, setStats] = useState<KbStats>({
+    totalDocuments: 0,
+    totalChunks: 0,
+    embeddedCount: 0,
+    archivedDocuments: 0,
+    embeddingHealth: 0,
+    activeCategories: 0,
+  });
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<DocumentCategory>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [selectedDoc, setSelectedDoc] = useState<KnowledgeDocument | null>(null);
+  const [repositoryView, setRepositoryView] = useState<RepositoryView>("active");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedDoc, setSelectedDoc] = useState<(KbDocument & { chunks?: ChunkData[] }) | null>(null);
+  const [loadingChunks, setLoadingChunks] = useState(false);
 
   // Modal states
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [faqModalOpen, setFaqModalOpen] = useState(false);
+  const [pendingArchive, setPendingArchive] = useState<KbDocument | null>(null);
+  const [pendingDeletion, setPendingDeletion] = useState<KbDocument | null>(null);
 
   // Form states
   const [newFaqQuestion, setNewFaqQuestion] = useState("");
   const [newFaqAnswer, setNewFaqAnswer] = useState("");
-  const [newFaqCategory] = useState<KnowledgeDocument["category"]>("FAQ");
+  const [faqSubmitting, setFaqSubmitting] = useState(false);
 
   const [uploadTitle, setUploadTitle] = useState("");
-  const [uploadCategory, setUploadCategory] = useState<KnowledgeDocument["category"]>("Guidelines");
-  const [uploadFileName, setUploadFileName] = useState("");
+  const [uploadCategory, setUploadCategory] = useState("Guidelines");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadSubmitting, setUploadSubmitting] = useState(false);
 
-  const filteredDocs = documents.filter((doc) => {
-    const matchesSearch =
-      doc.title.toLowerCase().includes(search.toLowerCase()) ||
-      doc.contentPreview.toLowerCase().includes(search.toLowerCase()) ||
-      (doc.fileName && doc.fileName.toLowerCase().includes(search.toLowerCase()));
+  const [changingArchiveId, setChangingArchiveId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    const matchesCategory =
-      categoryFilter === "all" ||
-      (categoryFilter === "faq" && doc.category === "FAQ") ||
-      (categoryFilter === "guidelines" && doc.category === "Guidelines") ||
-      (categoryFilter === "technical" && doc.category === "Technical Spec") ||
-      (categoryFilter === "policy" && doc.category === "Policy");
+  const fetchData = useCallback(async () => {
+    try {
+      const [docs, statsData, categoryData] = await Promise.all([
+        getKbDocuments({
+          search: search || undefined,
+          category: categoryFilter !== "all" ? categoryFilter : undefined,
+          status: statusFilter !== "all" ? statusFilter : undefined,
+          archived: repositoryView === "archived",
+        }),
+        getKbStats(),
+        getKbCategories(),
+      ]);
+      setDocuments(docs as KbDocument[]);
+      setStats(statsData);
+      setCategories(categoryData);
+    } catch (error) {
+      console.error("Failed to fetch KB data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, categoryFilter, statusFilter, repositoryView]);
 
-    const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
+  useEffect(() => {
+    const timeout = window.setTimeout(fetchData, 0);
+    return () => window.clearTimeout(timeout);
+  }, [fetchData]);
 
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  // Poll for indexing documents
+  useEffect(() => {
+    const hasIndexing = documents.some((d) => d.status === "indexing" || d.status === "pending");
+    if (!hasIndexing) return;
 
-  const totalChunks = documents.reduce((sum, d) => sum + d.chunkCount, 0);
-  const embeddedCount = documents.filter((d) => d.status === "embedded").length;
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, [documents, fetchData]);
 
-  const handleAddFaq = (e: React.FormEvent) => {
+  const handleInspectChunks = async (doc: KbDocument) => {
+    setSelectedDoc(doc);
+    setLoadingChunks(true);
+    try {
+      const result = await getKbDocumentWithChunks(doc.id);
+      if (result) {
+        setSelectedDoc({ ...doc, chunks: result.chunks as ChunkData[] });
+      }
+    } catch (error) {
+      console.error("Failed to load chunks:", error);
+    } finally {
+      setLoadingChunks(false);
+    }
+  };
+
+  const handleAddFaq = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFaqQuestion.trim() || !newFaqAnswer.trim()) return;
 
-    const newDoc: KnowledgeDocument = {
-      id: `kb-${Date.now()}`,
-      title: newFaqQuestion.trim(),
-      category: newFaqCategory,
-      fileType: "FAQ Entry",
-      chunkCount: Math.ceil(newFaqAnswer.length / 300) || 1,
-      status: "embedded",
-      uploadedBy: "System Administrator",
-      updatedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-      contentPreview: `Q: ${newFaqQuestion.trim()}`,
-      faqAnswer: newFaqAnswer.trim(),
-    };
-
-    setDocuments([newDoc, ...documents]);
-    setNewFaqQuestion("");
-    setNewFaqAnswer("");
-    setFaqModalOpen(false);
+    setFaqSubmitting(true);
+    try {
+      const result = await addFaqEntry({
+        question: newFaqQuestion.trim(),
+        answer: newFaqAnswer.trim(),
+      });
+      if (result.success) {
+        setNewFaqQuestion("");
+        setNewFaqAnswer("");
+        setFaqModalOpen(false);
+        await fetchData();
+      } else {
+        alert(result.error || "Failed to add FAQ entry");
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to add FAQ entry");
+    } finally {
+      setFaqSubmitting(false);
+    }
   };
 
-  const handleUploadSubmit = (e: React.FormEvent) => {
+  const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadTitle.trim()) return;
+    if (!uploadTitle.trim() || !uploadCategory.trim() || !uploadFile) return;
 
-    const newDoc: KnowledgeDocument = {
-      id: `kb-${Date.now()}`,
-      title: uploadTitle.trim(),
-      category: uploadCategory,
-      fileType: uploadFileName.endsWith(".pdf") ? "PDF" : uploadFileName.endsWith(".md") ? "Markdown" : "TXT",
-      fileName: uploadFileName || "uploaded_document.pdf",
-      fileSize: "1.5 MB",
-      chunkCount: 12,
-      status: "indexing",
-      uploadedBy: "System Administrator",
-      updatedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-      contentPreview: `Reference document "${uploadTitle.trim()}" queued for pgvector text chunking and embedding.`,
-    };
+    setUploadSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("title", uploadTitle.trim());
+      formData.append("category", uploadCategory);
 
-    setDocuments([newDoc, ...documents]);
-    setUploadTitle("");
-    setUploadFileName("");
-    setUploadModalOpen(false);
+      const response = await fetch("/api/knowledge-base/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setUploadTitle("");
+        setUploadFile(null);
+        setUploadModalOpen(false);
+        await fetchData();
+      } else {
+        alert(result.error || "Upload failed");
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setUploadSubmitting(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setDocuments(documents.filter((d) => d.id !== id));
-    if (selectedDoc?.id === id) setSelectedDoc(null);
+  const handleArchiveChange = async (id: string, restore: boolean) => {
+    setChangingArchiveId(id);
+    try {
+      const result = restore ? await restoreKbDocument(id) : await archiveKbDocument(id);
+      if (result.success) {
+        if (selectedDoc?.id === id) setSelectedDoc(null);
+        setPendingArchive(null);
+        await fetchData();
+      } else {
+        alert(result.error || `Failed to ${restore ? "restore" : "archive"} document`);
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : `Failed to ${restore ? "restore" : "archive"} document`);
+    } finally {
+      setChangingArchiveId(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const result = await deleteKbDocument(id);
+      if (result.success) {
+        setPendingDeletion(null);
+        if (selectedDoc?.id === id) setSelectedDoc(null);
+        await fetchData();
+      } else {
+        alert(result.error || "Failed to delete document");
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to delete document");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleReindex = async (id: string) => {
+    try {
+      const result = await reindexDocument(id);
+      if (result.success) {
+        await fetchData();
+      } else {
+        alert(result.error || "Failed to reindex");
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to reindex");
+    }
   };
 
   return (
@@ -222,28 +290,28 @@ export default function KnowledgeBasePage() {
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Total Documents"
-          value={documents.length.toString()}
+          value={stats.totalDocuments.toString()}
           subtext="Reference files & FAQs"
           icon={<BookOpen className="size-4" />}
           tone="blue"
         />
         <MetricCard
           label="Indexed Chunks"
-          value={totalChunks.toLocaleString()}
+          value={stats.totalChunks.toLocaleString()}
           subtext="pgvector embeddings"
           icon={<BrainCircuit className="size-4" />}
           tone="emerald"
         />
         <MetricCard
           label="Embedding Health"
-          value={`${Math.round((embeddedCount / (documents.length || 1)) * 100)}%`}
-          subtext={`${embeddedCount} of ${documents.length} ready`}
+          value={`${stats.embeddingHealth}%`}
+          subtext={`${stats.embeddedCount} of ${stats.totalDocuments} ready`}
           icon={<CheckCircle2 className="size-4" />}
           tone="indigo"
         />
         <MetricCard
           label="Active Categories"
-          value="4"
+          value={stats.activeCategories.toString()}
           subtext="FAQs, Specs, Policies, Manuals"
           icon={<Layers className="size-4" />}
           tone="amber"
@@ -268,6 +336,14 @@ export default function KnowledgeBasePage() {
             >
               <Plus className="size-4" />
               Add FAQ Entry
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setRepositoryView("archived")}
+              className="inline-flex items-center gap-2 rounded-lg border-slate-200 font-bold dark:border-slate-800"
+            >
+              <Archive className="size-4" />
+              Open Archive ({stats.archivedDocuments})
             </Button>
           </div>
 
@@ -300,14 +376,13 @@ export default function KnowledgeBasePage() {
 
           <select
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value as DocumentCategory)}
+            onChange={(e) => setCategoryFilter(e.target.value)}
             className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-primary dark:border-slate-800 dark:bg-slate-950 dark:text-white"
           >
             <option value="all">All Categories</option>
-            <option value="faq">FAQs Only</option>
-            <option value="guidelines">Guidelines</option>
-            <option value="technical">Technical Specs</option>
-            <option value="policy">Policies</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
           </select>
 
           <select
@@ -319,6 +394,7 @@ export default function KnowledgeBasePage() {
             <option value="embedded">Embedded (Ready)</option>
             <option value="indexing">Indexing in progress</option>
             <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
           </select>
         </div>
       </section>
@@ -329,22 +405,45 @@ export default function KnowledgeBasePage() {
           <div>
             <h2 className="text-base font-extrabold text-slate-950 dark:text-white">Document Repository</h2>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Showing {filteredDocs.length} of {documents.length} entries
+              Showing {documents.length} entries
             </p>
+          </div>
+          <div className="inline-flex rounded-lg border border-slate-200 p-1 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setRepositoryView("active")}
+              className={`rounded-md px-3 py-1.5 text-xs font-bold ${repositoryView === "active" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}
+            >
+              Active
+            </button>
+            <button
+              type="button"
+              onClick={() => setRepositoryView("archived")}
+              className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-bold ${repositoryView === "archived" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}
+            >
+              <Archive className="size-3.5" /> Archive ({stats.archivedDocuments})
+            </button>
           </div>
         </div>
 
-        {filteredDocs.length === 0 ? (
+        {loading ? (
+          <div className="p-12 text-center">
+            <RefreshCw className="mx-auto size-10 animate-spin text-slate-400" />
+            <h3 className="mt-3 text-sm font-bold text-slate-900 dark:text-white">Loading knowledge base...</h3>
+          </div>
+        ) : documents.length === 0 ? (
           <div className="p-12 text-center">
             <HelpCircle className="mx-auto size-10 text-slate-400" />
             <h3 className="mt-3 text-sm font-bold text-slate-900 dark:text-white">No knowledge base documents found</h3>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Try refining your search terms or add a new FAQ / upload a reference PDF.
+              {repositoryView === "archived"
+                ? "No archived documents match the current filters."
+                : "Try refining your search terms or add a new FAQ / upload a reference file."}
             </p>
           </div>
         ) : (
           <div className="divide-y divide-slate-200 dark:divide-slate-800">
-            {filteredDocs.map((doc) => (
+            {documents.map((doc) => (
               <div
                 key={doc.id}
                 className="flex flex-col gap-4 p-4 transition-colors hover:bg-slate-50 lg:flex-row lg:items-center lg:justify-between dark:hover:bg-slate-950/50"
@@ -374,34 +473,94 @@ export default function KnowledgeBasePage() {
                       {doc.faqAnswer ? doc.faqAnswer : doc.contentPreview}
                     </p>
 
+                    {doc.status === "failed" && doc.errorMessage && (
+                      <p className="flex items-center gap-1 text-[11px] font-semibold text-red-600 dark:text-red-400">
+                        <AlertTriangle className="size-3" />
+                        {doc.errorMessage}
+                      </p>
+                    )}
+
                     <div className="flex flex-wrap gap-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 pt-1">
-                      <span>Format: {doc.fileType} {doc.fileSize ? `(${doc.fileSize})` : ""}</span>
+                      <span>Format: {doc.fileType} {doc.fileSize ? `(${formatFileSize(doc.fileSize)})` : ""}</span>
                       <span>•</span>
                       <span>Chunks: <strong className="text-slate-700 dark:text-slate-300">{doc.chunkCount} vector blocks</strong></span>
                       <span>•</span>
-                      <span>Uploaded: {doc.updatedAt} by {doc.uploadedBy}</span>
+                      <span>Uploaded: {formatDate(doc.createdAt)} by {doc.uploadedByName}</span>
+                      {doc.archivedAt && (
+                        <>
+                          <span>•</span>
+                          <span>Archived: {formatDate(doc.archivedAt)}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  {doc.fileName && (
+                    <Button variant="outline" size="sm" asChild className="h-8 gap-1 text-xs font-bold">
+                      <a
+                        href={`/api/knowledge-base/files/${encodeURIComponent(doc.id)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="size-3.5" />
+                        View File
+                      </a>
+                    </Button>
+                  )}
+                  {repositoryView === "active" && doc.status === "failed" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleReindex(doc.id)}
+                      className="h-8 gap-1 text-xs font-bold text-amber-600 hover:text-amber-700"
+                    >
+                      <RefreshCw className="size-3.5" />
+                      Retry
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setSelectedDoc(doc)}
+                    onClick={() => handleInspectChunks(doc)}
                     className="h-8 gap-1 text-xs font-bold"
+                    disabled={doc.chunkCount === 0}
                   >
                     <Layers className="size-3.5" />
                     Inspect Chunks
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(doc.id)}
-                    className="h-8 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
+                  {repositoryView === "archived" ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleArchiveChange(doc.id, true)}
+                        disabled={changingArchiveId === doc.id}
+                        className="h-8 gap-1 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                      >
+                        {changingArchiveId === doc.id ? <RefreshCw className="size-3.5 animate-spin" /> : <ArchiveRestore className="size-3.5" />}
+                        Restore
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPendingDeletion(doc)}
+                        className="h-8 gap-1 text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+                      >
+                        <Trash2 className="size-3.5" /> Delete
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPendingArchive(doc)}
+                      className="h-8 gap-1 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      <Archive className="size-3.5" /> Archive
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -443,15 +602,20 @@ export default function KnowledgeBasePage() {
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Category
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    list="knowledge-base-categories"
+                    required
+                    maxLength={80}
                     value={uploadCategory}
-                    onChange={(e) => setUploadCategory(e.target.value as KnowledgeDocument["category"])}
+                    onChange={(e) => setUploadCategory(e.target.value)}
+                    placeholder="Type or select a category"
                     className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-primary dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                  >
-                    <option value="Guidelines">Guidelines</option>
-                    <option value="Technical Spec">Technical Spec</option>
-                    <option value="Policy">Policy</option>
-                  </select>
+                  />
+                  <datalist id="knowledge-base-categories">
+                    {categories.map((category) => <option key={category} value={category} />)}
+                  </datalist>
+                  <p className="mt-1 text-[11px] text-slate-400">Choose an existing category or enter a new one.</p>
                 </div>
 
                 <div>
@@ -461,7 +625,8 @@ export default function KnowledgeBasePage() {
                   <input
                     type="file"
                     accept=".pdf,.txt,.md"
-                    onChange={(e) => setUploadFileName(e.target.files?.[0]?.name || "")}
+                    required
+                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
                     className="mt-1 block w-full text-xs font-semibold text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-950 dark:file:text-blue-300"
                   />
                 </div>
@@ -470,10 +635,10 @@ export default function KnowledgeBasePage() {
               <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-800 dark:bg-slate-950/50">
                 <FileUp className="mx-auto size-8 text-slate-400" />
                 <p className="mt-2 text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Drag and drop reference PDF or text manual here
+                  {uploadFile ? uploadFile.name : "Select a reference PDF or text manual"}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  Document text will be extracted, split into vector chunks, and embedded into pgvector.
+                  Document text will be extracted, split into vector chunks, and embedded via Ollama nomic-embed-text.
                 </p>
               </div>
 
@@ -481,8 +646,8 @@ export default function KnowledgeBasePage() {
                 <Button type="button" variant="outline" onClick={() => setUploadModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-primary text-white">
-                  Start Vector Indexing
+                <Button type="submit" className="bg-primary text-white" disabled={uploadSubmitting}>
+                  {uploadSubmitting ? "Processing..." : "Start Vector Indexing"}
                 </Button>
               </div>
             </form>
@@ -537,11 +702,63 @@ export default function KnowledgeBasePage() {
                 <Button type="button" variant="outline" onClick={() => setFaqModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-primary text-white">
-                  Save FAQ Entry
+                <Button type="submit" className="bg-primary text-white" disabled={faqSubmitting}>
+                  {faqSubmitting ? "Embedding..." : "Save FAQ Entry"}
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Archive Confirmation Modal */}
+      {pendingArchive && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="archive-document-title">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:border dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                <Archive className="size-5" />
+              </span>
+              <div>
+                <h3 id="archive-document-title" className="text-base font-extrabold text-slate-950 dark:text-white">Archive this document?</h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  <strong>{pendingArchive.title}</strong> will be removed from ANIA&apos;s active knowledge retrieval but its file and vector chunks will be retained.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setPendingArchive(null)} disabled={changingArchiveId === pendingArchive.id}>Cancel</Button>
+              <Button type="button" onClick={() => handleArchiveChange(pendingArchive.id, false)} disabled={changingArchiveId === pendingArchive.id} className="bg-amber-600 text-white hover:bg-amber-700">
+                {changingArchiveId === pendingArchive.id ? <RefreshCw className="size-4 animate-spin" /> : <Archive className="size-4" />}
+                Confirm Archive
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permanent Delete Confirmation Modal */}
+      {pendingDeletion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-labelledby="delete-document-title">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:border dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">
+                <Trash2 className="size-5" />
+              </span>
+              <div>
+                <h3 id="delete-document-title" className="text-base font-extrabold text-slate-950 dark:text-white">Delete permanently?</h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  This permanently deletes <strong>{pendingDeletion.title}</strong>, its uploaded file, and all vector chunks. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setPendingDeletion(null)} disabled={deletingId === pendingDeletion.id}>Cancel</Button>
+              <Button type="button" variant="destructive" onClick={() => handleDelete(pendingDeletion.id)} disabled={deletingId === pendingDeletion.id}>
+                {deletingId === pendingDeletion.id ? <RefreshCw className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                Delete Permanently
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -571,19 +788,29 @@ export default function KnowledgeBasePage() {
                 <p className="mt-1 text-xs text-slate-500">ID: {selectedDoc.id} • {selectedDoc.chunkCount} generated chunks</p>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/50">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-500">Sample Chunk #1 (Vector Dimension: 1536)</h5>
-                <p className="mt-2 font-mono text-xs text-slate-700 dark:text-slate-300">
-                  &ldquo;{selectedDoc.faqAnswer || selectedDoc.contentPreview}&rdquo;
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/50">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-500">Sample Chunk #2</h5>
-                <p className="mt-2 font-mono text-xs text-slate-700 dark:text-slate-300">
-                  &ldquo;Metadata: uploadedBy=&apos;{selectedDoc.uploadedBy}&apos;, category=&apos;{selectedDoc.category}&apos;, updatedAt=&apos;{selectedDoc.updatedAt}&apos;&rdquo;
-                </p>
-              </div>
+              {loadingChunks ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="size-6 animate-spin text-slate-400" />
+                </div>
+              ) : selectedDoc.chunks && selectedDoc.chunks.length > 0 ? (
+                selectedDoc.chunks.map((chunk) => (
+                  <div
+                    key={chunk.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/50"
+                  >
+                    <h5 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Chunk #{chunk.chunkIndex + 1} {chunk.tokenCount ? `(~${chunk.tokenCount} tokens)` : ""}
+                    </h5>
+                    <p className="mt-2 font-mono text-xs text-slate-700 dark:text-slate-300 line-clamp-6">
+                      &ldquo;{chunk.content}&rdquo;
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/50">
+                  <p className="text-xs text-slate-500">No chunks available for this document.</p>
+                </div>
+              )}
 
               <div className="pt-4">
                 <Button variant="outline" className="w-full gap-2" onClick={() => setSelectedDoc(null)}>
@@ -598,7 +825,7 @@ export default function KnowledgeBasePage() {
   );
 }
 
-function StatusBadge({ status }: { status: KnowledgeDocument["status"] }) {
+function StatusBadge({ status }: { status: string }) {
   if (status === "embedded") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
@@ -610,6 +837,13 @@ function StatusBadge({ status }: { status: KnowledgeDocument["status"] }) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
         <RefreshCw className="size-3 animate-spin" /> Indexing...
+      </span>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-800 dark:bg-red-950/60 dark:text-red-300">
+        <AlertTriangle className="size-3" /> Failed
       </span>
     );
   }

@@ -459,6 +459,67 @@ export const notificationRecipients = pgTable(
   }),
 );
 
+export const kbDocuments = pgTable(
+  "kb_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    category: text("category").notNull(),
+    fileType: text("file_type").notNull(),
+    fileName: text("file_name"),
+    filePath: text("file_path"),
+    fileSize: integer("file_size"),
+    chunkCount: integer("chunk_count").notNull().default(0),
+    status: text("status").notNull().default("pending"),
+    faqQuestion: text("faq_question"),
+    faqAnswer: text("faq_answer"),
+    contentPreview: text("content_preview"),
+    errorMessage: text("error_message"),
+    uploadedBy: text("uploaded_by").notNull(),
+    uploadedByName: text("uploaded_by_name").notNull(),
+    archivedAt: timestamp("archived_at", { mode: "date" }),
+    archivedBy: text("archived_by"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    statusIdx: index("kb_documents_status_idx").on(table.status),
+    categoryIdx: index("kb_documents_category_idx").on(table.category),
+    archivedAtIdx: index("kb_documents_archived_at_idx").on(table.archivedAt),
+    createdAtIdx: index("kb_documents_created_at_idx").on(table.createdAt),
+  }),
+);
+
+export const kbChunks = pgTable(
+  "kb_chunks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => kbDocuments.id, { onDelete: "cascade" }),
+    chunkIndex: integer("chunk_index").notNull(),
+    content: text("content").notNull(),
+    embedding: jsonb("embedding").$type<number[]>(),
+    tokenCount: integer("token_count"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    documentIdIdx: index("kb_chunks_document_id_idx").on(table.documentId),
+    documentChunkIdx: uniqueIndex("kb_chunks_document_chunk_uidx").on(
+      table.documentId,
+      table.chunkIndex,
+    ),
+  }),
+);
+
+export type KbDocument = typeof kbDocuments.$inferSelect;
+export type NewKbDocument = typeof kbDocuments.$inferInsert;
+export type KbChunk = typeof kbChunks.$inferSelect;
+export type NewKbChunk = typeof kbChunks.$inferInsert;
+
 export const liveVideos = pgTable(
   "live_videos",
   {

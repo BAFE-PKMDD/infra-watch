@@ -9,6 +9,19 @@ type FetchLike = (
   init?: RequestInit,
 ) => Promise<Response>;
 
+const LIVE_VIDEO_IMAGE_PATH =
+  /^live-videos\/\d+-[a-f0-9]{32}\.(?:jpe?g|png|webp)$/i;
+
+export function isLiveVideoUploadPath(path: string) {
+  return LIVE_VIDEO_IMAGE_PATH.test(path);
+}
+
+export function getLiveVideoUploadPreviewUrl(path: string) {
+  return isLiveVideoUploadPath(path)
+    ? `/api/upload/preview?path=${encodeURIComponent(path)}`
+    : null;
+}
+
 export async function uploadLiveVideoAsset(
   file: File,
   fetchFn: FetchLike = fetch,

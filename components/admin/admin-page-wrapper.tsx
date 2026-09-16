@@ -9,7 +9,7 @@ type AdminPageWrapperProps = {
 
 export function AdminPageWrapper({ title, description, breadcrumbs = [], children }: AdminPageWrapperProps) {
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
       <div className="space-y-3">
         {breadcrumbs.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

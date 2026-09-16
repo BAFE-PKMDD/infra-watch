@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validateLiveVideoSchedule, validateLiveVideoState } from "./live-video-input";
+import {
+  formatLiveVideoDateInput,
+  parseLiveVideoDateInput,
+  validateLiveVideoSchedule,
+  validateLiveVideoState,
+} from "./live-video-input";
 
 const now = new Date("2026-09-12T01:00:00.000Z");
 
@@ -11,6 +16,32 @@ test("allows a current live broadcast inside its publication window", () => {
     publishedAt: new Date("2026-09-12T00:00:00.000Z"),
     expiresAt: new Date("2026-09-12T02:00:00.000Z"),
   }, now));
+});
+
+test("treats a selected expiry date as inclusive through the end of the Philippine day", () => {
+  const publishedAt = parseLiveVideoDateInput("2026-09-15", "start");
+  const expiresAt = parseLiveVideoDateInput("2026-09-16", "end");
+
+  assert.equal(publishedAt?.toISOString(), "2026-09-14T16:00:00.000Z");
+  assert.equal(expiresAt?.toISOString(), "2026-09-16T15:59:59.999Z");
+  assert.equal(formatLiveVideoDateInput(publishedAt), "2026-09-15");
+  assert.equal(formatLiveVideoDateInput(expiresAt), "2026-09-16");
+  assert.doesNotThrow(() => validateLiveVideoSchedule({
+    isLive: true,
+    publishedAt,
+    expiresAt,
+  }, new Date("2026-09-16T05:00:00.000Z")));
+});
+
+test("rejects the broadcast after the selected Philippine expiry date has ended", () => {
+  assert.throws(
+    () => validateLiveVideoSchedule({
+      isLive: true,
+      publishedAt: null,
+      expiresAt: parseLiveVideoDateInput("2026-09-16", "end"),
+    }, new Date("2026-09-16T16:00:00.000Z")),
+    /expired/,
+  );
 });
 
 test("rejects marking future or expired broadcasts as currently live", () => {
