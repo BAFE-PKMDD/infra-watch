@@ -100,7 +100,41 @@ export async function syncAbemisProjects(
 
         totalProcessed += chunk.length;
 
-        const values = Array.from(valuesById.values());
+        const allValues = Array.from(valuesById.values());
+        if (allValues.length === 0) {
+          continue;
+        }
+
+        // ABEMIS sometimes assigns/corrects project_id for a record we already synced
+        // under a fallback id (or a typo'd one). That changes abemisId while abemisRawId
+        // stays put, so it must be reconciled by abemisRawId first -- otherwise the bulk
+        // upsert below (keyed on abemisId) tries to INSERT a new row and collides with
+        // the existing row's abemis_raw_id unique constraint instead of updating it.
+        const existingByRawId = await getExistingProjectsByRawId(
+          allValues.map((value) => value.abemisRawId).filter((id): id is string => Boolean(id))
+        );
+
+        const values: ProjectInsert[] = [];
+        for (const value of allValues) {
+          const rawId = value.abemisRawId;
+          const existingForRawId = rawId ? existingByRawId.get(rawId) : undefined;
+          if (rawId && existingForRawId && existingForRawId.abemisId !== value.abemisId) {
+            try {
+              await renameProjectByRawId(rawId, value);
+              recordsUpdated += 1;
+              successfullyUpsertedIds.add(value.abemisId);
+            } catch (error) {
+              recordsFailed += 1;
+              errors.push({
+                projectId: value.abemisId,
+                message: getReadableError(error),
+              });
+            }
+          } else {
+            values.push(value);
+          }
+        }
+
         if (values.length === 0) {
           continue;
         }
@@ -238,6 +272,61 @@ async function getExistingProjectIds(projectIds: string[]) {
     .where(inArray(projects.abemisId, projectIds));
 
   return new Set(rows.map((row) => row.abemisId));
+}
+
+async function getExistingProjectsByRawId(rawIds: string[]) {
+  if (rawIds.length === 0) return new Map<string, { abemisId: string }>();
+
+  const rows = await db
+    .select({ abemisRawId: projects.abemisRawId, abemisId: projects.abemisId })
+    .from(projects)
+    .where(inArray(projects.abemisRawId, rawIds));
+
+  return new Map(
+    rows
+      .filter((row): row is { abemisRawId: string; abemisId: string } => Boolean(row.abemisRawId))
+      .map((row) => [row.abemisRawId, { abemisId: row.abemisId }])
+  );
+}
+
+async function renameProjectByRawId(rawId: string, value: ProjectInsert) {
+  try {
+    await db.transaction(async (tx) => {
+      const updated = await tx
+        .update(projects)
+        .set({ ...value, lastSyncedAt: new Date() })
+        .where(eq(projects.abemisRawId, rawId))
+        .returning({ id: projects.id });
+
+      if (updated.length === 0) {
+        throw new Error(`No existing project found for abemis_raw_id ${rawId}`);
+      }
+    });
+  } catch (error) {
+    if (!isForeignKeyViolation(error)) throw error;
+
+    // Historical rows in dependent tables (e.g. project_metric_snapshots) still reference
+    // the project's old abemis_id and those foreign keys have no ON UPDATE rule, so the
+    // rename above is rejected. Recreate the project under its corrected abemis_id instead;
+    // dependents cascade/null out per their own onDelete rule, and history tied to the old
+    // id is intentionally dropped rather than left permanently stuck on a stale id.
+    await db.transaction(async (tx) => {
+      await tx.delete(projects).where(eq(projects.abemisRawId, rawId));
+      await tx.insert(projects).values(value);
+    });
+  }
+}
+
+function isForeignKeyViolation(error: unknown) {
+  const cause = typeof error === "object" && error && "cause" in error
+    ? (error as { cause?: unknown }).cause
+    : error;
+  return (
+    typeof cause === "object" &&
+    cause !== null &&
+    "code" in cause &&
+    (cause as { code?: unknown }).code === "23503"
+  );
 }
 
 async function upsertProjectValues(values: ProjectInsert[]) {
