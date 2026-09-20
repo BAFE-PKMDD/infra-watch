@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { captureSnapshotsAfterSuccessfulSync } from "./sync";
+
+const syncSource = readFileSync(new URL("./sync.ts", import.meta.url), "utf8");
 
 test("captures snapshots only after a successful source sync", async () => {
   let calls = 0;
@@ -38,4 +41,9 @@ test("snapshot failure is logged visibly without changing successful sync comple
   assert.equal(logged.length, 1);
   assert.match(String((logged[0] as unknown[])[0]), /snapshot capture failed/i);
   assert.match(String((logged[0] as unknown[])[1]), /snapshot storage unavailable/i);
+});
+
+test("external ID corrections never delete and recreate referenced projects", () => {
+  assert.doesNotMatch(syncSource, /\.delete\(projects\)/);
+  assert.match(syncSource, /Never delete and recreate a project/);
 });

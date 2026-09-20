@@ -305,15 +305,14 @@ async function renameProjectByRawId(rawId: string, value: ProjectInsert) {
   } catch (error) {
     if (!isForeignKeyViolation(error)) throw error;
 
-    // Historical rows in dependent tables (e.g. project_metric_snapshots) still reference
-    // the project's old abemis_id and those foreign keys have no ON UPDATE rule, so the
-    // rename above is rejected. Recreate the project under its corrected abemis_id instead;
-    // dependents cascade/null out per their own onDelete rule, and history tied to the old
-    // id is intentionally dropped rather than left permanently stuck on a stale id.
-    await db.transaction(async (tx) => {
-      await tx.delete(projects).where(eq(projects.abemisRawId, rawId));
-      await tx.insert(projects).values(value);
-    });
+    // Never delete and recreate a project to force an external-ID correction. Dependent
+    // feedback, snapshots, and issue links may cascade or become detached. Preserve the
+    // existing project and let this record fail visibly until its foreign keys can be
+    // migrated transactionally to an immutable local project identity.
+    throw new Error(
+      `Cannot relabel project with abemis_raw_id ${rawId} while dependent records still reference its current ABEMIS ID`,
+      { cause: error },
+    );
   }
 }
 
