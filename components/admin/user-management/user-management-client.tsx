@@ -921,7 +921,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
                 <option value="">Global (All Regions)</option>
                 {regions.map((region) => (
                   <option key={region.value} value={region.value}>
-                    {region.label} - {region.fullName}
+                    {region.label}
                   </option>
                 ))}
               </select>

@@ -1,7 +1,7 @@
-import { and, eq, exists, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, exists, ilike, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { issues, projects, psgcLocations } from "@/lib/db/schema";
+import { issues, projects } from "@/lib/db/schema";
 
 export type ScopedUser = {
   role?: string | null;
@@ -26,11 +26,16 @@ function isScopedModerator(user: ScopedUser) {
   return user.role === "moderator" && hasAssignedModeratorScope(user);
 }
 
-function projectRegionCondition(region: string): SQL {
-  return or(
-    ilike(projects.psgcCode, `${region}%`),
-    ilike(projects.region, region),
-  )!;
+// `region` is the same free-text value stored in projects.region (e.g. "Bicol Region
+// (Region V)"), assigned to a moderator from the distinct values actually present on
+// projects — not a PSGC code. PSGC region codes were tried here previously, but the
+// psgc_locations reference data assigns the same region_code to more than one region
+// (BARMM and SOCCSKSARGEN both have rows with region_code "19"), and a project's own
+// psgc_code is unreliable ABEMIS-sourced data that frequently doesn't even match its own
+// region (e.g. most BARMM projects carry a pre-2019 ARMM-era psgc_code prefix, not
+// BARMM's own code) — so prefix-matching against psgc_code both under- and over-matched.
+export function projectRegionCondition(region: string): SQL {
+  return ilike(projects.region, region);
 }
 
 function projectAgencyCondition(agency: string): SQL {
@@ -100,15 +105,6 @@ export async function checkModeratorScope(
   return { allowed: false, reason: "This resource is outside your assigned program" };
 }
 
-async function getRegionNames(regionCode: string) {
-  const rows = await db
-    .select({ name: psgcLocations.regionName, shortname: psgcLocations.regionShortname })
-    .from(psgcLocations)
-    .where(eq(psgcLocations.regionCode, regionCode));
-
-  return Array.from(new Set(rows.flatMap((row) => [row.name, row.shortname]).filter(Boolean) as string[]));
-}
-
 export async function getIssueScopeCondition(user: ScopedUser): Promise<SQL | undefined> {
   if (user.role === "moderator" && !hasAssignedModeratorScope(user)) {
     return sql`false`;
@@ -132,17 +128,6 @@ export async function getIssueScopeCondition(user: ScopedUser): Promise<SQL | un
   }
 
   if (user.region) {
-    const regionNames = await getRegionNames(user.region);
-    const issueRegionConditions: SQL[] = [
-      eq(issues.region, user.region),
-      ilike(issues.region, user.region),
-    ];
-
-    if (regionNames.length > 0) {
-      issueRegionConditions.push(inArray(issues.region, regionNames));
-      issueRegionConditions.push(...regionNames.map((name) => ilike(issues.region, `%${name}%`)));
-    }
-
     return or(
       exists(
         db
@@ -150,7 +135,7 @@ export async function getIssueScopeCondition(user: ScopedUser): Promise<SQL | un
           .from(projects)
           .where(and(eq(projects.abemisId, issues.projectId), projectRegionCondition(user.region))),
       ),
-      and(sql`${issues.projectId} IS NULL`, or(...issueRegionConditions)!),
+      and(sql`${issues.projectId} IS NULL`, ilike(issues.region, user.region)),
     )!;
   }
 
@@ -181,20 +166,9 @@ export async function checkIssueScope(
     return { allowed: true };
   }
 
-  const regionNames = await getRegionNames(user.region);
-  const issueRegion = issue.region?.trim();
-  const normalizedIssueRegion = issueRegion?.toLowerCase();
+  const normalizedIssueRegion = issue.region?.trim().toLowerCase();
 
-  if (
-    normalizedIssueRegion &&
-    (
-      normalizedIssueRegion === user.region.toLowerCase() ||
-      regionNames.some((name) => {
-        const normalizedName = name.toLowerCase();
-        return normalizedIssueRegion === normalizedName || normalizedIssueRegion.includes(normalizedName) || normalizedName.includes(normalizedIssueRegion);
-      })
-    )
-  ) {
+  if (normalizedIssueRegion && normalizedIssueRegion === user.region.trim().toLowerCase()) {
     return { allowed: true };
   }
 

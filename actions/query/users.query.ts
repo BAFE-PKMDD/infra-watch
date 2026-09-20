@@ -215,37 +215,26 @@ export async function getUserStats() {
 }
 
 /**
- * Get list of unique regions for dropdown selection
+ * Get list of unique regions for dropdown selection.
+ *
+ * Sourced from projects.region (the same free-text value moderator scoping matches
+ * against in lib/scope.ts), not the PSGC region_code reference field: that field isn't
+ * a reliable per-region key (e.g. BARMM and SOCCSKSARGEN both have psgc_locations rows
+ * with region_code "19"), which previously let a moderator's assigned region resolve to
+ * the wrong set of projects.
  */
 export async function getRegions() {
   await checkPermission("user", "list");
 
-  const { psgcLocations } = await import("@/lib/db/schema");
+  const { projects } = await import("@/lib/db/schema");
 
-  const regions = await db
-    .selectDistinct({
-      code: psgcLocations.regionCode,
-      name: psgcLocations.regionName,
-      shortname: psgcLocations.regionShortname,
-    })
-    .from(psgcLocations)
-    .where(sql`${psgcLocations.regionCode} IS NOT NULL`)
-    .orderBy(psgcLocations.regionName);
+  const rows = await db
+    .selectDistinct({ region: projects.region })
+    .from(projects)
+    .where(sql`${projects.region} IS NOT NULL AND btrim(${projects.region}) <> ''`);
 
-  const formattedRegions = regions
-    .filter((r) => r.code && r.name)
-    .map((r) => ({
-      value: r.code!,
-      label: r.shortname || r.name!,
-      fullName: r.name!,
-    }));
-
-  const uniqueRegions = new Map<string, typeof formattedRegions[0]>();
-  for (const r of formattedRegions) {
-    if (!uniqueRegions.has(r.value) || (r.label !== r.fullName)) {
-      uniqueRegions.set(r.value, r);
-    }
-  }
-
-  return Array.from(uniqueRegions.values()).sort((a, b) => a.fullName.localeCompare(b.fullName));
+  return rows
+    .map((r) => r.region!)
+    .sort((a, b) => a.localeCompare(b))
+    .map((region) => ({ value: region, label: region, fullName: region }));
 }
