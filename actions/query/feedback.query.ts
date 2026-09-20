@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { feedback, projects } from "@/lib/db/schema";
 import { requirePermission } from "@/lib/permissions";
 import { getCurrentUser, requireAuth } from "@/lib/session";
-import { projectRegionCondition } from "@/lib/scope";
+import { hasAssignedModeratorScope, projectRegionCondition } from "@/lib/scope";
 import { and, desc, eq, exists, ilike, or, sql } from "drizzle-orm";
 
 type FeedbackStatus = "all" | "pending" | "approved" | "rejected";
@@ -103,6 +103,13 @@ async function requireFeedbackListPermission() {
   }
 
   requirePermission(user.role as string | null | undefined, "feedback", "list");
+
+  if (!hasAssignedModeratorScope(user)) {
+    const error = new Error("Moderator scope is not assigned");
+    (error as Error & { status?: number }).status = 403;
+    throw error;
+  }
+
   return user;
 }
 
