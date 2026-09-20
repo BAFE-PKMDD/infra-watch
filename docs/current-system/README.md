@@ -19,9 +19,10 @@ Use the following status labels throughout these documents:
 ## Documents
 
 1. [Feature catalog](./feature-catalog.md) — public, citizen, staff, administrative, API, and cross-cutting functions.
-2. [Workflows and state transitions](./workflows-and-state-transitions.md) — end-to-end processes, actors, inputs, outputs, and state changes.
-3. [Enhancement assessment](./enhancement-assessment.md) — prioritized security, integrity, privacy, reliability, and usability improvements.
-4. [Audience activity and demographic analytics](./audience-activity-and-demographic-analytics.md) — current analytics boundary and a privacy-safe proposed design for visits, downloads, age bands, gender, and audience type.
+2. [Route and API inventory](./route-and-api-inventory.md) — exact inventory of all 44 page routes, 42 API route files, and supporting domain services.
+3. [Workflows and state transitions](./workflows-and-state-transitions.md) — end-to-end processes, actors, inputs, outputs, and state changes.
+4. [Enhancement assessment](./enhancement-assessment.md) — prioritized security, integrity, privacy, reliability, and usability improvements.
+5. [Audience activity and demographic analytics](./audience-activity-and-demographic-analytics.md) — current analytics boundary and a privacy-safe proposed design for visits, downloads, age bands, gender, and audience type.
 
 ## System summary
 
