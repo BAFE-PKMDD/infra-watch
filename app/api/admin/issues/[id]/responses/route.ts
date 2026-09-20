@@ -5,6 +5,7 @@ import { ensureIssueResponsesTable, getIssueByIdOrTicket, requireIssuePermission
 import { getAuditContextFromRequest, logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { issueResponses, issues } from "@/lib/db/schema";
+import { planIssueResponseRecord } from "@/lib/issue-response-policy";
 import { checkIssueScope } from "@/lib/scope";
 import { assertCleanText } from "@/lib/services/content-moderation";
 
@@ -36,6 +37,7 @@ export async function POST(
     const publishToPublic = Boolean(body.publishToPublic);
     const publicDescription = String(body.publicDescription || "").trim();
     const nextStatus = toDbIssueStatus(body.newStatus);
+    const attachmentUrls = Array.isArray(body.attachmentUrls) ? body.attachmentUrls : [];
 
     if (publishToPublic) {
       if (isInternalOnly) {
@@ -52,22 +54,30 @@ export async function POST(
     }
 
     const statusChange = nextStatus && nextStatus !== issue.status ? `${issue.status} -> ${nextStatus}` : null;
-
-    const [created] = await db
-      .insert(issueResponses)
-      .values({
-        issueId: issue.id,
-        responderId: user.id,
-        responderName: user.name || user.email || "Staff",
-        responderRole: typeof user.role === "string" ? user.role : "staff",
-        message: message || internalNotes || "Internal note",
-        statusChange,
-        newStatus: nextStatus ?? null,
-        internalNotes: internalNotes || null,
-        isInternalOnly,
-        attachmentUrls: Array.isArray(body.attachmentUrls) ? body.attachmentUrls : [],
-      })
-      .returning();
+    const responseRecord = planIssueResponseRecord({
+      message,
+      internalNotes,
+      nextStatus: statusChange ? (nextStatus ?? null) : null,
+      isInternalOnly,
+      hasAttachments: attachmentUrls.length > 0,
+    });
+    const [created] = responseRecord
+      ? await db
+          .insert(issueResponses)
+          .values({
+            issueId: issue.id,
+            responderId: user.id,
+            responderName: user.name || user.email || "Staff",
+            responderRole: typeof user.role === "string" ? user.role : "staff",
+            message: responseRecord.message,
+            statusChange,
+            newStatus: nextStatus ?? null,
+            internalNotes: responseRecord.internalNotes,
+            isInternalOnly: responseRecord.isInternalOnly,
+            attachmentUrls,
+          })
+          .returning()
+      : [null];
 
     if ((nextStatus && nextStatus !== issue.status) || publishToPublic) {
       const updatedAt = new Date();
@@ -118,16 +128,18 @@ export async function POST(
       });
     }
 
-    await logAudit({
-      tableName: "issue_responses",
-      recordId: created.id,
-      action: "CREATE",
-      newValues: { ...created },
-      notes: `Response added to issue ${issue.ticketNumber}`,
-      context: getAuditContextFromRequest(request, user),
-    });
+    if (created) {
+      await logAudit({
+        tableName: "issue_responses",
+        recordId: created.id,
+        action: "CREATE",
+        newValues: { ...created },
+        notes: `Response added to issue ${issue.ticketNumber}`,
+        context: getAuditContextFromRequest(request, user),
+      });
+    }
 
-    return NextResponse.json({ success: true, data: created }, { status: 201 });
+    return NextResponse.json({ success: true, data: created }, { status: created ? 201 : 200 });
   } catch (error) {
     const status = (error as Error & { status?: number }).status ?? 500;
     return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "Failed to add response" }, { status });

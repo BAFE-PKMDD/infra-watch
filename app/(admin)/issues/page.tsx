@@ -6,16 +6,16 @@ import { IssueManagementView } from "@/components/admin/issues/issue-management-
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Issue Management | INFRA Watch",
-  description: "Manage and respond to citizen-reported infrastructure issues.",
+  title: "E-Reports | INFRA Watch",
+  description: "Review and respond to infrastructure concerns submitted through the online E-Report form.",
 };
 
 export default function IssuesPage() {
   return (
     <AdminPageWrapper
-      breadcrumbs={[{ label: "Admin" }, { label: "Issues" }]}
-      title="Issue Management"
-      description="Manage and respond to reported issues."
+      breadcrumbs={[{ label: "Admin" }, { label: "Reported Issues" }, { label: "E-Report" }]}
+      title="E-Report"
+      description="Review and respond to concerns submitted through the online reporting form."
     >
       <IssueManagementView />
     </AdminPageWrapper>

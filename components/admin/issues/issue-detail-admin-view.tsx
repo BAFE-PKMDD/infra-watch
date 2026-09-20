@@ -9,6 +9,7 @@ import {
   Building2,
   CalendarDays,
   CheckCircle2,
+  ChevronRight,
   Clock,
   FileText,
   Loader2,
@@ -18,23 +19,31 @@ import {
   Phone,
   Play,
   Send,
+  ShieldCheck,
   User,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
+import {
+  buildIssueReviewPayload,
+  canSaveIssueReviewAction,
+  createIssueReviewDraft,
+  getIssueReviewActionLabel,
+  getIssueReviewSuccessMessage,
+  ISSUE_REVIEW_ACTIONS,
+  type AdminIssueStatus,
+  type IssueReviewActionMode,
+} from "@/components/admin/issues/issue-review-action";
 import { EvidenceLocationMap } from "@/components/shared/evidence-location-map";
 import { GeoVideoPlayer } from "@/components/shared/geo-video-player";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { MediaViewer } from "@/components/ui/media-viewer";
 import { Textarea } from "@/components/ui/textarea";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
 import { cn } from "@/lib/utils";
 import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
-
-type AdminIssueStatus = "pending" | "reviewing" | "resolved" | "closed";
 
 type IssueResponse = {
   id: string;
@@ -100,14 +109,15 @@ type IssueDetailResponse = {
 };
 
 const statusOptions: Array<{ value: AdminIssueStatus; label: string }> = [
-  { value: "pending", label: "Pending Review" },
-  { value: "reviewing", label: "Under Review" },
+  { value: "pending", label: "Pending review" },
+  { value: "reviewing", label: "Under review" },
   { value: "resolved", label: "Resolved" },
   { value: "closed", label: "Closed" },
 ];
 
+
 function formatDate(value: string | Date | null | undefined, withTime = false) {
-  if (!value) return "N/A";
+  if (!value) return "Not available";
   return new Intl.DateTimeFormat("en-PH", {
     month: "short",
     day: "numeric",
@@ -117,12 +127,7 @@ function formatDate(value: string | Date | null | undefined, withTime = false) {
 }
 
 function getStatusLabel(status: AdminIssueStatus) {
-  return {
-    pending: "Pending Review",
-    reviewing: "Under Review",
-    resolved: "Resolved",
-    closed: "Closed",
-  }[status];
+  return statusOptions.find((option) => option.value === status)?.label ?? status;
 }
 
 function statusClass(status: AdminIssueStatus) {
@@ -134,18 +139,24 @@ function statusClass(status: AdminIssueStatus) {
   }[status];
 }
 
+function formatStatusChange(statusChange: string) {
+  const [from, to] = statusChange.split(" -> ");
+  if (!from || !to) return "Status changed";
+  return `${getStatusLabel(from as AdminIssueStatus)} to ${getStatusLabel(to as AdminIssueStatus)}`;
+}
+
 function filenameFromUrl(url: string) {
   return decodeURIComponent(url.split("?")[0]?.split("/").pop() || "attachment");
 }
 
+function locationLabel(issue: AdminIssueDetail) {
+  return [issue.barangay, issue.city, issue.province].filter(Boolean).join(", ") || "Location not provided";
+}
+
 export function IssueDetailAdminView({ issueId }: { issueId: string }) {
-  const [responseMessage, setResponseMessage] = useState("");
-  const [internalNotes, setInternalNotes] = useState("");
-  const [status, setStatus] = useState<AdminIssueStatus | "">("");
-  const [internalOnly, setInternalOnly] = useState(false);
-  const [publishToPublic, setPublishToPublic] = useState(false);
-  const [publicDescription, setPublicDescription] = useState("");
+  const [draft, setDraft] = useState(() => createIssueReviewDraft("reply"));
   const [viewingMedia, setViewingMedia] = useState<number | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error } = useQuery<IssueDetailResponse>({
@@ -182,114 +193,242 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
     ];
   }, [issue]);
 
+  const canSubmit = canSaveIssueReviewAction(draft);
+  const selectedAction = ISSUE_REVIEW_ACTIONS[draft.mode];
+
   const responseMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/admin/issues/${issueId}/responses`, {
+    mutationFn: async (submission: {
+      issueId: string;
+      mode: IssueReviewActionMode;
+      payload: ReturnType<typeof buildIssueReviewPayload>;
+    }) => {
+      const response = await fetch(`/api/admin/issues/${submission.issueId}/responses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: responseMessage.trim(),
-          internalNotes: internalNotes.trim(),
-          newStatus: status || undefined,
-          isInternalOnly: internalOnly,
-          publishToPublic,
-          publicDescription: publicDescription.trim(),
-        }),
+        body: JSON.stringify(submission.payload),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to submit response");
+      if (!response.ok) throw new Error(result.error || "Failed to save case update");
       return result;
     },
-    onSuccess: () => {
-      setResponseMessage("");
-      setInternalNotes("");
-      setStatus("");
-      setInternalOnly(false);
-      setPublishToPublic(false);
-      setPublicDescription("");
-      queryClient.invalidateQueries({ queryKey: ["admin-issue", issueId] });
+    onSuccess: (_result, submission) => {
+      setDraft((current) => current.mode === submission.mode ? createIssueReviewDraft(current.mode) : current);
+      queryClient.invalidateQueries({ queryKey: ["admin-issue", submission.issueId] });
       queryClient.invalidateQueries({ queryKey: ["admin-issues"] });
       queryClient.invalidateQueries({ queryKey: ["admin-issue-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["public-issue", issueId] });
-      toast.success("Issue response saved");
+      queryClient.invalidateQueries({ queryKey: ["public-issue", submission.issueId] });
+      toast.success(getIssueReviewSuccessMessage(submission.mode));
     },
     onError: (mutationError: Error) => toast.error(mutationError.message),
   });
 
-  const canSubmit = responseMessage.trim().length > 0 || internalNotes.trim().length > 0 || Boolean(status) || (publishToPublic && publicDescription.trim().length >= 20);
-
   return (
     <AdminPageWrapper
-      breadcrumbs={[{ label: "Admin" }, { label: "Issues" }, { label: "Details" }]}
-      title="Issue Details"
-      description="View and respond to reported issue."
+      breadcrumbs={[{ label: "Admin" }, { label: "E-Report" }, { label: "Review" }]}
+      title="Review E-Report"
+      description="Understand the report, check its evidence, then record one clear next step."
     >
       <div className="space-y-4">
-        <Button asChild variant="ghost" className="w-fit">
+        <Button asChild variant="ghost" className="min-h-11 w-fit px-3">
           <Link href="/issues">
-            <ArrowLeft className="size-4" />
-            Back to Issues
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Back to E-Reports
           </Link>
         </Button>
 
         {isLoading ? (
           <div className="rounded-lg border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
-            <div className="inline-flex items-center gap-2 text-sm font-bold text-slate-500">
-              <Loader2 className="size-4 animate-spin" />
-              Loading issue details...
+            <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              Loading the report...
             </div>
           </div>
         ) : isError || !issue ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm font-bold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-            {error instanceof Error ? error.message : "Issue not found"}
+          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            {error instanceof Error ? error.message : "This report could not be found."}
           </div>
         ) : (
           <>
-            <section className="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-              <div className="border-b border-slate-200 p-5 dark:border-slate-800">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-3">
+            <article className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+              <header className="border-b border-slate-200 px-4 py-5 sm:px-6 dark:border-slate-800">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className={cn("h-auto rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase", statusClass(issue.status))}>
+                      <Badge variant="outline" className={cn("h-auto rounded-full px-2.5 py-1 text-xs font-bold", statusClass(issue.status))}>
                         {getStatusLabel(issue.status)}
                       </Badge>
-                      <Badge variant="outline" className="h-auto rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase">
+                      <Badge variant="outline" className="h-auto rounded-full px-2.5 py-1 text-xs font-bold">
                         {issue.issueType}
                       </Badge>
-                      <span className="text-xs font-semibold text-slate-500">{issue.ticketNumber}</span>
+                      <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">{issue.ticketNumber}</span>
                     </div>
-                    <h2 className="max-w-6xl text-xl font-extrabold leading-8 text-slate-950 dark:text-white">
-                      {issue.issueDescription || "No description provided"}
-                    </h2>
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-950 sm:text-xl dark:text-white">Report and evidence</h2>
+                      <p className="mt-2 max-w-4xl whitespace-pre-wrap text-base leading-7 text-slate-800 dark:text-slate-100">
+                        {issue.issueDescription || "No description was provided."}
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">
+                  <p className="shrink-0 text-sm font-medium text-slate-600 dark:text-slate-300">
                     Reported {formatDate(issue.createdAt)}
-                  </div>
+                  </p>
                 </div>
-              </div>
 
-              <div className="grid gap-4 p-5 lg:grid-cols-[1.4fr_0.9fr]">
-                <div className="space-y-4">
-                  <InfoCard title="Reporter Information" icon={<User className="size-4" />}>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <InfoItem label="Name" value={issue.reporterName} icon={<User className="size-4" />} />
-                      <InfoItem label="Email" value={issue.reporterEmail || (issue.isAnonymous ? "Hidden from public view" : "N/A")} icon={<Mail className="size-4" />} />
-                      <InfoItem label="Contact" value={issue.reporterContact || (issue.isAnonymous ? "Hidden from public view" : "N/A")} icon={<Phone className="size-4" />} />
-                    </div>
-                    {issue.isAnonymous && (
-                      <div className="mt-3 rounded-lg border border-amber-300/40 bg-amber-500/10 p-3 text-xs font-bold text-amber-700 dark:text-amber-300">
-                        Anonymous report. Reporter details are hidden from public view.
+                <dl className="mt-5 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-3 dark:border-slate-800">
+                  <QuickFact label="Project" value={issue.projectName || "Not linked to a project"} icon={<Building2 className="size-4" />} />
+                  <QuickFact label="General location" value={locationLabel(issue)} icon={<MapPin className="size-4" />} />
+                  <QuickFact label="Last updated" value={formatDate(issue.updatedAt, true)} icon={<Clock className="size-4" />} />
+                </dl>
+              </header>
+
+              <div className="grid gap-5 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] xl:items-start">
+                <aside className="order-1 xl:order-2 xl:sticky xl:top-6">
+                  <section aria-labelledby="next-step-heading" className="rounded-lg border border-primary/30 bg-slate-50 p-4 sm:p-5 dark:bg-slate-950">
+                    <div className="mb-5 flex items-start gap-3">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                        <Send className="size-4" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <h3 id="next-step-heading" className="text-lg font-bold text-slate-950 dark:text-white">Choose the next step</h3>
+                        <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Complete one action at a time. Only the fields needed for that action will appear.</p>
                       </div>
-                    )}
-                  </InfoCard>
+                    </div>
 
-                  <InfoCard title={`Evidence Media (${media.length + issue.documentUrls.length})`} icon={<FileText className="size-4" />}>
+                    <form
+                      className="space-y-4"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        if (!canSubmit) {
+                          toast.error("Complete the required fields before saving.");
+                          return;
+                        }
+                        responseMutation.mutate({
+                          issueId,
+                          mode: draft.mode,
+                          payload: buildIssueReviewPayload(draft),
+                        });
+                      }}
+                    >
+                      <fieldset disabled={responseMutation.isPending} className="space-y-4">
+                      <label htmlFor="review-action" className="grid gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        What do you need to do?
+                        <select
+                          id="review-action"
+                          value={draft.mode}
+                          onChange={(event) => setDraft(createIssueReviewDraft(event.target.value as IssueReviewActionMode))}
+                          className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-[15px] font-medium text-slate-900 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                        >
+                          {Object.entries(ISSUE_REVIEW_ACTIONS).map(([value, option]) => (
+                            <option key={value} value={value}>{option.label}</option>
+                          ))}
+                        </select>
+                        <span className="text-sm font-normal leading-5 text-slate-600 dark:text-slate-300">{selectedAction.description}</span>
+                      </label>
+
+                      {draft.mode === "reply" && (
+                        <label htmlFor="response-message" className="grid gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          Reply to the citizen
+                          <Textarea
+                            id="response-message"
+                            value={draft.responseMessage}
+                            onChange={(event) => setDraft((current) => ({ ...current, responseMessage: event.target.value }))}
+                            placeholder="Write a clear update for the reporter..."
+                            rows={5}
+                            required
+                          />
+                          <span className="text-sm font-normal leading-5 text-slate-600 dark:text-slate-300">The reporter can read this message. Do not include staff-only notes.</span>
+                        </label>
+                      )}
+
+                      {draft.mode === "note" && (
+                        <label htmlFor="staff-note" className="grid gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          Staff note
+                          <Textarea
+                            id="staff-note"
+                            value={draft.internalNotes}
+                            onChange={(event) => setDraft((current) => ({ ...current, internalNotes: event.target.value }))}
+                            placeholder="Record what staff need to know..."
+                            rows={4}
+                            required
+                          />
+                          <span className="inline-flex items-center gap-1.5 text-sm font-normal leading-5 text-slate-600 dark:text-slate-300"><ShieldCheck className="size-4" aria-hidden="true" />Authorized staff only. This note is not shown to the citizen.</span>
+                        </label>
+                      )}
+
+                      {draft.mode === "status" && (
+                        <>
+                          <label htmlFor="issue-status" className="grid gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                            New case status
+                            <select
+                              id="issue-status"
+                              value={draft.status}
+                              onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as AdminIssueStatus | "" }))}
+                              className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-[15px] font-medium text-slate-900 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                              required
+                            >
+                              <option value="">Select a new status</option>
+                              {statusOptions.filter((option) => option.value !== issue.status).map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label htmlFor="status-note" className="grid gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                            Reason for the change
+                            <Textarea
+                              id="status-note"
+                              value={draft.internalNotes}
+                              onChange={(event) => setDraft((current) => ({ ...current, internalNotes: event.target.value }))}
+                              placeholder="Briefly explain why the status is changing..."
+                              rows={3}
+                              required
+                            />
+                            <span className="text-sm font-normal leading-5 text-slate-600 dark:text-slate-300">Saved as a staff-only case note.</span>
+                          </label>
+                        </>
+                      )}
+
+                      {draft.mode === "publish" && (
+                        <label htmlFor="public-description" className="grid gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          Privacy-reviewed public summary
+                          <Textarea
+                            id="public-description"
+                            value={draft.publicDescription}
+                            onChange={(event) => setDraft((current) => ({ ...current, publicDescription: event.target.value }))}
+                            placeholder="Summarize the concern without names, contact details, exact addresses, or sensitive facts..."
+                            minLength={20}
+                            maxLength={2000}
+                            rows={5}
+                            required
+                          />
+                          <span className="text-sm font-normal leading-5 text-slate-600 dark:text-slate-300">Only the reviewed summary will be public. The original report, exact location, reporter details, and evidence stay private.</span>
+                          {issue.publicApprovedAt && (
+                            <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">A summary was published on {formatDate(issue.publicApprovedAt, true)}. Saving replaces it.</span>
+                          )}
+                        </label>
+                      )}
+
+                      <Button type="submit" className="min-h-11 w-full" disabled={responseMutation.isPending || !canSubmit}>
+                        {responseMutation.isPending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}
+                        {responseMutation.isPending ? "Saving..." : getIssueReviewActionLabel(draft.mode)}
+                      </Button>
+                      </fieldset>
+                    </form>
+                  </section>
+                </aside>
+
+                <div className="order-2 min-w-0 space-y-4 xl:order-1">
+                  <section aria-labelledby="evidence-heading" className="rounded-lg border border-slate-200 p-4 sm:p-5 dark:border-slate-800">
+                    <div className="mb-4">
+                      <h3 id="evidence-heading" className="text-lg font-bold text-slate-950 dark:text-white">Evidence</h3>
+                      <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Open an attachment to check what the reporter submitted.</p>
+                    </div>
+
                     {media.length === 0 && issue.documentUrls.length === 0 ? (
-                      <p className="text-sm font-semibold text-slate-500">No evidence attached.</p>
+                      <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-950 dark:text-slate-300">No evidence was attached to this report.</p>
                     ) : (
                       <div className="space-y-4">
                         {media.length > 0 && (
-                          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {media.map((item, index) => {
                               const src = getFullUrl(item.url);
                               return (
@@ -297,7 +436,8 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                                   type="button"
                                   key={`${item.url}-${index}`}
                                   id={`evidence-${item.evidenceIndex}`}
-                                  className="group relative aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-left dark:border-slate-700 dark:bg-slate-950"
+                                  aria-label={`Open evidence ${index + 1}`}
+                                  className="group relative min-h-44 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-left outline-none transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-slate-700 dark:bg-slate-950"
                                   onClick={() => setViewingMedia(index)}
                                 >
                                   {item.type === "image" ? (
@@ -306,18 +446,18 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                                       alt={`Evidence ${index + 1}`}
                                       fill
                                       sizes="(max-width: 768px) 100vw, 33vw"
-                                      className="object-cover transition-transform group-hover:scale-105"
+                                      className="object-cover transition-transform group-hover:scale-105 motion-reduce:transition-none"
                                       unoptimized={isLocalMinIO(src)}
                                     />
                                   ) : (
-                                    <div className="flex h-full w-full items-center justify-center bg-slate-950 text-white">
-                                      <Play className="size-8" />
+                                    <div className="flex h-full min-h-44 w-full items-center justify-center bg-slate-950 text-white">
+                                      <Play className="size-8" aria-hidden="true" />
                                     </div>
                                   )}
                                   {typeof item.lat === "number" && typeof item.lon === "number" ? (
-                                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-slate-950/80 px-2 py-1 text-[10px] font-bold text-white backdrop-blur">
-                                      <MapPin className="size-3 text-emerald-300" />
-                                      {item.lat.toFixed(5)}, {item.lon.toFixed(5)}
+                                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-slate-950/85 px-2 py-1 text-xs font-semibold text-white">
+                                      <MapPin className="size-3 text-emerald-300" aria-hidden="true" />
+                                      Location attached
                                     </span>
                                   ) : null}
                                 </button>
@@ -334,9 +474,9 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                                 href={getFullUrl(url) || url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm font-bold text-slate-700 hover:border-primary hover:text-primary dark:border-slate-700 dark:text-slate-200"
+                                className="flex min-h-11 items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none transition-colors hover:border-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-slate-700 dark:text-slate-200"
                               >
-                                <FileText className="size-4 text-primary" />
+                                <FileText className="size-4 shrink-0 text-primary" aria-hidden="true" />
                                 <span className="truncate">{filenameFromUrl(url)}</span>
                               </a>
                             ))}
@@ -344,189 +484,86 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                         )}
                       </div>
                     )}
-                  </InfoCard>
+                  </section>
 
-                  <EvidenceLocationMap
-                    evidence={issue.evidence}
-                    geoVideoTrack={issue.geoVideoTrack}
-                    geoVideoUrl={issue.geoVideoUrl}
-                  />
-                  {issue.geoVideoTrack?.length && issue.geoVideoUrl ? (
-                    <GeoVideoPlayer url={issue.geoVideoUrl} track={issue.geoVideoTrack} name="Reported GeoVideo" />
-                  ) : null}
+                  <Disclosure title="Reporter and case details" summary="Reporter, location, and dates" icon={<User className="size-4" />}>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <InfoItem label="Reporter" value={issue.reporterName || "Not provided"} icon={<User className="size-4" />} />
+                      <InfoItem label="Email" value={issue.reporterEmail || "Not provided"} icon={<Mail className="size-4" />} />
+                      <InfoItem label="Contact" value={issue.reporterContact || "Not provided"} icon={<Phone className="size-4" />} />
+                      <InfoItem label="Project" value={issue.projectName || "Not linked to a project"} icon={<Building2 className="size-4" />} />
+                      <InfoItem label="Location" value={locationLabel(issue)} icon={<MapPin className="size-4" />} />
+                      <InfoItem label="Landmark" value={issue.streetLandmark || "Not provided"} icon={<MapPin className="size-4" />} />
+                    </div>
+                    {issue.isAnonymous && (
+                      <p className="mt-5 rounded-lg border border-amber-300/50 bg-amber-50 p-3 text-sm font-medium leading-6 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Submitted anonymously. Reporter information must remain private.</p>
+                    )}
+                    <div className="mt-5 grid gap-4 border-t border-slate-200 pt-5 sm:grid-cols-3 dark:border-slate-800">
+                      <TimelineItem label="Reported" value={formatDate(issue.createdAt, true)} />
+                      <TimelineItem label="Last updated" value={formatDate(issue.updatedAt, true)} />
+                      {issue.resolvedAt ? <TimelineItem label="Resolved" value={formatDate(issue.resolvedAt, true)} icon={<CheckCircle2 className="size-4" />} /> : <TimelineItem label="Current status" value={getStatusLabel(issue.status)} icon={<Clock className="size-4" />} />}
+                    </div>
+                  </Disclosure>
 
-                  <InfoCard title={`Responses (${issue.responses.length})`} icon={<MessageSquare className="size-4" />}>
-                    {issue.responses.length === 0 ? (
-                      <p className="text-sm font-semibold text-slate-500">No official responses yet.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {issue.responses.map((response) => (
-                          <div key={response.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div>
-                                <p className="text-sm font-extrabold text-slate-950 dark:text-white">
-                                  {response.responderName}
-                                  <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-primary">
-                                    {response.responder.role}
-                                  </span>
-                                  {response.isInternalOnly && (
-                                    <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-amber-700 dark:text-amber-300">
-                                      Internal
-                                    </span>
-                                  )}
-                                </p>
-                                <p className="text-xs font-semibold text-slate-500">{formatDate(response.createdAt, true)}</p>
-                              </div>
-                              {response.statusChange && (
-                                <Badge variant="outline" className="rounded-full text-xs font-bold">
-                                  {response.statusChange}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200">{response.message}</p>
-                            {response.internalNotes && (
-                              <div className="mt-3 rounded-lg border border-amber-300/40 bg-amber-500/10 p-3 text-xs font-semibold text-amber-800 dark:text-amber-200">
-                                {response.internalNotes}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                  <details
+                    className="group rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                    onToggle={(event) => setMapOpen(event.currentTarget.open)}
+                  >
+                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-3 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 sm:px-5 [&::-webkit-details-marker]:hidden">
+                      <span className="flex min-w-0 items-center gap-3">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><MapPin className="size-4" aria-hidden="true" /></span>
+                        <span className="font-semibold text-slate-950 dark:text-white">Evidence map and location trail</span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                        <span className="hidden sm:inline">Open map</span>
+                        <ChevronRight className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
+                      </span>
+                    </summary>
+                    {mapOpen && (
+                      <div className="space-y-4 border-t border-slate-200 p-4 sm:p-5 dark:border-slate-800">
+                        <EvidenceLocationMap evidence={issue.evidence} geoVideoTrack={issue.geoVideoTrack} geoVideoUrl={issue.geoVideoUrl} />
+                        {issue.geoVideoTrack?.length && issue.geoVideoUrl ? <GeoVideoPlayer url={issue.geoVideoUrl} track={issue.geoVideoTrack} name="Reported GeoVideo" /> : null}
+                        {!issue.evidence.some((item) => typeof item.lat === "number" && typeof item.lon === "number") && !issue.geoVideoTrack?.length ? (
+                          <p className="text-sm text-slate-600 dark:text-slate-300">No source-backed evidence locations are available for this report.</p>
+                        ) : null}
                       </div>
                     )}
-                  </InfoCard>
+                  </details>
+
+                  <Disclosure title={`Previous updates (${issue.responses.length})`} summary={issue.responses.length === 0 ? "No updates saved" : "Open case history"} icon={<MessageSquare className="size-4" />}>
+                    {issue.responses.length === 0 ? (
+                      <p className="text-sm text-slate-600 dark:text-slate-300">No replies, staff notes, or status updates have been recorded yet.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {issue.responses.map((response) => {
+                          const duplicatedPrivateNote = response.isInternalOnly && response.internalNotes?.trim() === response.message.trim();
+                          return (
+                            <article key={response.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-slate-950 dark:text-white">{response.responderName} <span className="font-normal text-slate-600 dark:text-slate-300">({response.responder.role})</span></p>
+                                  <p className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300">{formatDate(response.createdAt, true)}</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {response.isInternalOnly && <Badge variant="outline" className="rounded-full text-xs font-semibold">Staff only</Badge>}
+                                  {response.statusChange && <Badge variant="outline" className="rounded-full text-xs font-semibold">{formatStatusChange(response.statusChange)}</Badge>}
+                                </div>
+                              </div>
+                              {!duplicatedPrivateNote && response.message ? <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200">{response.message}</p> : null}
+                              {response.internalNotes && (
+                                <div className="mt-3 rounded-lg border border-amber-300/50 bg-amber-50 p-3 text-sm leading-6 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                                  <span className="font-semibold">Staff note:</span> {response.internalNotes}
+                                </div>
+                              )}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </Disclosure>
                 </div>
-
-                <aside className="space-y-4">
-                  <InfoCard title="Project & Location" icon={<MapPin className="size-4" />}>
-                    <div className="space-y-4">
-                      <InfoItem label="Project" value={issue.projectName || "Unlinked Infrastructure Report"} icon={<Building2 className="size-4" />} />
-                      <InfoItem label="Location" value={[issue.barangay, issue.city, issue.province].filter(Boolean).join(", ") || "N/A"} icon={<MapPin className="size-4" />} />
-                      <InfoItem label="Landmark" value={issue.streetLandmark || "N/A"} icon={<MapPin className="size-4" />} />
-                      <InfoItem label="Last Updated" value={formatDate(issue.updatedAt)} icon={<CalendarDays className="size-4" />} />
-                    </div>
-                  </InfoCard>
-
-                  <InfoCard title="Respond" icon={<Send className="size-4" />}>
-                    <form
-                      className="space-y-4"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        if (!canSubmit) {
-                          toast.error("Add a response, internal note, or status change first.");
-                          return;
-                        }
-                        responseMutation.mutate();
-                      }}
-                    >
-                      <div className="space-y-2">
-                        <label htmlFor="issue-status" className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-                          Update Status
-                        </label>
-                        <select
-                          id="issue-status"
-                          value={status}
-                          onChange={(event) => setStatus(event.target.value as AdminIssueStatus | "")}
-                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-                        >
-                          <option value="">Keep current status</option>
-                          {statusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="response-message" className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-                          Official Response
-                        </label>
-                        <Textarea
-                          id="response-message"
-                          value={responseMessage}
-                          onChange={(event) => setResponseMessage(event.target.value)}
-                          placeholder="Write the response visible to citizens..."
-                          rows={5}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="internal-notes" className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-                          Internal Notes
-                        </label>
-                        <Textarea
-                          id="internal-notes"
-                          value={internalNotes}
-                          onChange={(event) => setInternalNotes(event.target.value)}
-                          placeholder="Optional notes for admins only..."
-                          rows={3}
-                        />
-                      </div>
-
-                      <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/20">
-                        <label className="flex items-start gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                          <Checkbox checked={publishToPublic} onCheckedChange={(checked) => {
-                            const next = Boolean(checked);
-                            setPublishToPublic(next);
-                            if (next) setInternalOnly(false);
-                          }} />
-                          <span>
-                            Approve for public view
-                            <span className="block text-xs font-medium text-slate-500">Publishes only the reviewed summary below. The citizen&apos;s raw description, exact locality, reporter details, and evidence remain private.</span>
-                          </span>
-                        </label>
-                        {publishToPublic && (
-                          <div className="space-y-2">
-                            <label htmlFor="public-description" className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-                              Reviewed public summary
-                            </label>
-                            <Textarea
-                              id="public-description"
-                              value={publicDescription}
-                              onChange={(event) => setPublicDescription(event.target.value)}
-                              placeholder="Write a privacy-reviewed summary without names, contact details, precise addresses, or other sensitive facts..."
-                              minLength={20}
-                              maxLength={2000}
-                              rows={4}
-                            />
-                          </div>
-                        )}
-                        {issue.publicApprovedAt && (
-                          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                            A public summary was approved on {formatDate(issue.publicApprovedAt, true)}. Publishing again replaces that summary.
-                          </p>
-                        )}
-                      </div>
-
-                      <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
-                        <Checkbox checked={internalOnly} onCheckedChange={(checked) => {
-                          const next = Boolean(checked);
-                          setInternalOnly(next);
-                          if (next) setPublishToPublic(false);
-                        }} />
-                        <span>
-                          Internal only
-                          <span className="block text-xs font-medium text-slate-500">Hide this response from the public issue details page.</span>
-                        </span>
-                      </label>
-
-                      <Button type="submit" className="w-full" disabled={responseMutation.isPending || !canSubmit}>
-                        {responseMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                        Submit Response
-                      </Button>
-                    </form>
-                  </InfoCard>
-
-                  <InfoCard title="Timeline" icon={<Clock className="size-4" />}>
-                    <div className="space-y-3 text-sm">
-                      <TimelineItem label="Reported" value={formatDate(issue.createdAt, true)} />
-                      <TimelineItem label="Last Updated" value={formatDate(issue.updatedAt, true)} />
-                      {issue.resolvedAt && <TimelineItem label="Resolved" value={formatDate(issue.resolvedAt, true)} icon={<CheckCircle2 className="size-4" />} />}
-                    </div>
-                  </InfoCard>
-                </aside>
               </div>
-            </section>
+            </article>
 
             <MediaViewer media={media} initialIndex={viewingMedia ?? 0} open={viewingMedia !== null} onClose={() => setViewingMedia(null)} />
           </>
@@ -536,27 +573,43 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
   );
 }
 
-function InfoCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function QuickFact({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-      <h3 className="mb-4 flex items-center gap-2 text-base font-extrabold text-slate-950 dark:text-white">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">{icon}</span>
-        {title}
-      </h3>
-      {children}
-    </section>
+    <div className="flex min-w-0 gap-3">
+      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{icon}</span>
+      <div className="min-w-0">
+        <dt className="text-xs font-semibold text-slate-600 dark:text-slate-300">{label}</dt>
+        <dd className="mt-0.5 break-words text-sm font-semibold text-slate-950 dark:text-white">{value}</dd>
+      </div>
+    </div>
+  );
+}
+
+function Disclosure({ title, summary, icon, children }: { title: string; summary: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <details className="group rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-3 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 sm:px-5 [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">{icon}</span>
+          <span className="font-semibold text-slate-950 dark:text-white">{title}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <span className="hidden sm:inline">{summary}</span>
+          <ChevronRight className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
+        </span>
+      </summary>
+      <div className="border-t border-slate-200 p-4 sm:p-5 dark:border-slate-800">{children}</div>
+    </details>
   );
 }
 
 function InfoItem({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
-    <div className="flex gap-3">
-      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-950 dark:text-slate-400">
-        {icon}
-      </span>
+    <div className="flex min-w-0 gap-3">
+      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{icon}</span>
       <div className="min-w-0">
-        <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">{label}</p>
-        <p className="break-words text-sm font-extrabold text-slate-900 dark:text-white">{value}</p>
+        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{label}</p>
+        <p className="mt-0.5 break-words text-sm font-semibold text-slate-950 dark:text-white">{value}</p>
       </div>
     </div>
   );
@@ -565,12 +618,10 @@ function InfoItem({ label, value, icon }: { label: string; value: string; icon: 
 function TimelineItem({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary">
-        {icon ?? <CalendarDays className="size-4" />}
-      </span>
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">{icon ?? <CalendarDays className="size-4" />}</span>
       <div>
-        <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">{label}</p>
-        <p className="font-bold text-slate-900 dark:text-white">{value}</p>
+        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{label}</p>
+        <p className="mt-0.5 text-sm font-semibold text-slate-950 dark:text-white">{value}</p>
       </div>
     </div>
   );

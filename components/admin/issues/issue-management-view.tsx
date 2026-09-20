@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 
 type IssueStatus = "all" | "pending" | "reviewing" | "resolved" | "closed";
 
+
 type AdminIssue = {
   id: string;
   ticketNumber: string;
@@ -49,6 +50,7 @@ type AdminIssue = {
   reporterName: string;
   isAnonymous: boolean;
   createdAt: string;
+
 };
 
 type IssueListResponse = {
@@ -82,6 +84,7 @@ const statusOptions: Array<{ value: IssueStatus; label: string }> = [
   { value: "resolved", label: "Resolved" },
   { value: "closed", label: "Closed" },
 ];
+
 
 function formatDate(value: string | Date | null | undefined) {
   if (!value) return "N/A";
@@ -121,6 +124,7 @@ export function IssueManagementView() {
   const [page, setPage] = useState(1);
   const [deleteIssue, setDeleteIssue] = useState<AdminIssue | null>(null);
   const queryClient = useQueryClient();
+
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -178,38 +182,40 @@ export function IssueManagementView() {
   const issues = issueData?.data ?? [];
   const pagination = issueData?.pagination ?? { page, limit: ITEMS_PER_PAGE, total: 0, totalPages: 0 };
   const emptyMessage = useMemo(() => {
-    if (debouncedSearch) return "No reported issues match the current search.";
-    if (statusFilter !== "all") return "No reported issues found for this status.";
-    return "No reported issues found.";
+    if (debouncedSearch) return "No E-Reports match your search.";
+    if (statusFilter !== "all") return "No E-Reports have this status.";
+    return "No E-Reports have been submitted yet.";
   }, [debouncedSearch, statusFilter]);
 
   return (
     <div className="space-y-5">
       <section className="grid gap-3 md:grid-cols-4">
-        <Metric label="Total" value={stats.total} icon={<MessageSquare className="size-4" />} loading={statsLoading} />
-        <Metric label="Pending" value={stats.pending} icon={<Clock className="size-4" />} tone="amber" loading={statsLoading} />
-        <Metric label="Reviewing" value={stats.reviewing} icon={<AlertCircle className="size-4" />} tone="blue" loading={statsLoading} />
+        <Metric label="Total E-Reports" value={stats.total} icon={<MessageSquare className="size-4" />} loading={statsLoading} />
+        <Metric label="Waiting for review" value={stats.pending} icon={<Clock className="size-4" />} tone="amber" loading={statsLoading} />
+        <Metric label="Being reviewed" value={stats.reviewing} icon={<AlertCircle className="size-4" />} tone="blue" loading={statsLoading} />
         <Metric label="Resolved" value={stats.resolved} icon={<CheckCircle2 className="size-4" />} tone="green" loading={statsLoading} />
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-3 lg:grid-cols-[1fr_260px]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by description, location, reporter, ticket, or project..."
-              className="h-10 pl-9"
+              placeholder="Search E-Reports by concern, location, reporter, ticket, or project"
+              className="min-h-11 pl-9"
             />
           </div>
+
           <select
+            aria-label="Issue status"
             value={statusFilter}
             onChange={(event) => {
               setStatusFilter(event.target.value as IssueStatus);
               setPage(1);
             }}
-            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
           >
             {statusOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -221,7 +227,7 @@ export function IssueManagementView() {
       </section>
 
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <Table>
+        <Table scrollRegionLabel="E-Report results. Use horizontal scrolling to view all columns.">
           <TableHeader>
             <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-950">
               <TableHead className="min-w-[420px] px-4 text-xs font-extrabold uppercase tracking-wide text-slate-500">Issue Details</TableHead>
@@ -238,7 +244,7 @@ export function IssueManagementView() {
                 <TableCell colSpan={6} className="h-36 text-center">
                   <div className="inline-flex items-center gap-2 text-sm font-bold text-slate-500">
                     <Loader2 className="size-4 animate-spin" />
-                    Loading reported issues...
+                    Loading E-Reports...
                   </div>
                 </TableCell>
               </TableRow>
@@ -285,13 +291,13 @@ export function IssueManagementView() {
                   <TableCell className="py-4 text-sm font-semibold text-slate-600 dark:text-slate-300">{formatDate(issue.createdAt)}</TableCell>
                   <TableCell className="py-4">
                     <div className="flex flex-col gap-2">
-                      <Button asChild variant="outline">
+                      <Button asChild variant="outline" className="min-h-11">
                         <Link href={`/issues/${issue.id}`}>
                           <MessageSquare className="size-4" />
                           Respond
                         </Link>
                       </Button>
-                      <Button type="button" variant="destructive" onClick={() => setDeleteIssue(issue)}>
+                      <Button type="button" variant="destructive" className="min-h-11" onClick={() => setDeleteIssue(issue)}>
                         <Trash2 className="size-4" />
                         Delete
                       </Button>
@@ -305,14 +311,14 @@ export function IssueManagementView() {
 
         <div className="flex flex-col gap-3 border-t border-slate-200 p-4 text-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
           <p className="font-semibold text-slate-600 dark:text-slate-300">
-            Page {pagination.page} of {Math.max(pagination.totalPages, 1)} · {pagination.total.toLocaleString()} result{pagination.total === 1 ? "" : "s"}
+            Page {pagination.page} of {Math.max(pagination.totalPages, 1)} · {pagination.total.toLocaleString()} E-Report{pagination.total === 1 ? "" : "s"}
           </p>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+            <Button className="min-h-11" type="button" variant="outline" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
               <ChevronLeft className="size-4" />
               Previous
             </Button>
-            <Button type="button" variant="outline" disabled={page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)}>
+            <Button className="min-h-11" type="button" variant="outline" disabled={page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)}>
               Next
               <ChevronRight className="size-4" />
             </Button>
@@ -323,7 +329,7 @@ export function IssueManagementView() {
       <AlertDialog open={Boolean(deleteIssue)} onOpenChange={(open) => !open && setDeleteIssue(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete reported issue?</AlertDialogTitle>
+            <AlertDialogTitle>Delete E-Report?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the issue record, evidence references, and response history.
             </AlertDialogDescription>
