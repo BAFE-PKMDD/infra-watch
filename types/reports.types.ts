@@ -1,7 +1,3 @@
-/**
- * Types for SLA Reports & Analytics
- */
-
 export type SlaTier =
   | "under_1h"
   | "1h_4h"
@@ -30,15 +26,15 @@ export interface SlaDistribution {
 }
 
 export interface SlaTrendPoint {
-  date: string; // ISO date string or formatted date
-  avgResponseTime: number;
+  date: string; // formatted date label
+  avgResponseTime: number; // in hours
   itemCount: number;
   avgResolutionTime?: number;
 }
 
 export interface SlaTableRow {
   id: string;
-  referenceId: string; // Title, ID, or Subject
+  referenceId: string; // title, ticket number, or excerpt
   status: string;
   category?: string;
   createdAt: Date;

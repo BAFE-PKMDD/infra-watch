@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { feedback, projects } from "@/lib/db/schema";
 import { requirePermission } from "@/lib/permissions";
 import { getCurrentUser, requireAuth } from "@/lib/session";
+import { projectRegionCondition } from "@/lib/scope";
 import { and, desc, eq, exists, ilike, or, sql } from "drizzle-orm";
 
 type FeedbackStatus = "all" | "pending" | "approved" | "rejected";
@@ -68,6 +69,7 @@ export type MyFeedbackItem = {
   createdAt: Date;
   updatedAt: Date;
   moderationNote: string | null;
+  autoAcknowledgedAt: Date | null;
   project: {
     id: string;
     name: string;
@@ -130,10 +132,7 @@ export async function getAllFeedback(params: FeedbackListParams = {}): Promise<{
             .where(
               and(
                 eq(projects.abemisId, feedback.projectId),
-                or(
-                  ilike(projects.psgcCode, `${currentUser.region}%`),
-                  ilike(projects.region, currentUser.region),
-                )!,
+                projectRegionCondition(currentUser.region),
               ),
             ),
         ),
@@ -303,6 +302,7 @@ export async function getMyFeedback(): Promise<{
         createdAt: feedback.createdAt,
         updatedAt: feedback.updatedAt,
         moderationNote: feedback.moderationNote,
+        autoAcknowledgedAt: feedback.autoAcknowledgedAt,
         projectUuid: projects.id,
         projectAbemisId: projects.abemisId,
         projectCode: projects.projectCode,
@@ -334,6 +334,7 @@ export async function getMyFeedback(): Promise<{
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,
           moderationNote: row.moderationNote,
+          autoAcknowledgedAt: row.autoAcknowledgedAt,
           project: row.projectName
             ? {
                 id: projectId,
@@ -378,10 +379,7 @@ export async function getFeedbackStats(): Promise<{
             .where(
               and(
                 eq(projects.abemisId, feedback.projectId),
-                or(
-                  ilike(projects.psgcCode, `${currentUser.region}%`),
-                  ilike(projects.region, currentUser.region),
-                )!,
+                projectRegionCondition(currentUser.region),
               ),
             ),
         ),
