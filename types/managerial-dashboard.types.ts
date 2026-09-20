@@ -52,6 +52,21 @@ export type ManagerialDashboardDrillthroughData = {
   projects: ManagerialDashboardDrillthroughProject[];
 };
 
+export type DashboardBreakdownDimension = "province" | "program";
+
+export type ManagerialDashboardBreakdownRow = {
+  key: string;
+  total: number;
+  delayed: number;
+  allocatedBudget: number;
+};
+
+export type ManagerialDashboardBreakdownData = {
+  asOf: string;
+  dimension: DashboardBreakdownDimension;
+  rows: ManagerialDashboardBreakdownRow[];
+};
+
 export type ManagerialDashboardData = {
   asOf: string;
   freshness: {
@@ -75,6 +90,8 @@ export type ManagerialDashboardData = {
     completionRate: number;
     delayedProjects: number;
     atRiskProjects: number;
+    bidExceedsBudgetCount: number;
+    bidOverrunTotal: number;
   };
   scheduleHealth: Array<{ key: ScheduleHealth; count: number; budget: number }>;
   statusBreakdown?: Array<{
@@ -97,6 +114,15 @@ export type ManagerialDashboardData = {
     total: number;
     allocatedBudget: number;
     delayed: number;
+  }>;
+  fundingYears: Array<{
+    yearFunded: string;
+    total: number;
+    assessed: number;
+    completed: number;
+    delayed: number;
+    completionRate: number;
+    allocatedBudget: number;
   }>;
   progressVariance: Array<{
     projectId: string;
@@ -140,5 +166,12 @@ export type ManagerialDashboardData = {
     provinces: string[];
     projectTypes: string[];
     statuses: ProjectStatusFilter[];
+  };
+  trend: {
+    status: "insufficientHistory" | "ready";
+    points: Array<{ date: string; averageProgress: number; sampleSize: number; total: number }>;
+    sampleCount: number;
+    spanDays: number;
+    maxGapDays: number;
   };
 };

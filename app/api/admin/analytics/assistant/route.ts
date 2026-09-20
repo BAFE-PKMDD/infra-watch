@@ -4,7 +4,10 @@ import { z } from "zod";
 
 import { getAIConfig, getAIModel } from "@/lib/ai-provider";
 import { managerialDashboardFilterSchema } from "@/lib/analytics/dashboard-filters";
-import { MANAGERIAL_AI_SYSTEM_INSTRUCTION } from "@/lib/analytics/managerial-ai-prompt";
+import {
+  EXECUTIVE_BRIEF_SYSTEM_INSTRUCTION,
+  MANAGERIAL_AI_SYSTEM_INSTRUCTION,
+} from "@/lib/analytics/managerial-ai-prompt";
 import { getManagerialAiPolicyRefusal } from "@/lib/analytics/managerial-ai-policy";
 import { createManagerialAiTools } from "@/lib/analytics/managerial-ai-tools";
 import { getManagerialDashboardData } from "@/lib/analytics/managerial-dashboard-query";
@@ -53,6 +56,12 @@ export function assistantGenerationLimits(purpose: "chat" | "executive-brief") {
         maxSteps: MANAGERIAL_AI_MAX_STEPS,
         timeoutMs: getChatResponseTimeoutMs(),
       };
+}
+
+export function resolveManagerialAiSystemInstruction(purpose: "chat" | "executive-brief") {
+  return purpose === "executive-brief"
+    ? EXECUTIVE_BRIEF_SYSTEM_INSTRUCTION
+    : MANAGERIAL_AI_SYSTEM_INSTRUCTION;
 }
 
 export function managerialAiStepPreparation(stepNumber: number, toolSteps = MANAGERIAL_AI_TOOL_STEPS) {
@@ -225,7 +234,7 @@ async function invokeManagerialAssistant(
 
   const result = streamText({
     model,
-    system: MANAGERIAL_AI_SYSTEM_INSTRUCTION,
+    system: resolveManagerialAiSystemInstruction(input.purpose ?? "chat"),
     messages,
     tools: createManagerialAiTools({
       filters: input.filters,

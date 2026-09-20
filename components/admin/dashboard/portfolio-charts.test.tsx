@@ -1,13 +1,31 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createElement } from "react";
+import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { DelayedProjectsByRegionChart, rankDelayedRegions } from "./delayed-projects-by-region-chart";
 import { ProjectTypeBudgetChart, formatProjectTypeAxisLabel, limitProjectTypes, selectProjectType } from "./project-type-budget-chart";
 import { formatProgressDifference, ProgressVarianceChart } from "./progress-variance-chart";
-import { formatRegionAxisLabel, limitRegionalPerformance, RegionalPerformanceChart } from "./regional-performance-chart";
+import {
+  formatRegionalRateTooltip,
+  formatRegionAxisLabel,
+  limitRegionalPerformance,
+  RegionalPerformanceChart,
+} from "./regional-performance-chart";
 import { ScheduleHealthChart, selectScheduleHealth } from "./schedule-health-chart";
+
+/**
+ * DelayedProjectsByRegionChart and ProjectTypeBudgetChart call `useQuery`
+ * internally (chart drill-down breakdown fetch), same as
+ * DashboardDrillthroughDialog does elsewhere in this feature; a
+ * QueryClientProvider is required to render them even when the query is
+ * disabled at the top (non-drilled-in) level tested here.
+ */
+function renderWithQueryClient(element: ReactElement) {
+  const client = new QueryClient();
+  return renderToStaticMarkup(createElement(QueryClientProvider, { client }, element));
+}
 
 const healthData = [
   { key: "onTrack" as const, count: 5, budget: 1_000_000 },
@@ -18,9 +36,9 @@ const healthData = [
 
 test("renders accessible titles with keyboard filter and drill-through alternatives", () => {
   const schedule = renderToStaticMarkup(createElement(ScheduleHealthChart, { data: healthData, onSelect: () => undefined, onDrillthrough: () => undefined }));
-  const types = renderToStaticMarkup(createElement(ProjectTypeBudgetChart, {
+  const types = renderWithQueryClient(createElement(ProjectTypeBudgetChart, {
     data: [{ projectType: "Unknown", total: 2, allocatedBudget: 123_000, delayed: 1 }],
-    onSelect: () => undefined,
+    filters: {},
     onDrillthrough: () => undefined,
   }));
   const regions = renderToStaticMarkup(createElement(RegionalPerformanceChart, {
@@ -39,10 +57,10 @@ test("renders accessible titles with keyboard filter and drill-through alternati
   assert.match(schedule, /value="delayed"/);
   assert.match(schedule, /aria-label="View projects by schedule status"/);
   assert.match(schedule, /Filter dashboard/);
-  assert.match(types, /Budget Allocation by Project Type/);
+  assert.match(types, /How is the approved budget distributed\?/);
   assert.match(types, /Unknown/);
   assert.match(types, /₱|PHP/);
-  assert.match(types, /aria-label="View projects by project type"/);
+  assert.match(types, /aria-label="Chart options"/);
   assert.match(regions, /Regional performance ranking/);
   assert.match(regions, /40\.0%/);
   assert.match(regions, /4 completed of 10/);
@@ -55,35 +73,50 @@ test("renders accessible titles with keyboard filter and drill-through alternati
   assert.doesNotMatch(variance, /Physical versus expected progress/);
 });
 
-test("renders explicit empty states instead of empty charts", () => {
-  for (const element of [
-    createElement(ScheduleHealthChart, { data: [], onSelect: () => undefined }),
-    createElement(ProjectTypeBudgetChart, { data: [], onSelect: () => undefined }),
-    createElement(RegionalPerformanceChart, { data: [], onSelect: () => undefined }),
-  ]) {
-    assert.match(renderToStaticMarkup(element), /No data available/);
-  }
+test("uses the assessed population for schedule-risk rate tooltips", () => {
+  const row = {
+    region: "Region VIII",
+    total: 10,
+    assessed: 8,
+    completed: 4,
+    delayed: 2,
+    atRisk: 1,
+    completionRate: 40,
+    allocatedBudget: 10_000,
+  };
+
+  assert.equal(formatRegionalRateTooltip("completionRate", 40, row), "40.0% (4 of 10 total projects)");
+  assert.equal(formatRegionalRateTooltip("delayedRate", 25, row), "25.0% (2 of 8 assessed projects; 8 of 10 assessed)");
+  assert.equal(formatRegionalRateTooltip("atRiskRate", 12.5, row), "12.5% (1 of 8 assessed projects; 8 of 10 assessed)");
 });
 
-test("ranks confirmed delayed projects by region and distinguishes insufficient coverage", () => {
+test("renders explicit empty states instead of empty charts", () => {
+  assert.match(renderToStaticMarkup(createElement(ScheduleHealthChart, { data: [], onSelect: () => undefined })), /No data available/);
+  assert.match(renderWithQueryClient(createElement(ProjectTypeBudgetChart, { data: [], filters: {} })), /No data available/);
+  assert.match(renderToStaticMarkup(createElement(RegionalPerformanceChart, { data: [], onSelect: () => undefined })), /No data available/);
+});
+
+test("ranks delayed projects by region and distinguishes insufficient coverage", () => {
   const data = [
     { region: "Region VIII", total: 10, assessed: 8, completed: 4, delayed: 2, atRisk: 1, completionRate: 40, allocatedBudget: 10_000 },
     { region: "Bicol Region", total: 20, assessed: 18, completed: 3, delayed: 7, atRisk: 2, completionRate: 15, allocatedBudget: 20_000 },
   ];
   assert.deepEqual(rankDelayedRegions(data).map((item) => item.region), ["Bicol Region", "Region VIII"]);
-  const html = renderToStaticMarkup(createElement(DelayedProjectsByRegionChart, { data, onDrillthrough: () => undefined }));
-  assert.match(html, /Delayed Projects by Region/);
+  const html = renderWithQueryClient(createElement(DelayedProjectsByRegionChart, { data, filters: {}, onDrillthrough: () => undefined }));
+  assert.match(html, /Which regions have the most delayed projects\?/);
   assert.match(html, /7 delayed projects/);
-  assert.match(html, /aria-label="View delayed projects by region"/);
-  const insufficient = renderToStaticMarkup(createElement(DelayedProjectsByRegionChart, {
+  assert.match(html, /aria-label="Chart options"/);
+  const insufficient = renderWithQueryClient(createElement(DelayedProjectsByRegionChart, {
     data: [{ ...data[0], assessed: 0, delayed: 0 }],
+    filters: {},
   }));
   assert.match(insufficient, /Delayed-project data unavailable/);
   assert.match(insufficient, /sufficient schedule data/);
-  const partialZero = renderToStaticMarkup(createElement(DelayedProjectsByRegionChart, {
+  const partialZero = renderWithQueryClient(createElement(DelayedProjectsByRegionChart, {
     data: [{ ...data[0], assessed: 1, delayed: 0 }],
+    filters: {},
   }));
-  assert.match(partialZero, /No confirmed regional delays/);
+  assert.match(partialZero, /No regional delays identified/);
   assert.match(partialZero, /1 of 10 projects assessed/);
   assert.doesNotMatch(partialZero, /No delayed projects for the current filters/);
 });

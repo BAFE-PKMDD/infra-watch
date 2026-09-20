@@ -1,10 +1,8 @@
 import {
   AlertTriangle,
-  Banknote,
-  CheckCircle2,
   CircleDollarSign,
-  FolderKanban,
   Gauge,
+  Scale,
 } from "lucide-react";
 
 import type { ManagerialDashboardData } from "@/types/managerial-dashboard.types";
@@ -54,13 +52,25 @@ export function ExecutiveKpis({
   const delayedValue = !scheduleAssessable
     ? "Not assessable"
     : kpis.delayedProjects === 0 && coverage.withSchedule < coverage.total
-      ? "No confirmed delays"
+      ? "No delays identified"
       : formatDashboardCount(kpis.delayedProjects);
   const delayedDetail = scheduleAssessable
     ? `${formatDashboardCount(coverage.withSchedule)} of ${formatDashboardCount(coverage.total)} projects have schedule data.`
     : `0 of ${formatDashboardCount(coverage.total)} projects have schedule dates.`;
   const majorityAssessed = coverage.total > 0 && assessedProjects >= coverage.total / 2;
   const assessedDetail = `${formatDashboardCount(assessedProjects)} of ${formatDashboardCount(coverage.total)}`;
+
+  const bidVarianceAssessable = coverage.withBudget > 0 && coverage.withActualBidAmount > 0;
+  const bidVarianceValue = !bidVarianceAssessable
+    ? "Not assessable"
+    : kpis.bidExceedsBudgetCount === 0
+      ? "None identified"
+      : `${formatDashboardCount(kpis.bidExceedsBudgetCount)} project${kpis.bidExceedsBudgetCount === 1 ? "" : "s"}`;
+  const bidVarianceDetail = !bidVarianceAssessable
+    ? "Requires both an approved budget and a supplier bid amount on record."
+    : kpis.bidExceedsBudgetCount === 0
+      ? "No supplier bid amount exceeds its approved budget."
+      : `${formatDashboardCurrency(kpis.bidOverrunTotal)} total overrun above approved budget.`;
 
   let atRiskValue: string;
   let atRiskDetail: string;
@@ -81,13 +91,13 @@ export function ExecutiveKpis({
   return (
     <section aria-labelledby="executive-kpis-heading">
       <h2 id="executive-kpis-heading" className="sr-only">Project overview</h2>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-12 [&>*:nth-child(1)]:xl:col-span-2 [&>*:nth-child(2)]:xl:col-span-4 [&>*:nth-child(3)]:xl:col-span-3 [&>*:nth-child(4)]:xl:col-span-3">
         <KpiCard
           label="Total Projects"
           value={formatDashboardCount(kpis.totalProjects)}
           definition="Count of projects in the signed-in user’s authorized scope after dashboard filters."
           detail="Projects in the current authorized scope"
-          icon={<FolderKanban className="size-4" />}
+          className="delay-0"
         />
         <KpiCard
           label="Allocated Budget"
@@ -95,14 +105,14 @@ export function ExecutiveKpis({
           valueTitle={coverage.withBudget === 0 ? undefined : formatDashboardCurrency(kpis.allocatedBudget)}
           definition="Sum of non-null ABEMIS allocated amounts. Allocated amount is the approved project budget."
           detail={`${formatDashboardPercentage(budgetCoverage)} budget coverage`}
-          icon={<Banknote className="size-4" />}
+          className="delay-75"
         />
         <KpiCard
           label="Completion Rate"
           value={formatDashboardPercentage(kpis.completionRate)}
           definition="Canonically completed projects divided by all status-assessed projects in scope."
           detail="Completed projects in the current scope"
-          icon={<CheckCircle2 className="size-4" />}
+          className="delay-150"
         />
         <KpiCard
           label="Delayed Projects"
@@ -111,23 +121,31 @@ export function ExecutiveKpis({
           detail={delayedDetail}
           tone={scheduleAssessable && kpis.delayedProjects > 0 ? "critical" : scheduleAssessable ? "default" : "warning"}
           icon={<AlertTriangle className="size-4" />}
+          className="delay-200"
         />
       </div>
 
       <details className="group mt-3 rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <summary className="cursor-pointer list-none px-4 py-2.5 text-sm font-semibold text-slate-700 outline-none marker:hidden hover:text-primary focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 dark:text-slate-200">
-          <span className="inline-flex items-center gap-2">
-            <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-90">›</span>
-            More metrics
+        <summary className="cursor-pointer list-none px-4 py-2.5 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <span aria-hidden="true" className="transition-transform group-open:rotate-90">›</span>
+            Other key metrics
           </span>
         </summary>
-        <div className="grid border-t border-slate-200 sm:grid-cols-2 dark:border-slate-800">
+        <div className="grid border-t border-slate-100 sm:grid-cols-3 dark:border-slate-800">
           <SecondaryMetric
             label="Supplier Actual Bid Amount"
             value={coverage.withActualBidAmount === 0 ? "Unavailable" : formatDashboardCompactCurrency(kpis.actualBidAmount)}
             exactValue={coverage.withActualBidAmount === 0 ? undefined : formatDashboardCurrency(kpis.actualBidAmount)}
             detail={`${formatDashboardPercentage(abcCoverage)} bid-amount coverage`}
             icon={<CircleDollarSign className="size-4" />}
+          />
+          <SecondaryMetric
+            label="Bid exceeds budget"
+            value={bidVarianceValue}
+            detail={bidVarianceDetail}
+            tone={bidVarianceAssessable && kpis.bidExceedsBudgetCount > 0 ? "warning" : "default"}
+            icon={<Scale className="size-4" />}
           />
           <SecondaryMetric
             label="At-risk assessment"
@@ -158,14 +176,14 @@ function SecondaryMetric({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-3 p-4 first:border-b sm:first:border-r sm:first:border-b-0 dark:border-slate-800">
+    <div className="flex min-w-0 items-start gap-3 p-4 [&:not(:last-child)]:border-b sm:[&:not(:last-child)]:border-b-0 sm:[&:not(:last-child)]:border-r dark:border-slate-800">
       <span aria-hidden="true" className={tone === "warning" ? "mt-0.5 text-amber-600" : "mt-0.5 text-slate-400"}>{icon}</span>
       <div className="min-w-0">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
-        <p title={exactValue} className="mt-1 text-sm font-semibold text-slate-950 dark:text-white">
+        <p className="text-[13px] font-medium text-slate-500 dark:text-slate-400">{label}</p>
+        <p title={exactValue} className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
           {exactValue ? <><span aria-hidden="true">{value}</span><span className="sr-only">Exact value: {exactValue}</span></> : value}
         </p>
-        <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{detail}</p>
+        <p className="mt-0.5 text-sm leading-5 text-slate-500 dark:text-slate-400">{detail}</p>
       </div>
     </div>
   );

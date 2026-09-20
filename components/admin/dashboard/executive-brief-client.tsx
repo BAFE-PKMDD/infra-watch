@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, FileText, MessageSquare, RefreshCw, Sparkles, Square } from "lucide-react";
+import { AlertTriangle, FileText, MessageSquare, RefreshCw, Square } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -226,9 +226,10 @@ export function ExecutiveBriefClient() {
             <div className="flex items-center gap-2 text-sm font-bold text-slate-950 dark:text-white">
               <FileText className="size-4 text-primary" /> Brief configuration
             </div>
-            <p className="text-sm text-slate-600 dark:text-slate-300">Data as of {data.asOf}</p>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{formatExecutiveBriefScope(filters)}</p>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{EXECUTIVE_BRIEF_HANDLING_LABEL}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              As of {data.asOf} · {formatExecutiveBriefScope(filters)}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{EXECUTIVE_BRIEF_HANDLING_LABEL}</p>
           </div>
           <div className="flex flex-wrap gap-2 print:hidden">
             {content && generatedAt && briefContext && !generating ? (
@@ -243,7 +244,7 @@ export function ExecutiveBriefClient() {
                 <MessageSquare /> Ask ANIA
               </Button>
             ) : null}
-            <Button variant="outline" onClick={() => query.refetch()} disabled={query.isFetching || generating}>
+            <Button variant="ghost" onClick={() => query.refetch()} disabled={query.isFetching || generating}>
               <RefreshCw className={query.isFetching ? "animate-spin motion-reduce:animate-none" : ""} />
               Refresh data
             </Button>
@@ -253,26 +254,23 @@ export function ExecutiveBriefClient() {
               </Button>
             ) : (
               <Button variant={content ? "outline" : "default"} onClick={() => void generate()} disabled={query.isFetching}>
-                <Sparkles /> {content ? "Regenerate brief" : "Generate brief"}
+                {content ? <RefreshCw /> : <FileText />} {content ? "Regenerate brief" : "Generate brief"}
               </Button>
             )}
           </div>
         </div>
-        <p role="status" aria-live="polite" className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+        <p role="status" aria-live="polite" className="mt-3 text-xs text-slate-500 dark:text-slate-400">
           {status}
         </p>
         {staleNudge ? <p className="mt-3 flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><AlertTriangle className="mt-0.5 size-4 shrink-0" /> {staleNudge}</p> : null}
       </section>
 
-      <article id="ania-executive-brief-report" className="min-h-96 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
+      <article id="ania-executive-brief-report" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
         {content && !generating ? (
           <>
             <div className="mb-6 border-b border-slate-200 pb-5 dark:border-slate-800">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Infrastructure Analytics</p>
               <h2 className="mt-2 text-2xl font-extrabold tracking-tight">Executive Brief</h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                Data as of {briefContext?.asOf ?? data.asOf} · {formatExecutiveBriefScope(briefContext?.filters ?? filters)}
-              </p>
             </div>
             <ExecutiveBriefStructuredView
               content={content}
@@ -303,15 +301,10 @@ export function ExecutiveBriefClient() {
             onAskAbout={handleAskAbout}
           />
         ) : (
-          <div className="flex min-h-80 flex-col items-center justify-center text-center">
-            <div className="rounded-full bg-blue-50 p-4 text-primary dark:bg-blue-950/40">
-              <FileText className="size-8" />
-            </div>
-            <h2 className="mt-4 text-lg font-bold">No executive brief generated yet</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Generate a decision-focused brief from the current authorized dashboard data and filters. The result stays separate from the ANIA conversation.
-            </p>
-            <Button className="mt-5 print:hidden" onClick={() => void generate()} disabled={query.isFetching || generating}><Sparkles /> Generate executive brief</Button>
+          <div className="flex min-h-48 flex-col items-center justify-center gap-3 py-4 text-center">
+            <FileText className="size-6 text-slate-400 dark:text-slate-600" aria-hidden="true" />
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">No executive brief generated yet</h2>
+            <Button className="min-h-11 print:hidden" onClick={() => void generate()} disabled={query.isFetching || generating}><FileText /> Generate executive brief</Button>
           </div>
         )}
       </article>

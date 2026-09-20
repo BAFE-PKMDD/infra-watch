@@ -5,11 +5,14 @@ import { PgDialect } from "drizzle-orm/pg-core";
 
 import {
   aggregateManagerialDashboardRows,
+  aggregatePortfolioTrendRows,
   buildDashboardAggregateQueryPlan,
   buildDashboardConditions,
   buildDashboardConditionDescriptors,
+  buildDashboardBreakdownQuery,
   buildDashboardScopeCountQuery,
   buildDashboardDrillthroughQueryPlan,
+  buildPortfolioTrendQuery,
   comparePriorityProjects,
   currencyFromCents,
   enforceDashboardRowLimit,
@@ -34,6 +37,7 @@ test("builds PostgreSQL aggregate and bounded detail queries instead of a portfo
     "statuses",
     "regions",
     "projectTypes",
+    "fundingYears",
     "progressVariance",
     "priorityProjects",
     "filterOptions",
@@ -46,11 +50,33 @@ test("builds PostgreSQL aggregate and bounded detail queries instead of a portfo
     if (query.name === "priorityProjects") assert.equal(compiled.params.at(-1), 10);
   }
 
-  for (const aggregateName of ["summary", "scheduleHealth", "statuses", "regions", "projectTypes", "filterOptions"] as const) {
+  for (const aggregateName of ["summary", "scheduleHealth", "statuses", "regions", "projectTypes", "fundingYears", "filterOptions"] as const) {
     const sqlText = plan.find(({ name }) => name === aggregateName)!.query.toSQL().sql;
     assert.match(sqlText, /count\(|sum\(|group by|array_agg\(/i);
     assert.match(sqlText, /case when/i);
   }
+});
+
+test("chart drill-down breakdown is a grouped aggregate query scoped like every other portfolio read", () => {
+  const provinceBreakdown = buildDashboardBreakdownQuery(
+    { region: "Region VIII" },
+    { role: "moderator", region: "Region VIII", assignedAgency: "AMEFIP" },
+    "2026-08-10",
+    "province",
+  ).toSQL();
+  assert.match(provinceBreakdown.sql, /group by/i);
+  assert.match(provinceBreakdown.sql, /count\(|sum\(/i);
+  assert.match(provinceBreakdown.sql, /"region" =|ilike/i);
+  assert.match(provinceBreakdown.sql, /"program" =|ilike.*agency|assigned/i);
+
+  const programBreakdown = buildDashboardBreakdownQuery(
+    { projectType: "Irrigation Canal" },
+    { role: "admin" },
+    "2026-08-10",
+    "program",
+  ).toSQL();
+  assert.match(programBreakdown.sql, /group by/i);
+  assert.match(programBreakdown.sql, /"project_type" =|ilike/i);
 });
 
 test("builds a scoped and paginated project drill-through query", () => {
@@ -365,4 +391,118 @@ test("priority ordering uses overdue days before stable project identity", () =>
     "2026-08-10",
   );
   assert.deepEqual(data.priorityProjects.map((item) => item.projectId), ["a", "b", "z"]);
+});
+
+test("computes a daily average-progress trend from grouped snapshot rows", () => {
+  const trend = aggregatePortfolioTrendRows([
+    { date: "2026-08-01", averageProgress: 20, sampleSize: 9, total: 10 },
+    { date: "2026-08-08", averageProgress: 30, sampleSize: 9, total: 10 },
+    { date: "2026-08-15", averageProgress: 40, sampleSize: 10, total: 10 },
+    { date: "2026-08-22", averageProgress: 50, sampleSize: 10, total: 10 },
+  ]);
+  assert.equal(trend.status, "ready");
+  assert.equal(trend.sampleCount, 4);
+  assert.equal(trend.spanDays, 21);
+  assert.equal(trend.maxGapDays, 7);
+  assert.deepEqual(trend.points.map((point) => point.averageProgress), [20, 30, 40, 50]);
+  assert.deepEqual(trend.points[0], { date: "2026-08-01", averageProgress: 20, sampleSize: 9, total: 10 });
+});
+
+test("reports insufficient history below the minimum sample count or span", () => {
+  const tooFewSamples = aggregatePortfolioTrendRows([
+    { date: "2026-08-01", averageProgress: 10, sampleSize: 5, total: 5 },
+    { date: "2026-08-20", averageProgress: 20, sampleSize: 5, total: 5 },
+  ]);
+  assert.equal(tooFewSamples.status, "insufficientHistory");
+
+  const tooShortSpan = aggregatePortfolioTrendRows([
+    { date: "2026-08-01", averageProgress: 10, sampleSize: 5, total: 5 },
+    { date: "2026-08-02", averageProgress: 10, sampleSize: 5, total: 5 },
+    { date: "2026-08-03", averageProgress: 10, sampleSize: 5, total: 5 },
+  ]);
+  assert.equal(tooShortSpan.status, "insufficientHistory");
+});
+
+test("drops an old isolated point across a wide gap instead of averaging it into a smooth trend", () => {
+  const trend = aggregatePortfolioTrendRows([
+    { date: "2026-08-01", averageProgress: 10, sampleSize: 5, total: 5 },
+    { date: "2026-09-18", averageProgress: 20, sampleSize: 5, total: 5 },
+    { date: "2026-09-19", averageProgress: 21, sampleSize: 5, total: 5 },
+  ]);
+  // Aug 1 is more than TREND_MAX_GAP_DAYS from Sep 18, so only the Sep 18-19 run counts:
+  // still insufficient on its own (2 samples), but for the right, current reason, not
+  // because a months-old data point is artificially poisoning the whole-history gap check.
+  assert.equal(trend.sampleCount, 2);
+  assert.deepEqual(trend.points.map((point) => point.date), ["2026-09-18", "2026-09-19"]);
+  assert.equal(trend.status, "insufficientHistory");
+});
+
+test("becomes ready from a recent unbroken run even while an old disconnected point is still in the queried window", () => {
+  const recentRun = Array.from({ length: 15 }, (_, index) => ({
+    date: `2026-09-${String(index + 1).padStart(2, "0")}`,
+    averageProgress: 50 + index,
+    sampleSize: 5,
+    total: 5,
+  }));
+  const trend = aggregatePortfolioTrendRows([
+    { date: "2026-07-01", averageProgress: 10, sampleSize: 5, total: 5 },
+    ...recentRun,
+  ]);
+  assert.equal(trend.sampleCount, 15);
+  assert.equal(trend.points[0]?.date, "2026-09-01");
+  assert.equal(trend.status, "ready");
+});
+
+test("portfolio trend query is grouped by capture date, scoped like every other portfolio read", () => {
+  const compiled = buildPortfolioTrendQuery(
+    { region: "Region VIII", program: "AMEFIP" },
+    { role: "moderator", region: "08", assignedAgency: "AMEFIP" },
+    "2026-08-10",
+  ).toSQL();
+  assert.match(compiled.sql, /group by/i);
+  assert.match(compiled.sql, /inner join "projects"/i);
+  assert.match(compiled.sql, /count\(\*\)/i);
+  // Filters apply to the as-captured snapshot columns, not the project's current values.
+  assert.match(compiled.sql, /"project_metric_snapshots"\."region"/i);
+  assert.match(compiled.sql, /"project_metric_snapshots"\."program"/i);
+});
+
+test("portfolio trend query is bounded to a recent lookback window, so one old isolated snapshot can't block the trend forever", () => {
+  const compiled = buildPortfolioTrendQuery({}, { role: "admin" }, "2026-08-10").toSQL();
+  assert.match(compiled.sql, /"project_metric_snapshots"\."capture_date" >=/i);
+  const cutoffParam = compiled.params.find((param) => typeof param === "string" && /^\d{4}-\d{2}-\d{2}$/.test(param));
+  assert.equal(cutoffParam, "2026-06-11");
+});
+
+test("groups projects by funding year and computes a completion rate", () => {
+  const data = aggregateManagerialDashboardRows(
+    [
+      { ...baseRow, projectId: "old-1", yearFunded: "2019", status: "ongoing", targetCompletionDate: "2020-01-01" },
+      { ...baseRow, projectId: "old-2", yearFunded: "2019", status: "completed", actualCompletionDate: "2019-12-01" },
+      { ...baseRow, projectId: "new-1", yearFunded: "2026", status: "ongoing" },
+    ],
+    {},
+    "2026-08-10",
+  );
+  const year2019 = data.fundingYears.find((item) => item.yearFunded === "2019");
+  assert.equal(year2019?.total, 2);
+  assert.equal(year2019?.completed, 1);
+  assert.equal(year2019?.completionRate, 50);
+  assert.deepEqual(data.fundingYears.map((item) => item.yearFunded), ["2019", "2026"]);
+});
+
+test("counts confirmed bid-over-budget projects and sums only the positive overrun", () => {
+  const data = aggregateManagerialDashboardRows(
+    [
+      { ...baseRow, projectId: "over-1", allocatedBudget: "100000", actualBidAmount: 150000 },
+      { ...baseRow, projectId: "over-2", allocatedBudget: "200000", actualBidAmount: 220000 },
+      { ...baseRow, projectId: "under", allocatedBudget: "500000", actualBidAmount: 400000 },
+      { ...baseRow, projectId: "missing-bid", allocatedBudget: "100000", actualBidAmount: null },
+      { ...baseRow, projectId: "missing-budget", allocatedBudget: null, actualBidAmount: 100000 },
+    ],
+    {},
+    "2026-08-10",
+  );
+  assert.equal(data.kpis.bidExceedsBudgetCount, 2);
+  assert.equal(data.kpis.bidOverrunTotal, 70_000);
 });

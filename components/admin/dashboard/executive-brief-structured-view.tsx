@@ -21,7 +21,7 @@ import {
   Banknote,
   CheckCircle2,
   FolderKanban,
-  Sparkles,
+  LoaderCircle,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -76,7 +76,7 @@ function injectStatusBadges(markdown: string): string {
 
   // Standalone "Delayed" near numbers or at start of items
   result = result.replace(
-    /\b(Delayed)\b(?=[\s,;:—–]|$)/g,
+    /\b(Delayed)\b(?=[\s,;:]|$)/g,
     '[Delayed](#badge-delayed)',
   );
 
@@ -276,14 +276,14 @@ export function ExecutiveBriefStructuredView({
       <div className="space-y-4">
         {data && <BriefKpiStrip data={data} />}
         <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900 dark:bg-blue-950/30">
-          <Sparkles className="size-4 animate-pulse text-primary" />
+          <LoaderCircle className="size-4 animate-spin text-primary motion-reduce:animate-none" />
           <div>
             <p className="text-sm font-semibold text-slate-950 dark:text-white">
               Generating executive brief…
             </p>
             <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
               Analyzing infrastructure data for the selected projects.
-              This typically takes 15–30 seconds.
+              This typically takes 15 to 30 seconds.
             </p>
           </div>
         </div>
@@ -304,7 +304,7 @@ export function ExecutiveBriefStructuredView({
 
       {/* Tabbed sections */}
       {sections.length === 1 ? (
-        // Single section — no tabs needed
+        // A single section does not need tabs.
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             {(() => {
@@ -358,7 +358,7 @@ export function ExecutiveBriefStructuredView({
 
       {/* AI disclaimer badge */}
       <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-        <span className="inline-flex h-5 shrink-0 items-center rounded-4xl border border-border px-2 py-0.5 text-[10px] font-medium text-foreground">
+        <span className="inline-flex h-6 shrink-0 items-center rounded-md border border-border px-2 py-0.5 text-xs font-medium text-foreground">
           AI Generated
         </span>
         <span>

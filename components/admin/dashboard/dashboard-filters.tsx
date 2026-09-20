@@ -88,15 +88,15 @@ export function DashboardFilters({ filters, options, onChange }: DashboardFilter
   return (
     <section
       aria-label="Dashboard filters"
-      className="rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900"
     >
       <details key={filterStateKey} open={activeFilters.length === 0} className="group">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
-          <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-950 dark:text-white">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
+          <span className="inline-flex items-center gap-2 text-base font-semibold text-slate-950 dark:text-white">
             <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-90">›</span>
             Filters
           </span>
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
             {activeFilters.length === 0 ? "No active filters" : `${activeFilters.length} active ${activeFilters.length === 1 ? "filter" : "filters"}`}
           </span>
         </summary>
@@ -137,14 +137,14 @@ export function DashboardFilters({ filters, options, onChange }: DashboardFilter
                 type="button"
                 aria-label={`Remove ${FILTER_LABELS[key]} filter`}
                 onClick={() => onChange(mergeDashboardFilter(filters, key, "all"))}
-                className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-primary hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-blue-900 dark:bg-blue-950/30"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-[15px] font-medium text-primary transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-blue-900 dark:bg-blue-950/30"
               >
                 {FILTER_LABELS[key]}: {key === "status" ? formatStatus(value) : key === "health" ? formatHealth(value) : value}
                 <X className="size-3" aria-hidden="true" />
               </button>
             ))}
           </div>
-          <Button variant="outline" size="sm" onClick={() => onChange(resetDashboardFilters())}>
+          <Button variant="outline" size="sm" className="min-h-11" onClick={() => onChange(resetDashboardFilters())}>
             Reset filters
           </Button>
         </div>
@@ -170,14 +170,14 @@ function Filter({
 }) {
   const id = `dashboard-filter-${label.toLowerCase().replace(/\s+/g, "-")}`;
   return (
-    <label htmlFor={id} className="grid gap-1 text-xs font-bold text-slate-600 dark:text-slate-300">
+    <label htmlFor={id} className="grid gap-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300">
       {label}
       <select
         id={id}
         value={value ?? "all"}
         onChange={onChange}
         disabled={disabled}
-        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-2 text-sm font-medium text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        className="h-11 min-w-0 rounded-md border border-slate-300 bg-white px-3 text-[15px] font-medium text-slate-900 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
       >
         <option value="all">All</option>
         {options.map((option) => (
@@ -202,9 +202,9 @@ function formatStatus(status: string) {
 
 function formatHealth(health: string) {
   return ({
-    onTrack: "On track",
-    atRisk: "At risk",
+    onTrack: "On schedule",
+    atRisk: "At risk of delay",
     delayed: "Delayed",
-    notAssessed: "Not assessed",
+    notAssessed: "Cannot be assessed",
   } as Record<string, string>)[health] ?? health;
 }

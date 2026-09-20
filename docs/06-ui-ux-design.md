@@ -1,126 +1,134 @@
-# UI/UX Design System & Layouts
+# INFRA Watch Interface Standard
 
-> User Interface and Experience design system, layouts, color palette, typography guidelines, and micro-animations for INFRA Watch.
+This document is the implementation contract for INFRA Watch interface design and user-facing copy. When it conflicts with an older mockup, follow the live tokens in `app/globals.css` and this document.
 
----
+## 1. Product character
 
-## 1. Design Principles
+INFRA Watch is an operational monitoring product for public infrastructure. The interface must feel:
 
-INFRA Watch is built on three core design pillars:
-1. **Utility & Clarity**: Dashboards and data tables must present high-density data clearly without causing cognitive fatigue.
-2. **Professional & Trustworthy**: Avoid flashy trends. The design should convey institutional transparency, accountability, and accuracy.
-3. **No Gradients (Rule Constraint)**: UI styling utilizes solid colors, clean borders, crisp contrast, and subtle shadows for depth.
+- factual and accountable
+- calm under dense data
+- specific to project delivery and budget oversight
+- usable with keyboard, touch, zoom, and assistive technology
 
----
+Do not use ornamental gradients, glass effects, decorative glow, excessive card nesting, generic AI symbolism, or marketing language.
 
-## 2. Color Palette (Solid Colors Only)
+## 2. Canonical visual tokens
 
-The interface employs a premium Slate & Emerald theme to symbolize structural development and clean sanitation infrastructure.
+The live application uses the following product direction:
 
-### Light Mode Variables
-- **Background**: White (`#ffffff`)
-- **Card Background**: Slate 50 (`#f8fafc`)
-- **Primary / Action**: Emerald 600 (`#059669`)
-- **Primary Foreground**: White (`#ffffff`)
-- **Secondary**: Slate 600 (`#475569`)
-- **Muted / Border**: Slate 200 (`#e2e8f0`)
-- **Text (Default)**: Slate 900 (`#0f172a`)
-- **Text (Muted)**: Slate 500 (`#64748b`)
-- **Destructive**: Rose 600 (`#e11d48`)
+- Primary action and navigation: Indigo
+- Supporting accent: Safety orange
+- Neutral surfaces and text: Slate
+- Destructive or confirmed delay: Red
+- Warning or at-risk state: Amber
+- Successful or on-schedule state: Green
+- Unknown or not assessed: Slate with an explicit text label
 
-### Dark Mode Variables
-- **Background**: Slate 950 (`#020617`)
-- **Card Background**: Slate 900 (`#0f172a`)
-- **Primary / Action**: Emerald 500 (`#10b981`)
-- **Primary Foreground**: Slate 950 (`#020617`)
-- **Secondary**: Slate 400 (`#94a3b8`)
-- **Muted / Border**: Slate 800 (`#1e293b`)
-- **Text (Default)**: Slate 50 (`#f8fafc`)
-- **Text (Muted)**: Slate 400 (`#94a3b8`)
-- **Destructive**: Rose 500 (`#f43f5e`)
+Use semantic application tokens such as `primary`, `accent`, `destructive`, `muted`, and chart tokens where possible. Do not introduce a one-off brand color when an existing token communicates the same role.
 
----
+Color must not be the only state indicator. Every status needs visible text, an icon, a pattern, or another non-color cue.
 
 ## 3. Typography
 
-- **Primary Font Family**: `Inter`, Sans-Serif (imported via Next.js Google Fonts wrapper).
-- **Secondary Font Family (Numbers & Code)**: `Outfit` or `JetBrains Mono` for tabular metrics and financial indicators.
+- Body and controls: Poppins through `--font-poppins`
+- Headings: Outfit through `--font-outfit`
+- Identifiers and code-like values: Geist Mono through `--font-geist-mono`
+- Page title: 24px on compact screens, 30px on larger screens
+- Section heading: at least 18px and semibold
+- Body and control labels: normally 14px
+- Supporting metadata: at least 12px with sufficient contrast
 
-### Type Scale
-- **H1 (Page Titles)**: `text-3xl font-extrabold tracking-tight` (30px)
-- **H2 (Section Headers)**: `text-2xl font-bold tracking-tight` (24px)
-- **H3 (Card Titles)**: `text-lg font-semibold` (18px)
-- **Body**: `text-sm font-normal text-muted-foreground` (14px)
-- **Small / Caps**: `text-xs font-semibold uppercase tracking-wider` (12px)
+Avoid 10px and 11px text for meaningful labels, metadata, controls, or disclaimers. Use tabular numerals for financial values, percentages, durations, and counts where alignment helps comparison.
 
----
+## 4. Layout and hierarchy
 
-## 4. Key UI Components & Shadcn Integrations
+- Keep admin page content within a readable maximum width while preserving room for data tables.
+- Establish one clear first-read path: freshness and actions, filters, primary measures, exceptions, project evidence, then supporting analysis.
+- Avoid equal-weight card grids when measures have different operational importance.
+- Prefer spacing, typography, and restrained borders over nested panels and shadows.
+- Use no more than two primary analytical charts in the first dashboard view. Put supporting evidence in a clearly named disclosure section.
+- Do not hide unavailable or insufficient-evidence states by removing the section.
 
-We utilize **shadcn/ui** components built on top of **Base UI** (unstyled primitives) for accessible and customizable components.
+## 5. Controls and responsive behavior
 
-All components are installed via shadcn/ui:
-```bash
-bunx shadcn@latest add button card dialog sheet table tabs toast skeleton dropdown-menu input label badge
-```
+- Interactive controls should provide an approximately 44 by 44 pixel target.
+- Keep labels visible. Do not rely on icon-only controls when text can fit.
+- Native selects, text inputs, filter chips, and icon buttons must meet the touch-target baseline.
+- Wide data tables must identify themselves as horizontally scrollable, be keyboard focusable, and show a compact-screen scrolling instruction.
+- Horizontal scrolling must remain inside the table region, not the whole page.
+- Do not remove decision-critical columns on mobile without providing an equivalent detail path.
 
-### 4.1 Global Sidebar Navigation (Dashboard)
-A collapsible sidebar featuring solid color highlights.
-- Collapsed state: Shows only icons with clean tooltip guides.
-- Active item indicator: Solid emerald left border + light emerald background (light mode) or deep slate background (dark mode).
+## 6. Data truthfulness
 
-### 4.2 Project Status Badge
-Strict color matching for quick visual scanning:
-- `planned`: Solid Slate Badge (`bg-slate-100 text-slate-800` / `bg-slate-800 text-slate-100`)
-- `ongoing`: Solid Yellow Badge (`bg-amber-100 text-amber-800` / `bg-amber-900/30 text-amber-400`)
-- `completed`: Solid Emerald Badge (`bg-emerald-100 text-emerald-800` / `bg-emerald-900/30 text-emerald-400`)
-- `suspended`: Solid Rose Badge (`bg-rose-100 text-rose-800` / `bg-rose-900/30 text-rose-400`)
+- State the denominator used for every rate.
+- Separate data coverage from the measured result.
+- Use `Unavailable`, `Unknown`, `Cannot be assessed`, and stale-data language deliberately. Do not replace them with a dash.
+- Never describe allocated budget or supplier bid amounts as spending, disbursement, expenditure, or utilization.
+- `allocated_amount` is the approved budget.
+- `abc` is the supplier's actual bid amount despite its source field name.
+- Distinguish the schedule assessment date from source synchronization time.
+- Do not imply a trend, comparison, forecast, or recommendation unless the underlying data supports it.
 
-### 4.3 Data Table Layouts
-- Solid borders with header backgrounds colored in subtle Slate tones.
-- Alternating row styling (zebra pattern) for scanning heavy budget logs.
-- Interactive hover transitions highlighting selected rows.
+## 7. Dashboard terminology
 
----
+Use these canonical labels:
 
-## 5. Micro-Animations & Transitions
+- On schedule
+- At risk of delay
+- Delayed
+- Cannot be assessed
+- Projects needing attention
+- Data coverage
+- Projects requiring review
+- Schedule and progress
+- Other key metrics
 
-We use **Framer Motion** to deliver fluid, professional interface transitions:
+Chart headings should state the management question or evidence shown. Action labels should identify the result, such as `Open project list` or `Apply filter`, instead of `View details`.
 
-### 5.1 Page Transitions
-All route changes perform a clean vertical fade:
-```typescript
-export const pageTransition = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-  transition: { duration: 0.2, ease: "easeInOut" }
-};
-```
+## 8. AI-assisted features
 
-### 5.2 Hover Effects
-- **Buttons / Actions**: Subtle scale-down click reactions (`whileTap={{ scale: 0.98 }}`) and smooth background color transitions.
-- **Project Cards**: Subtle shadow lifts (`shadow-sm` transitions to `shadow-md` on hover) with crisp border highlighting.
+ANIA supports analysis but is not the visual center of the product.
 
-### 5.3 Loading States
-Use skeleton layouts that pulse smoothly:
-```css
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .4; }
-}
-.animate-pulse {
-  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-```
+- Use a conversation or document icon, not sparkles or magic-wand imagery.
+- Label generated content as AI-generated and keep verification guidance visible.
+- State the authorized scope and assessment date.
+- Do not call current-rule classifications predictions.
+- Do not present generated recommendations as official decisions.
+- Preserve loading, cancellation, retry, timeout, and unavailable states.
 
----
+## 9. Accessibility and contrast
 
-## 6. Internationalization (i18n)
+- Normal text must meet WCAG AA contrast of at least 4.5:1.
+- Large text and essential graphical elements must meet their applicable WCAG thresholds.
+- Avoid Slate 400 on white or Slate 50 for normal text.
+- In dark mode, avoid Slate 500 on Slate 900 or Slate 950 for normal text.
+- Every interactive control needs a visible keyboard focus state.
+- Charts need a text summary, useful tooltip, and keyboard-operable filter or project-list alternative.
+- Respect reduced-motion preferences for animations.
 
-To accommodate all citizens, the UI operates in three languages using `next-intl`:
-- **Tetum (tet)**: Default national language
-- **English (en)**: Secondary translation
-- **Portuguese (pt)**: Legal/official translation
+## 10. Copy standard
 
-The language switcher is a clean dropdown menu accessible in the header. All labels, placeholder inputs, metadata fields, and system notifications are translated dynamically.
+Write short operational language. Prefer the exact project, schedule, budget, region, source, or action being discussed.
+
+Avoid:
+
+- generic headings such as `Insights`, `Detailed Analytics`, or `More metrics`
+- marketing phrases such as `seamless`, `powerful`, `next generation`, `unlock`, or `transform`
+- vague actions such as `Learn more`, `Explore`, or `View details`
+- em dashes in user-facing copy
+- explanatory prose that claims evidence not present in the source data
+
+Valid domain words such as project, region, budget, status, delay, and progress should not be renamed merely to sound different.
+
+## 11. Verification
+
+For dashboard or design-system changes:
+
+1. Add or update focused rendering and behavior tests.
+2. Run the dashboard test set.
+3. Run TypeScript without emit.
+4. Run ESLint on changed application files.
+5. Run `git diff --check`.
+6. Inspect desktop and compact layouts in a browser when an authenticated runtime is available.
+7. Confirm that no unrelated working-tree changes were altered.

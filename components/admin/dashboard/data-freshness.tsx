@@ -27,7 +27,7 @@ export function DataFreshness({
     : null;
 
   return (
-    <div role="status" className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+    <div role="status" className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
       <span className={freshness.isStale || failed || neverSynced ? "inline-flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-300" : "inline-flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-100"}>
         <Icon className="size-4" aria-hidden="true" />
         {label}

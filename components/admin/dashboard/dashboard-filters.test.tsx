@@ -55,7 +55,10 @@ test("summarizes active filters with removable keyboard controls", () => {
   assert.match(html, /Filters/);
   assert.match(html, /2 active filters/);
   assert.match(html, /Region: Region VIII/);
-  assert.match(html, /Timeline status: At risk/);
+  assert.match(html, /Timeline status: At risk of delay/);
+  assert.match(html, />On schedule</);
+  assert.match(html, />At risk of delay</);
+  assert.match(html, />Cannot be assessed</);
   assert.match(html, /Remove Region filter/);
   assert.match(html, /Reset filters/);
   assert.doesNotMatch(html, /All indicators and drill-downs/);

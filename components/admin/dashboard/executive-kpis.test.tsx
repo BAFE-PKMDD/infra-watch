@@ -29,6 +29,8 @@ test("renders four primary KPIs and keeps secondary metrics subordinate", () => 
         completionRate: 25,
         delayedProjects: 7,
         atRiskProjects: 3,
+        bidExceedsBudgetCount: 0,
+        bidOverrunTotal: 0,
       },
       assessedProjects: 35,
       coverage: {
@@ -48,7 +50,7 @@ test("renders four primary KPIs and keeps secondary metrics subordinate", () => 
     "Delayed Projects",
   ]) assert.match(html, new RegExp(label));
   assert.equal((html.match(/data-primary-kpi=/g) ?? []).length, 4);
-  assert.match(html, /More metrics/);
+  assert.match(html, /Other key metrics/);
   assert.match(html, /Supplier Actual Bid Amount/);
   assert.match(html, /At-risk assessment/);
   assert.doesNotMatch(html, /spent|disbursed|expenditure|utilization/i);
@@ -66,6 +68,8 @@ test("does not present schedule-health zeroes as positive results when nothing i
         completionRate: 67.7,
         delayedProjects: 0,
         atRiskProjects: 0,
+        bidExceedsBudgetCount: 0,
+        bidOverrunTotal: 0,
       },
       assessedProjects: 0,
       coverage: {
@@ -79,7 +83,8 @@ test("does not present schedule-health zeroes as positive results when nothing i
     }),
   );
 
-  assert.equal((html.match(/Not assessable/g) ?? []).length, 2);
+  // Delayed Projects, At-risk assessment, and Bid exceeds budget (no bid-amount coverage) are all unassessable here.
+  assert.equal((html.match(/Not assessable/g) ?? []).length, 3);
   assert.match(html, /0 of 25,901 projects have schedule dates/);
   assert.match(html, /title="₱77,139,613,575"/);
   assert.match(html, /Exact value: ₱77,139,613,575/);
@@ -94,6 +99,8 @@ test("does not present zero at-risk projects as confirmed when most projects are
       completionRate: 60,
       delayedProjects: 4,
       atRiskProjects: 0,
+      bidExceedsBudgetCount: 0,
+      bidOverrunTotal: 0,
     },
     assessedProjects: 7,
     coverage: {
@@ -120,6 +127,8 @@ test("qualifies a zero delayed count when schedule coverage is incomplete", () =
       completionRate: 60,
       delayedProjects: 0,
       atRiskProjects: 0,
+      bidExceedsBudgetCount: 0,
+      bidOverrunTotal: 0,
     },
     assessedProjects: 1,
     coverage: {
@@ -132,7 +141,7 @@ test("qualifies a zero delayed count when schedule coverage is incomplete", () =
     },
   }));
 
-  assert.match(html, /No confirmed delays/);
+  assert.match(html, /No delays identified/);
   assert.match(html, /1 of 100 projects have schedule data/);
 });
 
@@ -145,6 +154,8 @@ test("keeps confirmed at-risk projects visible when assessment coverage is low",
       completionRate: 60,
       delayedProjects: 2,
       atRiskProjects: 3,
+      bidExceedsBudgetCount: 0,
+      bidOverrunTotal: 0,
     },
     assessedProjects: 7,
     coverage: {
@@ -160,4 +171,60 @@ test("keeps confirmed at-risk projects visible when assessment coverage is low",
   assert.match(html, /3 confirmed/);
   assert.match(html, /3 confirmed among 7 of 100 assessed projects/);
   assert.doesNotMatch(html, /At-risk assessment unavailable/);
+});
+
+test("reports confirmed bid-over-budget projects with the overrun amount, not a zero", () => {
+  const html = renderToStaticMarkup(createElement(ExecutiveKpis, {
+    kpis: {
+      totalProjects: 100,
+      allocatedBudget: 1_000_000,
+      actualBidAmount: 900_000,
+      completionRate: 60,
+      delayedProjects: 2,
+      atRiskProjects: 0,
+      bidExceedsBudgetCount: 5,
+      bidOverrunTotal: 250_000,
+    },
+    assessedProjects: 7,
+    coverage: {
+      total: 100,
+      withBudget: 100,
+      withActualBidAmount: 70,
+      withSchedule: 19,
+      withPhysicalProgress: 7,
+      withFinancialData: 0,
+    },
+  }));
+
+  assert.match(html, /Bid exceeds budget/);
+  assert.match(html, /5 projects/);
+  assert.match(html, /₱250,000 total overrun/);
+  assert.doesNotMatch(html, /None identified/);
+});
+
+test("does not claim zero bid overrun when bid-amount coverage is absent", () => {
+  const html = renderToStaticMarkup(createElement(ExecutiveKpis, {
+    kpis: {
+      totalProjects: 100,
+      allocatedBudget: 1_000_000,
+      actualBidAmount: 0,
+      completionRate: 60,
+      delayedProjects: 0,
+      atRiskProjects: 0,
+      bidExceedsBudgetCount: 0,
+      bidOverrunTotal: 0,
+    },
+    assessedProjects: 0,
+    coverage: {
+      total: 100,
+      withBudget: 100,
+      withActualBidAmount: 0,
+      withSchedule: 0,
+      withPhysicalProgress: 0,
+      withFinancialData: 0,
+    },
+  }));
+
+  assert.match(html, /Requires both an approved budget and a supplier bid amount on record/);
+  assert.doesNotMatch(html, /None identified/);
 });

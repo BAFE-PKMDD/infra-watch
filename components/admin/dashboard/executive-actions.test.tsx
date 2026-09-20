@@ -14,7 +14,7 @@ test("renders at most three actionable insights and applies a trusted filter", (
     filter: index === 0 ? { health: "delayed" as const } : undefined,
   }));
   const html = renderToStaticMarkup(createElement(ExecutiveInsights, { insights, onApplyFilter: () => undefined }));
-  assert.match(html, /Needs Attention/);
+  assert.match(html, /Projects needing attention/);
   assert.match(html, /Detail 1/);
   assert.match(html, /Detail 3/);
   assert.doesNotMatch(html, /Detail 4/);
@@ -80,7 +80,7 @@ test("renders a keyboard-usable priority table with reason and canonical project
       },
     }],
   }));
-  assert.match(html, /Priority Projects/);
+  assert.match(html, /Projects requiring review/);
   assert.match(html, /9 days overdue/);
   assert.match(html, /₱|PHP/);
   assert.match(html, /42%/);

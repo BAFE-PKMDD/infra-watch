@@ -1,6 +1,7 @@
 "use client";
 
 import { FileText, RefreshCw } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -10,6 +11,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { tryParseManagerialDashboardFilters } from "@/lib/analytics/dashboard-filters";
 import { useManagerialDashboard } from "@/hooks/use-managerial-dashboard";
 import type { ManagerialDashboardFilters } from "@/types/managerial-dashboard.types";
+import { ChartEmptyState, ChartPanel } from "./chart-panel";
 import { DataCoverage } from "./data-coverage";
 import {
   buildDrillthroughSelection,
@@ -23,12 +25,24 @@ import { DashboardSkeleton } from "./dashboard-skeleton";
 import { DashboardState } from "./dashboard-state";
 import { ExecutiveInsights } from "./executive-insights";
 import { ExecutiveKpis } from "./executive-kpis";
+import { FundingYearChart } from "./funding-year-chart";
 import { OptionalManagerialAiCopilot } from "./managerial-ai-copilot";
+import { PortfolioTrendChart } from "./portfolio-trend-chart";
 import { ProgressVarianceChart } from "./progress-variance-chart";
 import { PriorityProjectsTable } from "./priority-projects-table";
 import { ProjectTypeBudgetChart } from "./project-type-budget-chart";
 import { RegionalPerformanceChart } from "./regional-performance-chart";
 import { ScheduleHealthChart } from "./schedule-health-chart";
+
+// Leaflet touches browser globals at module load time, so this chart must never be part
+// of the server render, not just deferred until mount.
+const RegionMapChart = dynamic(
+  () => import("./region-map-chart").then((mod) => mod.RegionMapChart),
+  {
+    ssr: false,
+    loading: () => <ChartPanel title="Where are delayed projects concentrated?" description="Loading map…" summary="Loading map…"><ChartEmptyState title="Loading map…" /></ChartPanel>,
+  },
+);
 
 export function ManagerialDashboardClient({
   managerialAiEnabled = false,
@@ -94,8 +108,8 @@ export function ManagerialDashboardClient({
     ? `/executive-brief?${executiveBriefParams.toString()}`
     : "/executive-brief";
   return (
-    <div className="space-y-6" aria-busy={query.isFetching}>
-      <div className="flex flex-col gap-3 border-y border-slate-200 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+    <div className="space-y-8" aria-busy={query.isFetching}>
+      <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
         <DataFreshness freshness={data.freshness} asOf={data.asOf} />
         <div className="flex flex-wrap items-center gap-2">
           <OptionalManagerialAiCopilot
@@ -105,13 +119,13 @@ export function ManagerialDashboardClient({
             onRefresh={() => query.refetch({ throwOnError: true })}
           />
           {managerialAiEnabled && (
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" className="min-h-11 px-4 text-[15px]" asChild>
               <Link href={executiveBriefHref}>
                 <FileText /> Executive Brief
               </Link>
             </Button>
           )}
-          <Button variant="default" size="sm" onClick={() => query.refetch()} disabled={query.isFetching}>
+          <Button variant="default" className="min-h-11 px-4 text-[15px] transition-transform active:scale-[0.98] motion-reduce:transition-none" onClick={() => query.refetch()} disabled={query.isFetching}>
             <RefreshCw className={query.isFetching ? "animate-spin motion-reduce:animate-none" : ""} />
             Refresh
           </Button>
@@ -120,7 +134,7 @@ export function ManagerialDashboardClient({
 
       {query.isRefetchError && <DashboardState state="refreshError" />}
       {query.isPlaceholderData && (
-        <div role="status" aria-live="polite" className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <div role="status" aria-live="polite" className="text-[15px] font-medium text-slate-600 dark:text-slate-300">
           Updating dashboard filters…
         </div>
       )}
@@ -135,32 +149,40 @@ export function ManagerialDashboardClient({
             coverage={data.coverage}
             assessedProjects={data.scheduleHealth.reduce((total, entry) => entry.key === "notAssessed" ? total : total + entry.count, 0)}
           />
+          <PortfolioTrendChart trend={data.trend} />
           <ExecutiveInsights insights={data.insights} onApplyFilter={applyPartialFilters} />
           <DataCoverage coverage={data.coverage} />
           <PriorityProjectsTable projects={data.priorityProjects} />
 
-          <section aria-label="Primary portfolio charts" className="grid items-start gap-4 lg:grid-cols-2">
+          <RegionMapChart
+            data={data.regions}
+            onSelect={(region) => updateFilters(mergeDashboardFilter(filters, "region", region))}
+          />
+
+          <section aria-label="Primary portfolio charts" className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-300 duration-500 grid items-start gap-4 motion-reduce:animate-none lg:grid-cols-2">
             <DelayedProjectsByRegionChart
               data={data.regions}
-              onSelect={(region) => updateFilters(mergeDashboardFilter(filters, "region", region))}
-              onDrillthrough={(region) => setDrillthrough(buildDrillthroughSelection(filters, { kind: "delayedRegion", region }))}
+              filters={filters}
+              viewerKey={user?.id}
+              onDrillthrough={(region, province) => setDrillthrough(buildDrillthroughSelection(filters, { kind: "delayedRegion", region, province }))}
             />
             <ProjectTypeBudgetChart
               data={data.projectTypes}
-              onSelect={(projectType) => updateFilters(mergeDashboardFilter(filters, "projectType", projectType))}
-              onDrillthrough={(projectType, excludedProjectTypes) => setDrillthrough(buildDrillthroughSelection(filters, { kind: "projectType", projectType, excludedProjectTypes }))}
+              filters={filters}
+              viewerKey={user?.id}
+              onDrillthrough={(projectType, options) => setDrillthrough(buildDrillthroughSelection(filters, { kind: "projectType", projectType, excludedProjectTypes: options?.excludedProjectTypes, program: options?.program }))}
             />
           </section>
 
-          <details className="group rounded-md border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-950/40">
-            <summary className="cursor-pointer list-none px-4 py-3 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
-              <span className="inline-flex items-center gap-2 text-base font-semibold text-slate-950 dark:text-white">
+          <details className="group animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-500 duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900">
+            <summary className="cursor-pointer list-none px-4 py-3.5 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
+              <span className="inline-flex items-center gap-2">
                 <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-90">›</span>
-                Detailed Analytics
+                <span className="text-base font-semibold text-slate-950 dark:text-white">Schedule and progress</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">Project timing, reported progress, and regional comparisons</span>
               </span>
-              <span className="ml-3 text-xs font-normal text-slate-500 dark:text-slate-400">Project timing, reported progress, and regional comparisons</span>
             </summary>
-            <div className="grid items-start gap-4 border-t border-slate-200 p-4 lg:grid-cols-2 dark:border-slate-800">
+            <div className="grid items-start gap-4 border-t border-slate-100 p-4 lg:grid-cols-2 dark:border-slate-800">
               <ScheduleHealthChart
                 data={data.scheduleHealth}
                 onSelect={(health) => updateFilters(mergeDashboardFilter(filters, "health", health))}
@@ -174,11 +196,15 @@ export function ManagerialDashboardClient({
                 onSelect={(region) => updateFilters(mergeDashboardFilter(filters, "region", region))}
                 onDrillthrough={(region, metric) => setDrillthrough(buildDrillthroughSelection(filters, { kind: "regionalMetric", region, metric }))}
               />
-              {data.progressVariance.length > 0 && (
-                <div className="lg:col-span-2">
-                  <ProgressVarianceChart data={data.progressVariance} />
-                </div>
-              )}
+              <div className="lg:col-span-2">
+                <FundingYearChart
+                  data={data.fundingYears}
+                  onSelect={(yearFunded) => updateFilters(mergeDashboardFilter(filters, "year", yearFunded))}
+                />
+              </div>
+              <div className="lg:col-span-2">
+                <ProgressVarianceChart data={data.progressVariance} />
+              </div>
             </div>
           </details>
         </>

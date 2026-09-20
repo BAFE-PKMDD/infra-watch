@@ -1,10 +1,12 @@
-import { and, desc, eq, ilike, inArray, isNull, notInArray, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, isNull, notInArray, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 
 import { mapInternalToPublicStage } from "@/constants/stage-mapping";
 import { db } from "@/lib/db";
 import { projectMetricSnapshots, projects, syncLogs } from "@/lib/db/schema";
 import { getProjectScopeConditions, type ScopedUser } from "@/lib/scope";
 import type {
+  DashboardBreakdownDimension,
+  ManagerialDashboardBreakdownData,
   ManagerialDashboardData,
   ManagerialDashboardDrillthroughData,
   ManagerialDashboardFilters,
@@ -133,6 +135,7 @@ type DashboardQueryName =
   | "statuses"
   | "regions"
   | "projectTypes"
+  | "fundingYears"
   | "progressVariance"
   | "priorityProjects"
   | "filterOptions";
@@ -158,7 +161,7 @@ function canonicalStatusExpression() {
   return sql<ProjectStatusFilter>`case
     when lower(btrim(${projects.status})) = 'suspended' then 'suspended'
     when lower(btrim(${projects.status})) in ('completed', 'inventory') then 'completed'
-    when lower(btrim(${projects.status})) in ('ongoing', 'implementation') then 'ongoing'
+    when lower(btrim(${projects.status})) in ('ongoing', 'implementation', 'under-construction', 'for turn-over') then 'ongoing'
     when lower(btrim(${projects.status})) in (
       'proposal', 'pre-implementation', 'procurement', 'not yet started',
       'incomplete documents', 'planned', 'under-procurement', 'proposal validated',
@@ -380,6 +383,9 @@ export function buildDashboardAggregateQueryPlan(
   const isDelayed = sql`${base.health} = 'delayed'`;
   const isAtRisk = sql`${base.health} = 'atRisk'`;
   const isAssessed = sql`${base.health} <> 'notAssessed'`;
+  // "abc" is the supplier's actual bid amount, not a cost estimate; a bid above the
+  // approved budget is a data-quality/oversight signal, not spending or utilization.
+  const isBidOverBudget = sql`${base.allocatedBudget} is not null and ${base.actualBidAmount} is not null and ${base.actualBidAmount} > ${base.allocatedBudget}`;
 
   const summary = db.select({
     total: count,
@@ -393,6 +399,9 @@ export function buildDashboardAggregateQueryPlan(
     delayed: numberSql(sql`coalesce(sum(case when ${isDelayed} then 1 else 0 end), 0)::int`),
     atRisk: numberSql(sql`coalesce(sum(case when ${isAtRisk} then 1 else 0 end), 0)::int`),
     dueSoon: numberSql(sql`coalesce(sum(case when ${isAtRisk} and ${base.daysToTarget} between 0 and 30 then 1 else 0 end), 0)::int`),
+    bidExceedsBudgetCount: numberSql(sql`coalesce(sum(case when ${isBidOverBudget} then 1 else 0 end), 0)::int`),
+    bidOverrunTotal: sql<number>`round(coalesce(sum(case when ${isBidOverBudget} then ${base.actualBidAmount} - ${base.allocatedBudget} else 0 end), 0) * 100)::bigint`
+      .mapWith(currencyFromCents),
   }).from(base).where(filtered);
 
   const scheduleHealth = db.select({
@@ -425,6 +434,16 @@ export function buildDashboardAggregateQueryPlan(
     allocatedBudget: budget,
     delayed: numberSql(sql`sum(case when ${isDelayed} then 1 else 0 end)::int`),
   }).from(base).where(filtered).groupBy(projectTypeLabel);
+
+  const yearFundedLabel = label(base.yearFunded).as("year_funded_label");
+  const fundingYears = db.select({
+    yearFunded: yearFundedLabel,
+    total: count,
+    assessed: numberSql(sql`sum(case when ${isAssessed} then 1 else 0 end)::int`),
+    completed: numberSql(sql`sum(case when ${isCompleted} then 1 else 0 end)::int`),
+    delayed: numberSql(sql`sum(case when ${isDelayed} then 1 else 0 end)::int`),
+    allocatedBudget: budget,
+  }).from(base).where(filtered).groupBy(yearFundedLabel);
 
   const progressVariance = db.select({
     projectId: base.projectId,
@@ -474,10 +493,58 @@ export function buildDashboardAggregateQueryPlan(
     { name: "statuses", query: statuses },
     { name: "regions", query: regions },
     { name: "projectTypes", query: projectTypes },
+    { name: "fundingYears", query: fundingYears },
     { name: "progressVariance", query: progressVariance },
     { name: "priorityProjects", query: priorityProjects },
     { name: "filterOptions", query: filterOptions },
   ] as const satisfies ReadonlyArray<{ name: DashboardQueryName; query: { toSQL(): unknown } }>;
+}
+
+/**
+ * Single-level breakdown used by dashboard chart drill-down (region -> province,
+ * project type -> program). Reuses the same base/scope/filter pipeline as
+ * `buildDashboardAggregateQueryPlan` so role-based scope and every active
+ * dashboard filter (including the drilled-into region/projectType, passed in
+ * `filters`) apply automatically; only the group-by column changes.
+ *
+ * Query building is kept separate from execution (mirroring
+ * `buildDashboardScopeCountQuery`/`buildDashboardDrillthroughQueryPlan`) so
+ * tests can prove this is a grouped, aggregate read via `.toSQL()` without a
+ * live database connection.
+ */
+export function buildDashboardBreakdownQuery(
+  filters: ManagerialDashboardFilters,
+  user: ScopedUser,
+  asOf: string,
+  dimension: DashboardBreakdownDimension,
+) {
+  const base = dashboardBaseQuery(filters, user, asOf);
+  const filtered = filteredBaseCondition(base, filters);
+  const label = (column: AnyColumn) => sql<string>`coalesce(nullif(btrim(${column}), ''), ${UNKNOWN})`;
+  const column = dimension === "province" ? base.province : base.program;
+  const groupLabel = label(column).as(`${dimension}_label`);
+
+  return db
+    .select({
+      key: groupLabel,
+      total: numberSql(sql`count(*)::int`),
+      delayed: numberSql(sql`sum(case when ${base.health} = 'delayed' then 1 else 0 end)::int`),
+      allocatedBudget: currencySumSql(base.allocatedBudget),
+    })
+    .from(base)
+    .where(filtered)
+    .groupBy(groupLabel)
+    .orderBy(desc(sql`count(*)`));
+}
+
+export async function getDashboardBreakdown(
+  filters: ManagerialDashboardFilters,
+  user: ScopedUser,
+  dimension: DashboardBreakdownDimension,
+): Promise<ManagerialDashboardBreakdownData> {
+  const asOf = manilaDateKey(new Date());
+  const rows = await buildDashboardBreakdownQuery(filters, user, asOf, dimension);
+  return { asOf, dimension, rows };
 }
 
 export function aggregateManagerialDashboardRows(
@@ -507,6 +574,15 @@ export function aggregateManagerialDashboardRows(
   const completed = rows.filter((row) => row.canonicalStatus === "completed").length;
   const delayed = rows.filter((row) => row.health === "delayed").length;
   const atRisk = rows.filter((row) => row.health === "atRisk").length;
+  const bidOverBudgetRows = rows.filter((row) => {
+    const rowBudget = toNumber(row.allocatedBudget);
+    const rowBid = toNumber(row.actualBidAmount);
+    return rowBudget !== null && rowBid !== null && rowBid > rowBudget;
+  });
+  const bidExceedsBudgetCount = bidOverBudgetRows.length;
+  const bidOverrunTotal = sum(
+    bidOverBudgetRows.map((row) => toNumber(row.actualBidAmount)! - toNumber(row.allocatedBudget)!),
+  );
   const priorityProjects = rows
     .filter((row) => row.health === "delayed" || row.health === "atRisk")
     .map(toPriorityProject)
@@ -538,6 +614,21 @@ export function aggregateManagerialDashboardRows(
       allocatedBudget: sum(groupedRows.map((row) => row.allocatedBudget)),
       delayed: groupedRows.filter((row) => row.health === "delayed").length,
     }),
+  );
+
+  const fundingYears = groupRows(rows, (row) => normalizedLabel(row.yearFunded)).map(
+    ([yearFunded, groupedRows]) => {
+      const yearCompleted = groupedRows.filter((row) => row.canonicalStatus === "completed").length;
+      return {
+        yearFunded,
+        total: groupedRows.length,
+        assessed: groupedRows.filter((row) => row.health !== "notAssessed").length,
+        completed: yearCompleted,
+        delayed: groupedRows.filter((row) => row.health === "delayed").length,
+        completionRate: safePercentage(yearCompleted, groupedRows.length),
+        allocatedBudget: sum(groupedRows.map((row) => row.allocatedBudget)),
+      };
+    },
   );
 
   const coverage = {
@@ -583,6 +674,8 @@ export function aggregateManagerialDashboardRows(
       completionRate: safePercentage(completed, rows.length),
       delayedProjects: delayed,
       atRiskProjects: atRisk,
+      bidExceedsBudgetCount,
+      bidOverrunTotal,
     },
     scheduleHealth,
     regions: regions.sort((a, b) => {
@@ -593,6 +686,7 @@ export function aggregateManagerialDashboardRows(
     projectTypes: projectTypes.sort(
       (a, b) => b.allocatedBudget - a.allocatedBudget || a.projectType.localeCompare(b.projectType),
     ),
+    fundingYears: fundingYears.sort((a, b) => a.yearFunded.localeCompare(b.yearFunded, undefined, { numeric: true })),
     progressVariance: rows
       .filter(
         (row) =>
@@ -623,6 +717,9 @@ export function aggregateManagerialDashboardRows(
         allEnrichedRows.map((row) => row.canonicalStatus),
       ) as ProjectStatusFilter[],
     },
+    // This aggregator works from an already-loaded row set with no snapshot history
+    // available, so it honestly reports no trend rather than fabricating one.
+    trend: { status: "insufficientHistory", points: [], sampleCount: 0, spanDays: 0, maxGapDays: 0 },
   };
   const dueSoonCount = rows.filter(
     (row) =>
@@ -651,11 +748,13 @@ export async function getManagerialDashboardData(
     statusRows,
     regionRows,
     projectTypeRows,
+    fundingYearRows,
     varianceRows,
     priorityRows,
     optionRows,
     latestSyncRows,
     latestSuccessfulRows,
+    trendRows,
   ] = await Promise.all([
     plan[0].query,
     plan[1].query,
@@ -665,6 +764,7 @@ export async function getManagerialDashboardData(
     plan[5].query,
     plan[6].query,
     plan[7].query,
+    plan[8].query,
     db
       .select({ status: syncLogs.status })
       .from(syncLogs)
@@ -677,6 +777,7 @@ export async function getManagerialDashboardData(
       .where(and(eq(syncLogs.resource, "project"), eq(syncLogs.status, "completed")))
       .orderBy(desc(syncLogs.completedAt))
       .limit(1),
+    buildPortfolioTrendQuery(filters, user, asOf),
   ]);
 
   const summary = summaryRows[0] ?? {
@@ -691,6 +792,8 @@ export async function getManagerialDashboardData(
     delayed: 0,
     atRisk: 0,
     dueSoon: 0,
+    bidExceedsBudgetCount: 0,
+    bidOverrunTotal: 0,
   };
   const scheduleByKey = new Map(scheduleRows.map((row) => [row.key, row]));
   const optionRow = optionRows[0] ?? {
@@ -745,6 +848,8 @@ export async function getManagerialDashboardData(
       completionRate: safePercentage(summary.completed, summary.total),
       delayedProjects: summary.delayed,
       atRiskProjects: summary.atRisk,
+      bidExceedsBudgetCount: summary.bidExceedsBudgetCount,
+      bidOverrunTotal: summary.bidOverrunTotal,
     },
     scheduleHealth: (["onTrack", "atRisk", "delayed", "notAssessed"] as const).map((key) => ({
       key,
@@ -764,6 +869,10 @@ export async function getManagerialDashboardData(
       || a.region.localeCompare(b.region)),
     projectTypes: [...projectTypeRows].sort((a, b) =>
       b.allocatedBudget - a.allocatedBudget || a.projectType.localeCompare(b.projectType)),
+    fundingYears: fundingYearRows.map((row) => ({
+      ...row,
+      completionRate: safePercentage(row.completed, row.total),
+    })).sort((a, b) => a.yearFunded.localeCompare(b.yearFunded, undefined, { numeric: true })),
     progressVariance: varianceRows.map((row) => ({
       projectId: row.projectId,
       projectName: row.projectName,
@@ -810,6 +919,7 @@ export async function getManagerialDashboardData(
       projectTypes: [...optionRow.projectTypes].sort(byLabel),
       statuses: [...optionRow.statuses].sort(byLabel),
     },
+    trend: aggregatePortfolioTrendRows(trendRows),
   };
   data.insights = generateInsights(data, summary.dueSoon);
   return data;
@@ -845,6 +955,101 @@ function canonicalStatus(status: string | null): ProjectStatusFilter {
   if (stage === "Completed") return "completed";
   if (stage === "On going") return "ongoing";
   return "planned";
+}
+
+const TREND_DAY_MS = 86_400_000;
+const TREND_MIN_SAMPLES = 3;
+const TREND_MIN_SPAN_DAYS = 14;
+const TREND_MAX_GAP_DAYS = 7;
+const TREND_LOOKBACK_DAYS = 60;
+
+// Snapshots are only captured for non-completed projects (activeSnapshotCondition in
+// project-metric-snapshots.ts drops "completed"/"inventory" rows before insert), so a
+// completion-rate trend derived from this table would read 0% forever by construction.
+// Average physical progress of the active pipeline is what this data can honestly show.
+//
+// Filters use as-captured snapshot columns (a project's region/program at the time of
+// capture), per the historical-filter contract in docs/dashboard-kpi-definitions.md.
+// Authorization scope still uses the project's current region/program via the join.
+//
+// Bounded to the last TREND_LOOKBACK_DAYS: without a bound, one isolated pre-fix
+// snapshot (e.g. from a run of sync failures) would sit in the data forever and create a
+// permanent gap larger than TREND_MAX_GAP_DAYS, keeping the trend "insufficient" even
+// after months of clean daily history. The window lets an old gap eventually age out.
+export function buildPortfolioTrendQuery(filters: ManagerialDashboardFilters, user: ScopedUser, asOf: string = manilaDateKey(new Date())) {
+  const cutoff = new Date(`${asOf}T00:00:00.000Z`);
+  cutoff.setUTCDate(cutoff.getUTCDate() - TREND_LOOKBACK_DAYS);
+  const cutoffDate = cutoff.toISOString().slice(0, 10);
+
+  const conditions = [...getProjectScopeConditions(user), gte(projectMetricSnapshots.captureDate, cutoffDate)];
+  if (filters.program) conditions.push(dimensionCondition(projectMetricSnapshots.program, filters.program, false));
+  if (filters.year) conditions.push(dimensionCondition(projectMetricSnapshots.yearFunded, filters.year, false));
+  if (filters.region) conditions.push(dimensionCondition(projectMetricSnapshots.region, filters.region, true));
+  if (filters.province) conditions.push(dimensionCondition(projectMetricSnapshots.province, filters.province, true));
+  if (filters.projectType) conditions.push(dimensionCondition(projectMetricSnapshots.projectType, filters.projectType, true));
+
+  return db
+    .select({
+      date: projectMetricSnapshots.captureDate,
+      averageProgress: numberSql(sql`coalesce(avg(${projectMetricSnapshots.physicalProgress}), 0)`),
+      sampleSize: numberSql(sql`count(${projectMetricSnapshots.physicalProgress})::int`),
+      total: numberSql(sql`count(*)::int`),
+    })
+    .from(projectMetricSnapshots)
+    .innerJoin(projects, eq(projects.abemisId, projectMetricSnapshots.projectId))
+    .where(and(...conditions))
+    .groupBy(projectMetricSnapshots.captureDate)
+    .orderBy(projectMetricSnapshots.captureDate);
+}
+
+function daysBetween(later: string, earlier: string) {
+  return Math.round((new Date(later).getTime() - new Date(earlier).getTime()) / TREND_DAY_MS);
+}
+
+export function aggregatePortfolioTrendRows(
+  rows: Array<{ date: string; averageProgress: number; sampleSize: number; total: number }>,
+): ManagerialDashboardData["trend"] {
+  const allPoints = rows
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((row) => ({
+      date: row.date,
+      averageProgress: round(row.averageProgress),
+      sampleSize: row.sampleSize,
+      total: row.total,
+    }));
+
+  // Only the most recent unbroken run (no gap over TREND_MAX_GAP_DAYS between consecutive
+  // dates) is used. An older, isolated point separated by a large gap (e.g. left over from
+  // a prior run of sync failures) is dropped entirely, rather than either drawing a
+  // misleading line across the gap or letting that old point block readiness once the
+  // recent run is already long enough to stand on its own.
+  let start = allPoints.length - 1;
+  while (start > 0 && daysBetween(allPoints[start].date, allPoints[start - 1].date) <= TREND_MAX_GAP_DAYS) {
+    start -= 1;
+  }
+  const points = allPoints.slice(Math.max(start, 0));
+
+  const sampleCount = points.length;
+  const spanDays = sampleCount >= 2 ? daysBetween(points.at(-1)!.date, points[0].date) : 0;
+  const maxGapDays = sampleCount >= 2
+    ? Math.max(...points.slice(1).map((point, index) => daysBetween(point.date, points[index].date)))
+    : 0;
+
+  const status: ManagerialDashboardData["trend"]["status"] =
+    sampleCount < TREND_MIN_SAMPLES || spanDays < TREND_MIN_SPAN_DAYS
+      ? "insufficientHistory"
+      : "ready";
+
+  return { status, points, sampleCount, spanDays, maxGapDays };
+}
+
+export async function getPortfolioProgressTrend(
+  filters: ManagerialDashboardFilters,
+  user: ScopedUser,
+): Promise<ManagerialDashboardData["trend"]> {
+  const rows = await buildPortfolioTrendQuery(filters, user);
+  return aggregatePortfolioTrendRows(rows);
 }
 
 function toPriorityProject(

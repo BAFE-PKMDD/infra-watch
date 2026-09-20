@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, RefreshCw, Send, Sparkles, Square, Trash2, X } from "lucide-react";
+import { Download, MessageSquareText, RefreshCw, Send, Square, Trash2, X } from "lucide-react";
 import {
   type KeyboardEvent,
   forwardRef,
@@ -28,7 +28,7 @@ const SUGGESTIONS = [
   "What is the total budget allocated for these projects?",
 ];
 const DISCLAIMER =
-  "AI-generated analysis—verify against the dashboard before making official decisions.";
+  "AI-generated analysis. Verify against the dashboard before making official decisions.";
 
 export function isManagerialAiFeatureEnabled(value: string | undefined) {
   return value === "true";
@@ -48,9 +48,9 @@ const FILTER_LABELS: Array<[
 ];
 
 function humanize(value: string) {
-  if (value === "atRisk") return "At risk";
-  if (value === "onTrack") return "On track";
-  if (value === "notAssessed") return "Not assessed";
+  if (value === "atRisk") return "At risk of delay";
+  if (value === "onTrack") return "On schedule";
+  if (value === "notAssessed") return "Cannot be assessed";
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
@@ -353,8 +353,8 @@ export const ManagerialAiCopilot = forwardRef<ManagerialAiCopilotHandle, Manager
 
   if (!open && !embedded) {
     return (
-      <Button ref={launcherRef} variant="outline" onClick={() => setOpen(true)}>
-        <Sparkles /> Ask ANIA
+      <Button ref={launcherRef} variant="outline" className="min-h-11" onClick={() => setOpen(true)}>
+        <MessageSquareText /> Ask ANIA
       </Button>
     );
   }
@@ -376,20 +376,21 @@ export const ManagerialAiCopilot = forwardRef<ManagerialAiCopilotHandle, Manager
               {embedded ? "Ask ANIA about this executive brief" : "ANIA"}
             </h2>
             <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-              Data as of {asOf}
+              Schedule assessment date: {asOf}
             </p>
           </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
+              className="size-11"
               onClick={() => void refresh()}
               disabled={refreshing}
               aria-label="Refresh ANIA"
             >
               <RefreshCw className={refreshing ? "animate-spin motion-reduce:animate-none" : ""} />
             </Button>
-            {!embedded ? <Button variant="ghost" size="icon" onClick={close} aria-label="Close ANIA">
+            {!embedded ? <Button variant="ghost" size="icon" className="size-11" onClick={close} aria-label="Close ANIA">
               <X />
             </Button> : null}
           </div>
@@ -414,7 +415,7 @@ export const ManagerialAiCopilot = forwardRef<ManagerialAiCopilotHandle, Manager
             </p>
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((suggestion) => (
-                <Button key={suggestion} variant="outline" size="sm" onClick={() => void send(suggestion)}>
+                <Button key={suggestion} variant="outline" size="sm" className="min-h-11" onClick={() => void send(suggestion)}>
                   {suggestion}
                 </Button>
               ))}
@@ -460,7 +461,7 @@ export const ManagerialAiCopilot = forwardRef<ManagerialAiCopilotHandle, Manager
           {status}
         </p>
         {lastPrompt && !loading && (
-          <Button variant="outline" size="sm" onClick={() => void send(lastPrompt)}>
+          <Button variant="outline" size="sm" className="min-h-11" onClick={() => void send(lastPrompt)}>
             Retry last question
           </Button>
         )}
@@ -473,23 +474,23 @@ export const ManagerialAiCopilot = forwardRef<ManagerialAiCopilotHandle, Manager
             disabled={loading}
             maxLength={4_000}
             aria-label="Ask ANIA"
-            placeholder="Ask about project risks, regions, or priority projects..."
-            className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900"
+            placeholder="Ask about project risks, regions, or projects requiring review"
+            className="h-11 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900"
           />
           {loading ? (
-            <Button variant="outline" size="icon" onClick={() => controllerRef.current?.abort()} aria-label="Cancel response">
+            <Button variant="outline" size="icon" className="size-11" onClick={() => controllerRef.current?.abort()} aria-label="Cancel response">
               <Square />
             </Button>
           ) : (
-            <Button size="icon" onClick={() => void send()} disabled={!input.trim()} aria-label="Send question">
+            <Button size="icon" className="size-11" onClick={() => void send()} disabled={!input.trim()} aria-label="Send question">
               <Send />
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={clear} aria-label="Clear conversation">
+          <Button variant="ghost" size="icon" className="size-11" onClick={clear} aria-label="Clear conversation">
             <Trash2 />
           </Button>
         </div>
-        <p className="mt-3 text-center text-[11px] font-medium text-amber-800 dark:text-amber-200">
+        <p className="mt-3 text-center text-xs font-medium text-amber-800 dark:text-amber-200">
           {DISCLAIMER}
         </p>
       </div>

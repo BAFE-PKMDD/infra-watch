@@ -27,10 +27,13 @@ const emptyData = {
     completionRate: 0,
     delayedProjects: 0,
     atRiskProjects: 0,
+    bidExceedsBudgetCount: 0,
+    bidOverrunTotal: 0,
   },
   scheduleHealth: [],
   regions: [],
   projectTypes: [],
+  fundingYears: [],
   progressVariance: [],
   priorityProjects: [],
   insights: [],
@@ -42,6 +45,7 @@ const emptyData = {
     projectTypes: [],
     statuses: [],
   },
+  trend: { status: "insufficientHistory" as const, points: [], sampleCount: 0, spanDays: 0, maxGapDays: 0 },
 };
 
 function request(query = "") {

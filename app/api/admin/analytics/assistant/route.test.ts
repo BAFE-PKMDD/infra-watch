@@ -12,8 +12,13 @@ import {
   managerialAiHistoryOwnerKey,
   managerialAiStepPreparation,
   managerialDashboardContextMatches,
+  resolveManagerialAiSystemInstruction,
 } from "./route";
 import { EXECUTIVE_BRIEF_PROMPT } from "@/lib/analytics/executive-brief";
+import {
+  EXECUTIVE_BRIEF_SYSTEM_INSTRUCTION,
+  MANAGERIAL_AI_SYSTEM_INSTRUCTION,
+} from "@/lib/analytics/managerial-ai-prompt";
 
 const admin = { id: "admin-1", role: "admin" };
 const moderator = { id: "mod-1", role: "moderator", region: "08", assignedAgency: "AMEFIP" };
@@ -49,6 +54,12 @@ test("gives executive briefs a larger bounded generation budget without changing
   });
   assert.ok(EXECUTIVE_BRIEF_MAX_OUTPUT_TOKENS > MANAGERIAL_AI_MAX_OUTPUT_TOKENS);
   assert.ok(EXECUTIVE_BRIEF_TOOL_STEPS < EXECUTIVE_BRIEF_MAX_STEPS);
+});
+
+test("gives executive briefs their own system instruction instead of the chat one", () => {
+  assert.equal(resolveManagerialAiSystemInstruction("chat"), MANAGERIAL_AI_SYSTEM_INSTRUCTION);
+  assert.equal(resolveManagerialAiSystemInstruction("executive-brief"), EXECUTIVE_BRIEF_SYSTEM_INSTRUCTION);
+  assert.notEqual(EXECUTIVE_BRIEF_SYSTEM_INSTRUCTION, MANAGERIAL_AI_SYSTEM_INSTRUCTION);
 });
 
 test("forces the trusted current summary before model-authored text", () => {

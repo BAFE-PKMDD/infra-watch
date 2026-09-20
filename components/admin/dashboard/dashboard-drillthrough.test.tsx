@@ -69,6 +69,28 @@ test("builds exact chart drill-through filters while preserving active dashboard
   });
 });
 
+test("carries the drilled-in province or program into the chart drill-through filters", () => {
+  const droppedProvince = buildDrillthroughSelection({ region: "Region VIII", province: "Samar" }, {
+    kind: "delayedRegion",
+    region: "Cordillera Administrative Region (CAR)",
+    province: "Ifugao",
+  });
+  assert.equal(droppedProvince.title, "Delayed projects in Ifugao, Cordillera Administrative Region (CAR)");
+  assert.deepEqual(droppedProvince.filters, {
+    region: "Cordillera Administrative Region (CAR)",
+    province: "Ifugao",
+    health: "delayed",
+  });
+
+  const programDrill = buildDrillthroughSelection({}, {
+    kind: "projectType",
+    projectType: "Irrigation Canal",
+    program: "INS",
+  });
+  assert.equal(programDrill.title, "INS projects in Irrigation Canal");
+  assert.deepEqual(programDrill.filters, { projectType: "Irrigation Canal", program: "INS" });
+});
+
 test("renders project-level details, filter context, canonical links, and NTP info", () => {
   const html = renderToStaticMarkup(createElement(DashboardDrillthroughResults, {
     data,
@@ -88,6 +110,23 @@ test("renders project-level details, filter context, canonical links, and NTP in
   assert.match(html, /\/projects\/P-001/);
   assert.match(html, /NTP:/);
   assert.match(html, /412 CD/);
+});
+
+test("shows keyboard pagination controls and a retryable page-load error", () => {
+  const html = renderToStaticMarkup(createElement(DashboardDrillthroughResults, {
+    data,
+    filters: { health: "delayed" },
+    allProjects: data.projects,
+    hasMore: true,
+    loadingMore: false,
+    loadMoreError: "Additional projects could not be loaded.",
+    onLoadMore: () => undefined,
+    sentinelRef: () => undefined,
+  }));
+
+  assert.match(html, /Additional projects could not be loaded/);
+  assert.match(html, />Retry loading projects</);
+  assert.match(html, /type="button"/);
 });
 
 test("distinguishes an empty result from a loading failure", () => {

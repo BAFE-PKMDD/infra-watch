@@ -10,7 +10,7 @@ const data: ManagerialDashboardData = {
   asOf: "2026-08-10",
   freshness: { lastSuccessfulSyncAt: "2026-08-10T01:00:00Z", latestSyncStatus: "success", isStale: false, staleAfterHours: 48 },
   coverage: { total: 10, withBudget: 9, withActualBidAmount: 8, withSchedule: 7, withPhysicalProgress: 6, withFinancialData: 8 },
-  kpis: { totalProjects: 10, allocatedBudget: 1_000_000, actualBidAmount: 850_000, completionRate: 40, delayedProjects: 2, atRiskProjects: 1 },
+  kpis: { totalProjects: 10, allocatedBudget: 1_000_000, actualBidAmount: 850_000, completionRate: 40, delayedProjects: 2, atRiskProjects: 1, bidExceedsBudgetCount: 0, bidOverrunTotal: 0 },
   scheduleHealth: [
     { key: "onTrack", count: 4, budget: 300_000 }, { key: "atRisk", count: 1, budget: 200_000 },
     { key: "delayed", count: 2, budget: 400_000 }, { key: "notAssessed", count: 3, budget: 100_000 },
@@ -21,6 +21,7 @@ const data: ManagerialDashboardData = {
   ],
   regions: [{ region: "Region VIII", total: 10, assessed: 7, completed: 4, delayed: 2, atRisk: 1, completionRate: 40, allocatedBudget: 1_000_000 }],
   projectTypes: [{ projectType: "Farm-to-market road", total: 10, allocatedBudget: 1_000_000, delayed: 2 }],
+  fundingYears: [{ yearFunded: "2026", total: 10, assessed: 7, completed: 4, delayed: 2, completionRate: 40, allocatedBudget: 1_000_000 }],
   progressVariance: [{ projectId: "p-1", projectName: "Road package", expectedProgress: 80, physicalProgress: 50, variance: -30, health: "delayed" }],
   priorityProjects: [
     { projectId: "p-1", projectName: "Road package", program: "AMEFIP", region: "Region VIII", province: "Leyte", projectType: "Road", allocatedBudget: 400_000, physicalProgress: 50, targetCompletionDate: "2026-07-01", daysToTarget: -40, scheduleVariance: -30, health: "delayed", reason: "Behind expected progress", forecast: { status: "projected", projectedCompletionDate: "2026-10-01", confidence: "medium", targetRisk: true } },
@@ -28,6 +29,7 @@ const data: ManagerialDashboardData = {
   ],
   insights: [{ severity: "critical", title: "Delayed budget exposure", detail: "Two delayed projects account for ₱400,000.", filter: { health: "delayed" } }],
   filterOptions: { programs: ["AMEFIP"], years: ["2026"], regions: ["Region VIII"], provinces: ["Leyte"], projectTypes: ["Road"], statuses: ["planned", "ongoing", "completed", "suspended"] },
+  trend: { status: "insufficientHistory", points: [], sampleCount: 0, spanDays: 0, maxGapDays: 0 },
 };
 
 test("summarizes only evidence-backed forecast availability", () => {
@@ -39,13 +41,13 @@ test("summarizes only evidence-backed forecast availability", () => {
 
 test("renders generated brief analytics using plain-language management sections", () => {
   const html = renderToStaticMarkup(createElement(ExecutiveBriefAnalytics, { data }));
-  for (const label of ["Current Status &amp; Overview", "Risk &amp; Problem Areas", "Forecast &amp; Future Outlook", "Action Items &amp; Recommendations"]) {
+  for (const label of ["Current portfolio status", "Projects needing attention", "Completion projections", "Recommended follow-up"]) {
     assert.match(html, new RegExp(label, "i"));
   }
   assert.match(html, /Are projects on schedule\?/);
   assert.match(html, /Regional performance ranking/);
-  assert.match(html, /1 of 2 priority projects have an evidence-backed projected completion date/);
+  assert.match(html, /1 of 2 projects requiring review have an evidence-backed projected completion date/);
   assert.match(html, /Insufficient history/);
-  assert.match(html, /Priority Projects/);
+  assert.match(html, /Projects requiring review/);
   assert.match(html, /Road package/);
 });

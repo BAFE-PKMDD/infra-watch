@@ -13,7 +13,7 @@ export default async function DashboardPage() {
     <AdminPageWrapper
       breadcrumbs={[{ label: "Admin" }, { label: "Analytics" }]}
       title={DASHBOARD_TITLE}
-      description="Monitor project status, budget utilization, and regional performance."
+      description="Monitor project delivery, approved budgets, and regional performance."
     >
       <Suspense fallback={<DashboardSkeleton />}>
         <ManagerialDashboardClient

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BrainCircuit, ClipboardCheck, ScanSearch } from "lucide-react";
+import { AlertTriangle, ChartNoAxesCombined, ClipboardCheck, ScanSearch } from "lucide-react";
 
 import type { ManagerialDashboardData } from "@/types/managerial-dashboard.types";
 import { ExecutiveInsights } from "./executive-insights";
@@ -47,7 +47,7 @@ function LensHeading({
     <div className="mb-4 flex items-start gap-3">
       <div className="rounded-xl bg-blue-50 p-2.5 text-primary dark:bg-blue-950/40">{icon}</div>
       <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-primary">{eyebrow}</p>
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">{eyebrow}</p>
         <h2 className="mt-1 text-xl font-extrabold tracking-tight text-slate-950 dark:text-white">{title}</h2>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>
       </div>
@@ -57,15 +57,15 @@ function LensHeading({
 
 export function ExecutiveBriefAnalytics({ data }: { data: ManagerialDashboardData }) {
   const forecasts = summarizeForecastReadiness(data.priorityProjects);
-  const projectedLabel = `${forecasts.projected.toLocaleString("en-PH")} of ${forecasts.total.toLocaleString("en-PH")} priority projects have an evidence-backed projected completion date.`;
+  const projectedLabel = `${forecasts.projected.toLocaleString("en-PH")} of ${forecasts.total.toLocaleString("en-PH")} projects requiring review have an evidence-backed projected completion date.`;
 
   return (
     <div className="space-y-8">
       <section aria-labelledby="brief-descriptive-heading">
         <LensHeading
           icon={<ScanSearch className="size-5" />}
-          eyebrow="Current Status & Overview"
-          title="What is the current status of all projects?"
+          eyebrow="Current portfolio status"
+          title="What does the current portfolio record show?"
           description="Official totals, allocated budget, completion, and current project schedule status from the captured scope."
         />
         <div id="brief-descriptive-heading" className="space-y-4">
@@ -80,9 +80,9 @@ export function ExecutiveBriefAnalytics({ data }: { data: ManagerialDashboardDat
 
       <section aria-labelledby="brief-diagnostic-heading">
         <LensHeading
-          icon={<BrainCircuit className="size-5" />}
-          eyebrow="Risk & Problem Areas"
-          title="Where are the main problem areas?"
+          icon={<ChartNoAxesCombined className="size-5" />}
+          eyebrow="Projects needing attention"
+          title="Where does delivery evidence require review?"
           description="Regional comparisons and reported-versus-expected project progress show where delivery may need closer review."
         />
         <div id="brief-diagnostic-heading" className="grid gap-4 xl:grid-cols-2">
@@ -94,8 +94,8 @@ export function ExecutiveBriefAnalytics({ data }: { data: ManagerialDashboardDat
       <section aria-labelledby="brief-predictive-heading">
         <LensHeading
           icon={<AlertTriangle className="size-5" />}
-          eyebrow="Forecast & Future Outlook"
-          title="What does the project history project?"
+          eyebrow="Completion projections"
+          title="Which projects have evidence-backed completion projections?"
           description="Forecasts appear only where approved snapshot history supports a projection. Current on-schedule and at-risk labels are based on rules, not a trained prediction."
         />
         <div id="brief-predictive-heading" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -109,9 +109,9 @@ export function ExecutiveBriefAnalytics({ data }: { data: ManagerialDashboardDat
       <section aria-labelledby="brief-prescriptive-heading">
         <LensHeading
           icon={<ClipboardCheck className="size-5" />}
-          eyebrow="Action Items & Recommendations"
-          title="What should management examine or act on next?"
-          description="Advisory actions are tied to priority projects and risks. They do not modify records or replace official management decisions."
+          eyebrow="Recommended follow-up"
+          title="What should management review next?"
+          description="Advisory actions are tied to the listed projects and risks. They do not modify records or replace official management decisions."
         />
         <div id="brief-prescriptive-heading" className="space-y-4">
           <ExecutiveInsights insights={data.insights} onApplyFilter={() => undefined} interactive={false} />
