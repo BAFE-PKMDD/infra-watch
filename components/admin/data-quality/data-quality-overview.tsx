@@ -1,71 +1,49 @@
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Info, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
+import { KpiCard } from "@/components/admin/dashboard/kpi-card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ISSUE_LABELS, formatFindingCurrentValue } from "@/lib/data-quality/format";
 import type { DataQualityReport } from "@/types/data-quality.types";
-
-const ISSUE_LABELS = {
-  missing_approved_budget: "Missing approved budget",
-  missing_actual_bid_amount: "Missing supplier bid amount",
-  bid_exceeds_approved_budget: "Bid exceeds approved budget",
-  missing_location: "Missing location",
-  invalid_coordinates: "Invalid coordinates",
-  duplicate_project_code: "Duplicate project code",
-  stale_source_record: "Not seen in latest successful sync",
-} as const;
 
 export function DataQualityOverview({ report }: { report: DataQualityReport }) {
   const { summary } = report;
 
   return (
     <div className="space-y-6">
-      <section aria-labelledby="data-quality-summary" className="space-y-3">
-        <div>
-          <h2 id="data-quality-summary" className="text-base font-extrabold text-slate-950 dark:text-white">Quality overview</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            Financial rules use <strong>Approved budget</strong> for allocated amount and <strong>Supplier actual bid amount</strong> for ABC.
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Project counts are unique records. Finding counts are detected issues, and one project can have multiple findings.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <SummaryCard label="Projects scanned" value={summary.totalProjectsScanned} tone="neutral" />
-          <SummaryCard label="Projects with findings" value={summary.projectsWithFindings} tone="neutral" />
-          <SummaryCard label="Total findings" value={summary.totalIssues} tone="neutral" />
-          <SummaryCard label="Critical findings" value={summary.critical} tone="critical" />
-          <SummaryCard label="Warning findings" value={summary.warning} tone="warning" />
-          <SummaryCard label="Informational findings" value={summary.info} tone="info" />
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30" aria-labelledby="cleanup-preview-title">
-        <div className="flex items-start gap-3">
-          <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-700 dark:text-amber-300" />
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 id="cleanup-preview-title" className="font-extrabold text-amber-950 dark:text-amber-100">Cleanup candidates</h2>
-              <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-amber-900 dark:bg-amber-900 dark:text-amber-100">Preview only</span>
-            </div>
-            <p className="text-sm text-amber-900 dark:text-amber-100">
-              {summary.cleanupCandidateCount.toLocaleString("en-PH")} records were not observed in the latest successful source sync. These are included in the warning findings above. This is a recommendation only. No record is cleaned, changed, archived, or removed by Data Quality.
-            </p>
-          </div>
+      <section aria-labelledby="data-quality-summary" className="rounded-lg border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+        <h2 id="data-quality-summary" className="sr-only">Quality overview</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <KpiCard
+            label="Critical findings"
+            value={formatSummaryValue(summary.critical)}
+            definition="Findings that block reliable reporting, such as a missing approved budget. Review these first."
+            icon={<AlertTriangle className="size-4" />}
+            tone="critical"
+          />
+          <KpiCard
+            label="Warning findings"
+            value={formatSummaryValue(summary.warning)}
+            definition="Findings that may affect accuracy, such as a bid over budget or unverified coordinates."
+            icon={<AlertTriangle className="size-4" />}
+            tone="warning"
+          />
+          <KpiCard
+            label="Informational findings"
+            value={formatSummaryValue(summary.info)}
+            definition="Findings that may be expected, such as a bid amount not yet available before bidding closes."
+            icon={<Info className="size-4" />}
+            tone="info"
+          />
         </div>
       </section>
 
       <section aria-labelledby="quality-issues-title" className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 id="quality-issues-title" className="text-base font-extrabold text-slate-950 dark:text-white">Detected issues</h2>
-            <p className="text-sm text-slate-600 dark:text-slate-300">Review each recommendation against authoritative source evidence. This report cannot change project records.</p>
-          </div>
-          <span className="text-xs font-bold uppercase tracking-wide text-slate-500">View only</span>
-        </div>
+        <h2 id="quality-issues-title" className="sr-only">Detected issues</h2>
 
         {report.issues.length === 0 ? (
-          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
-            <CheckCircle2 className="size-5" />
+          <div className="flex items-center gap-3 rounded-lg border border-slate-200 border-l-[3px] border-l-emerald-500 bg-white p-5 text-sm text-slate-700 dark:border-slate-800 dark:border-l-emerald-500 dark:bg-slate-900 dark:text-slate-200">
+            <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
             No issues match the current filters.
           </div>
         ) : (
@@ -74,7 +52,7 @@ export function DataQualityOverview({ report }: { report: DataQualityReport }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Project</TableHead>
-                  <TableHead>Findings and recommendations</TableHead>
+                  <TableHead>Findings</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -86,25 +64,17 @@ export function DataQualityOverview({ report }: { report: DataQualityReport }) {
                       </Link>
                       <p className="mt-1 font-mono text-xs text-slate-500">{row.project.projectCode ?? row.project.abemisId}</p>
                     </TableCell>
-                    <TableCell className="min-w-[32rem] whitespace-normal">
+                    <TableCell className="min-w-[24rem] whitespace-normal">
                       <div className="divide-y divide-slate-200 dark:divide-slate-800">
                         {row.findings.map((finding) => (
-                          <div key={`${finding.type}-${finding.field}`} className="py-3 first:pt-0 last:pb-0">
-                            <div className="flex items-start gap-2">
+                          <div key={`${finding.type}-${finding.field}`} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+                            <span className="inline-flex min-w-0 items-center gap-2">
                               <SeverityIcon severity={finding.severity} />
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <p className="font-bold">{ISSUE_LABELS[finding.type]}</p>
-                                  <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                                    Current: {formatCurrentValue(finding.currentValue)}
-                                  </span>
-                                </div>
-                                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{finding.message}</p>
-                                <p className="mt-2 text-xs text-slate-800 dark:text-slate-100">
-                                  <strong>Recommendation:</strong> {finding.recommendation}
-                                </p>
-                              </div>
-                            </div>
+                              <span className="truncate text-sm font-bold">{ISSUE_LABELS[finding.type]}</span>
+                            </span>
+                            <span className="shrink-0 rounded-md bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                              Current: {formatFindingCurrentValue(finding.type, finding.currentValue)}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -120,31 +90,12 @@ export function DataQualityOverview({ report }: { report: DataQualityReport }) {
   );
 }
 
-function SummaryCard({ label, value, tone }: { label: string; value?: number | null; tone: "neutral" | "critical" | "warning" | "info" }) {
-  const toneClass = {
-    neutral: "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
-    critical: "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30",
-    warning: "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30",
-    info: "border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30",
-  }[tone];
-  return (
-    <div className={`rounded-xl border p-4 ${toneClass}`}>
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-extrabold text-slate-950 dark:text-white">
-        {typeof value === "number" ? value.toLocaleString("en-PH") : "Unavailable"}
-      </p>
-    </div>
-  );
+function formatSummaryValue(value?: number | null) {
+  return typeof value === "number" ? value.toLocaleString("en-PH") : "Unavailable";
 }
 
 function SeverityIcon({ severity }: { severity: "critical" | "warning" | "info" }) {
   if (severity === "critical") return <AlertTriangle aria-label="Critical" className="mt-0.5 size-4 shrink-0 text-red-600" />;
   if (severity === "warning") return <AlertTriangle aria-label="Warning" className="mt-0.5 size-4 shrink-0 text-amber-600" />;
   return <Info aria-label="Information" className="mt-0.5 size-4 shrink-0 text-blue-600" />;
-}
-
-function formatCurrentValue(value: unknown) {
-  if (value === null || value === undefined || value === "") return "Missing";
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
 }

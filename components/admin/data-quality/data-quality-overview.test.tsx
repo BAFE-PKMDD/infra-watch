@@ -68,43 +68,48 @@ const report = {
   cleanupExecutionEnabled: false as const,
 };
 
-test("explains financial semantics and keeps cleanup preview-only", () => {
+test("shows severity counts and detected findings without mutating actions", () => {
   const html = renderToStaticMarkup(
     <DataQualityOverview report={report} />,
   );
 
-  assert.match(html, /Approved budget/);
-  assert.match(html, /Supplier actual bid amount/);
-  assert.match(html, /Projects with findings/);
-  assert.match(html, /Total findings/);
-  assert.match(html, /one project can have multiple findings/i);
-  assert.match(html, /Preview only/);
-  assert.match(html, /recommendation only/i);
+  assert.match(html, /Critical findings/);
+  assert.match(html, />4</);
+  assert.match(html, /Warning findings/);
+  assert.match(html, />3</);
+  assert.match(html, /Informational findings/);
+  assert.match(html, />5</);
+  assert.match(html, /Missing approved budget/);
+  assert.match(html, /Missing location/);
   assert.doesNotMatch(html, />Correct</);
   assert.doesNotMatch(html, />Clean</);
   assert.doesNotMatch(html, />Apply</);
   assert.doesNotMatch(html, />Archive</);
   assert.doesNotMatch(html, />Delete</);
-  assert.match(html, /Verify the approved budget against the authoritative allocation document/);
-  assert.match(html, /Verify the location against authoritative project records/);
   assert.equal((html.match(/\/projects\/AMEFIP-1/g) ?? []).length, 1);
 });
 
-test("is read-only without mutation callbacks", () => {
+test("keeps the summary free of the removed explanatory copy", () => {
   const html = renderToStaticMarkup(
     <DataQualityOverview report={report} />,
   );
-  assert.doesNotMatch(html, />Correct</);
-  assert.match(html, /View only/);
+
+  assert.doesNotMatch(html, /Preview only/);
+  assert.doesNotMatch(html, /Cleanup candidates/);
+  assert.doesNotMatch(html, /View only/);
+  assert.doesNotMatch(html, /What these findings mean/);
+  assert.doesNotMatch(html, /recommendation only/i);
+  assert.doesNotMatch(html, /Financial rules/);
+  assert.doesNotMatch(html, /Projects scanned/);
 });
 
 test("does not crash while a stale cached report is missing a newly added summary field", () => {
   const legacySummary = { ...report.summary } as Partial<typeof report.summary>;
-  delete legacySummary.projectsWithFindings;
+  delete legacySummary.critical;
   const legacyReport = { ...report, summary: legacySummary } as unknown as DataQualityReport;
 
   const html = renderToStaticMarkup(<DataQualityOverview report={legacyReport} />);
 
-  assert.match(html, /Projects with findings/);
+  assert.match(html, /Critical findings/);
   assert.match(html, /Unavailable/);
 });

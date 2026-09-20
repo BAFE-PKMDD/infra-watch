@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Search, ShieldCheck } from "lucide-react";
+import { Download, Search, ShieldCheck } from "lucide-react";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { DataQualityOverview } from "@/components/admin/data-quality/data-quality-overview";
@@ -35,15 +35,20 @@ export default function DataQualityPage() {
     setPage(1);
   };
 
+  const exportParams = new URLSearchParams();
+  if (type) exportParams.set("type", type);
+  if (search) exportParams.set("search", search);
+  const exportHref = `/api/admin/data-quality/export?${exportParams.toString()}`;
+
   return (
     <AdminPageWrapper
       breadcrumbs={[{ label: "Admin" }, { label: "System" }, { label: "Data Quality" }]}
       title="Data Quality"
-      description="Identify project records that may need correction or cleaning and review non-mutating recommendations."
+      description="Project records that may need correction or cleaning."
     >
       <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900" aria-label="Data quality filters">
         <form className="flex flex-col gap-3 lg:flex-row lg:items-end" onSubmit={applySearch}>
-          <div className="flex-1 space-y-1.5">
+          <div className="flex-1 space-y-1.5 lg:max-w-md">
             <Label htmlFor="quality-search">Project search</Label>
             <Input
               id="quality-search"
@@ -81,11 +86,20 @@ export default function DataQualityPage() {
           >
             Reset
           </Button>
+          <Button type="button" variant="outline" asChild>
+            <a href={exportHref} download>
+              <Download className="size-4" />
+              Export to Excel
+            </a>
+          </Button>
         </form>
       </section>
 
       {reportQuery.error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200" role="alert">
+        <div
+          className="rounded-lg border border-slate-200 border-l-[3px] border-l-red-500 bg-white p-4 text-sm font-semibold text-red-700 dark:border-slate-800 dark:border-l-red-500 dark:bg-slate-900 dark:text-red-300"
+          role="alert"
+        >
           {reportQuery.error.message}
         </div>
       )}
@@ -105,8 +119,8 @@ export default function DataQualityPage() {
         </>
       ) : null}
 
-      <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
-        <ShieldCheck className="mt-0.5 size-5 shrink-0" />
+      <div className="flex items-start gap-3 rounded-lg border border-slate-200 border-l-[3px] border-l-primary bg-white p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
         <p>Data Quality is recommendation-only. It cannot correct, clean, archive, delete, or otherwise change project records.</p>
       </div>
     </AdminPageWrapper>

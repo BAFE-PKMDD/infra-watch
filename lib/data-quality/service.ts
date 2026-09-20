@@ -14,6 +14,7 @@ import {
 const PROJECT_SELECTION = {
   id: projects.id,
   abemisId: projects.abemisId,
+  abemisRawId: projects.abemisRawId,
   projectCode: projects.projectCode,
   name: projects.name,
   status: projects.status,
@@ -32,6 +33,7 @@ export type DataQualityIssueRow = {
   project: {
     id: string;
     abemisId: string;
+    abemisRawId: string | null;
     projectCode: string | null;
     name: string;
     status: string;
@@ -48,7 +50,7 @@ export type DataQualityIssueRow = {
   findings: DataQualityIssue[];
 };
 
-type FlatDataQualityIssueRow = {
+export type FlatDataQualityIssueRow = {
   project: DataQualityIssueRow["project"];
   issue: DataQualityIssue;
 };
@@ -75,12 +77,10 @@ export type DataQualityReport = {
   cleanupExecutionEnabled: false;
 };
 
-export async function getDataQualityReport(
-  params: { type?: string; search?: string; page?: number; pageSize?: number },
+async function analyzeFilteredIssues(
+  params: { type?: string; search?: string },
   user: ScopedUser,
-): Promise<DataQualityReport> {
-  const page = Math.max(1, Number.isFinite(params.page) ? Number(params.page) : 1);
-  const pageSize = Math.min(100, Math.max(10, Number.isFinite(params.pageSize) ? Number(params.pageSize) : 25));
+) {
   const type = DATA_QUALITY_ISSUE_TYPES.includes(params.type as DataQualityIssueType)
     ? params.type as DataQualityIssueType
     : undefined;
@@ -144,6 +144,11 @@ export async function getDataQualityReport(
   const issueCounts = Object.fromEntries(DATA_QUALITY_ISSUE_TYPES.map((issueType) => [issueType, 0])) as Record<DataQualityIssueType, number>;
   for (const row of allIssues) issueCounts[row.issue.type] += 1;
   const filtered = type ? allIssues.filter((row) => row.issue.type === type) : allIssues;
+
+  return { projectRows, allIssues, filtered, issueCounts, latestSuccessfulSyncStartedAt };
+}
+
+function groupIssuesByProject(filtered: FlatDataQualityIssueRow[]): DataQualityIssueRow[] {
   const grouped = new Map<string, DataQualityIssueRow>();
   for (const row of filtered) {
     const existing = grouped.get(row.project.id);
@@ -153,7 +158,20 @@ export async function getDataQualityReport(
       grouped.set(row.project.id, { project: row.project, findings: [row.issue] });
     }
   }
-  const groupedProjects = Array.from(grouped.values());
+  return Array.from(grouped.values());
+}
+
+export async function getDataQualityReport(
+  params: { type?: string; search?: string; page?: number; pageSize?: number },
+  user: ScopedUser,
+): Promise<DataQualityReport> {
+  const page = Math.max(1, Number.isFinite(params.page) ? Number(params.page) : 1);
+  const pageSize = Math.min(100, Math.max(10, Number.isFinite(params.pageSize) ? Number(params.pageSize) : 25));
+
+  const { projectRows, allIssues, filtered, issueCounts, latestSuccessfulSyncStartedAt } =
+    await analyzeFilteredIssues(params, user);
+
+  const groupedProjects = groupIssuesByProject(filtered);
   const offset = (page - 1) * pageSize;
 
   return {
@@ -177,4 +195,12 @@ export async function getDataQualityReport(
     },
     cleanupExecutionEnabled: false,
   };
+}
+
+export async function getDataQualityExportRows(
+  params: { type?: string; search?: string },
+  user: ScopedUser,
+): Promise<DataQualityIssueRow[]> {
+  const { filtered } = await analyzeFilteredIssues(params, user);
+  return groupIssuesByProject(filtered);
 }
