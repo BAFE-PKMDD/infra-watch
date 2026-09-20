@@ -6,7 +6,7 @@ import { aggregateProjectStatusCounts } from "@/lib/project-status-statistics";
 import { mapPublicToInternalStages } from "@/constants/stage-mapping";
 import { fetchInfraProjects } from "./client";
 import { isInfraWatchProject, transformAbemisProject } from "./transform";
-import { eq, sql, or, ilike, and, inArray } from "drizzle-orm";
+import { eq, sql, or, ilike, and, inArray, gte } from "drizzle-orm";
 import { getProjectScopeConditions, type ScopedUser } from "@/lib/scope";
 
 import {
@@ -470,6 +470,20 @@ export async function getSyncStatistics() {
         }
       : null,
   };
+}
+
+export async function hasRecentSuccessfulSync(withinHours = 20) {
+  const cutoff = new Date(Date.now() - withinHours * 60 * 60 * 1000);
+  const [row] = await db
+    .select({ id: syncLogs.id })
+    .from(syncLogs)
+    .where(and(
+      eq(syncLogs.resource, "project"),
+      eq(syncLogs.status, "completed"),
+      gte(syncLogs.completedAt, cutoff),
+    ))
+    .limit(1);
+  return Boolean(row);
 }
 
 export async function getAdminProjectStats(user?: ScopedUser) {

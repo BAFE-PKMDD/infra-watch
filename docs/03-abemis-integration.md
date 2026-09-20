@@ -81,7 +81,16 @@ function mapAbemisStatus(abemisStatus: string): 'planned' | 'ongoing' | 'complet
     case 'on going':
     case 'ongoing':
     case 'under construction':
+    case 'under-construction':
       return 'ongoing';
+    // "for turn-over" means construction is finished but the project has not been
+    // administratively handed over yet. It is deliberately mapped to 'ongoing' rather
+    // than 'completed': the project isn't closed out, and a project that has sat in
+    // this status past its target completion date is meant to surface as delayed
+    // (an administrative closeout delay, not a construction delay).
+    case 'for turn-over':
+      return 'ongoing';
+    // A fully turned-over project (administratively closed) is completed.
     case 'completed':
     case 'turned over':
     case 'turned-over':

@@ -30,6 +30,11 @@ export const STAGE_MAPPING: Record<string, PublicStage> = {
   "Implementation-ready with recommendations": "Not yet started",
   "Implementation-ready": "Not yet started",
   "For Review": "Not yet started",
+  // ABEMIS sends these hyphenated/prefixed variants of the "under construction" and
+  // "turned over" statuses documented in docs/03-abemis-integration.md; neither the
+  // documented exact strings nor the substring fallback below actually match them.
+  "Under-Construction": "On going",
+  "For Turn-Over": "On going",
 };
 
 /**
