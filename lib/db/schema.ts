@@ -144,6 +144,13 @@ export const feedback = pgTable(
     moderatedBy: text("moderated_by"),
     moderatedAt: timestamp("moderated_at", { mode: "date" }),
     moderationNote: text("moderation_note"),
+    autoAcknowledgedAt: timestamp("auto_acknowledged_at", { mode: "date" }),
+    // SLA follow-up reminder checkpoints (24h moderator nudge, 60h moderator+admin
+    // escalation, 72h admin breach alert). Each is set once its reminder has been sent,
+    // so the follow-up job never re-notifies the same checkpoint twice.
+    slaGentleReminderAt: timestamp("sla_gentle_reminder_at", { mode: "date" }),
+    slaUrgentReminderAt: timestamp("sla_urgent_reminder_at", { mode: "date" }),
+    slaBreachNotifiedAt: timestamp("sla_breach_notified_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" })
       .defaultNow()
@@ -186,6 +193,10 @@ export const issues = pgTable(
     geoVideoUrl: text("geo_video_url"),
     assignedTo: text("assigned_to"),
     resolvedAt: timestamp("resolved_at", { mode: "date" }),
+    // SLA follow-up reminder checkpoints — see the same fields on `feedback` above.
+    slaGentleReminderAt: timestamp("sla_gentle_reminder_at", { mode: "date" }),
+    slaUrgentReminderAt: timestamp("sla_urgent_reminder_at", { mode: "date" }),
+    slaBreachNotifiedAt: timestamp("sla_breach_notified_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" })
       .defaultNow()
