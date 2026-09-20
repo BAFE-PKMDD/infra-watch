@@ -9,6 +9,7 @@ type SessionUser = {
   role?: string | null;
   region?: string | null;
   assignedAgency?: string | null;
+  phoneNumber?: string | null;
 } & Record<string, unknown>;
 
 export const getSession = cache(async () => {

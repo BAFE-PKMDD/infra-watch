@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Moon, Sun, X, LogOut, LayoutDashboard, MessageSquareDot, Bell, AlertCircle, ChevronDown } from "lucide-react";
+import { Menu, Moon, Sun, X, LogOut, LayoutDashboard, MessageSquareDot, Bell, AlertCircle, ChevronDown, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -299,6 +299,14 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                           {t("nav.dashboard")}
                         </Link>
                       )}
+                      <Link
+                        href="/my-profile"
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
+                        onClick={() => setOpenOverlay(null)}
+                      >
+                        <UserRound className="w-4 h-4" />
+                        {t("nav.myProfile")}
+                      </Link>
                       <Link
                         href="/my-feedbacks"
                         className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
