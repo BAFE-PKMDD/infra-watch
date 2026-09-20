@@ -9,7 +9,7 @@ type AdminPageWrapperProps = {
 
 export function AdminPageWrapper({ title, description, breadcrumbs = [], children }: AdminPageWrapperProps) {
   return (
-    <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
       <div className="space-y-3">
         {breadcrumbs.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -22,11 +22,11 @@ export function AdminPageWrapper({ title, description, breadcrumbs = [], childre
           </div>
         )}
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white sm:text-3xl">{title}</h1>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl dark:text-white">{title}</h1>
+          <p className="mt-1.5 max-w-3xl text-base leading-7 text-slate-600 dark:text-slate-300">{description}</p>
         </div>
       </div>
-      {children}
+      <div className="animate-in fade-in slide-in-from-bottom-1 duration-500 motion-reduce:animate-none">{children}</div>
     </div>
   );
 }

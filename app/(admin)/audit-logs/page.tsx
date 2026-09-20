@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   AlertTriangle,
-  Clock,
+  ChevronRight,
   Database,
   FileWarning,
   Filter,
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
-import { getAuditLogStats, getAuditLogs } from "@/actions/query/audit-logs.query";
+import { getAuditLogs } from "@/actions/query/audit-logs.query";
 import type { AuditAction } from "@/types/audit.types";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -87,23 +87,19 @@ export default async function AuditLogsPage({
     toDate: getParam(params, "toDate") ?? "",
   };
 
-  const [logsResult, statsResult] = await Promise.all([
-    getAuditLogs({
-      page,
-      group: cleanFilter(filters.group),
-      source: cleanFilter(filters.source),
-      action: cleanFilter(filters.action),
-      category: cleanFilter(filters.category),
-      fromDate: filters.fromDate || undefined,
-      toDate: filters.toDate || undefined,
-      search: filters.search.trim() || undefined,
-    }),
-    getAuditLogStats(),
-  ]);
+  const logsResult = await getAuditLogs({
+    page,
+    group: cleanFilter(filters.group),
+    source: cleanFilter(filters.source),
+    action: cleanFilter(filters.action),
+    category: cleanFilter(filters.category),
+    fromDate: filters.fromDate || undefined,
+    toDate: filters.toDate || undefined,
+    search: filters.search.trim() || undefined,
+  });
 
   const logs = logsResult.data;
   const pagination = logsResult.pagination;
-  const stats = statsResult.data;
   const sections = groupLogs(logs);
   const activeFilters = getActiveFilters(filters);
 
@@ -111,21 +107,13 @@ export default async function AuditLogsPage({
     <AdminPageWrapper
       breadcrumbs={[{ label: "Admin" }, { label: "System" }, { label: "Audit Logs" }]}
       title="Audit Logs"
-      description="Review security, upload safety, records, and sync activity from one grouped trail."
+      description="Review security, upload safety, records, and sync activity in one chronological trail."
     >
-      {(logsResult.error || statsResult.error) && (
+      {logsResult.error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-          {logsResult.error ?? statsResult.error}
+          {logsResult.error}
         </div>
       )}
-
-      <section className="grid gap-3 md:grid-cols-5">
-        <Metric label="Total logs" value={stats.totalLogs.toLocaleString()} icon={<Clock className="size-4" />} tone="blue" />
-        <Metric label="Failed logins" value={stats.failedLogins.toLocaleString()} icon={<ShieldAlert className="size-4" />} tone="red" />
-        <Metric label="Blocked uploads" value={stats.blockedUploads.toLocaleString()} icon={<UploadCloud className="size-4" />} tone="amber" />
-        <Metric label="Nude blocks" value={stats.nsfwBlocks.toLocaleString()} icon={<AlertTriangle className="size-4" />} tone="rose" />
-        <Metric label="Last 24h" value={stats.recentActions.toLocaleString()} icon={<RefreshCw className="size-4" />} tone="slate" />
-      </section>
 
       <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap gap-2">
@@ -150,64 +138,65 @@ export default async function AuditLogsPage({
           })}
         </div>
 
-        <form className="grid gap-3 xl:grid-cols-[minmax(220px,1fr)_160px_170px_180px_150px_150px_150px_auto]">
-          <label className="min-w-0">
-            <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Search</span>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input
-                name="search"
-                defaultValue={filters.search}
-                placeholder="Email, user, file, IP, note"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-              />
-            </div>
-          </label>
-
-          <SelectFilter label="Group" name="group" value={filters.group} options={eventGroups} />
-          <SelectFilter label="Source" name="source" value={filters.source} options={sourceOptions} />
-          <SelectFilter label="Outcome" name="category" value={filters.category} options={categoryOptions} />
-          <SelectFilter label="Action" name="action" value={filters.action} options={actionLabels} />
-
-          <DateFilter label="From" name="fromDate" value={filters.fromDate} />
-          <DateFilter label="To" name="toDate" value={filters.toDate} />
-
-          <div className="flex items-end gap-2">
-            <button
-              type="submit"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white hover:bg-primary/90"
-            >
-              <Filter className="size-4" />
-              Apply
-            </button>
+        <details open={activeFilters.length > 0} className="group border-t border-slate-100 pt-3 dark:border-slate-800">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-bold text-primary [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
+            More filters
             {activeFilters.length > 0 && (
-              <Link
-                href="/audit-logs"
-                className="inline-flex size-10 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
-                aria-label="Clear filters"
-              >
-                <X className="size-4" />
-              </Link>
-            )}
-          </div>
-        </form>
-
-        {activeFilters.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-            <span className="text-xs font-extrabold uppercase tracking-wide text-slate-500 dark:text-slate-400">Active</span>
-            {activeFilters.map((item) => (
-              <span key={item} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                {item}
+              <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-extrabold text-primary">
+                {activeFilters.length} active
               </span>
-            ))}
-          </div>
-        )}
+            )}
+          </summary>
+
+          <form className="mt-3 grid gap-3 xl:grid-cols-[minmax(220px,1fr)_160px_170px_180px_150px_150px_150px_auto]">
+            <label className="min-w-0">
+              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Search</span>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  name="search"
+                  defaultValue={filters.search}
+                  placeholder="Email, user, file, IP, note"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+            </label>
+
+            <SelectFilter label="Group" name="group" value={filters.group} options={eventGroups} />
+            <SelectFilter label="Source" name="source" value={filters.source} options={sourceOptions} />
+            <SelectFilter label="Outcome" name="category" value={filters.category} options={categoryOptions} />
+            <SelectFilter label="Action" name="action" value={filters.action} options={actionLabels} />
+
+            <DateFilter label="From" name="fromDate" value={filters.fromDate} />
+            <DateFilter label="To" name="toDate" value={filters.toDate} />
+
+            <div className="flex items-end gap-2">
+              <button
+                type="submit"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white hover:bg-primary/90"
+              >
+                <Filter className="size-4" />
+                Apply
+              </button>
+              {activeFilters.length > 0 && (
+                <Link
+                  href="/audit-logs"
+                  className="inline-flex size-10 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+                  aria-label="Clear filters"
+                >
+                  <X className="size-4" />
+                </Link>
+              )}
+            </div>
+          </form>
+        </details>
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-2 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
           <div>
-            <h2 className="text-base font-extrabold text-slate-950 dark:text-white">Grouped Trail</h2>
+            <h2 className="text-base font-extrabold text-slate-950 dark:text-white">Trail</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">{pagination.total.toLocaleString()} recorded events</p>
           </div>
           <div className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -218,31 +207,29 @@ export default async function AuditLogsPage({
         {sections.length === 0 ? (
           <EmptyState activeFilters={activeFilters} />
         ) : (
-          <div className="divide-y divide-slate-200 dark:divide-slate-800">
-            {sections.map((section) => (
-              <div key={section.key} className="p-4">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={getGroupIconClass(section.group)}>
-                      {getGroupIcon(section.group)}
-                    </span>
-                    <div>
-                      <h3 className="text-sm font-extrabold text-slate-950 dark:text-white">{section.group}</h3>
-                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{section.day}</p>
-                    </div>
-                  </div>
-                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-extrabold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    {section.logs.length} event{section.logs.length === 1 ? "" : "s"}
-                  </span>
-                </div>
-
-                <div className="grid gap-3">
-                  {section.logs.map((log) => (
-                    <AuditEventCard key={log.id} log={log} />
-                  ))}
-                </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[640px]">
+              <div className="hidden gap-3 border-b border-slate-200 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-500 sm:grid sm:grid-cols-[76px_84px_minmax(0,1fr)_170px_20px] dark:border-slate-800 dark:text-slate-400">
+                <span>Time</span>
+                <span>Action</span>
+                <span>Event</span>
+                <span>Actor</span>
+                <span className="sr-only">Details</span>
               </div>
-            ))}
+
+              {sections.map((section) => (
+                <div key={section.key}>
+                  <div className="border-b border-slate-100 bg-slate-50 px-4 py-1.5 text-xs font-bold text-slate-500 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400">
+                    {section.day}
+                  </div>
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {section.logs.map((log) => (
+                      <AuditTrailRow key={log.id} log={log} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -262,61 +249,48 @@ export default async function AuditLogsPage({
   );
 }
 
-function AuditEventCard({ log }: { log: AuditLogRow }) {
+function AuditTrailRow({ log }: { log: AuditLogRow }) {
   return (
-    <article className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={getActionClass(log.action)}>{log.action}</span>
-            <span className="rounded-md bg-white px-2 py-1 font-mono text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
-              {sourceLabel(log.tableName)}
-            </span>
-            {log.eventCategory && (
-              <span className="rounded-md border border-slate-200 px-2 py-1 text-xs font-bold text-slate-600 dark:border-slate-800 dark:text-slate-300">
-                {categoryLabel(log.eventCategory)}
-              </span>
-            )}
-          </div>
-          <div>
-            <h4 className="text-sm font-extrabold text-slate-950 dark:text-white">{log.displayTitle}</h4>
-            <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {formatTime(log.createdAt)} by {log.userName || "System"} {log.ipAddress ? `from ${log.ipAddress}` : ""}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <span>Record {shorten(log.recordId)}</span>
-            {log.fileName && <span>File {log.fileName}</span>}
-            {log.mimeType && <span>MIME {log.mimeType}</span>}
-            {Array.isArray(log.changedFields) && log.changedFields.length > 0 && (
-              <span>{log.changedFields.length} changed field{log.changedFields.length === 1 ? "" : "s"}</span>
-            )}
-          </div>
-        </div>
+    <details className="group">
+      <summary
+        className="flex cursor-pointer list-none flex-col gap-1 px-4 py-2.5 text-sm hover:bg-slate-50 sm:grid sm:grid-cols-[76px_84px_minmax(0,1fr)_170px_20px] sm:items-center sm:gap-3 dark:hover:bg-slate-800/60 [&::-webkit-details-marker]:hidden"
+      >
+        <time className="font-mono text-xs text-slate-500 dark:text-slate-400" dateTime={new Date(log.createdAt).toISOString()}>
+          {formatTime(log.createdAt)}
+        </time>
+        <span className={getActionTextClass(log.action)}>{log.action}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className={getGroupDotClass(log.eventGroup)} aria-hidden="true" />
+          <span className="truncate font-semibold text-slate-900 dark:text-slate-100">{log.displayTitle}</span>
+        </span>
+        <span className="truncate text-xs font-semibold text-slate-500 dark:text-slate-400">{log.userName || "System"}</span>
+        <ChevronRight className="hidden size-3.5 shrink-0 text-slate-400 transition-transform group-open:rotate-90 sm:block" />
+      </summary>
 
-        <details className="lg:w-[420px]">
-          <summary className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-            <Fingerprint className="size-3.5" />
-            Inspect
-          </summary>
-          <div className="mt-3 space-y-3 whitespace-normal rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-            {log.notes && <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{log.notes}</p>}
-            {Array.isArray(log.changedFields) && log.changedFields.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {log.changedFields.map((field) => (
-                  <span key={field} className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    {field}
-                  </span>
-                ))}
-              </div>
-            )}
-            <LogValues title="Before" value={log.oldValues} tone="red" />
-            <LogValues title="After" value={log.newValues} tone="green" />
-            {log.userAgent && <p className="break-all font-mono text-[11px] text-slate-500 dark:text-slate-400">{log.userAgent}</p>}
+      <div className="space-y-3 border-t border-slate-100 bg-slate-50 px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950/40">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <span>Record {shorten(log.recordId)}</span>
+          <span>Source {sourceLabel(log.tableName)}</span>
+          {log.eventCategory && <span>Outcome {categoryLabel(log.eventCategory)}</span>}
+          {log.ipAddress && <span>IP {log.ipAddress}</span>}
+          {log.fileName && <span>File {log.fileName}</span>}
+          {log.mimeType && <span>MIME {log.mimeType}</span>}
+        </div>
+        {log.notes && <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{log.notes}</p>}
+        {Array.isArray(log.changedFields) && log.changedFields.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {log.changedFields.map((field) => (
+              <span key={field} className="rounded-md bg-white px-2 py-1 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                {field}
+              </span>
+            ))}
           </div>
-        </details>
+        )}
+        <LogValues title="Before" value={log.oldValues} tone="red" />
+        <LogValues title="After" value={log.newValues} tone="green" />
+        {log.userAgent && <p className="break-all font-mono text-[11px] text-slate-500 dark:text-slate-400">{log.userAgent}</p>}
       </div>
-    </article>
+    </details>
   );
 }
 
@@ -384,36 +358,6 @@ function EmptyState({ activeFilters }: { activeFilters: string[] }) {
   );
 }
 
-function Metric({
-  label,
-  value,
-  icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  tone: "blue" | "red" | "amber" | "rose" | "slate";
-}) {
-  const toneClass = {
-    blue: "text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-300",
-    red: "text-red-600 bg-red-50 dark:bg-red-950/40 dark:text-red-300",
-    amber: "text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300",
-    rose: "text-rose-600 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-300",
-    slate: "text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300",
-  }[tone];
-
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        <span className={`inline-flex size-7 items-center justify-center rounded-lg ${toneClass}`}>{icon}</span>
-        {label}
-      </div>
-      <p className="mt-3 text-2xl font-extrabold text-slate-950 dark:text-white">{value}</p>
-    </div>
-  );
-}
-
 function LogValues({ title, value, tone }: { title: string; value: unknown; tone: "red" | "green" }) {
   if (!value) return null;
 
@@ -452,14 +396,13 @@ function PageLink({
 }
 
 function groupLogs(logs: AuditLogRow[]) {
-  const buckets = new Map<string, { key: string; day: string; group: string; logs: AuditLogRow[] }>();
+  const buckets = new Map<string, { key: string; day: string; logs: AuditLogRow[] }>();
 
   for (const log of logs) {
     const day = formatDay(log.createdAt);
-    const key = `${day}-${log.eventGroup}`;
-    const bucket = buckets.get(key) ?? { key, day, group: log.eventGroup, logs: [] };
+    const bucket = buckets.get(day) ?? { key: day, day, logs: [] };
     bucket.logs.push(log);
-    buckets.set(key, bucket);
+    buckets.set(day, bucket);
   }
 
   return Array.from(buckets.values());
@@ -551,25 +494,18 @@ function categoryLabel(category: string) {
   return categoryOptions.find((item) => item.value === category)?.label ?? category;
 }
 
-function getActionClass(action: string) {
-  const base = "inline-flex rounded-full px-2 py-1 text-xs font-extrabold";
+function getActionTextClass(action: string) {
+  const base = "text-xs font-extrabold";
 
-  if (action === "CREATE") return `${base} bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300`;
-  if (action === "DELETE") return `${base} bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300`;
-  return `${base} bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300`;
+  if (action === "CREATE") return `${base} text-emerald-600 dark:text-emerald-400`;
+  if (action === "DELETE") return `${base} text-red-600 dark:text-red-400`;
+  return `${base} text-blue-600 dark:text-blue-400`;
 }
 
-function getGroupIconClass(group: string) {
-  const base = "inline-flex size-9 items-center justify-center rounded-lg";
-  if (group === "Security") return `${base} bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300`;
-  if (group === "Upload Safety") return `${base} bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300`;
-  if (group === "Sync") return `${base} bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300`;
-  return `${base} bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300`;
-}
-
-function getGroupIcon(group: string) {
-  if (group === "Security") return <ShieldAlert className="size-4" />;
-  if (group === "Upload Safety") return <UploadCloud className="size-4" />;
-  if (group === "Sync") return <RefreshCw className="size-4" />;
-  return <Database className="size-4" />;
+function getGroupDotClass(group: string) {
+  const base = "inline-block size-2 shrink-0 rounded-full";
+  if (group === "Security") return `${base} bg-red-500`;
+  if (group === "Upload Safety") return `${base} bg-amber-500`;
+  if (group === "Sync") return `${base} bg-blue-500`;
+  return `${base} bg-emerald-500`;
 }
