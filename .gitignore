@@ -21,6 +21,9 @@ package-lock.json
 # production
 /build
 
+# runtime uploads (may contain citizen personal data)
+/.storage/feedback/
+
 # misc
 .DS_Store
 *.pem
