@@ -15,12 +15,12 @@ import {
   Filter,
   MapPin,
   MoreHorizontal,
-  Plus,
   Search,
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
 
+import { ReportingMethods } from "@/components/report-issue/reporting-methods";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -105,6 +105,7 @@ async function fetchIssues(params: URLSearchParams) {
 }
 
 export default function IssuesPage() {
+  const smsPrototypeEnabled = process.env.NODE_ENV !== "production";
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<IssueStatus | "all">("all");
   const [startDate, setStartDate] = useState("");
@@ -155,14 +156,16 @@ export default function IssuesPage() {
             <p className="max-w-3xl text-sm text-slate-100 md:text-base">
               Track and monitor issues reported by citizens across INFRA projects
             </p>
-            <Button asChild className="mt-5 bg-emerald-600 text-white hover:bg-emerald-700">
-              <Link href="/report-issue/new">
-                <Plus className="mr-2 size-4" /> Report New Issue
+            <Button asChild className="mt-5 min-h-11 bg-emerald-600 px-4 text-white hover:bg-emerald-700">
+              <Link href={smsPrototypeEnabled ? "#reporting-methods" : "/report-issue/new"}>
+                {smsPrototypeEnabled ? "Choose reporting method" : "Report new issue"}
               </Link>
             </Button>
           </motion.div>
         </div>
       </section>
+
+      {smsPrototypeEnabled && <ReportingMethods />}
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/70">

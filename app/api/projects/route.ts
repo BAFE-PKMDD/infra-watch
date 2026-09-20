@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
       sourceId: projects.abemisId,
       province: projects.province,
       municipality: projects.municipality,
+      region: projects.region,
     })
     .from(projects)
     .where(conditions.length > 0 ? and(...conditions) : undefined)

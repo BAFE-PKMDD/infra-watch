@@ -17,6 +17,7 @@ export interface ProjectResult {
   code?: string;
   province?: string;
   municipality?: string;
+  region?: string;
 }
 
 export interface SelectedProject {
@@ -26,6 +27,7 @@ export interface SelectedProject {
   sourceProjectId?: string;
   province?: string;
   municipality?: string;
+  region?: string;
 }
 
 interface ProjectsApiItem {
@@ -35,6 +37,7 @@ interface ProjectsApiItem {
   sourceId?: string;
   province?: string;
   municipality?: string;
+  region?: string;
 }
 
 interface ProjectSearchInputProps {
@@ -89,6 +92,7 @@ export function ProjectSearchInput({
       sourceId: p.sourceId,
       province: p.province,
       municipality: p.municipality,
+      region: p.region,
     }));
   };
 
@@ -158,6 +162,7 @@ export function ProjectSearchInput({
       sourceProjectId: project.sourceProjectId,
       province: project.province,
       municipality: project.municipality,
+      region: project.region,
     });
     setSearchInput("");
     setShowDropdown(false);
