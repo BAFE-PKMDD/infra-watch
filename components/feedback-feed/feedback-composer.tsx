@@ -260,14 +260,14 @@ export function FeedbackComposer() {
   // Non-authenticated prompt
   if (!authLoading && !isAuthenticated) {
     return (
-      <div className="bg-white dark:bg-[#0d1526] rounded-2xl border border-slate-200 dark:border-[#1e3a5f]/30 p-4 sm:p-5 mb-6">
+      <div className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-[#13233c]/60 flex items-center justify-center flex-shrink-0">
-            <LogIn className="w-4.5 h-4.5 text-slate-400" />
+          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+            <LogIn className="w-4.5 h-4.5 text-slate-500 dark:text-slate-400" />
           </div>
           <Link
             href="/sign-in"
-            className="flex-1 px-4 py-2.5 rounded-full bg-slate-100 dark:bg-[#13233c]/60 text-sm text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-[#13233c]/80 transition-colors cursor-pointer"
+            className="flex-1 px-4 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             Sign in to share your feedback on a project...
           </Link>
@@ -282,7 +282,7 @@ export function FeedbackComposer() {
   return (
     <div
       ref={composerRef}
-      className="bg-white dark:bg-[#0d1526] rounded-2xl border border-slate-200 dark:border-[#1e3a5f]/30 overflow-hidden mb-6 transition-shadow hover:shadow-md"
+      className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden mb-6 transition-shadow hover:shadow-sm"
     >
       <div className="p-4 sm:p-5">
         {/* Header */}
@@ -407,12 +407,12 @@ export function FeedbackComposer() {
                     onClick={() => setRating(star === rating ? 0 : star)}
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
-                    className="p-0 focus:outline-none transition-transform hover:scale-110"
+                    className="p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-transform hover:scale-110"
                     aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
                   >
                     <Star
                       className={`w-4 h-4 transition-colors ${star <= (hoverRating || rating)
-                        ? "fill-amber-400 text-amber-400"
+                        ? "fill-amber-500 text-amber-500"
                         : "text-slate-300 dark:text-slate-600"
                         }`}
                     />
@@ -425,7 +425,7 @@ export function FeedbackComposer() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading || media.length >= MAX_MEDIA}
-                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title={`Attach media (${media.length}/${MAX_MEDIA})`}
               >
                 {isUploading ? (
@@ -449,8 +449,8 @@ export function FeedbackComposer() {
                 type="button"
                 onClick={() => setIsAnonymous(!isAnonymous)}
                 className={`p-1.5 rounded-lg transition-colors ${isAnonymous
-                  ? "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20"
-                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#13233c]/60"
+                  ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
+                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 title={isAnonymous ? "Posting anonymously" : "Post as yourself"}
               >
@@ -462,7 +462,7 @@ export function FeedbackComposer() {
             <button
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-sky-600 shadow-sm hover:shadow-md"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-700 shadow-sm"
             >
               {isSubmitting ? (
                 <>

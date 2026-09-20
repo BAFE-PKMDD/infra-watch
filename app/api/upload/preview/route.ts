@@ -3,14 +3,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isLiveVideoUploadPath } from "@/lib/live-video-upload";
 import { downloadFile } from "@/lib/minio";
+import { isFeedbackUploadPath } from "@/lib/minio-url";
 
 export const runtime = "nodejs";
 
-const IMAGE_CONTENT_TYPES: Record<string, string> = {
+const MEDIA_CONTENT_TYPES: Record<string, string> = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
   webp: "image/webp",
+  gif: "image/gif",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
 };
 
 export async function GET(request: NextRequest) {
@@ -20,24 +25,24 @@ export async function GET(request: NextRequest) {
   }
 
   const path = request.nextUrl.searchParams.get("path") ?? "";
-  if (!isLiveVideoUploadPath(path)) {
-    return NextResponse.json({ error: "Invalid live-video preview path." }, { status: 400 });
+  if (!isLiveVideoUploadPath(path) && !isFeedbackUploadPath(path)) {
+    return NextResponse.json({ error: "Invalid upload preview path." }, { status: 400 });
   }
 
   try {
-    const image = await downloadFile(path);
+    const media = await downloadFile(path);
     const extension = path.split(".").pop()?.toLowerCase() ?? "";
 
-    return new NextResponse(new Uint8Array(image), {
+    return new NextResponse(new Uint8Array(media), {
       headers: {
         "Cache-Control": "private, no-store",
         "Content-Disposition": "inline",
-        "Content-Type": IMAGE_CONTENT_TYPES[extension] ?? "application/octet-stream",
+        "Content-Type": MEDIA_CONTENT_TYPES[extension] ?? "application/octet-stream",
         "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error) {
-    console.error("Live-video preview failed", error);
-    return NextResponse.json({ error: "Thumbnail preview is unavailable." }, { status: 404 });
+    console.error("Upload preview failed", error);
+    return NextResponse.json({ error: "Media preview is unavailable." }, { status: 404 });
   }
 }

@@ -11,7 +11,7 @@ import {
   type SyntheticEvent,
 } from "react";
 import Link from "next/link";
-import { Maximize2 } from "lucide-react";
+import { Camera, Maximize2 } from "lucide-react";
 import {
   CircleMarker,
   MapContainer,
@@ -229,6 +229,30 @@ function GeoVideoPopupPlayer({
   );
 }
 
+function EvidenceImage({ src, alt }: { src: string; alt: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className="mb-3 flex h-28 w-full flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-100/70 text-slate-500">
+        <Camera className="mb-1 size-5 text-slate-400" />
+        <span className="text-[11px] font-semibold text-slate-600">Photo preview unavailable</span>
+      </div>
+    );
+  }
+
+  return (
+    // Leaflet popups are client-only and can display MinIO/object URLs directly.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setHasError(true)}
+      className="mb-3 h-28 w-full rounded-lg object-cover"
+    />
+  );
+}
+
 function IssuePopup({
   issue,
   mediaIndex,
@@ -263,9 +287,7 @@ function IssuePopup({
   return (
     <div className="w-[min(23rem,76vw)] overflow-hidden text-slate-900">
       {media?.type === "image" && fullUrl ? (
-        // Leaflet popups are client-only and can display MinIO/object URLs directly.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={fullUrl} alt={media.name || "Geotagged issue evidence"} className="mb-3 h-28 w-full rounded-lg object-cover" />
+        <EvidenceImage src={fullUrl} alt={media.name || "Geotagged issue evidence"} />
       ) : videoUrl ? (
         <GeoVideoPopupPlayer
           issue={issue}
@@ -288,10 +310,10 @@ function IssuePopup({
           {formatLabel(issue.category)}
         </span>
       </div>
-      <p className="line-clamp-3 text-sm font-semibold leading-5">{issue.description}</p>
-      <p className="mt-2 line-clamp-2 text-xs leading-4 text-slate-500">{getSystemEvidenceLocationLabel(issue)}</p>
+      <p className="line-clamp-3 text-sm font-semibold leading-5 break-words">{issue.description}</p>
+      <p className="mt-2 line-clamp-2 text-xs leading-4 text-slate-600">{getSystemEvidenceLocationLabel(issue)}</p>
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
-        <span className="text-[11px] font-medium text-slate-500">{formatDate(issue.createdAt)}</span>
+        <span className="text-[11px] font-semibold text-slate-600">{formatDate(issue.createdAt)}</span>
         <Link
           href={issue.detailUrl}
           className="rounded-md bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"

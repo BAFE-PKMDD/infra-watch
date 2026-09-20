@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   MapPin,
+  Image as ImageIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { format } from "date-fns";
@@ -26,6 +27,38 @@ import { useAuth } from "@/providers/auth-provider";
 import type { FeedbackFeedItem, FeedbackFeedComment } from "@/types/feedback.types";
 import { ProjectPreviewSheet } from "@/components/feedback-feed/project-preview-sheet";
 
+function FeedImageAttachment({
+  src,
+  alt,
+  unoptimized,
+}: {
+  src: string;
+  alt: string;
+  unoptimized: boolean;
+}) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 p-2 text-center text-slate-600 dark:text-slate-400">
+        <ImageIcon className="size-5 mb-1 text-slate-400 dark:text-slate-500" />
+        <span className="text-xs font-medium">Image unavailable</span>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className="object-cover"
+      sizes="(max-width: 640px) 50vw, 33vw"
+      unoptimized={unoptimized}
+      onError={() => setHasError(true)}
+    />
+  );
+}
 
 function getInitials(name: string): string {
   return name
@@ -130,13 +163,13 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
     .filter((m): m is { url: string; type: "image" | "video"; caption: string | undefined } => m.url !== null);
 
   return (
-    <div className="bg-white dark:bg-[#0d1526] rounded-2xl border border-slate-200 dark:border-[#1e3a5f]/30 overflow-hidden transition-shadow hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50">
+    <div className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-shadow hover:shadow-md hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50">
       {/* Card Header */}
       <div className="p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3 mb-3">
           <div className="flex items-center gap-2.5 min-w-0">
             {/* User Avatar */}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-teal-600 flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-white dark:ring-slate-900">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-white dark:ring-slate-900">
               {userImage ? (
                 <Image
                   src={userImage}
@@ -153,21 +186,21 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+              <div className="font-bold text-sm text-slate-900 dark:text-white truncate">
                 {displayName}
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 flex-wrap">
                 <span className="whitespace-nowrap">{format(new Date(item.createdAt), "MMM d, yyyy")}</span>
                 {item.project && (
                   <>
-                    <span className="text-slate-300 dark:text-slate-600">·</span>
+                    <span className="text-slate-400 dark:text-slate-500">·</span>
                     <button
                       type="button"
                       onClick={() => setPreviewProjectId(item.project!.id)}
-                      className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline truncate max-w-[140px] sm:max-w-[200px] cursor-pointer"
+                      className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400 hover:underline truncate max-w-[240px] sm:max-w-[360px] md:max-w-[480px] cursor-pointer"
                       title={item.project.name}
                     >
-                      <MapPin className="w-3 h-3 flex-shrink-0" />
+                      <MapPin className="w-3 h-3 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
                       <span className="truncate">{item.project.name}</span>
                     </button>
                   </>
@@ -175,14 +208,6 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
               </div>
             </div>
           </div>
-
-          {/* Category badge */}
-          {/* <span
-            className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap self-start flex-shrink-0 ${categoryColors[item.category] || categoryColors.general
-              }`}
-          >
-            {categoryLabels[item.category] || item.category}
-          </span> */}
         </div>
 
         {/* Rating */}
@@ -192,7 +217,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
               <Star
                 key={star}
                 className={`w-3.5 h-3.5 ${star <= item.rating!
-                  ? "fill-amber-400 text-amber-400"
+                  ? "fill-amber-500 text-amber-500"
                   : "text-slate-300 dark:text-slate-600"
                   }`}
               />
@@ -201,7 +226,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
         )}
 
         {/* Feedback text */}
-        <p className="text-sm sm:text-[15px] text-slate-700 dark:text-slate-300 leading-relaxed">
+        <p className="text-sm sm:text-[15px] text-slate-800 dark:text-slate-200 leading-relaxed">
           {item.comment}
         </p>
 
@@ -214,17 +239,14 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
                 return (
                   <motion.div
                     key={index}
-                    className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-[#1e3a5f]/30 bg-slate-100 dark:bg-[#0d1526] cursor-pointer shadow-sm"
+                    className="group relative aspect-square rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 cursor-pointer shadow-sm"
                     whileHover={{ scale: 1.02 }}
                     onClick={() => setViewingMediaIndex(index)}
                   >
                     {mediaItem.type === "image" && mediaUrl ? (
-                      <Image
+                      <FeedImageAttachment
                         src={mediaUrl}
                         alt={mediaItem.caption || `Attachment ${index + 1}`}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 640px) 50vw, 33vw"
                         unoptimized={isLocalMinIO(mediaUrl)}
                       />
                     ) : mediaItem.type === "video" && mediaUrl ? (

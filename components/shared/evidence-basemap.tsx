@@ -135,7 +135,7 @@ export function EvidenceBasemapSelector({
       role="group"
       aria-label="Choose map style"
       className={cn(
-        "inline-flex items-center gap-1 rounded-xl border border-white/70 bg-white/95 p-1 shadow-lg shadow-slate-900/10 backdrop-blur-md dark:border-slate-700 dark:bg-slate-950/95",
+        "inline-flex items-center gap-1 rounded-xl border border-slate-200/90 bg-white/95 p-1 shadow-lg shadow-slate-900/10 backdrop-blur-md dark:border-slate-700 dark:bg-slate-950/95",
         className,
       )}
     >
@@ -152,10 +152,10 @@ export function EvidenceBasemapSelector({
             aria-label={`${option.label} map: ${option.description}`}
             title={`${option.label} - ${option.description}`}
             className={cn(
-              "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-2.5 text-xs font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1",
+              "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-xs font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1",
               selected
                 ? "bg-slate-950 text-white shadow-sm dark:bg-emerald-400 dark:text-slate-950"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white",
+                : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden="true" />

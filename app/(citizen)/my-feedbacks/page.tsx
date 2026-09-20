@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FEEDBACK_AUTO_ACKNOWLEDGMENT_MESSAGE } from "@/lib/feedback-auto-acknowledgment-message";
 import { getFullUrl } from "@/lib/minio-url";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
@@ -53,6 +54,7 @@ interface FeedbackItem {
   createdAt: string;
   updatedAt: string;
   moderationNote?: string | null;
+  autoAcknowledgedAt?: string | null;
   project: {
     id: string;
     name: string;
@@ -305,6 +307,17 @@ function FeedbackCard({
           <span className={`text-sm font-medium ${status.color}`}>{status.label}</span>
         </div>
       </div>
+
+      {item.autoAcknowledgedAt && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+          <p className="mb-1 text-sm font-medium text-slate-900 dark:text-slate-100">
+            Automatic acknowledgment:
+          </p>
+          <p className="text-sm text-slate-700 dark:text-slate-300">
+            {FEEDBACK_AUTO_ACKNOWLEDGMENT_MESSAGE}
+          </p>
+        </div>
+      )}
 
       {item.moderationNote && (
         <div

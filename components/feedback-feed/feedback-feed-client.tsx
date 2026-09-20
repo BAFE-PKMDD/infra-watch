@@ -152,9 +152,9 @@ export function FeedbackFeedClient() {
                   onClick={() => {
                     setTypeFilter(tf.value);
                   }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${typeFilter === tf.value
-                    ? "bg-sky-600 text-white shadow-sm"
-                    : "bg-white dark:bg-[#13233c]/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#1e3a5f]/30 hover:border-sky-300 dark:hover:border-sky-700"
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${typeFilter === tf.value
+                    ? "bg-emerald-700 text-white shadow-sm"
+                    : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
                     }`}
                 >
                   <tf.icon className="w-3.5 h-3.5" />
@@ -165,28 +165,26 @@ export function FeedbackFeedClient() {
 
             <button
               onClick={() => setSort(sort === "newest" ? "oldest" : "newest")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-[#13233c]/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#1e3a5f]/30 hover:border-sky-300 dark:hover:border-sky-700 transition-all self-start sm:self-auto"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors self-start sm:self-auto cursor-pointer"
             >
-              <ArrowUpDown className="w-3.5 h-3.5" />
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               {sort === "newest" ? "Newest" : "Oldest"}
             </button>
           </div>
-
-
         </div>
       )}
 
       {/* Feed list */}
       <div className="space-y-4">
         {isLoading ? (
-          // Loading skeletons — composer + search/filters + feed cards
           <>
             {/* Composer skeleton */}
-            <div className="bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-[#13233c]/60 flex-shrink-0" />
+            <div className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 p-5 mb-6 animate-pulse">
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-[#13233c]/60 flex-shrink-0" />
                 <div className="flex-1 space-y-3">
-                  <div className="h-16 w-full bg-slate-100 dark:bg-[#13233c]/40 rounded-xl" />
+                  <div className="h-9 bg-slate-100 dark:bg-[#13233c]/40 rounded-lg" />
+                  <div className="h-16 bg-slate-100 dark:bg-[#13233c]/40 rounded-lg" />
                   <div className="flex items-center justify-between">
                     <div className="flex gap-2">
                       <div className="h-7 w-16 bg-slate-100 dark:bg-[#13233c]/40 rounded-full" />
@@ -216,7 +214,7 @@ export function FeedbackFeedClient() {
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="bg-white dark:bg-[#0d1526] rounded-2xl border border-slate-200 dark:border-[#1e3a5f]/30 p-5 animate-pulse"
+                className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 p-5 animate-pulse"
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-[#13233c]/60" />
@@ -237,15 +235,15 @@ export function FeedbackFeedClient() {
         ) : feedItems.length === 0 ? (
           // Empty state
           <div className="text-center py-16">
-            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100 dark:bg-[#13233c]/60 mx-auto mb-4">
-              <Layers className="w-7 h-7 text-slate-400" />
+            <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-slate-100 dark:bg-slate-800 mx-auto mb-4">
+              <Layers className="w-7 h-7 text-slate-500 dark:text-slate-400" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
               No activity found
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            <p className="text-sm text-slate-600 dark:text-slate-300 max-w-sm mx-auto">
               {debouncedSearch || typeFilter !== "all"
-                ? "Try adjusting your search or filters."
+                ? "No items match your current filter or search."
                 : "Once citizens submit feedback or report issues on INFRA projects, it will appear here."}
             </p>
           </div>
@@ -265,8 +263,8 @@ export function FeedbackFeedClient() {
             {/* Loading indicator for next page */}
             {isFetchingNextPage && (
               <div className="flex items-center justify-center py-6">
-                <Loader2 className="w-5 h-5 animate-spin text-sky-500" />
-                <span className="ml-2 text-sm text-slate-500 dark:text-slate-400">
+                <Loader2 className="w-5 h-5 animate-spin text-emerald-600 dark:text-emerald-400" />
+                <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">
                   Loading more...
                 </span>
               </div>
@@ -274,8 +272,8 @@ export function FeedbackFeedClient() {
 
             {/* End of feed indicator */}
             {!hasNextPage && feedItems.length > 0 && (
-              <p className="text-center text-xs text-slate-400 dark:text-slate-500 pb-4 pt-2">
-                Showing all {totalCount} items
+              <p className="text-center text-xs font-semibold text-slate-600 dark:text-slate-400 pb-4 pt-2">
+                Showing {feedItems.length} of {totalCount} item{totalCount === 1 ? "" : "s"}
               </p>
             )}
           </>

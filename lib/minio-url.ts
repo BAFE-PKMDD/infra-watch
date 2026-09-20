@@ -12,6 +12,17 @@ const getMinioConfig = () => {
   return { endpoint, useSSL, bucket };
 };
 
+const FEEDBACK_UPLOAD_PATH_RE = /^feedback\/\d+-[a-f0-9]{32}\.(?:jpe?g|png|webp|gif|mp4|mov|webm)$/;
+
+export function isFeedbackUploadPath(filePath: string): boolean {
+  return FEEDBACK_UPLOAD_PATH_RE.test(filePath);
+}
+
+function isLocalMinioEndpoint(endpoint: string): boolean {
+  const host = endpoint.toLowerCase().split(":")[0];
+  return host === "localhost" || host === "127.0.0.1";
+}
+
 /**
  * Build full URL from file path
  * @param filePath - The file path (e.g., "articles/123.jpg")
@@ -19,6 +30,11 @@ const getMinioConfig = () => {
  */
 export function getFileUrl(filePath: string): string {
   const { endpoint, useSSL, bucket } = getMinioConfig();
+
+  if (isLocalMinioEndpoint(endpoint) && isFeedbackUploadPath(filePath)) {
+    return `/api/upload/preview?path=${encodeURIComponent(filePath)}`;
+  }
+
   const protocol = useSSL ? 'https' : 'http';
   return `${protocol}://${endpoint}/${bucket}/${filePath}`;
 }
@@ -49,5 +65,9 @@ export function getFullUrl(urlOrPath: string | null | undefined): string | null 
  */
 export function isLocalMinIO(url: string | null | undefined): boolean {
   if (!url) return false;
-  return url.includes('localhost:9000') || url.includes('127.0.0.1:9000');
+  return (
+    url.includes('localhost:9000') ||
+    url.includes('127.0.0.1:9000') ||
+    url.startsWith('/api/upload/preview')
+  );
 }

@@ -19,6 +19,14 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["nsfwjs", "@tensorflow/tfjs-node", "sharp", "pdf-parse", "pdfjs-dist"],
   images: {
     qualities: [70, 75, 80, 85, 90],
+    localPatterns: [
+      {
+        pathname: "/api/upload/preview",
+      },
+      {
+        pathname: "/**",
+      },
+    ],
     remotePatterns: [
       {
         protocol: "https",

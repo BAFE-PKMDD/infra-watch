@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { FeedbackFeedClient } from "@/components/feedback-feed/feedback-feed-client";
 import { FeedLeftSidebar } from "@/components/feedback-feed/feed-left-sidebar";
 import { FeedRightSidebar } from "@/components/feedback-feed/feed-right-sidebar";
-import { getBlurDataURL } from "@/lib/image-utils";
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -51,36 +49,19 @@ export default function CitizenFeedPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 dark:bg-gradient-to-br dark:from-slate-950 dark:via-[#0d1526]/30 dark:to-slate-950">
       {/* Hero Section */}
-      <div className="relative h-[280px] overflow-hidden bg-blue-950 dark:bg-[#0d1526]">
-        <div className="absolute inset-0">
-          <Image
-            src="/irrigation.png"
-            alt="Citizen Feed"
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover opacity-60 dark:opacity-10 contrast-[1.05] transition-opacity duration-300"
-            priority
-            placeholder="blur"
-            blurDataURL={getBlurDataURL(1920, 1080)}
-          />
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0d1526]/90 via-[#13233c]/85 to-[#1e3a5f]/90 dark:from-[#0d1526]/95 dark:via-[#0d1526]/90 dark:to-[#1e3a5f]/95" />
-
-        <div className="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
-          <p className="text-amber-300 text-xs font-semibold tracking-[0.3em] uppercase mb-2">
-            Community Voices
-          </p>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+      <div className="relative overflow-hidden bg-slate-900 dark:bg-[#0d1526] py-8 sm:py-10 border-b border-slate-200 dark:border-slate-800">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 tracking-tight">
             Citizen Feed
           </h1>
-          <p className="text-slate-100 max-w-3xl text-sm md:text-base leading-relaxed opacity-90">
-            Feedback, issue reports, and project insights from citizens on the ground
+          <p className="text-slate-300 max-w-3xl text-sm sm:text-base leading-relaxed">
+            Community feedback, on-the-ground observations, and reported issues across monitored infrastructure projects.
           </p>
         </div>
       </div>
 
       {/* 3-Column Layout */}
-      <main id="main-content" className="relative -mt-6 pb-16">
+      <main id="main-content" className="relative pt-6 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-6">
             {/* Left Sidebar */}
