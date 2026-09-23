@@ -3,6 +3,7 @@ import test from "node:test";
 import { and } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 
+import { ABEMIS_SYNC_YEARS } from "@/lib/abemis/year-scope";
 import {
   aggregateManagerialDashboardRows,
   aggregatePortfolioTrendRows,
@@ -116,7 +117,9 @@ test("translates Unknown dimension filters to null-or-blank SQL predicates", () 
   const query = new PgDialect().sqlToQuery(condition!);
   assert.equal((query.sql.match(/is null/g) ?? []).length, 5);
   assert.equal((query.sql.match(/btrim/g) ?? []).length, 5);
-  assert.deepEqual(query.params, []);
+  // Every dashboard query is always bounded to the 2021-2026 ABEMIS sync scope,
+  // regardless of role or filters, so those are the only bound params here.
+  assert.deepEqual(query.params, ABEMIS_SYNC_YEARS);
 });
 
 test("sums decimal currency through integer cent arithmetic", () => {

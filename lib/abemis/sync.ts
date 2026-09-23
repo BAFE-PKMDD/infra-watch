@@ -8,6 +8,7 @@ import { fetchInfraProjects } from "./client";
 import { isInfraWatchProject, transformAbemisProject } from "./transform";
 import { eq, sql, or, ilike, and, inArray, gte } from "drizzle-orm";
 import { getProjectScopeConditions, type ScopedUser } from "@/lib/scope";
+import { isYearFundedInSyncScope, projectYearScopeCondition } from "@/lib/abemis/year-scope";
 
 import {
   captureProjectMetricSnapshots,
@@ -62,7 +63,9 @@ export async function syncAbemisProjects(
       }
 
       const sourceProjects = response.data;
-      const rawProjects = sourceProjects.filter(isInfraWatchProject);
+      const rawProjects = sourceProjects.filter(
+        (project) => isInfraWatchProject(project) && isYearFundedInSyncScope(project.year_funded),
+      );
       const totalCount = response.pagination?.total_count || sourceProjects.length;
       
       onProgress?.(
@@ -454,7 +457,10 @@ export async function getSyncStatistics() {
     limit: 1,
   });
 
-  const [projectCount] = await db.select({ value: sql`count(*)` }).from(projects);
+  const [projectCount] = await db
+    .select({ value: sql`count(*)` })
+    .from(projects)
+    .where(projectYearScopeCondition());
 
   return {
     totalProjects: Number(projectCount?.value ?? 0),
@@ -486,7 +492,7 @@ export async function hasRecentSuccessfulSync(withinHours = 20) {
 }
 
 export async function getAdminProjectStats(user?: ScopedUser) {
-  const conditions = user ? getProjectScopeConditions(user) : [];
+  const conditions = user ? getProjectScopeConditions(user) : [projectYearScopeCondition()];
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const [[budgetStats], statusRows] = await Promise.all([
@@ -525,7 +531,7 @@ export async function getAdminProjects(params: {
   const page = Math.max(1, params.page ?? 1);
   const pageSize = Math.min(100, Math.max(10, params.pageSize ?? 25));
   const offset = (page - 1) * pageSize;
-  const conditions = user ? getProjectScopeConditions(user) : [];
+  const conditions = user ? getProjectScopeConditions(user) : [projectYearScopeCondition()];
 
   if (params.search) {
     const search = `%${params.search}%`;

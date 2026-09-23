@@ -523,7 +523,12 @@ export function AiAssistantWidget({
                   <span>Ctrl+Shift+V</span>
                 </div>
               )}
-              <p className="mt-2 text-center text-[10px] leading-4 text-slate-400 dark:text-slate-500">
+              <p className="mt-2 text-center text-[10px] font-medium leading-4 text-amber-700 dark:text-amber-400">
+                {adminMode
+                  ? "AI-generated answers. Verify against the dashboard before making official decisions."
+                  : "AI-generated answers. Verify against the project page before relying on them."}
+              </p>
+              <p className="mt-1 text-center text-[10px] leading-4 text-slate-400 dark:text-slate-500">
                 Messages are retained for service quality and analysis. Do not share
                 passwords or sensitive personal information.
               </p>

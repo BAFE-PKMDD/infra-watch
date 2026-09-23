@@ -39,6 +39,7 @@ import {
   type PublicProjectSort,
 } from "@/lib/public-project-directory";
 import { safePublicSourceMediaUrl } from "@/lib/public-source-media";
+import { sendCitizenEngagementEvent } from "@/lib/analytics/citizen-event-client";
 
 type CatalogMapPin = {
   id: string;
@@ -103,6 +104,8 @@ export default function ProjectsCatalog() {
   const [mapProjectType, setMapProjectType] = useState("all");
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const mapPanelRef = React.useRef<HTMLDivElement>(null);
+  const trackedSearchStatesRef = React.useRef(new Set<string>());
+  const mapViewTrackedRef = React.useRef(false);
 
   const { ref, inView } = useInView();
 
@@ -136,6 +139,7 @@ export default function ProjectsCatalog() {
   const {
     data: queryData,
     isLoading,
+    isFetching,
     isError,
     refetch,
     fetchNextPage,
@@ -210,6 +214,71 @@ export default function ProjectsCatalog() {
     if (tab) params.set("tab", tab);
     return `/projects/${encodeURIComponent(projectId)}?${params.toString()}`;
   };
+
+  const hasSearchIntent = searchQuery.trim().length >= 2
+    || activeProgram !== "all"
+    || selectedRegion !== "all"
+    || selectedProvince !== "all"
+    || selectedMunicipality !== "all"
+    || selectedBarangay !== "all"
+    || selectedStatus !== "all"
+    || selectedYear !== "all";
+  const searchIntentKey = [
+    searchQuery.trim(),
+    activeProgram,
+    selectedRegion,
+    selectedProvince,
+    selectedMunicipality,
+    selectedBarangay,
+    selectedStatus,
+    selectedYear,
+  ].join("|");
+
+  React.useEffect(() => {
+    if (!hasSearchIntent || isFetching || !queryData) return;
+    const timer = window.setTimeout(() => {
+      if (trackedSearchStatesRef.current.has(searchIntentKey)) return;
+      trackedSearchStatesRef.current.add(searchIntentKey);
+      void sendCitizenEngagementEvent({
+        eventName: "project_search_completed",
+        routeTemplate: "/projects",
+        entrySurface: "directory",
+        resultCount: totalCount,
+      });
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [hasSearchIntent, isFetching, queryData, searchIntentKey, totalCount]);
+
+  React.useEffect(() => {
+    if (viewMode !== "map" || mapViewTrackedRef.current) return;
+    mapViewTrackedRef.current = true;
+    void sendCitizenEngagementEvent({
+      eventName: "map_viewed",
+      routeTemplate: "/projects",
+      entrySurface: "map",
+    });
+  }, [viewMode]);
+
+  const recordSearchProjectOpen = (projectId: string) => {
+    if (searchQuery.trim().length < 2) return;
+    void sendCitizenEngagementEvent({
+      eventName: "project_opened_from_search",
+      routeTemplate: "/projects",
+      resourceId: projectId,
+      entrySurface: "search",
+    });
+  };
+
+  const handleMapProjectSelection = React.useCallback((pin: CatalogMapPin | null) => {
+    setSelectedPin(pin);
+    if (!pin) return;
+    void sendCitizenEngagementEvent({
+      eventName: "map_project_opened",
+      routeTemplate: "/projects",
+      resourceId: pin.id,
+      entrySurface: "map",
+    });
+  }, []);
   React.useEffect(() => {
     const syncFromHistory = () => {
       const next = parsePublicProjectDirectoryState(new URLSearchParams(window.location.search));
@@ -593,6 +662,8 @@ export default function ProjectsCatalog() {
                 <option value="2025">2025</option>
                 <option value="2024">2024</option>
                 <option value="2023">2023</option>
+                <option value="2022">2022</option>
+                <option value="2021">2021</option>
               </select>
             </div>
 
@@ -683,7 +754,7 @@ export default function ProjectsCatalog() {
                     className="group"
                   >
                     <Card className="relative bg-slate-50/30 hover:bg-white dark:bg-slate-900/30 dark:hover:bg-slate-900/80 border border-slate-200/50 dark:border-slate-800/80 hover:border-slate-300/80 dark:hover:border-slate-700/80 transition-all rounded-2xl overflow-hidden flex flex-col justify-between h-[320px] cursor-pointer hover:shadow-sm">
-                      <Link href={projectHref(project.id)} className="p-7 flex-1 flex flex-col justify-between">
+                      <Link href={projectHref(project.id)} onClick={() => recordSearchProjectOpen(project.id)} className="p-7 flex-1 flex flex-col justify-between">
                         <div>
                           {/* Top Row: Meta & Status Dot */}
                           <div className="flex items-center justify-between mb-4">
@@ -756,7 +827,7 @@ export default function ProjectsCatalog() {
             <div className="space-y-3 md:hidden">
               {filteredProjects.map((project) => (
                 <Card key={project.id} className="overflow-hidden border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                  <Link href={projectHref(project.id)} className="block p-5">
+                  <Link href={projectHref(project.id)} onClick={() => recordSearchProjectOpen(project.id)} className="block p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{project.program} · {project.code}</p>
@@ -810,7 +881,7 @@ export default function ProjectsCatalog() {
                             className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
                           >
                             <td className="px-6 py-5">
-                              <Link href={projectHref(project.id)} className="block">
+                              <Link href={projectHref(project.id)} onClick={() => recordSearchProjectOpen(project.id)} className="block">
                                 <h3 className="text-sm font-medium text-slate-900 group-hover:text-primary transition-colors line-clamp-2 dark:text-white">{project.name}</h3>
                                 <p className="text-xs text-slate-500 mt-1 font-mono dark:text-slate-300">{project.program.toUpperCase()} • {project.id}</p>
                               </Link>
@@ -839,7 +910,7 @@ export default function ProjectsCatalog() {
                               </p>
                             </td>
                             <td className="px-6 py-5">
-                              <Link href={projectHref(project.id, "feedback")} className="inline-block">
+                              <Link href={projectHref(project.id, "feedback")} onClick={() => recordSearchProjectOpen(project.id)} className="inline-block">
                                 <Button className="bg-[#16a34a] hover:bg-[#15803d] text-white text-sm font-semibold px-4 py-2 rounded-md">View details</Button>
                               </Link>
                             </td>
@@ -961,7 +1032,7 @@ export default function ProjectsCatalog() {
                 <GISMapCanvas
                   filteredPins={filteredMapPins}
                   selectedProject={selectedPin}
-                  setSelectedProject={setSelectedPin}
+                  setSelectedProject={handleMapProjectSelection}
                   watershedOverlay={false}
                   agriZoneOverlay={false}
                   theme={theme === "dark" ? "dark" : "light"}

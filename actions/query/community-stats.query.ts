@@ -2,7 +2,8 @@
 
 import { db } from "@/lib/db";
 import { feedback, projects } from "@/lib/db/schema";
-import { desc, inArray, sql } from "drizzle-orm";
+import { and, desc, inArray, sql } from "drizzle-orm";
+import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
 
 const TRENDING_DAYS = 30;
 const TRENDING_LIMIT = 5;
@@ -73,7 +74,7 @@ export async function getFeedSidebarData(): Promise<FeedSidebarData> {
         name: projects.name,
       })
       .from(projects)
-      .where(inArray(projects.abemisId, projectIds));
+      .where(and(inArray(projects.abemisId, projectIds), projectYearScopeCondition()));
 
     const projectMap = new Map(projectRows.map((project) => [project.id, project.name]));
 

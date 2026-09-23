@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { and, count, eq, ilike, or, sum, desc } from "drizzle-orm";
 import { searchKnowledgeBase as kbSearch } from "@/lib/kb-search";
+import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
 
 function projectOverviewUrl(...identifiers: Array<string | null>) {
   const identifier = identifiers.find((value): value is string => Boolean(value));
@@ -55,7 +56,7 @@ export const searchProjects = tool({
     "Search infrastructure projects by location, status, program, or keyword. Returns up to 10 matching projects with key details.",
   inputSchema: searchProjectsSchema,
   execute: async (params: z.infer<typeof searchProjectsSchema>) => {
-    const conditions = [];
+    const conditions = [projectYearScopeCondition()];
 
     if (params.query) {
       const pattern = `%${params.query}%`;
@@ -65,7 +66,7 @@ export const searchProjects = tool({
           ilike(projects.contractorName, pattern),
           ilike(projects.abemisId, pattern),
           ilike(projects.projectCode, pattern),
-        ),
+        )!,
       );
     }
     if (params.province) {
@@ -166,7 +167,7 @@ export const getProjectStats = tool({
     "Get aggregate statistics: total count of projects, total budget, and breakdown by status. Optionally filtered by region, province, or status.",
   inputSchema: getProjectStatsSchema,
   execute: async (params: z.infer<typeof getProjectStatsSchema>) => {
-    const conditions = [];
+    const conditions = [projectYearScopeCondition()];
 
     if (params.region) {
       conditions.push(ilike(projects.region, `%${params.region}%`));
@@ -232,13 +233,14 @@ export const getProjectById = tool({
         id,
       );
 
-    const condition = isUuid
+    const identityCondition = isUuid
       ? or(
           eq(projects.abemisId, id),
           eq(projects.projectCode, id),
           eq(projects.id, id),
         )
       : or(eq(projects.abemisId, id), eq(projects.projectCode, id));
+    const condition = and(identityCondition, projectYearScopeCondition());
 
     const [row] = await db.select().from(projects).where(condition).limit(1);
 
@@ -303,7 +305,7 @@ export const getDelayedProjectsSummary = tool({
     "Get ranking of regions by number of delayed projects, total delayed budget, and breakdown of problem areas across the country.",
   inputSchema: getDelayedProjectsSummarySchema,
   execute: async (params: z.infer<typeof getDelayedProjectsSummarySchema>) => {
-    const delayedCondition = ilike(projects.status, "%delay%");
+    const delayedCondition = and(ilike(projects.status, "%delay%"), projectYearScopeCondition())!;
     const conditions = [delayedCondition];
 
     if (params.region) {

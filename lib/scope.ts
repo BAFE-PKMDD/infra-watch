@@ -2,25 +2,13 @@ import { and, eq, exists, ilike, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { issues, projects } from "@/lib/db/schema";
+import { hasAssignedModeratorScope, normalizedAssignment, type ScopedUser } from "@/lib/moderator-scope";
+import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
 
-export type ScopedUser = {
-  role?: string | null;
-  region?: string | null;
-  assignedAgency?: string | null;
-};
+export type { ScopedUser } from "@/lib/moderator-scope";
+export { hasAssignedModeratorScope } from "@/lib/moderator-scope";
 
 type ScopeResult = { allowed: true } | { allowed: false; reason: string };
-
-function normalizedAssignment(value: string | null | undefined) {
-  const normalized = value?.trim();
-  return normalized ? normalized : null;
-}
-
-export function hasAssignedModeratorScope(user: ScopedUser) {
-  return user.role !== "moderator" || Boolean(
-    normalizedAssignment(user.region) || normalizedAssignment(user.assignedAgency),
-  );
-}
 
 function isScopedModerator(user: ScopedUser) {
   return user.role === "moderator" && hasAssignedModeratorScope(user);
@@ -43,15 +31,16 @@ function projectAgencyCondition(agency: string): SQL {
 }
 
 export function getProjectScopeConditions(user: ScopedUser): SQL[] {
+  const conditions: SQL[] = [projectYearScopeCondition()];
+
   if (user.role !== "moderator") {
-    return [];
+    return conditions;
   }
 
   if (!hasAssignedModeratorScope(user)) {
     return [sql`false`];
   }
 
-  const conditions: SQL[] = [];
   const region = normalizedAssignment(user.region);
   const assignedAgency = normalizedAssignment(user.assignedAgency);
 

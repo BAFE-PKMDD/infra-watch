@@ -2,8 +2,9 @@
 
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
-import { eq, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { projectPreviewBudget } from "@/lib/project-preview-budget";
+import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
 import type { ProjectDetail } from "@/types";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
@@ -31,7 +32,7 @@ function locationFromProject(project: {
 export async function getProjectPreview(
   projectId: string,
 ): Promise<{ success: true; data: ProjectDetail | null }> {
-  const condition = UUID_RE.test(projectId)
+  const identityCondition = UUID_RE.test(projectId)
     ? or(
       eq(projects.id, projectId),
       eq(projects.abemisId, projectId),
@@ -41,6 +42,7 @@ export async function getProjectPreview(
       eq(projects.abemisId, projectId),
       eq(projects.projectCode, projectId),
     );
+  const condition = and(identityCondition, projectYearScopeCondition());
 
   const [row] = await db
     .select()

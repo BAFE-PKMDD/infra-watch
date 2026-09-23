@@ -24,9 +24,9 @@ const html = renderToStaticMarkup(<LandingPageClient initialAnalytics={analytics
 
 test("keeps animated hero words intact at narrow widths", () => {
   const nonWrappingWordGroups = html.match(/class="inline-block whitespace-nowrap"/g) ?? [];
-  assert.equal(nonWrappingWordGroups.length, 5);
-  assert.match(html, /translateY\(20px\)[^>]*>L<\/span>/);
-  assert.match(html, /translateY\(20px\)[^>]*>O<\/span><\/span><\/p>/);
+  assert.equal(nonWrappingWordGroups.length, 2);
+  assert.match(html, /translateY\(50px\)[^>]*>T<\/span>/);
+  assert.match(html, /translateY\(50px\)[^>]*>L<\/span><\/span><\/h1>/);
 });
 
 test("uses readable stacked outcome cards on mobile and preserves the desktop comparison slider", () => {

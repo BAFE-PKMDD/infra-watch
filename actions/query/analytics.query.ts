@@ -3,6 +3,7 @@ import { projects } from "@/lib/db/schema";
 import { mapInternalToPublicStage } from "@/constants/stage-mapping";
 import { isPhilippineCoordinatePair } from "@/lib/philippine-coordinates";
 import { getLastSuccessfulProjectSyncAt } from "@/lib/public-sync";
+import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
 
 export interface StageStat {
   labelKey: string;
@@ -195,6 +196,7 @@ async function queryInfraAnalyticsRows(): Promise<InfraAnalyticsRow[]> {
       longitude: projects.longitude,
     })
     .from(projects)
+    .where(projectYearScopeCondition())
     .limit(MAX_PUBLIC_ANALYTICS_ROWS + 1);
 }
 

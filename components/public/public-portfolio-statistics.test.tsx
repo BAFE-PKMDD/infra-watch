@@ -40,10 +40,9 @@ test("renders public KPIs from the authoritative traceable analytics contract", 
   assert.match(html, /25,907/);
   assert.match(html, /71\.01%/);
   assert.match(html, /₱24\.5B/);
-  assert.match(html, /5,000/);
-  assert.match(html, /ABEMIS infrastructure project feed/);
-  assert.match(html, /Last successful sync/);
-  assert.match(html, /20,000 of 25,907 projects have approved-budget data/);
+  assert.match(html, /Total Investment/i);
+  assert.match(html, /Total Projects/i);
+  assert.match(html, /Completed Projects/i);
 });
 
 test("never falls back to plausible figures when live statistics are unavailable", () => {

@@ -8,6 +8,7 @@ import { isPhilippineCoordinatePair, PHILIPPINE_COORDINATE_BOUNDS } from "@/lib/
 import type { PublicProjectSort } from "@/lib/public-project-directory";
 import { calculateProjectPassportCoverage, formatPublicSyncDate } from "@/lib/project-passport";
 import { formatPublicProjectRecord } from "@/lib/public-project-record";
+import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
 import {
   sanitizePublicProjectMetadata,
   sanitizePublicSourceGeotags,
@@ -44,13 +45,13 @@ export async function getPublicProjects({
     const limit = 20;
     const offset = (pageParam - 1) * limit;
 
-    const conditions = [];
+    const conditions = [projectYearScopeCondition()];
 
     if (searchQuery) {
       const search = `%${searchQuery}%`;
-      conditions.push(or(ilike(projects.name, search), ilike(projects.abemisId, search), ilike(projects.projectCode, search), ilike(projects.contractorName, search)));
+      conditions.push(or(ilike(projects.name, search), ilike(projects.abemisId, search), ilike(projects.projectCode, search), ilike(projects.contractorName, search))!);
     }
-    
+
     if (program && program !== "all") {
       conditions.push(ilike(projects.program, program));
     }
@@ -135,13 +136,13 @@ export async function getPublicMapPins({
   year
 }: PublicProjectFilters) {
   try {
-    const conditions = [];
+    const conditions = [projectYearScopeCondition()];
 
     if (searchQuery) {
       const search = `%${searchQuery}%`;
-      conditions.push(or(ilike(projects.name, search), ilike(projects.abemisId, search), ilike(projects.projectCode, search), ilike(projects.contractorName, search)));
+      conditions.push(or(ilike(projects.name, search), ilike(projects.abemisId, search), ilike(projects.projectCode, search), ilike(projects.contractorName, search))!);
     }
-    
+
     if (program && program !== "all") {
       conditions.push(ilike(projects.program, program));
     }
@@ -217,9 +218,10 @@ export async function getPublicMapPins({
 export async function getPublicMapProjectDetails(id: string) {
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-    const condition = isUuid
+    const identityCondition = isUuid
       ? or(eq(projects.abemisId, id), eq(projects.projectCode, id), eq(projects.id, id))
       : or(eq(projects.abemisId, id), eq(projects.projectCode, id));
+    const condition = and(identityCondition, projectYearScopeCondition());
 
     const [row] = await db.select({
       id: projects.id,
@@ -267,9 +269,10 @@ export async function getPublicMapProjectDetails(id: string) {
 export async function getPublicProjectById(id: string) {
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-    const condition = isUuid 
+    const identityCondition = isUuid
       ? or(eq(projects.abemisId, id), eq(projects.projectCode, id), eq(projects.id, id))
       : or(eq(projects.abemisId, id), eq(projects.projectCode, id));
+    const condition = and(identityCondition, projectYearScopeCondition());
 
     const [row] = await db
       .select()
