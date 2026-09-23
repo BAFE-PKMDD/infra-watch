@@ -105,16 +105,6 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    // Trigger async processing
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3101";
-    fetch(`${baseUrl}/api/knowledge-base/process`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ documentId: doc.id }),
-    }).catch((err) => {
-      console.error("[KB Upload] Failed to trigger processing:", err);
-    });
-
     return NextResponse.json({
       success: true,
       document: {
@@ -126,7 +116,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[KB Upload] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Upload failed." },
+      { error: "Knowledge-base upload failed." },
       { status: 500 },
     );
   }

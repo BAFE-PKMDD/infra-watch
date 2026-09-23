@@ -5,7 +5,7 @@ import { admin as adminPlugin, emailOTP } from "better-auth/plugins";
 
 import * as authSchema from "@/auth-schema";
 import { db } from "@/lib/db";
-import { ac, admin, citizen, moderator } from "@/lib/permissions";
+import { ac, admin, citizen, moderator, regionalAdmin } from "@/lib/permissions";
 
 const isProductionRuntime = process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build";
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -125,12 +125,13 @@ export const auth = betterAuth({
   },
   plugins: [
     adminPlugin({
-      adminRoles: ["admin", "moderator"],
+      adminRoles: ["admin", "moderator", "regional_admin"],
       defaultRole: "citizen",
       ac,
       roles: {
         admin,
         moderator,
+        regional_admin: regionalAdmin,
         citizen,
       },
     }),

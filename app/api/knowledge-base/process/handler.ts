@@ -65,7 +65,11 @@ export function createKnowledgeBaseProcessPostHandler(
     } catch (error) {
       dependencies.onError?.(error);
       const status = error instanceof KnowledgeBaseProcessHttpError ? error.status : 500;
-      const message = status === 404 ? "Document not found." : "Knowledge base processing failed.";
+      const message = status === 404
+        ? "Document not found."
+        : status === 409
+          ? "Restore this document before processing it."
+          : "Knowledge base processing failed.";
       return json({ error: message }, status);
     }
   };

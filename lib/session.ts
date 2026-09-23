@@ -48,6 +48,19 @@ export const requireAdmin = cache(async () => {
   return user;
 });
 
+// Regional admins get everything requireAdmin gates except the resources that stay
+// strictly admin-only (sync, settings, audit logs, full user administration) — see
+// lib/permissions.ts for the exact grant.
+export const requireAdminOrRegionalAdmin = cache(async () => {
+  const user = await requireAuth();
+
+  if (user.role !== "admin" && user.role !== "regional_admin") {
+    throw new Error("Forbidden: Administrator privileges required.");
+  }
+
+  return user;
+});
+
 export async function isAuthenticated() {
   const session = await getSession();
   return Boolean(session?.user);
@@ -64,7 +77,7 @@ export async function hasRole(role: string | string[]) {
 }
 
 export async function canAccessAdmin() {
-  return await hasRole(["admin", "moderator"]);
+  return await hasRole(["admin", "moderator", "regional_admin"]);
 }
 
 export async function getCurrentUser() {

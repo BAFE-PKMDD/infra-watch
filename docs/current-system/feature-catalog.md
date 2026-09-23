@@ -425,7 +425,7 @@ Sources: `actions/query/audit-logs.query.ts`, `lib/audit.ts`.
 
 ### 4.11 Knowledge base (`/knowledge-base`)
 
-**Status:** Implemented but blocked by critical security gaps
+**Status:** Implemented; production storage rollout verification remains pending
 
 - Uploads supported documents to object storage.
 - Adds direct FAQ question/answer entries.
@@ -433,10 +433,13 @@ Sources: `actions/query/audit-logs.query.ts`, `lib/audit.ts`.
 - Lists documents/statistics/categories and allows archive, restore, reindex, download, and permanent deletion after archive.
 - Archived documents are excluded from retrieval.
 
-Critical boundaries:
+Security boundaries:
 
-- `POST /api/knowledge-base/process` performs mutation/embedding without authentication.
-- The shared MinIO bucket policy allows public reads, so direct object URLs may bypass the authenticated download route.
+- `POST /api/knowledge-base/process` requires an authenticated user with `knowledge_base:embed`.
+- Archived documents cannot be processed directly, persisted failures are sanitized, and reindexing keeps the prior chunks until replacement chunks can be swapped transactionally.
+- Knowledge-base files and issue evidence use the distinct private bucket and authenticated application reads; public object access is limited to approved public-media prefixes. Issue evidence is restricted to its owner, administrators, or moderators within scope.
+- Node startup reconciles the restricted public policy before starting scheduled work and rejects any anonymous `Allow` statement on the private bucket.
+- Production deployment must configure `MINIO_PRIVATE_BUCKET_NAME` and verify both bucket policies before the storage finding is operationally closed.
 - There is no explicit draft/published/public visibility field; active embedded documents are eligible for public chat retrieval.
 
 ### 4.12 Live-video administration (`/live-videos`, `/live-videos/new`, `/live-videos/[id]`)
@@ -509,7 +512,7 @@ These use `node-cron` inside the application process. They are not durable queue
 
 ### Object storage
 
-MinIO stores feedback/issue evidence, recorded live-video assets, and knowledge-base files. Current code can silently fall back to local `.storage` files when MinIO is unavailable; this is not durable in a container/restarted replica.
+MinIO uses the public bucket for approved public-media prefixes (`feedback/`, `feedback-comment/`, and `live-videos/`) and a distinct private bucket for knowledge-base and issue-evidence paths. Private reads go through authenticated application handlers. Startup narrows the public policy and fails closed if the private bucket contains an anonymous `Allow` policy. Current code can still silently fall back to local `.storage` files when MinIO is unavailable; this is not durable in a container/restarted replica.
 
 ## 7. API route inventory
 
@@ -531,7 +534,7 @@ MinIO stores feedback/issue evidence, recorded live-video assets, and knowledge-
 | Data quality | `/api/admin/data-quality`, `/export`, `/projects/[projectId]` | Authorized read/export; mutation returns 405 |
 | Synchronization | `/api/admin/sync`, `/api/admin/sync-logs` | Admin trigger; authorized history/status |
 | Audit | `/api/audit-logs` | Authorized audit listing |
-| Knowledge base | `/api/knowledge-base/upload`, `/files/[id]`, `/process` | Staff upload/download; processing endpoint currently lacks authentication |
+| Knowledge base | `/api/knowledge-base/upload`, `/files/[id]`, `/process` | Staff upload/download; processing requires `knowledge_base:embed` |
 | Voice | `/api/voice/wake-token`, `/api/voice/transcribe` | Administrator only |
 | Admin chat history | `/api/admin/chat-history` | Authorized history with role-based visibility |
 

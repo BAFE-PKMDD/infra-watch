@@ -8,6 +8,12 @@ import { extractText } from "@/lib/kb-extractor";
 import { db } from "@/lib/db";
 import { kbChunks, kbDocuments } from "@/lib/db/schema";
 import { downloadFile } from "@/lib/minio";
+import {
+  assertKnowledgeBaseDocumentProcessable,
+  assertKnowledgeBaseReplacementComplete,
+  getKnowledgeBaseProcessingFailureMessage,
+  KnowledgeBaseProcessingPolicyError,
+} from "@/lib/knowledge-base-processing-policy";
 import { hasPermission } from "@/lib/permissions";
 import {
   createKnowledgeBaseProcessPostHandler,
@@ -23,6 +29,7 @@ type ProcessResult = {
 };
 
 async function processKnowledgeBaseDocument(documentId: string): Promise<ProcessResult> {
+  let hadExistingIndex = false;
   try {
     const [document] = await db
       .select()
@@ -34,10 +41,16 @@ async function processKnowledgeBaseDocument(documentId: string): Promise<Process
       throw new KnowledgeBaseProcessHttpError("Document not found.", 404);
     }
 
-    await db
-      .update(kbDocuments)
-      .set({ status: "indexing", errorMessage: null })
-      .where(eq(kbDocuments.id, documentId));
+    hadExistingIndex = document.status === "embedded" && (document.chunkCount ?? 0) > 0;
+
+    try {
+      assertKnowledgeBaseDocumentProcessable(document);
+    } catch (error) {
+      if (error instanceof KnowledgeBaseProcessingPolicyError) {
+        throw new KnowledgeBaseProcessHttpError(error.message, error.status);
+      }
+      throw error;
+    }
 
     let rawText = "";
     if (document.fileType === "FAQ Entry") {
@@ -59,57 +72,53 @@ async function processKnowledgeBaseDocument(documentId: string): Promise<Process
       throw new Error("No text chunks could be generated from the document.");
     }
 
-    await db.delete(kbChunks).where(eq(kbChunks.documentId, documentId));
-
-    let embeddedCount = 0;
-    let lastError: unknown = null;
+    const replacementChunks: Array<typeof kbChunks.$inferInsert> = [];
     for (const chunk of textChunks) {
       try {
         const embedding = await generateEmbedding(chunk.content);
-        await db.insert(kbChunks).values({
+        replacementChunks.push({
           documentId,
           chunkIndex: chunk.index,
           content: chunk.content,
           embedding,
           tokenCount: chunk.tokenCount,
         });
-        embeddedCount += 1;
       } catch (chunkError) {
-        lastError = chunkError;
         console.error(`[KB Process] Failed to embed chunk ${chunk.index}:`, chunkError);
       }
     }
 
-    if (embeddedCount === 0) {
-      throw new Error(
-        `Failed to embed any chunks. Last error: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
-      );
-    }
+    const embeddedCount = replacementChunks.length;
+    assertKnowledgeBaseReplacementComplete(textChunks.length, embeddedCount);
 
-    await db
-      .update(kbDocuments)
-      .set({
-        status: "embedded",
-        chunkCount: embeddedCount,
-        contentPreview: preview,
-        errorMessage: embeddedCount < textChunks.length
-          ? `${embeddedCount}/${textChunks.length} chunks embedded successfully`
-          : null,
-      })
-      .where(eq(kbDocuments.id, documentId));
+    await db.transaction(async (transaction) => {
+      await transaction.delete(kbChunks).where(eq(kbChunks.documentId, documentId));
+      await transaction.insert(kbChunks).values(replacementChunks);
+      await transaction
+        .update(kbDocuments)
+        .set({
+          status: "embedded",
+          chunkCount: embeddedCount,
+          contentPreview: preview,
+          errorMessage: null,
+        })
+        .where(eq(kbDocuments.id, documentId));
+    });
 
     return {
       chunksProcessed: embeddedCount,
       totalChunks: textChunks.length,
     };
   } catch (error) {
-    if (!(error instanceof KnowledgeBaseProcessHttpError && error.status === 404)) {
+    const isExpectedHttpError = error instanceof KnowledgeBaseProcessHttpError
+      && (error.status === 404 || error.status === 409);
+    if (!isExpectedHttpError) {
       try {
         await db
           .update(kbDocuments)
           .set({
-            status: "failed",
-            errorMessage: error instanceof Error ? error.message : "Processing failed",
+            status: hadExistingIndex ? "embedded" : "failed",
+            errorMessage: getKnowledgeBaseProcessingFailureMessage(error),
           })
           .where(eq(kbDocuments.id, documentId));
       } catch {

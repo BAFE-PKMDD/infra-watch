@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createKnowledgeBaseProcessPostHandler,
+  KnowledgeBaseProcessHttpError,
   type KnowledgeBaseProcessRouteDependencies,
 } from "./handler";
 
@@ -83,6 +84,19 @@ test("allows an authorized moderator to process a document", async () => {
     success: true,
     chunksProcessed: 3,
     totalChunks: 4,
+  });
+});
+
+test("rejects archived documents with a stable conflict response", async () => {
+  const response = await createKnowledgeBaseProcessPostHandler(dependencies({
+    processDocument: async () => {
+      throw new KnowledgeBaseProcessHttpError("internal archived detail", 409);
+    },
+  }))(request());
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), {
+    error: "Restore this document before processing it.",
   });
 });
 

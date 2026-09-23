@@ -54,6 +54,7 @@ type Stats = {
   totalUsers: number;
   totalAdmins: number;
   totalModerators: number;
+  totalRegionalAdmins: number;
   totalCitizens: number;
   totalBanned: number;
   totalVerified: number;
@@ -114,7 +115,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
     router.push(`/user-management?${params.toString()}`);
   };
 
-  const handleAddUser = async (data: { name: string; email: string; password: string; role: "admin" | "moderator" | "citizen" }) => {
+  const handleAddUser = async (data: { name: string; email: string; password: string; role: "admin" | "moderator" | "regional_admin" | "citizen" }) => {
     startTransition(async () => {
       try {
         await createUser(data);
@@ -141,7 +142,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
     });
   };
 
-  const handleUpdateRole = async (userId: string, newRole: "admin" | "moderator" | "citizen") => {
+  const handleUpdateRole = async (userId: string, newRole: "admin" | "moderator" | "regional_admin" | "citizen") => {
     startTransition(async () => {
       try {
         await updateUserRole(userId, newRole);
@@ -296,7 +297,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
               </div>
               <div>
                 <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {stats.totalAdmins + stats.totalModerators}
+                  {stats.totalAdmins + stats.totalModerators + stats.totalRegionalAdmins}
                 </div>
                 <div className="text-sm text-slate-600 dark:text-slate-400">Staff</div>
               </div>
@@ -346,6 +347,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
             >
               <option value="">All Roles</option>
               <option value="admin">Admin</option>
+              <option value="regional_admin">Regional Admin</option>
               <option value="moderator">Moderator</option>
               <option value="citizen">Citizen</option>
             </select>
@@ -445,18 +447,21 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
                           disabled={isPending}
                           className={`px-2 py-1 text-xs font-medium rounded border-0 ${user.role === "admin"
                             ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
-                            : user.role === "moderator"
-                              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
-                              : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                            : user.role === "regional_admin"
+                              ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
+                              : user.role === "moderator"
+                                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                                : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
                             }`}
                         >
                           <option value="admin">Admin</option>
+                          <option value="regional_admin">Regional Admin</option>
                           <option value="moderator">Moderator</option>
                           <option value="citizen">Citizen</option>
                         </select>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {user.role === "moderator" ? (
+                        {user.role === "moderator" || user.role === "regional_admin" ? (
                           <button
                             onClick={() => {
                               setSelectedUser(user);
@@ -473,7 +478,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {user.role === "moderator" ? (
+                        {user.role === "moderator" || user.role === "regional_admin" ? (
                           <button
                             onClick={() => {
                               setSelectedUser(user);
@@ -661,7 +666,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
                   name: formData.get("name") as string,
                   email: formData.get("email") as string,
                   password: formData.get("password") as string,
-                  role: formData.get("role") as "admin" | "moderator" | "citizen",
+                  role: formData.get("role") as "admin" | "moderator" | "regional_admin" | "citizen",
                 };
                 handleAddUser(data);
               }}
@@ -722,6 +727,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
                   >
                     <option value="citizen">Citizen</option>
                     <option value="moderator">Moderator</option>
+                    <option value="regional_admin">Regional Admin</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
@@ -903,7 +909,9 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
               Set Region for {selectedUser.name}
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              Assign a region to limit this moderator&apos;s scope. Select &quot;Global&quot; for access to all regions.
+              {selectedUser.role === "regional_admin"
+                ? "Assign the region this regional admin manages staff for. It does not limit which projects, feedback, or issues they can see."
+                : "Assign a region to limit this moderator's scope. Select \"Global\" for access to all regions."}
             </p>
             <form
               onSubmit={(e) => {
@@ -957,7 +965,9 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
               Set Program Scope for {selectedUser.name}
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              Assign a program to limit this moderator&apos;s scope. Select &quot;All Programs&quot; for access to AMEFIP and INS.
+              {selectedUser.role === "regional_admin"
+                ? "Optional program tag for this regional admin's account. It does not limit which projects, feedback, or issues they can see."
+                : "Assign a program to limit this moderator's scope. Select \"All Programs\" for access to AMEFIP and INS."}
             </p>
             <form
               onSubmit={(e) => {

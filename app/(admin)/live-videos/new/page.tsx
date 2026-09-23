@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { LiveVideoForm } from "@/components/admin/live-videos/live-video-form";
-import { requireAdmin } from "@/lib/session";
+import { requireAdminOrRegionalAdmin } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Add Video | INFRA Watch Admin",
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NewLiveVideoPage() {
-  await requireAdmin();
+  await requireAdminOrRegionalAdmin();
 
   return (
     <AdminPageWrapper

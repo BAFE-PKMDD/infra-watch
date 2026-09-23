@@ -7,7 +7,23 @@
 export async function register() {
   // Only run on the Node.js runtime (not Edge)
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { initScheduler } = await import("./lib/scheduler");
+    const [{ initScheduler }, { initializeNodeRuntime, shouldReconcileStorageAtStartup }] = await Promise.all([
+      import("./lib/scheduler"),
+      import("./lib/server-startup"),
+    ]);
+
+    if (shouldReconcileStorageAtStartup({
+      nodeEnv: process.env.NODE_ENV,
+      nextPhase: process.env.NEXT_PHASE,
+    })) {
+      const { ensureStorageBuckets } = await import("./lib/minio");
+      await initializeNodeRuntime({
+        reconcileStorage: ensureStorageBuckets,
+        startScheduler: initScheduler,
+      });
+      return;
+    }
+
     initScheduler();
   }
 }

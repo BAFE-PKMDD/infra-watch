@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { psgcLocations } from "@/lib/db/schema";
+import { projects, psgcLocations } from "@/lib/db/schema";
 import { asc, eq, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { PUBLIC_STAGES } from "@/constants/stage-mapping";
@@ -218,6 +218,32 @@ export async function getBarangays(cityCode: string) {
       return Array.from(uniqueMap.values());
     },
     [`location-barangays-code-v2-${cityCode}`],
+    { revalidate: CACHE_TTL }
+  )();
+}
+
+/**
+ * Get distinct project regions for routing/assignment dropdowns.
+ *
+ * Sourced from projects.region (the same free-text value moderator scoping matches
+ * against in lib/scope.ts), not the PSGC region_code reference field used by
+ * getRegions() above: that field isn't a reliable per-region key (e.g. BARMM and
+ * SOCCSKSARGEN both have psgc_locations rows with region_code "19").
+ */
+export async function getProjectRegions() {
+  return unstable_cache(
+    async (): Promise<LocationOption[]> => {
+      const rows = await db
+        .selectDistinct({ region: projects.region })
+        .from(projects)
+        .where(sql`${projects.region} IS NOT NULL AND btrim(${projects.region}) <> ''`);
+
+      return rows
+        .map((r) => r.region!)
+        .sort((a, b) => a.localeCompare(b))
+        .map((region) => ({ label: region, value: region }));
+    },
+    ["project-regions-v1"],
     { revalidate: CACHE_TTL }
   )();
 }

@@ -9,13 +9,28 @@ This assessment separates production risks from optional product improvements. P
 - **P2 — Medium:** workflow correctness, governance, accessibility, or operational maintainability improvement.
 - **P3 — Opportunity:** useful enhancement after higher-risk work is complete.
 
+## Top 10 implementation checklist
+
+- [x] **1. Protect knowledge-base processing.** `POST /api/knowledge-base/process` requires an authenticated user with `knowledge_base:embed`; archived records are rejected, client-visible/persisted Knowledge Base errors are sanitized, and reindex replacement chunks are swapped transactionally only after every chunk has been embedded successfully.
+- [x] **2. Separate private and public object storage in code.** Knowledge-base and issue-evidence objects route to `MINIO_PRIVATE_BUCKET_NAME`; production server startup narrows the public policy before starting the scheduler and rejects any anonymous `Allow` on the private bucket; KB reads require knowledge-base permission, while issue evidence requires ownership, admin role, or moderator role with applicable scope. **Deployment verification remains required:** configure the distinct private bucket, migrate/copy legacy private objects, and verify live direct-object denial before claiming production exposure is closed.
+- [ ] **3. Preserve project links during ABEMIS ID corrections.** Deferred for follow-up acceptance review. A related implementation commit already exists in the current branch, but it is outside this #1–#2 change scope.
+- [ ] **4. Stop publishing unverified financial-progress semantics.** Deferred.
+- [ ] **5. Strip EXIF and other metadata from stored images.** Deferred.
+- [ ] **6. Complete production email verification and password recovery delivery.** Deferred.
+- [ ] **7. Make scheduled jobs and realtime notification fan-out durable and multi-replica safe.** Deferred.
+- [ ] **8. Enforce the E-Report state-transition graph and atomic response handling.** Deferred.
+- [ ] **9. Add draft/review/published visibility governance to knowledge retrieval.** Deferred.
+- [ ] **10. Implement privacy-safe audience activity and optional demographic analytics.** Deferred; design only exists today.
+
 ## 1. P0 production blockers
 
 ### P0.1 Protect knowledge-base processing
 
-**Finding:** `POST /api/knowledge-base/process` accepts a document ID and changes document status, deletes chunks, downloads/extracts content, invokes embedding, and rewrites retrieval data without authentication or authorization.
+**Implementation status:** Code fix completed. Production deployment/runtime verification remains pending.
 
-**Evidence:** `app/api/knowledge-base/process/route.ts`; unsigned calls in `app/api/knowledge-base/upload/route.ts` and `actions/mutation/knowledge-base.mutation.ts`.
+**Original finding:** `POST /api/knowledge-base/process` accepted a document ID and changed retrieval state without authentication or authorization.
+
+**Current evidence:** `app/api/knowledge-base/process/handler.ts`, `app/api/knowledge-base/process/route.ts`, `lib/knowledge-base-processing-policy.ts`, `lib/knowledge-base-processing-client.ts`, and their focused tests. The processor rejects archived records, stores stable failure text, and retains the previous embedded index until a replacement can be committed transactionally.
 
 **Risk:** arbitrary reindex/status mutation, expensive-resource denial of service, and unauthorized document processing.
 
@@ -29,9 +44,11 @@ This assessment separates production risks from optional product improvements. P
 
 ### P0.2 Separate private and public object storage
 
-**Finding:** the MinIO initialization policy grants public `GetObject` across the shared bucket while knowledge-base documents and citizen evidence are stored in that bucket. An authenticated download route cannot prevent direct object-URL access.
+**Implementation status:** Code fix completed. A distinct production private bucket and live policy/access verification are required during deployment.
 
-**Evidence:** `lib/minio.ts`, `app/api/knowledge-base/upload/route.ts`, `app/api/knowledge-base/files/[id]/route.ts`.
+**Original finding:** the MinIO initialization policy granted public `GetObject` across the shared bucket while knowledge-base documents and citizen evidence were stored there.
+
+**Current evidence:** `lib/minio.ts`, `lib/minio-url.ts`, `instrumentation.ts`, `lib/server-startup.ts`, `app/api/upload/preview/access.ts`, `app/api/upload/preview/handler.ts`, `app/api/knowledge-base/files/[id]/route.ts`, `.env.example`, and focused storage/access tests. Startup reconciles the restricted public policy before the scheduler starts and fails closed on any anonymous private-bucket `Allow` policy.
 
 **Risk:** private/internal KB documents or citizen evidence may be directly retrievable if the object path is known.
 

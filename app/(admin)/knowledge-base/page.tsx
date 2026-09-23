@@ -27,6 +27,7 @@ import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { Button } from "@/components/ui/button";
 import { addFaqEntry, archiveKbDocument, deleteKbDocument, reindexDocument, restoreKbDocument } from "@/actions/mutation/knowledge-base.mutation";
 import { getKbCategories, getKbDocuments, getKbStats, getKbDocumentWithChunks } from "@/actions/query/knowledge-base.query";
+import { processKnowledgeBaseDocument } from "@/lib/knowledge-base-processing-client";
 
 type StatusFilter = "all" | "embedded" | "indexing" | "pending" | "failed";
 type RepositoryView = "active" | "archived";
@@ -217,9 +218,19 @@ export default function KnowledgeBasePage() {
 
       const result = await response.json();
       if (result.success) {
+        if (typeof result.document?.id !== "string") {
+          throw new Error("Upload completed without a valid document identifier.");
+        }
+        const documentId = result.document.id;
         setUploadTitle("");
         setUploadFile(null);
         setUploadModalOpen(false);
+        void processKnowledgeBaseDocument(documentId)
+          .then(() => fetchData())
+          .catch((error) => {
+            alert(error instanceof Error ? error.message : "Document indexing failed");
+            void fetchData();
+          });
         await fetchData();
       } else {
         alert(result.error || "Upload failed");
@@ -271,6 +282,12 @@ export default function KnowledgeBasePage() {
     try {
       const result = await reindexDocument(id);
       if (result.success) {
+        void processKnowledgeBaseDocument(id)
+          .then(() => fetchData())
+          .catch((error) => {
+            alert(error instanceof Error ? error.message : "Document reindexing failed");
+            void fetchData();
+          });
         await fetchData();
       } else {
         alert(result.error || "Failed to reindex");

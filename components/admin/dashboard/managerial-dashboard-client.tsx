@@ -89,6 +89,12 @@ export function ManagerialDashboardClient({
   }
   if (query.isPending && !query.data) return <DashboardSkeleton />;
   if (!query.data) {
+    // A 403 means this viewer isn't allowed to see analytics at all (e.g. a moderator
+    // with no region/agency scope assigned yet) — retrying won't change that, and the
+    // sidebar already hides this link for them, so there's nothing useful to show here.
+    const status = query.error instanceof Error ? (query.error as Error & { status?: number }).status : undefined;
+    if (status === 403) return null;
+
     return (
       <div className="space-y-3">
         <DashboardState

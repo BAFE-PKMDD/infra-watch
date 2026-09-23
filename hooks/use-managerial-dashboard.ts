@@ -29,7 +29,9 @@ export async function fetchManagerialDashboard(
     error?: string;
   };
   if (!response.ok) {
-    throw new Error(payload.error ?? "Unable to load dashboard analytics");
+    const error = new Error(payload.error ?? "Unable to load dashboard analytics");
+    (error as Error & { status?: number }).status = response.status;
+    throw error;
   }
   if (!payload.success || !payload.data) {
     throw new Error("Dashboard analytics response is unavailable");

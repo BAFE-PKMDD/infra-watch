@@ -7,13 +7,25 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { getAuditContextFromServerAction, logAudit } from "@/lib/audit";
 import { hasPermission, type statement } from "@/lib/permissions";
+import { isSameRegion } from "@/lib/moderator-scope";
 import { revalidatePath } from "next/cache";
 import { IMPLEMENTING_AGENCIES } from "@/constants/agencies";
 
 type PermissionResource = keyof typeof statement;
 type PermissionAction<R extends PermissionResource> = (typeof statement)[R][number];
-type ManagedRole = "admin" | "moderator" | "citizen";
+type ManagedRole = "admin" | "moderator" | "regional_admin" | "citizen";
 type UserUpdates = Partial<Pick<typeof user.$inferInsert, "name" | "email" | "image">>;
+
+// A regional admin can only act on staff in their own region — everyone else who
+// reaches this point (admin) is unrestricted.
+function assertUserInScope(
+  currentUser: { role?: string | null; region?: string | null },
+  target: { region: string | null },
+) {
+  if (currentUser.role === "regional_admin" && !isSameRegion(target.region, currentUser.region)) {
+    throw new Error("This user is outside your assigned region.");
+  }
+}
 
 /**
  * Get current session and check if user has required permission
@@ -119,6 +131,7 @@ export async function updateUser(
   if (!existing) {
     throw new Error("User not found");
   }
+  assertUserInScope(currentSession.user, existing);
 
   const updates: UserUpdates = {};
 
@@ -217,9 +230,10 @@ export async function updateUserRegion(
   if (!existing) {
     throw new Error("User not found");
   }
+  assertUserInScope(currentSession.user, existing);
 
-  if (existing.role !== "moderator") {
-    throw new Error("Region can only be set for moderators");
+  if (existing.role !== "moderator" && existing.role !== "regional_admin") {
+    throw new Error("Region can only be set for moderators and regional admins");
   }
 
   await db
@@ -263,9 +277,10 @@ export async function updateUserAgency(
   if (!existing) {
     throw new Error("User not found");
   }
+  assertUserInScope(currentSession.user, existing);
 
-  if (existing.role !== "moderator") {
-    throw new Error("Program scope can only be set for moderators");
+  if (existing.role !== "moderator" && existing.role !== "regional_admin") {
+    throw new Error("Program scope can only be set for moderators and regional admins");
   }
 
   if (agency && !IMPLEMENTING_AGENCIES.includes(agency as (typeof IMPLEMENTING_AGENCIES)[number])) {
@@ -320,6 +335,7 @@ export async function banUser(
   if (!existing) {
     throw new Error("User not found");
   }
+  assertUserInScope(currentSession.user, existing);
 
   let banExpiresIn: number | undefined;
   if (data.expiresAt) {
@@ -372,6 +388,7 @@ export async function unbanUser(userId: string) {
   if (!existing) {
     throw new Error("User not found");
   }
+  assertUserInScope(currentSession.user, existing);
 
   await auth.api.unbanUser({
     body: {
@@ -461,6 +478,7 @@ export async function terminateAllUserSessions(userId: string) {
   if (!targetUser) {
     throw new Error("User not found");
   }
+  assertUserInScope(currentSession.user, targetUser);
 
   await db
     .delete(session)
@@ -499,6 +517,7 @@ export async function verifyUserEmail(userId: string) {
   if (!existing) {
     throw new Error("User not found");
   }
+  assertUserInScope(currentSession.user, existing);
 
   await db
     .update(user)

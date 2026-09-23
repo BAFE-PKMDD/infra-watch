@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { liveVideos, type LiveVideo } from "@/lib/db/schema";
 import { validateLiveVideoSchedule, validateLiveVideoState } from "@/lib/live-video-input";
-import { requireAdmin } from "@/lib/session";
+import { requireAdminOrRegionalAdmin } from "@/lib/session";
 import { normalizeExternalVideoUrl } from "@/lib/video-utils";
 
 type LiveVideoType = "facebook_live" | "youtube" | "recorded";
@@ -56,7 +56,7 @@ export async function createLiveVideo(data: {
   expiresAt?: Date | null;
 }): Promise<{ success: boolean; data?: LiveVideo; error?: string }> {
   try {
-    const user = await requireAdmin();
+    const user = await requireAdminOrRegionalAdmin();
     const source = normalizeSource(data);
     const isActive = data.isActive ?? false;
     const shouldBeLive = data.isLive ?? false;
@@ -131,7 +131,7 @@ export async function updateLiveVideo(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireAdmin();
+    await requireAdminOrRegionalAdmin();
 
     await db.transaction(async (tx) => {
       const [current] = await tx
@@ -210,7 +210,7 @@ export async function updateLiveVideo(
 
 export async function deleteLiveVideo(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireAdmin();
+    await requireAdminOrRegionalAdmin();
 
     const [video] = await db.select().from(liveVideos).where(eq(liveVideos.id, id)).limit(1);
 
@@ -229,7 +229,7 @@ export async function deleteLiveVideo(id: string): Promise<{ success: boolean; e
 
 export async function toggleLiveVideoActive(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireAdmin();
+    await requireAdminOrRegionalAdmin();
 
     await db.transaction(async (tx) => {
       const [current] = await tx
@@ -262,7 +262,7 @@ export async function toggleLiveVideoActive(id: string): Promise<{ success: bool
 
 export async function toggleLiveVideoLive(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireAdmin();
+    await requireAdminOrRegionalAdmin();
 
     await db.transaction(async (tx) => {
       const [current] = await tx

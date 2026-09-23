@@ -21,14 +21,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   const role = typeof session.user.role === "string" ? session.user.role : null;
+  const region = typeof session.user.region === "string" ? session.user.region : null;
+  const assignedAgency = typeof session.user.assignedAgency === "string" ? session.user.assignedAgency : null;
   const voiceConfig = getVoiceAssistantConfig();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
       <div className="flex min-h-screen">
-        <AdminSidebar role={role} />
+        <AdminSidebar role={role} region={region} assignedAgency={assignedAgency} />
         <div className="min-w-0 flex-1">
-          <AdminMobileNav role={role} />
+          <AdminMobileNav role={role} region={region} assignedAgency={assignedAgency} />
           <main>{children}</main>
         </div>
       </div>

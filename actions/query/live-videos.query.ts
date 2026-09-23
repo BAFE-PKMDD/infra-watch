@@ -4,10 +4,10 @@ import { and, asc, desc, eq, gte, isNull, lt, lte, or } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { liveVideos, type LiveVideo } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/session";
+import { requireAdminOrRegionalAdmin } from "@/lib/session";
 
 export async function getAllLiveVideos(): Promise<LiveVideo[]> {
-  await requireAdmin();
+  await requireAdminOrRegionalAdmin();
   const now = new Date();
 
   await db
@@ -38,7 +38,7 @@ export async function getActiveLiveVideos() {
 }
 
 export async function getLiveVideoById(id: string): Promise<LiveVideo | null> {
-  await requireAdmin();
+  await requireAdminOrRegionalAdmin();
   const [video] = await db.select().from(liveVideos).where(eq(liveVideos.id, id)).limit(1);
   return video ?? null;
 }
@@ -83,7 +83,7 @@ export async function getCurrentLiveVideo(): Promise<LiveVideo | null> {
 }
 
 export async function getLiveVideoStats() {
-  await requireAdmin();
+  await requireAdminOrRegionalAdmin();
   const all = await db.select().from(liveVideos);
   const now = new Date();
 

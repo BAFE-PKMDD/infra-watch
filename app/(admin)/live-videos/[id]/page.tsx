@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getLiveVideoById } from "@/actions/query/live-videos.query";
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { LiveVideoForm } from "@/components/admin/live-videos/live-video-form";
-import { requireAdmin } from "@/lib/session";
+import { requireAdminOrRegionalAdmin } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Edit Video | INFRA Watch Admin",
@@ -16,7 +16,7 @@ export default async function EditLiveVideoPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdmin();
+  await requireAdminOrRegionalAdmin();
   const { id } = await params;
 
   const video = await getLiveVideoById(id);

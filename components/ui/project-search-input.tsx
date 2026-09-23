@@ -17,7 +17,11 @@ export interface ProjectResult {
   code?: string;
   province?: string;
   municipality?: string;
+  barangay?: string;
   region?: string;
+  /** "nearby" when no project matched every search word and this is a broader,
+   * any-word fallback match instead — the UI should say so, not present it as exact. */
+  matchType?: "exact" | "nearby";
 }
 
 export interface SelectedProject {
@@ -37,7 +41,9 @@ interface ProjectsApiItem {
   sourceId?: string;
   province?: string;
   municipality?: string;
+  barangay?: string;
   region?: string;
+  matchType?: "exact" | "nearby";
 }
 
 interface ProjectSearchInputProps {
@@ -57,6 +63,9 @@ interface ProjectSearchInputProps {
   searchFn?: (query: string) => Promise<ProjectResult[]>;
   /** Optional prefix for the react-query cache key to avoid collisions */
   queryKeyPrefix?: string;
+  /** Pre-fills the search box and shows matches immediately, e.g. from a location
+   * already on hand — the field stays editable, this only seeds the first search. */
+  initialQuery?: string;
 }
 
 export function ProjectSearchInput({
@@ -68,9 +77,10 @@ export function ProjectSearchInput({
   autoFocus = false,
   searchFn,
   queryKeyPrefix = "projects",
+  initialQuery,
 }: ProjectSearchInputProps) {
-  const [searchInput, setSearchInput] = useState("");
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchInput, setSearchInput] = useState(initialQuery ?? "");
+  const [showDropdown, setShowDropdown] = useState(Boolean(initialQuery));
   const debouncedSearch = useDebounce(searchInput, 300);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputWrapperRef = useRef<HTMLDivElement>(null);
@@ -92,7 +102,9 @@ export function ProjectSearchInput({
       sourceId: p.sourceId,
       province: p.province,
       municipality: p.municipality,
+      barangay: p.barangay,
       region: p.region,
+      matchType: p.matchType,
     }));
   };
 
@@ -274,6 +286,11 @@ export function ProjectSearchInput({
                 </div>
               ) : (
                 <div className="max-h-64 overflow-y-auto">
+                  {searchResults[0]?.matchType === "nearby" && (
+                    <div className="px-3 py-2 text-xs font-semibold text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/20 border-b border-slate-200 dark:border-slate-700">
+                      No exact match for that location — showing nearby projects instead.
+                    </div>
+                  )}
                   {searchResults.map((project) => (
                     <button
                       key={project.id}
@@ -285,11 +302,16 @@ export function ProjectSearchInput({
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm truncate text-slate-900 dark:text-white">
                           {project.name}
+                          {project.matchType === "nearby" && (
+                            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                              Nearby
+                            </span>
+                          )}
                         </div>
                         {(project.municipality || project.sourceProjectId) && (
                           <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                             {project.municipality
-                              ? `${project.municipality}, ${project.province}`
+                              ? [project.barangay, project.municipality, project.province].filter(Boolean).join(", ")
                               : project.sourceProjectId}
                           </div>
                         )}

@@ -146,7 +146,7 @@ Route groups in parentheses are omitted from public URLs. Dynamic segments are s
 | --- | --- | --- | --- |
 | `POST` | `/api/knowledge-base/upload` | Validate/store KB document and trigger indexing | Authenticated admin/moderator |
 | `GET` | `/api/knowledge-base/files/[id]` | Download KB source file | Authenticated + KB read permission |
-| `POST` | `/api/knowledge-base/process` | Extract/chunk/embed/reindex document | **Currently unauthenticated; P0 gap** |
+| `POST` | `/api/knowledge-base/process` | Extract/chunk/embed/reindex document | Authenticated + `knowledge_base:embed` |
 
 ### Voice APIs
 

@@ -202,6 +202,11 @@ export function ExecutiveBriefClient() {
   }
 
   if (!query.data) {
+    // A 403 means this viewer has no analytics access at all — the sidebar already
+    // hides this link for them, and a retry button can't fix a permissions gap.
+    const status = query.error instanceof Error ? (query.error as Error & { status?: number }).status : undefined;
+    if (status === 403) return null;
+
     return (
       <div className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-5 dark:border-red-900 dark:bg-red-950/30">
         <p className="text-sm text-red-800 dark:text-red-200">

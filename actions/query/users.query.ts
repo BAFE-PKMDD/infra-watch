@@ -6,6 +6,7 @@ import { eq, desc, sql } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { hasPermission, type statement } from "@/lib/permissions";
+import { isSameRegion } from "@/lib/moderator-scope";
 
 type PermissionResource = keyof typeof statement;
 type PermissionAction<R extends PermissionResource> = (typeof statement)[R][number];
@@ -69,7 +70,7 @@ export async function getAllUsers(params?: {
   sortBy?: string;
   sortDirection?: "asc" | "desc";
 }) {
-  await checkPermission("user", "list");
+  const currentSession = await checkPermission("user", "list");
 
   try {
     const {
@@ -107,6 +108,11 @@ export async function getAllUsers(params?: {
     let users = (result.users || []) as unknown as ListedUser[];
     users = users.filter((u) => u.name !== "Administrator");
 
+    // A regional admin only manages staff in their own region — never every account.
+    if (currentSession.user.role === "regional_admin") {
+      users = users.filter((u) => isSameRegion(u.region, currentSession.user.region));
+    }
+
     if (search) {
       const searchLower = search.toLowerCase();
       users = users.filter((u) =>
@@ -143,7 +149,7 @@ export async function getAllUsers(params?: {
  * Get a single user by ID
  */
 export async function getUserById(userId: string) {
-  await checkPermission("user", "read");
+  const currentSession = await checkPermission("user", "read");
 
   const [userData] = await db
     .select({
@@ -169,6 +175,12 @@ export async function getUserById(userId: string) {
     throw new Error("User not found");
   }
 
+  // Treat a user outside the regional admin's own region as not found, same as a
+  // genuinely missing id — don't reveal that an out-of-scope account exists.
+  if (currentSession.user.role === "regional_admin" && !isSameRegion(userData.region, currentSession.user.region)) {
+    throw new Error("User not found");
+  }
+
   const activeSessions = await db
     .select({
       id: session.id,
@@ -191,23 +203,32 @@ export async function getUserById(userId: string) {
  * Get user statistics
  */
 export async function getUserStats() {
-  await checkPermission("user", "list");
+  const currentSession = await checkPermission("user", "list");
+
+  // A regional admin's counts cover only their own region — otherwise these totals
+  // would reveal headcounts for regions they can't otherwise see into.
+  const regionFilter = currentSession.user.role === "regional_admin"
+    ? eq(user.region, currentSession.user.region?.trim() ?? "")
+    : undefined;
 
   const [stats] = await db
     .select({
       totalUsers: sql<number>`count(*) filter (where name != 'Administrator')`,
       totalAdmins: sql<number>`count(*) filter (where role = 'admin' and name != 'Administrator')`,
       totalModerators: sql<number>`count(*) filter (where role = 'moderator' and name != 'Administrator')`,
+      totalRegionalAdmins: sql<number>`count(*) filter (where role = 'regional_admin' and name != 'Administrator')`,
       totalCitizens: sql<number>`count(*) filter (where role = 'citizen' and name != 'Administrator')`,
       totalBanned: sql<number>`count(*) filter (where banned = true and name != 'Administrator')`,
       totalVerified: sql<number>`count(*) filter (where email_verified = true and name != 'Administrator')`,
     })
-    .from(user);
+    .from(user)
+    .where(regionFilter);
 
   return {
     totalUsers: Number(stats.totalUsers),
     totalAdmins: Number(stats.totalAdmins),
     totalModerators: Number(stats.totalModerators),
+    totalRegionalAdmins: Number(stats.totalRegionalAdmins),
     totalCitizens: Number(stats.totalCitizens),
     totalBanned: Number(stats.totalBanned),
     totalVerified: Number(stats.totalVerified),

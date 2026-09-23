@@ -13,9 +13,14 @@ const getMinioConfig = () => {
 };
 
 const FEEDBACK_UPLOAD_PATH_RE = /^feedback\/\d+-[a-f0-9]{32}\.(?:jpe?g|png|webp|gif|mp4|mov|webm)$/;
+const PRIVATE_STORAGE_PATH_RE = /^(?:knowledge-base|issue-evidence)\//;
 
 export function isFeedbackUploadPath(filePath: string): boolean {
   return FEEDBACK_UPLOAD_PATH_RE.test(filePath);
+}
+
+export function isPrivateStoragePath(filePath: string): boolean {
+  return PRIVATE_STORAGE_PATH_RE.test(filePath);
 }
 
 function isLocalMinioEndpoint(endpoint: string): boolean {
@@ -31,7 +36,7 @@ function isLocalMinioEndpoint(endpoint: string): boolean {
 export function getFileUrl(filePath: string): string {
   const { endpoint, useSSL, bucket } = getMinioConfig();
 
-  if (isLocalMinioEndpoint(endpoint) && isFeedbackUploadPath(filePath)) {
+  if (isPrivateStoragePath(filePath) || (isLocalMinioEndpoint(endpoint) && isFeedbackUploadPath(filePath))) {
     return `/api/upload/preview?path=${encodeURIComponent(filePath)}`;
   }
 
@@ -48,6 +53,34 @@ export function isFullUrl(urlOrPath: string): boolean {
   return urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://');
 }
 
+function getLegacyPrivateStoragePath(urlOrPath: string): string | null {
+  if (!isFullUrl(urlOrPath)) return null;
+
+  try {
+    const { endpoint } = getMinioConfig();
+    const configuredOrigin = new URL(
+      endpoint.startsWith("http://") || endpoint.startsWith("https://")
+        ? endpoint
+        : `http://${endpoint}`,
+    );
+    const url = new URL(urlOrPath);
+    if (url.host.toLowerCase() !== configuredOrigin.host.toLowerCase()) {
+      return null;
+    }
+
+    const segments = decodeURIComponent(url.pathname).split("/").filter(Boolean);
+    const privatePrefixIndex = segments.findIndex(
+      (segment) => segment === "knowledge-base" || segment === "issue-evidence",
+    );
+    if (privatePrefixIndex < 1) return null;
+
+    const storagePath = segments.slice(privatePrefixIndex).join("/");
+    return isPrivateStoragePath(storagePath) ? storagePath : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Get full URL from either a path or existing full URL
  * Handles backward compatibility with old records that have full URLs
@@ -56,6 +89,8 @@ export function isFullUrl(urlOrPath: string): boolean {
  */
 export function getFullUrl(urlOrPath: string | null | undefined): string | null {
   if (!urlOrPath) return null;
+  const legacyPrivatePath = getLegacyPrivateStoragePath(urlOrPath);
+  if (legacyPrivatePath) return getFileUrl(legacyPrivatePath);
   return isFullUrl(urlOrPath) ? urlOrPath : getFileUrl(urlOrPath);
 }
 

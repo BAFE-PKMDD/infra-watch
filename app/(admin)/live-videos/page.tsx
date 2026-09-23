@@ -7,7 +7,7 @@ import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { LiveVideoTable } from "@/components/admin/live-videos/live-video-table";
 import { StatCard } from "@/components/admin/shared/stat-card";
 import { TableSkeleton } from "@/components/admin/shared/table-skeleton";
-import { requireAdmin } from "@/lib/session";
+import { requireAdminOrRegionalAdmin } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Live Videos | INFRA Watch Admin",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LiveVideosPage() {
-  await requireAdmin();
+  await requireAdminOrRegionalAdmin();
 
   const [videos, stats] = await Promise.all([
     getAllLiveVideos(),

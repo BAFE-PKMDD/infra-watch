@@ -2,7 +2,7 @@
  * Role definitions for FMR Watch
  */
 
-export type UserRole = "admin" | "moderator" | "citizen";
+export type UserRole = "admin" | "moderator" | "regional_admin" | "citizen";
 
 /**
  * Role descriptions and capabilities

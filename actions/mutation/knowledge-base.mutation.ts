@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/session";
 import { requirePermission, statement } from "@/lib/permissions";
 import { logAudit, getAuditContextFromServerAction } from "@/lib/audit";
 import { deleteFile } from "@/lib/minio";
+import { getKnowledgeBaseProcessingFailureMessage } from "@/lib/knowledge-base-processing-policy";
 
 type ActionResult<T = unknown> = {
   success: boolean;
@@ -77,12 +78,13 @@ export async function addFaqEntry(data: {
         .set({ status: "embedded", chunkCount: chunks.length })
         .where(eq(kbDocuments.id, doc.id));
     } catch (embedError) {
-      const errorMsg = embedError instanceof Error ? embedError.message : "Embedding failed";
+      console.error("[KB FAQ] Embedding failed:", embedError);
+      const errorMsg = getKnowledgeBaseProcessingFailureMessage(embedError);
       await db
         .update(kbDocuments)
         .set({ status: "failed", errorMessage: errorMsg })
         .where(eq(kbDocuments.id, doc.id));
-      return { success: false, error: `FAQ saved but embedding failed: ${errorMsg}` };
+      return { success: false, error: errorMsg };
     }
 
     revalidatePath("/knowledge-base");
@@ -98,9 +100,10 @@ export async function addFaqEntry(data: {
 
     return { success: true, message: "FAQ entry created and embedded successfully.", data: doc };
   } catch (error) {
+    console.error("[KB FAQ] Create failed:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to create FAQ entry",
+      error: "Failed to create FAQ entry.",
     };
   }
 }
@@ -152,9 +155,10 @@ export async function deleteKbDocument(documentId: string): Promise<ActionResult
 
     return { success: true, message: "Document deleted successfully." };
   } catch (error) {
+    console.error("[KB Document] Delete failed:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to delete document",
+      error: "Failed to delete document.",
     };
   }
 }
@@ -190,7 +194,8 @@ export async function archiveKbDocument(documentId: string): Promise<ActionResul
 
     return { success: true, message: "Document archived successfully." };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Failed to archive document" };
+    console.error("[KB Document] Archive failed:", error);
+    return { success: false, error: "Failed to archive document." };
   }
 }
 
@@ -224,7 +229,8 @@ export async function restoreKbDocument(documentId: string): Promise<ActionResul
 
     return { success: true, message: "Document restored successfully." };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Failed to restore document" };
+    console.error("[KB Document] Restore failed:", error);
+    return { success: false, error: "Failed to restore document." };
   }
 }
 
@@ -246,25 +252,8 @@ export async function reindexDocument(documentId: string): Promise<ActionResult>
       return { success: false, error: "Restore this document before reindexing it.", status: 409 };
     }
 
-    // Update status to indexing
-    await db
-      .update(kbDocuments)
-      .set({ status: "indexing", errorMessage: null })
-      .where(eq(kbDocuments.id, documentId));
-
-    // Delete existing chunks
-    await db.delete(kbChunks).where(eq(kbChunks.documentId, documentId));
-
-    // Trigger reprocessing via internal API
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3101";
-    fetch(`${baseUrl}/api/knowledge-base/process`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ documentId }),
-    }).catch((err) => {
-      console.error("[KB] Failed to trigger reindex:", err);
-    });
-
+    // Keep the current searchable chunks and status until the protected
+    // processor has produced a replacement index successfully.
     revalidatePath("/knowledge-base");
 
     await logAudit({
@@ -277,9 +266,10 @@ export async function reindexDocument(documentId: string): Promise<ActionResult>
 
     return { success: true, message: "Document reindexing started." };
   } catch (error) {
+    console.error("[KB Document] Reindex request failed:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to reindex document",
+      error: "Failed to reindex document.",
     };
   }
 }

@@ -1,48 +1,58 @@
-import { NextRequest, NextResponse } from "next/server";
+import { eq, or, sql } from "drizzle-orm";
+import { NextRequest } from "next/server";
 
 import { auth } from "@/lib/auth";
-import { isLiveVideoUploadPath } from "@/lib/live-video-upload";
+import { db } from "@/lib/db";
+import { issues } from "@/lib/db/schema";
 import { downloadFile } from "@/lib/minio";
-import { isFeedbackUploadPath } from "@/lib/minio-url";
+import { hasPermission } from "@/lib/permissions";
+import { checkIssueScope } from "@/lib/scope";
+import { canAccessIssueEvidence } from "./access";
+import { createUploadPreviewGetHandler } from "./handler";
 
 export const runtime = "nodejs";
 
-const MEDIA_CONTENT_TYPES: Record<string, string> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  gif: "image/gif",
-  mp4: "video/mp4",
-  mov: "video/quicktime",
-  webm: "video/webm",
-};
+const getHandler = createUploadPreviewGetHandler({
+  getSessionUser: async (headers) => {
+    const session = await auth.api.getSession({ headers });
+    return session?.user
+      ? {
+          id: session.user.id,
+          role: session.user.role as string | string[] | null | undefined,
+          region: session.user.region,
+          assignedAgency: session.user.assignedAgency,
+        }
+      : null;
+  },
+  canReadKnowledgeBase: (role) => hasPermission(role, "knowledge_base", "read"),
+  canReadIssueEvidence: async (user, path) => {
+    const [issue] = await db
+      .select({
+        reporterUserId: issues.reporterUserId,
+        projectId: issues.projectId,
+        region: issues.region,
+      })
+      .from(issues)
+      .where(or(
+        sql`${issues.evidence} @> ${JSON.stringify([{ url: path }])}::jsonb`,
+        eq(issues.geoVideoUrl, path),
+      ))
+      .limit(1);
+
+    if (!issue) return false;
+    return canAccessIssueEvidence(user, issue, async () => {
+      const scope = await checkIssueScope({
+        role: "moderator",
+        region: user.region,
+        assignedAgency: user.assignedAgency,
+      }, issue);
+      return scope.allowed;
+    });
+  },
+  loadMedia: downloadFile,
+  onError: (error) => console.error("Upload preview failed", error),
+});
 
 export async function GET(request: NextRequest) {
-  const session = await auth.api.getSession({ headers: request.headers });
-  if (!session?.user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  }
-
-  const path = request.nextUrl.searchParams.get("path") ?? "";
-  if (!isLiveVideoUploadPath(path) && !isFeedbackUploadPath(path)) {
-    return NextResponse.json({ error: "Invalid upload preview path." }, { status: 400 });
-  }
-
-  try {
-    const media = await downloadFile(path);
-    const extension = path.split(".").pop()?.toLowerCase() ?? "";
-
-    return new NextResponse(new Uint8Array(media), {
-      headers: {
-        "Cache-Control": "private, no-store",
-        "Content-Disposition": "inline",
-        "Content-Type": MEDIA_CONTENT_TYPES[extension] ?? "application/octet-stream",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
-  } catch (error) {
-    console.error("Upload preview failed", error);
-    return NextResponse.json({ error: "Media preview is unavailable." }, { status: 404 });
-  }
+  return getHandler(request);
 }

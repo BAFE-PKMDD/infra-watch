@@ -11,7 +11,7 @@ import {
 
 import { db } from "@/lib/db";
 import { feedback, issueResponses, issues } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/session";
+import { requireAdminOrRegionalAdmin } from "@/lib/session";
 import { SLA_BREACH_HOURS } from "@/lib/sla-thresholds";
 import type {
   SlaDistribution,
@@ -118,7 +118,7 @@ function trendByDay(tableData: SlaTableRow[], from: Date, to: Date): SlaTrendPoi
  * moment their issue was actually responded to.
  */
 export async function getIssueSlaReport(params: { from: Date; to: Date }): Promise<SlaReportData> {
-  await requireAdmin();
+  await requireAdminOrRegionalAdmin();
   const { from, to } = params;
 
   const rangeIssues = await db
@@ -193,7 +193,7 @@ export async function getIssueSlaReport(params: { from: Date; to: Date }): Promi
  * deliberately excluded so this metric can't be gamed by the canned auto-reply.
  */
 export async function getFeedbackSlaReport(params: { from: Date; to: Date }): Promise<SlaReportData> {
-  await requireAdmin();
+  await requireAdminOrRegionalAdmin();
   const { from, to } = params;
 
   const rangeFeedback = await db

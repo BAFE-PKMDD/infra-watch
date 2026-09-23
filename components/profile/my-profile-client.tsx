@@ -39,7 +39,7 @@ export function MyProfileClient({
     });
   }
 
-  const showsSmsNote = user.role === "moderator" || user.role === "admin";
+  const showsSmsNote = user.role === "moderator" || user.role === "regional_admin" || user.role === "admin";
 
   return (
     <>

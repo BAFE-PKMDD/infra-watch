@@ -355,7 +355,7 @@ Security/operational boundaries:
 
 - Stored image bytes are not currently re-encoded to strip EXIF metadata.
 - The fallback can report success for ephemeral local container storage.
-- A broad public-read bucket policy conflicts with private evidence/knowledge requirements.
+- Public reads are limited to approved public-media prefixes; knowledge-base and issue-evidence paths use a distinct private bucket and authenticated application reads. Issue evidence requires owner, administrator, or scoped-moderator access.
 
 ## 10. Managerial analytics workflow
 
@@ -424,7 +424,7 @@ Authorized admin/moderator opens /knowledge-base
   → server validates staff role and file metadata
   → store file in MinIO under knowledge-base path
   → create document(status=processing/indexing)
-  → trigger internal processing endpoint
+  → authenticated browser calls protected processing endpoint
   → download stored file
   → extract text
   → create bounded chunks
@@ -447,10 +447,10 @@ Authorized staff creates FAQ question + answer
 
 - Active → archived: excluded from AI retrieval and audited.
 - Archived → active: eligible for retrieval again and audited.
-- Reindex: delete chunks, mark indexing, trigger processing.
+- Reindex: validate active state and trigger protected processing without deleting the current index; replacement chunks are generated first and swapped transactionally.
 - Permanent delete: allowed only after archive; removes MinIO file where possible and cascades chunks.
 
-Critical gap: the processing endpoint itself does not authenticate or authorize requests and can mutate any known document ID.
+The processing endpoint now authenticates the caller and requires `knowledge_base:embed` before loading or mutating a document.
 
 ## 14. Public AI chat lifecycle
 
@@ -538,7 +538,9 @@ Container starts
   → wait for PostgreSQL readiness (up to 30 attempts)
   → optionally prepare/apply migrations
   → run standalone server as non-root user
-  → Next.js instrumentation initializes scheduler
+  → Next.js instrumentation reconciles public/private MinIO buckets and policies
+  → fail startup if public/private buckets collide or the private policy has an anonymous Allow
+  → initialize scheduler only after storage reconciliation succeeds
   → Docker health check requests root page
 ```
 

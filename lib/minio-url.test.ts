@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getFileUrl, isFeedbackUploadPath, isLocalMinIO } from "./minio-url";
+import { getFileUrl, getFullUrl, isFeedbackUploadPath, isLocalMinIO } from "./minio-url";
 import nextConfig from "../next.config";
 
 const generatedImage = "feedback/1789566130081-be081b09fd31b786f78f87b3319f2deb.jpg";
@@ -87,5 +87,54 @@ test("keeps production feedback media on the configured object-storage origin", 
     process.env.NEXT_PUBLIC_MINIO_ENDPOINT = previousEndpoint;
     process.env.NEXT_PUBLIC_MINIO_USE_SSL = previousSsl;
     process.env.NEXT_PUBLIC_MINIO_BUCKET = previousBucket;
+  }
+});
+
+test("never exposes private knowledge-base or issue-evidence paths as direct object URLs", () => {
+  const previousEndpoint = process.env.NEXT_PUBLIC_MINIO_ENDPOINT;
+  const previousSsl = process.env.NEXT_PUBLIC_MINIO_USE_SSL;
+  const previousBucket = process.env.NEXT_PUBLIC_MINIO_BUCKET;
+
+  process.env.NEXT_PUBLIC_MINIO_ENDPOINT = "storage.bafe.gov.ph";
+  process.env.NEXT_PUBLIC_MINIO_USE_SSL = "true";
+  process.env.NEXT_PUBLIC_MINIO_BUCKET = "infra-watch";
+
+  try {
+    for (const path of [
+      "knowledge-base/1789566130081-be081b09fd31b786f78f87b3319f2deb.pdf",
+      "issue-evidence/1789566130081-be081b09fd31b786f78f87b3319f2deb.jpg",
+    ]) {
+      const url = getFileUrl(path);
+      assert.equal(url, `/api/upload/preview?path=${encodeURIComponent(path)}`);
+      assert.doesNotMatch(url, /storage\.bafe\.gov\.ph/);
+    }
+  } finally {
+    process.env.NEXT_PUBLIC_MINIO_ENDPOINT = previousEndpoint;
+    process.env.NEXT_PUBLIC_MINIO_USE_SSL = previousSsl;
+    process.env.NEXT_PUBLIC_MINIO_BUCKET = previousBucket;
+  }
+});
+
+test("converts legacy absolute private-object URLs to authenticated previews", () => {
+  const previousEndpoint = process.env.NEXT_PUBLIC_MINIO_ENDPOINT;
+  process.env.NEXT_PUBLIC_MINIO_ENDPOINT = "storage.bafe.gov.ph";
+
+  try {
+    for (const path of [
+      "knowledge-base/1789566130081-be081b09fd31b786f78f87b3319f2deb.pdf",
+      "issue-evidence/1789566130081-be081b09fd31b786f78f87b3319f2deb.jpg",
+    ]) {
+      assert.equal(
+        getFullUrl(`https://storage.bafe.gov.ph/infra-watch/${path}`),
+        `/api/upload/preview?path=${encodeURIComponent(path)}`,
+      );
+    }
+
+    assert.equal(
+      getFullUrl("https://example.org/knowledge-base/public.pdf"),
+      "https://example.org/knowledge-base/public.pdf",
+    );
+  } finally {
+    process.env.NEXT_PUBLIC_MINIO_ENDPOINT = previousEndpoint;
   }
 });

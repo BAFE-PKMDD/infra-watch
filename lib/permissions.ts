@@ -23,7 +23,7 @@ export const statement = {
 
 export const ac = createAccessControl(statement);
 
-export const availableRoles = ["admin", "moderator", "citizen"] as const;
+export const availableRoles = ["admin", "moderator", "regional_admin", "citizen"] as const;
 export type UserRole = (typeof availableRoles)[number];
 
 export const citizen = ac.newRole({
@@ -56,6 +56,33 @@ export const moderator = ac.newRole({
   knowledge_base: ["create", "read", "update", "delete", "list", "embed"],
 });
 
+// Everything a moderator has, unrestricted by region (see lib/scope.ts — its
+// region/agency filtering only ever triggers for the literal "moderator" role), plus
+// Live Videos and region-scoped user management. Sync, data quality, audit logs, and
+// full user administration (create/delete/set-role/set-password/impersonate) stay
+// admin-only — see requireAdminOrRegionalAdmin in lib/session.ts and the region checks
+// in actions/query/users.query.ts and actions/mutation/users.mutation.ts.
+export const regionalAdmin = ac.newRole({
+  projects: ["read", "update", "list"],
+  project_status: ["update", "view"],
+  project_documents: ["upload", "download", "delete", "view"],
+  feedback: ["create", "read", "update", "delete", "list", "approve", "reject", "flag", "respond"],
+  issues: ["read", "update", "delete", "list", "respond", "resolve"],
+  articles: ["create", "read", "update", "delete", "publish", "unpublish", "list"],
+  announcements: ["create", "read", "update", "delete", "publish", "unpublish", "list"],
+  uploads: ["create", "read", "delete", "moderate"],
+  contact_messages: ["read", "update", "delete", "list"],
+  dashboard: ["view"],
+  analytics: ["view"],
+  reports: ["generate", "view", "export"],
+  abemis_sync: ["view"],
+  data_quality: ["view"],
+  audit_logs: ["view"],
+  knowledge_base: ["create", "read", "update", "delete", "list", "embed"],
+  system_settings: ["read"],
+  user: ["list", "read", "update", "ban", "revoke"],
+});
+
 export const admin = ac.newRole({
   user: ["ban", "list", "create", "read", "update", "impersonate", "set-role", "delete", "set-password", "revoke"],
   projects: ["create", "read", "update", "delete", "list", "publish", "archive"],
@@ -80,6 +107,7 @@ export const admin = ac.newRole({
 const roleRegistry = {
   admin,
   moderator,
+  regional_admin: regionalAdmin,
   citizen,
 } as const;
 
