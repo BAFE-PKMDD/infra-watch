@@ -1,20 +1,23 @@
-import { smsStatusLabel } from "@/lib/sms-grievance/queue";
-import type { SmsMockScenario } from "@/types/sms-grievance.types";
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { SMS_CASE_STATUS_LABELS, smsStatusLabel } from "@/lib/sms-grievance/queue";
+import type { SmsCaseStatus, SmsMockScenario } from "@/types/sms-grievance.types";
 
 function deliveryLabel(value: SmsMockScenario["deliveryStatus"]) {
   return {
-    not_requested: "No sample reply",
-    simulated_pending: "Sample reply pending",
-    simulated_delivered: "Sample reply recorded",
-    simulated_failed: "Sample reply failed",
+    not_requested: "No reply sent",
+    simulated_pending: "Reply pending",
+    simulated_delivered: "Reply sent",
+    simulated_failed: "Reply failed",
   }[value];
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-bold text-slate-600 dark:text-slate-300">{label}</dt>
-      <dd className="mt-1 break-words font-semibold text-slate-800 dark:text-slate-100">{value}</dd>
+      <dt className="text-xs font-bold text-slate-500 dark:text-slate-400">{label}</dt>
+      <dd className="mt-0.5 break-words text-sm font-semibold text-slate-800 dark:text-slate-100">{value}</dd>
     </div>
   );
 }
@@ -33,15 +36,15 @@ export function SmsGrievanceHeader({ record }: { record: SmsMockScenario }) {
   );
 }
 
-// Renders only the body content (urgent warning, message text, metadata, review
-// summary) — the caller owns the shared "space-y-6 p-4" wrapper so this stays a
-// sibling of SmsPrototypeActions and SmsConversationTimeline in one scroll flow.
-export function SmsGrievanceSummary({ record }: { record: SmsMockScenario }) {
+// Just the message artifact itself — the thing a reviewer reads first. Reference
+// fields (sender, category, region, etc.) live in SmsGrievanceMetadataCard instead,
+// so this stays short and doesn't compete with it for the main column.
+export function SmsGrievanceMessageCard({ record }: { record: SmsMockScenario }) {
   return (
-    <>
+    <div className="space-y-3">
       {record.urgentReview && (
         <div className="border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-950 dark:border-red-800 dark:bg-red-950/30 dark:text-red-100">
-          This sample may describe immediate danger. Review it first. This prototype does not notify emergency responders.
+          This message may describe immediate danger. Review it first. This channel does not notify emergency responders automatically.
         </div>
       )}
 
@@ -50,34 +53,88 @@ export function SmsGrievanceSummary({ record }: { record: SmsMockScenario }) {
         <p className="mt-2 whitespace-pre-wrap break-words border border-slate-300 bg-slate-50 p-4 font-mono text-sm leading-6 text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
           {record.originalText}
         </p>
-        <p className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">This sample message stays unchanged. Staff notes are kept separately.</p>
+        <p className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">This message stays unchanged. Staff notes are kept separately.</p>
       </div>
+    </div>
+  );
+}
 
-      <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
-        <Detail label="Sender" value={record.maskedContact} />
-        <Detail label="Received" value={new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(record.receivedAt))} />
-        <Detail label="Category" value={record.categoryLabel} />
-        <Detail label="Project" value={record.projectLabel} />
-        <Detail label="Location mentioned" value={record.locationLabel} />
-      </dl>
-
-      <details>
-        <summary className="min-h-11 cursor-pointer py-1 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-          More details
-        </summary>
-        <dl className="mt-3 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+// A reference panel meant to sit in a sidebar beside the working area, not stacked
+// above it — so checking a detail never means scrolling away from the decision.
+export function SmsGrievanceMetadataCard({
+  record,
+  statusOptions = [],
+  statusTarget = "",
+  onStatusTargetChange,
+  statusChangeReason = "",
+  onStatusChangeReasonChange,
+  onConfirmStatusChange,
+}: {
+  record: SmsMockScenario;
+  statusOptions?: { value: SmsCaseStatus; label: string }[];
+  statusTarget?: SmsCaseStatus | "";
+  onStatusTargetChange?: (value: SmsCaseStatus | "") => void;
+  statusChangeReason?: string;
+  onStatusChangeReasonChange?: (value: string) => void;
+  onConfirmStatusChange?: () => void;
+}) {
+  return (
+    <div className="space-y-5 border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div>
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Message details</h3>
+        <dl className="space-y-3">
+          <Detail label="Sender" value={record.maskedContact} />
+          <Detail label="Received" value={new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(record.receivedAt))} />
+          <Detail label="Category" value={record.categoryLabel} />
+          <Detail label="Project" value={record.projectLabel} />
+          <Detail label="Location mentioned" value={record.locationLabel} />
           <Detail label="Name preference" value={record.senderMode === "anonymous" ? "Anonymous" : "Name provided"} />
           <Detail label="Language" value={record.language} />
           <Detail label="Review team" value={record.assignedUnit ?? "Not assigned"} />
           <Detail label="Region" value={record.assignedRegion ?? "Not assigned"} />
           <Detail label="Message status" value={deliveryLabel(record.deliveryStatus)} />
         </dl>
-      </details>
+      </div>
 
-      <div>
-        <h3 className="text-sm font-bold">Review summary</h3>
+      {statusOptions.length > 0 && onStatusTargetChange && onStatusChangeReasonChange && onConfirmStatusChange && (
+        <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
+          <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400" htmlFor="grievance-status-select">
+            Grievance status
+          </label>
+          <select
+            id="grievance-status-select"
+            value={statusTarget}
+            onChange={(event) => onStatusTargetChange(event.target.value as SmsCaseStatus)}
+            className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+          >
+            <option value={record.status}>{SMS_CASE_STATUS_LABELS[record.status]} (current)</option>
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+
+          {statusTarget && statusTarget !== record.status && (
+            <div className="mt-2 space-y-2">
+              <label className="sr-only" htmlFor="grievance-status-reason">Reason for this change</label>
+              <input
+                id="grievance-status-reason"
+                value={statusChangeReason}
+                onChange={(event) => onStatusChangeReasonChange(event.target.value)}
+                placeholder="Reason for this status change"
+                className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              />
+              <Button type="button" variant="outline" className="min-h-11 w-full px-4" onClick={onConfirmStatusChange}>
+                Update status
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Review summary</h3>
         <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">{record.relevanceReason}</p>
       </div>
-    </>
+    </div>
   );
 }

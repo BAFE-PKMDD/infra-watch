@@ -28,6 +28,10 @@ export function canTransitionSmsCase(current: SmsCaseStatus, target: SmsCaseStat
   return ALLOWED_TRANSITIONS[current].includes(target);
 }
 
+export function nextSmsCaseStatuses(current: SmsCaseStatus): readonly SmsCaseStatus[] {
+  return ALLOWED_TRANSITIONS[current];
+}
+
 export function getSmsActionRequirement(action: SmsAction) {
   return [...ACTION_REQUIREMENTS[action]];
 }

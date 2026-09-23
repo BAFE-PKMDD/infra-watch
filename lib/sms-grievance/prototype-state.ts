@@ -24,6 +24,7 @@ export type PrototypeAction =
       region: string;
       project: SmsProjectTag | null;
       confirmed: boolean;
+      certainty?: "confirmed" | "possible";
     }
   | { type: "mark_not_bafe_project"; reason: string }
   | { type: "mark_unrelated"; reason: string }
@@ -56,9 +57,10 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
     const assignedRegion = requireText(action.region, "Region tag");
     if (!action.confirmed) throw new Error("Moderator or admin confirmation is required before creating the sample case.");
     const project = requireProject(action.project);
+    const certainty = action.certainty ?? "confirmed";
     return {
       ...candidate,
-      relevance: "confirmed_in_scope",
+      relevance: certainty === "possible" ? "uncertain" : "confirmed_in_scope",
       relevanceReason: requireText(action.relevanceReason, "Relevance reason"),
       status: "pending_review",
       category: action.category,
@@ -66,7 +68,7 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
       locationLabel: location,
       assignedUnit,
       assignedRegion,
-      projectMatch: "confirmed",
+      projectMatch: certainty === "possible" ? "candidate" : "confirmed",
       projectId: project.id,
       projectCode: project.code,
       projectProvince: project.province,

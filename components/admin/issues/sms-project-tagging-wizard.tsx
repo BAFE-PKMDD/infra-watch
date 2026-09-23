@@ -1,28 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Building2, CheckCircle2, Copy, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleHelp, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ProjectSearchInput, type SelectedProject } from "@/components/ui/project-search-input";
+import { SmsRegionSelect } from "@/components/admin/issues/sms-region-select";
 import { SMS_CATEGORY_LABELS } from "@/lib/sms-grievance/prototype-state";
 import { cn } from "@/lib/utils";
 import type { SmsCategory } from "@/types/sms-grievance.types";
 
-export type IntakeDecision = "bafe_project" | "not_bafe_project" | "duplicate";
+export type IntakeDecision = "bafe_project" | "possible_bafe_project" | "not_bafe_project";
 
-export type WizardStep = "decision" | "project" | "duplicate_ref" | "category" | "reason" | "review";
+export type WizardStep = "decision" | "region" | "project" | "category" | "reason" | "review";
 
 export function stepsForDecision(decision: IntakeDecision): WizardStep[] {
-  if (decision === "bafe_project") return ["decision", "project", "category", "reason", "review"];
-  if (decision === "duplicate") return ["decision", "duplicate_ref", "reason", "review"];
+  if (decision === "bafe_project" || decision === "possible_bafe_project") {
+    return ["decision", "region", "project", "category", "reason", "review"];
+  }
   return ["decision", "reason", "review"];
 }
 
 const STEP_TITLES: Record<WizardStep, string> = {
   decision: "Is this about a BAFE project?",
+  region: "Which region will own this case?",
   project: "Which project?",
-  duplicate_ref: "Which existing case?",
   category: "What kind of concern?",
   reason: "Why does this match?",
   review: "Review and confirm",
@@ -39,8 +41,6 @@ export function SmsProjectTaggingWizard({
   onSelectedProjectChange,
   decisionReason,
   onDecisionReasonChange,
-  duplicateOf,
-  onDuplicateOfChange,
   assignedUnit,
   onAssignedUnitChange,
   assignedRegion,
@@ -58,8 +58,6 @@ export function SmsProjectTaggingWizard({
   onSelectedProjectChange: (value: SelectedProject | null) => void;
   decisionReason: string;
   onDecisionReasonChange: (value: string) => void;
-  duplicateOf: string;
-  onDuplicateOfChange: (value: string) => void;
   assignedUnit: string;
   onAssignedUnitChange: (value: string) => void;
   assignedRegion: string;
@@ -84,13 +82,15 @@ export function SmsProjectTaggingWizard({
     setTimeout(() => setStepIndex(1), 0);
   }
 
-  const canAdvance = currentStep === "project"
-    ? Boolean(selectedProject)
-    : currentStep === "duplicate_ref"
-      ? duplicateOf.trim().length > 0
+  const canAdvance = currentStep === "region"
+    ? assignedRegion.trim().length > 0
+    : currentStep === "project"
+      ? Boolean(selectedProject)
       : currentStep === "reason"
         ? decisionReason.trim().length > 0
         : true;
+
+  const isNcrRegion = assignedRegion.trim().toUpperCase().includes("NCR");
 
   return (
     <div>
@@ -106,37 +106,56 @@ export function SmsProjectTaggingWizard({
           />
         ))}
       </div>
-      <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        Step {stepIndex + 1} of {steps.length}
-      </p>
       <h4 className="mb-4 text-base font-bold text-slate-950 dark:text-white">{STEP_TITLES[currentStep]}</h4>
 
       {currentStep === "decision" && (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <DecisionCard
-            icon={<Building2 aria-hidden="true" className="size-5" />}
+            icon={<Building2 aria-hidden="true" className="size-4" />}
             label="This is about a BAFE project"
             active={intakeDecision === "bafe_project"}
             onClick={() => pickDecision("bafe_project")}
           />
           <DecisionCard
-            icon={<XCircle aria-hidden="true" className="size-5" />}
+            icon={<CircleHelp aria-hidden="true" className="size-4" />}
+            label="Not sure — possibly a BAFE project"
+            active={intakeDecision === "possible_bafe_project"}
+            onClick={() => pickDecision("possible_bafe_project")}
+          />
+          <DecisionCard
+            icon={<XCircle aria-hidden="true" className="size-4" />}
             label="Not a BAFE project"
             active={intakeDecision === "not_bafe_project"}
             onClick={() => pickDecision("not_bafe_project")}
           />
-          <DecisionCard
-            icon={<Copy aria-hidden="true" className="size-5" />}
-            label="Link as possible copy"
-            active={intakeDecision === "duplicate"}
-            onClick={() => pickDecision("duplicate")}
-          />
+        </div>
+      )}
+
+      {currentStep === "region" && (
+        <div className="space-y-3">
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+            An NCR moderator or admin assigns the region that will own this case before it&apos;s linked to a project.
+          </p>
+          <label className="block text-sm font-semibold" htmlFor="wizard-region-step">
+            Region
+            <SmsRegionSelect id="wizard-region-step" value={assignedRegion} onChange={onAssignedRegionChange} />
+          </label>
+          {assignedRegion.trim() && (
+            <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+              {isNcrRegion
+                ? "Because this is NCR, the NCR review team links the matching project directly."
+                : `Because this is outside NCR, the regional admin for ${assignedRegion} links the matching project.`}
+            </p>
+          )}
         </div>
       )}
 
       {currentStep === "project" && (
         <div className="space-y-3">
-          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">Search actual BAFE projects and choose the matching source record. A typed project name alone is not accepted.</p>
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Search actual BAFE projects and choose the matching source record. A typed project name alone is not accepted.
+            {locationTag && " Pre-filled below with the location mentioned in the message — edit it or pick a different match."}
+          </p>
           <ProjectSearchInput
             value={selectedProject}
             onSelect={(project) => {
@@ -146,19 +165,9 @@ export function SmsProjectTaggingWizard({
             onClear={() => onSelectedProjectChange(null)}
             placeholder="Search actual BAFE projects by name, code, or location"
             queryKeyPrefix="sms-review-bafe-projects"
+            initialQuery={locationTag}
           />
         </div>
-      )}
-
-      {currentStep === "duplicate_ref" && (
-        <label className="block text-sm font-semibold">
-          Existing sample case reference
-          <input
-            value={duplicateOf}
-            onChange={(event) => onDuplicateOfChange(event.target.value)}
-            className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-          />
-        </label>
       )}
 
       {currentStep === "category" && (
@@ -176,7 +185,7 @@ export function SmsProjectTaggingWizard({
 
       {currentStep === "reason" && (
         <label className="block text-sm font-semibold">
-          {intakeDecision === "bafe_project" ? "Why this grievance matches this BAFE project" : "Reason for this decision"}
+          Reason
           <textarea
             value={decisionReason}
             onChange={(event) => onDecisionReasonChange(event.target.value)}
@@ -190,15 +199,19 @@ export function SmsProjectTaggingWizard({
         <div className="space-y-4">
           <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <ReviewItem label="Decision" value={
-              intakeDecision === "bafe_project" ? "BAFE project" : intakeDecision === "duplicate" ? "Possible copy" : "Not a BAFE project"
+              intakeDecision === "bafe_project"
+                ? "BAFE project"
+                : intakeDecision === "possible_bafe_project"
+                  ? "Possible BAFE project (needs confirmation)"
+                  : "Not a BAFE project"
             } />
-            {intakeDecision === "bafe_project" && <ReviewItem label="Project" value={selectedProject?.name ?? "Not selected"} />}
-            {intakeDecision === "bafe_project" && <ReviewItem label="Category" value={SMS_CATEGORY_LABELS[category]} />}
-            {intakeDecision === "duplicate" && <ReviewItem label="Existing case" value={duplicateOf} />}
+            {(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && <ReviewItem label="Region" value={assignedRegion || "Not set"} />}
+            {(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && <ReviewItem label="Project" value={selectedProject?.name ?? "Not selected"} />}
+            {(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && <ReviewItem label="Category" value={SMS_CATEGORY_LABELS[category]} />}
             <ReviewItem label="Reason" value={decisionReason || "(none entered)"} />
           </dl>
 
-          {intakeDecision === "bafe_project" && (
+          {(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && (
             <details>
               <summary className="min-h-11 cursor-pointer py-1 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 More routing details (optional)
@@ -215,11 +228,12 @@ export function SmsProjectTaggingWizard({
                 </label>
                 <label className="text-sm font-semibold">
                   Responsible office or review team
-                  <input value={assignedUnit} onChange={(event) => onAssignedUnitChange(event.target.value)} className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950" />
-                </label>
-                <label className="text-sm font-semibold">
-                  Region
-                  <input value={assignedRegion} onChange={(event) => onAssignedRegionChange(event.target.value)} className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950" />
+                  <input
+                    value={assignedUnit}
+                    onChange={(event) => onAssignedUnitChange(event.target.value)}
+                    placeholder="e.g., Regional Field Office"
+                    className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                  />
                 </label>
               </div>
             </details>
@@ -232,7 +246,7 @@ export function SmsProjectTaggingWizard({
           <ArrowLeft aria-hidden="true" className="size-4" /> Back
         </Button>
         {currentStep === "review" ? (
-          <Button type="button" className="min-h-11 flex-1 px-4" disabled={intakeDecision === "bafe_project" && !selectedProject} onClick={onSaveIntakeDecision}>
+          <Button type="button" className="min-h-11 flex-1 px-4" disabled={(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && !selectedProject} onClick={onSaveIntakeDecision}>
             <CheckCircle2 aria-hidden="true" className="size-4" /> {intakeButtonLabel}
           </Button>
         ) : (
@@ -253,7 +267,7 @@ function DecisionCard({ icon, label, active, onClick }: { icon: React.ReactNode;
       type="button"
       onClick={onClick}
       className={cn(
-        "flex min-h-24 flex-col items-center justify-center gap-2 rounded-lg border-2 p-4 text-center text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-center text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         active
           ? "border-primary bg-primary/10 text-primary"
           : "border-slate-200 text-slate-700 hover:border-primary/50 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800",

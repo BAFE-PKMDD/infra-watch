@@ -7,9 +7,9 @@ import { SmsProjectTaggingWizard, stepsForDecision } from "./sms-project-tagging
 function noop() {}
 
 test("each intake decision has its own step sequence, always starting with the decision and ending with review", () => {
-  assert.deepEqual(stepsForDecision("bafe_project"), ["decision", "project", "category", "reason", "review"]);
+  assert.deepEqual(stepsForDecision("bafe_project"), ["decision", "region", "project", "category", "reason", "review"]);
+  assert.deepEqual(stepsForDecision("possible_bafe_project"), ["decision", "region", "project", "category", "reason", "review"]);
   assert.deepEqual(stepsForDecision("not_bafe_project"), ["decision", "reason", "review"]);
-  assert.deepEqual(stepsForDecision("duplicate"), ["decision", "duplicate_ref", "reason", "review"]);
 });
 
 test("the wizard opens on the decision step, one question at a time, not the whole form at once", () => {
@@ -25,8 +25,6 @@ test("the wizard opens on the decision step, one question at a time, not the who
       onSelectedProjectChange={noop}
       decisionReason=""
       onDecisionReasonChange={noop}
-      duplicateOf=""
-      onDuplicateOfChange={noop}
       assignedUnit=""
       onAssignedUnitChange={noop}
       assignedRegion=""
@@ -39,8 +37,9 @@ test("the wizard opens on the decision step, one question at a time, not the who
   assert.match(html, /Is this about a BAFE project\?/);
   assert.match(html, /This is about a BAFE project/);
   assert.match(html, /Not a BAFE project/);
-  assert.match(html, /Link as possible copy/);
-  assert.match(html, /Step 1 of 5/);
+  assert.match(html, /Not sure — possibly a BAFE project/);
+  assert.doesNotMatch(html, /Link as possible copy/);
+  assert.match(html, /Step 1 of 6/);
   // Later steps aren't shown until the staff member advances past the decision.
   assert.doesNotMatch(html, /Search actual BAFE projects/);
   assert.doesNotMatch(html, /Concern category/);

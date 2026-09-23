@@ -23,11 +23,14 @@ import {
   Users,
 } from "lucide-react";
 
+import { hasAssignedModeratorScope } from "@/lib/moderator-scope";
 import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 type AdminSidebarProps = {
   role?: string | null;
+  region?: string | null;
+  assignedAgency?: string | null;
 };
 
 const menu = [
@@ -43,24 +46,28 @@ const menu = [
   },
   {
     label: "Reports & Analytics",
-    // Admin-only regardless of the "reports" permission grant: these queries read across
-    // every region/agency with no scope filter, so a region-scoped moderator seeing them
-    // would see other regions' response-time data too.
-    adminOnly: true,
+    // Admin and regional-admin only, regardless of the "reports" permission grant:
+    // these queries read across every region/agency with no scope filter, so a
+    // region-scoped moderator seeing them would see other regions' data too — but
+    // regional admins are themselves unrestricted by region (see lib/scope.ts).
+    roles: ["admin", "regional_admin"],
     items: [
       { label: "Issue Reports", href: "/reports/issues", icon: BarChart3, resource: "reports", action: "view" },
       { label: "Feedback Reports", href: "/reports/feedbacks", icon: BarChart3, resource: "reports", action: "view" },
+      { label: "Citizen Engagement", href: "/reports/citizen-engagement", icon: BarChart3, resource: "reports", action: "view" },
     ],
   },
   {
     label: "System",
     items: [
-      { label: "ABEMIS Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view" },
-      { label: "Data Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view" },
-      { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view" },
-      { label: "Knowledge Base", href: "/knowledge-base", icon: BookOpen, resource: "knowledge_base", action: "list" },
-      { label: "Live Videos", href: "/live-videos", icon: Radio, resource: "system_settings", action: "read" },
-      { label: "User Management", href: "/user-management", icon: Users, resource: "user", action: "list" },
+      // Admin-only: instance-wide operational tools, not region/agency-scoped work.
+      { label: "ABEMIS Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view", roles: ["admin"] },
+      { label: "Data Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view", roles: ["admin"] },
+      { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view", roles: ["admin"] },
+      { label: "Knowledge Base", href: "/knowledge-base", icon: BookOpen, resource: "knowledge_base", action: "list", roles: ["admin"] },
+      // Admin and regional-admin.
+      { label: "Live Videos", href: "/live-videos", icon: Radio, resource: "system_settings", action: "read", roles: ["admin", "regional_admin"] },
+      { label: "User Management", href: "/user-management", icon: Users, resource: "user", action: "list", roles: ["admin", "regional_admin"] },
     ],
   },
 ] as const;
@@ -69,10 +76,14 @@ function isEReportPath(pathname: string) {
   return pathname === "/issues" || (pathname.startsWith("/issues/") && !pathname.startsWith("/issues/sms-review"));
 }
 
-export function AdminSidebar({ role }: AdminSidebarProps) {
+export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps) {
   const pathname = usePathname();
   const issuesActive = pathname === "/issues" || pathname.startsWith("/issues/");
   const [issuesOpen, setIssuesOpen] = useState(issuesActive);
+  // A moderator with no region/agency assigned yet gets a 403 from every analytics
+  // endpoint (see hasAssignedModeratorScope in lib/scope.ts) — hide the links rather
+  // than send them to a page that can only ever show "Forbidden".
+  const canViewAnalytics = hasAssignedModeratorScope({ role, region, assignedAgency });
 
   return (
     <aside className="hidden min-h-screen w-72 shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col dark:border-slate-800 dark:bg-slate-950">
@@ -95,8 +106,12 @@ export function AdminSidebar({ role }: AdminSidebarProps) {
 
       <nav aria-label="Admin navigation" className="flex-1 space-y-6 overflow-y-auto p-3">
         {menu.map((category) => {
-          if ("adminOnly" in category && category.adminOnly && role !== "admin") return null;
-          const visibleItems = category.items.filter((item) => hasPermission(role, item.resource as never, item.action as never));
+          if ("roles" in category && category.roles && !(category.roles as readonly string[]).includes(role ?? "")) return null;
+          const visibleItems = category.items.filter((item) =>
+            hasPermission(role, item.resource as never, item.action as never) &&
+            (item.resource !== "analytics" || canViewAnalytics) &&
+            (!("roles" in item && item.roles) || (item.roles as readonly string[]).includes(role ?? "")),
+          );
           if (visibleItems.length === 0) return null;
 
           return (

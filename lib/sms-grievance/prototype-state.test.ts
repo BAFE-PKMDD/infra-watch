@@ -39,6 +39,28 @@ test("accepting a grievance stores the selected BAFE project identity", () => {
   assert.equal(accepted.originalText, candidate.originalText);
 });
 
+test("accepting a grievance as a possible (unconfirmed) match keeps it flagged for confirmation", () => {
+  const candidate = getSmsMockScenario("sample-sms-004");
+  assert.ok(candidate);
+
+  const accepted = applySmsPrototypeAction(candidate, {
+    type: "accept",
+    category: "flooding_drainage",
+    relevanceReason: "Sample location plausibly matches, pending regional confirmation.",
+    location: "[SAMPLE TAGGED LOCATION]",
+    unit: "[SAMPLE REVIEW TEAM]",
+    region: "[SAMPLE REGION]",
+    project: SAMPLE_BAFE_PROJECT,
+    confirmed: true,
+    certainty: "possible",
+  });
+
+  assert.equal(accepted.relevance, "uncertain");
+  assert.equal(accepted.status, "pending_review");
+  assert.equal(accepted.projectMatch, "candidate");
+  assert.equal(accepted.projectId, SAMPLE_BAFE_PROJECT.id);
+});
+
 test("a grievance cannot become a case without selecting an actual BAFE project", () => {
   const candidate = getSmsMockScenario("sample-sms-004");
   assert.ok(candidate);

@@ -19,6 +19,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { hasAssignedModeratorScope } from "@/lib/moderator-scope";
 import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
@@ -28,38 +29,50 @@ const items = [
   { label: "Projects", href: "/admin-projects", icon: FolderKanban, resource: "projects", action: "list" },
   { label: "Feedbacks", href: "/feedbacks", icon: MessageSquare, resource: "feedback", action: "list" },
   { label: "Reported Issues", href: "/issues", icon: CircleAlert, resource: "issues", action: "list" },
-  // Admin-only: unscoped across every region/agency, see admin-sidebar.tsx for why.
-  { label: "Issue Reports", href: "/reports/issues", icon: BarChart3, resource: "reports", action: "view", adminOnly: true },
-  { label: "Feedback Reports", href: "/reports/feedbacks", icon: BarChart3, resource: "reports", action: "view", adminOnly: true },
-  { label: "Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view" },
-  { label: "Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view" },
-  { label: "Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view" },
-  { label: "Live", href: "/live-videos", icon: Radio, resource: "system_settings", action: "read" },
-  { label: "Users", href: "/user-management", icon: Users, resource: "user", action: "list" },
+  // Admin and regional-admin: unscoped across every region/agency, see
+  // admin-sidebar.tsx for why regional admins are included.
+  { label: "Issue Reports", href: "/reports/issues", icon: BarChart3, resource: "reports", action: "view", roles: ["admin", "regional_admin"] },
+  { label: "Feedback Reports", href: "/reports/feedbacks", icon: BarChart3, resource: "reports", action: "view", roles: ["admin", "regional_admin"] },
+  { label: "Citizen Engagement", href: "/reports/citizen-engagement", icon: BarChart3, resource: "reports", action: "view", roles: ["admin", "regional_admin"] },
+  // Admin-only: see admin-sidebar.tsx — instance-wide operational tools, not
+  // region/agency-scoped work.
+  { label: "Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view", roles: ["admin"] },
+  { label: "Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view", roles: ["admin"] },
+  { label: "Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view", roles: ["admin"] },
+  // Admin and regional-admin.
+  { label: "Live", href: "/live-videos", icon: Radio, resource: "system_settings", action: "read", roles: ["admin", "regional_admin"] },
+  { label: "Users", href: "/user-management", icon: Users, resource: "user", action: "list", roles: ["admin", "regional_admin"] },
 ] as const;
 
 type AdminMobileNavProps = {
   role?: string | null;
+  region?: string | null;
+  assignedAgency?: string | null;
 };
 
 function isEReportPath(pathname: string) {
   return pathname === "/issues" || (pathname.startsWith("/issues/") && !pathname.startsWith("/issues/sms-review"));
 }
 
-export function AdminMobileNav({ role }: AdminMobileNavProps) {
+export function AdminMobileNav({ role, region, assignedAgency }: AdminMobileNavProps) {
   const pathname = usePathname();
   const issuesActive = pathname === "/issues" || pathname.startsWith("/issues/");
   const [issuesOpen, setIssuesOpen] = useState(issuesActive);
+  // See admin-sidebar.tsx: an unscoped moderator gets a 403 from every analytics
+  // endpoint, so there's no point linking them to it.
+  const canViewAnalytics = hasAssignedModeratorScope({ role, region, assignedAgency });
   const visibleItems = items.filter(
     (item) =>
       hasPermission(role, item.resource as never, item.action as never) &&
-      (!("adminOnly" in item && item.adminOnly) || role === "admin"),
+      (!("roles" in item && item.roles) || (item.roles as readonly string[]).includes(role ?? "")) &&
+      (item.resource !== "analytics" || canViewAnalytics),
   );
   const canViewIssues = visibleItems.some((item) => item.href === "/issues");
 
   return (
     <div className="sticky top-0 z-40 border-b border-slate-200 bg-white px-3 py-2 lg:hidden dark:border-slate-800 dark:bg-slate-950">
       <nav aria-label="Admin navigation">
+        <p className="sr-only">Admin destinations continue horizontally; use Tab or horizontal scrolling to reach more items.</p>
         <div className="flex gap-1 overflow-x-auto pb-1">
           {visibleItems.map((item) => {
             const Icon = item.icon;

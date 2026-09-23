@@ -7,13 +7,15 @@ import { useEffect, useState } from "react";
 import { SmsCaseLifecycleStepper } from "@/components/admin/issues/sms-case-lifecycle-stepper";
 import { SmsCaseResponsePanel } from "@/components/admin/issues/sms-case-response-panel";
 import { SmsConversationTimeline } from "@/components/admin/issues/sms-conversation-timeline";
-import { SmsGrievanceHeader, SmsGrievanceSummary } from "@/components/admin/issues/sms-grievance-summary";
+import { SmsGrievanceHeader, SmsGrievanceMessageCard, SmsGrievanceMetadataCard } from "@/components/admin/issues/sms-grievance-summary";
 import { SmsProjectTaggingWizard } from "@/components/admin/issues/sms-project-tagging-wizard";
 import type { IntakeDecision } from "@/components/admin/issues/sms-project-tagging-wizard";
 import { SmsPrototypeBanner } from "@/components/admin/issues/sms-prototype-banner";
 import type { SelectedProject } from "@/components/ui/project-search-input";
 import { readSmsPrototypeRecords, writeSmsPrototypeRecords } from "@/lib/sms-grievance/mock-store";
+import { nextSmsCaseStatuses } from "@/lib/sms-grievance/policy";
 import { applySmsPrototypeAction, type PrototypeAction } from "@/lib/sms-grievance/prototype-state";
+import { SMS_CASE_STATUS_LABELS } from "@/lib/sms-grievance/queue";
 import type { SmsCaseStatus, SmsCategory, SmsMockScenario } from "@/types/sms-grievance.types";
 
 function projectSelection(item: SmsMockScenario | undefined): SelectedProject | null {
@@ -44,14 +46,13 @@ export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; ini
   const [locationTag, setLocationTag] = useState(selected?.locationLabel ?? "");
   const [selectedProject, setSelectedProject] = useState<SelectedProject | null>(projectSelection(selected ?? undefined));
   const [decisionReason, setDecisionReason] = useState("");
-  const [duplicateOf, setDuplicateOf] = useState(selected?.duplicateOf ?? "[SAMPLE EXISTING CASE]");
-  const [assignedUnit, setAssignedUnit] = useState(selected?.assignedUnit ?? "[SAMPLE REVIEW TEAM]");
-  const [assignedRegion, setAssignedRegion] = useState(selected?.assignedRegion ?? "[SAMPLE REGION]");
-  const [followUpNote, setFollowUpNote] = useState("");
-  const [restrictionAuthorized, setRestrictionAuthorized] = useState(false);
+  const [assignedUnit, setAssignedUnit] = useState(selected?.assignedUnit ?? "");
+  const [assignedRegion, setAssignedRegion] = useState(selected?.assignedRegion ?? "");
+  const [statusTarget, setStatusTarget] = useState<SmsCaseStatus | "">("");
+  const [statusChangeReason, setStatusChangeReason] = useState("");
   const [responseBody, setResponseBody] = useState("");
   const [internalNote, setInternalNote] = useState("");
-  const [feedback, setFeedback] = useState("No message was sent. Changes on this page affect sample data only.");
+  const [feedback, setFeedback] = useState("");
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -63,9 +64,8 @@ export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; ini
         setCategory(match.category ?? "other_infrastructure");
         setLocationTag(match.locationLabel);
         setSelectedProject(projectSelection(match));
-        setDuplicateOf(match.duplicateOf ?? "[SAMPLE EXISTING CASE]");
-        setAssignedUnit(match.assignedUnit ?? "[SAMPLE REVIEW TEAM]");
-        setAssignedRegion(match.assignedRegion ?? "[SAMPLE REGION]");
+        setAssignedUnit(match.assignedUnit ?? "");
+        setAssignedRegion(match.assignedRegion ?? "");
       }
     }, 0);
     return () => window.clearTimeout(timeout);
@@ -77,21 +77,19 @@ export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; ini
 
   const canMakeRelevanceDecision = selected?.status === "needs_relevance_review";
   const isClosedWithoutCase = selected ? closedLabelFor(selected) !== null : false;
-  const lifecycleAction: { to: SmsCaseStatus; label: string } | null = selected?.status === "pending_review"
-    ? { to: "under_review", label: "Start review" }
-    : selected?.status === "under_review"
-      ? { to: "resolved", label: "Mark as resolved" }
-      : selected?.status === "resolved"
-        ? { to: "closed", label: "Close sample case" }
-        : selected?.status === "closed"
-          ? { to: "under_review", label: "Reopen case" }
-          : null;
+  const isTagged = Boolean(selected) && !canMakeRelevanceDecision && !isClosedWithoutCase;
+  // Being tagged only means a project was identified — reply, notes, and status
+  // changes stay locked until the case is actually routed to a region and team.
+  const isLinked = isTagged && Boolean(selected?.assignedUnit) && Boolean(selected?.assignedRegion);
+  const statusOptions = isLinked && selected
+    ? nextSmsCaseStatuses(selected.status).map((value) => ({ value, label: SMS_CASE_STATUS_LABELS[value] }))
+    : [];
 
-  const currentStep: 1 | 2 | 3 | 4 | null = !selected || isClosedWithoutCase
+  const currentStep: 1 | 2 | 3 | null = !selected || isClosedWithoutCase
     ? null
     : canMakeRelevanceDecision
       ? 2
-      : 4;
+      : 3;
 
   const runAction = (action: PrototypeAction, success: string) => {
     if (!selected) return;
@@ -99,12 +97,14 @@ export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; ini
       const updated = applySmsPrototypeAction(selected, action);
       setRecords((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       setFeedback(success);
-      setFollowUpNote("");
-      if (action.type === "restrict") setRestrictionAuthorized(false);
+      if (action.type === "transition") {
+        setStatusChangeReason("");
+        setStatusTarget("");
+      }
       if (action.type === "simulate_response") setResponseBody("");
       if (action.type === "add_internal_note") setInternalNote("");
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "That change could not be saved to the sample message.");
+      setFeedback(error instanceof Error ? error.message : "That change could not be saved.");
     }
   };
 
@@ -114,8 +114,25 @@ export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; ini
       runAction({ type: "mark_not_bafe_project", reason: decisionReason }, "Marked as not a BAFE project. No official issue was created.");
       return;
     }
-    if (intakeDecision === "duplicate") {
-      runAction({ type: "mark_duplicate", reason: decisionReason, duplicateOf }, "Sample record linked as a possible duplicate. No new official issue was created.");
+    const project = selectedProject ? {
+      id: selectedProject.sourceId || selectedProject.id,
+      name: selectedProject.name,
+      code: selectedProject.sourceProjectId,
+      province: selectedProject.province,
+      municipality: selectedProject.municipality,
+    } : null;
+    if (intakeDecision === "possible_bafe_project") {
+      runAction({
+        type: "accept",
+        category,
+        relevanceReason: decisionReason || selected.relevanceReason,
+        location: locationTag,
+        unit: assignedUnit,
+        region: assignedRegion,
+        project,
+        confirmed: true,
+        certainty: "possible",
+      }, "Possible BAFE project tagged. Case created for confirmation.");
       return;
     }
     runAction({
@@ -125,15 +142,10 @@ export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; ini
       location: locationTag,
       unit: assignedUnit,
       region: assignedRegion,
-      project: selectedProject ? {
-        id: selectedProject.sourceId || selectedProject.id,
-        name: selectedProject.name,
-        code: selectedProject.sourceProjectId,
-        province: selectedProject.province,
-        municipality: selectedProject.municipality,
-      } : null,
+      project,
       confirmed: true,
-    }, "BAFE project tagged and sample case created. It remains inside this prototype.");
+      certainty: "confirmed",
+    }, "BAFE project tagged and case created.");
   };
 
   // The region tag routes the case, so it comes from the confirmed project record
@@ -145,10 +157,10 @@ export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; ini
   };
 
   const intakeButtonLabel = intakeDecision === "bafe_project"
-    ? "Tag project and create sample case"
-    : intakeDecision === "not_bafe_project"
-      ? "Mark as not a BAFE project"
-      : "Link as possible copy";
+    ? "Tag project and create case"
+    : intakeDecision === "possible_bafe_project"
+      ? "Tag as possible match and create case"
+      : "Mark as not a BAFE project";
 
   return (
     <div className="space-y-5">
@@ -160,7 +172,7 @@ export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; ini
 
       {!selected ? (
         <section className="border border-slate-200 bg-white p-6 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          This sample message is not available. It may have been restored to its original state on another tab.
+          This message is not available. It may have been restored to its original state on another tab.
         </section>
       ) : (
         <>
@@ -169,78 +181,102 @@ export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; ini
           <section aria-labelledby="selected-sms-title" className="min-w-0 border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <SmsGrievanceHeader record={selected} />
 
-            <div className="space-y-6 p-4 sm:p-5">
-              <div>
-                <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Step 1 · Received</h3>
-                <SmsGrievanceSummary record={selected} />
-              </div>
+            <div className="p-4 sm:p-5">
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+                <div className="min-w-0 space-y-6">
+                  <SmsGrievanceMessageCard record={selected} />
 
-              {canMakeRelevanceDecision ? (
-                <div className="border-t border-slate-200 pt-5 dark:border-slate-800">
-                  <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Steps 2–3 · Check relevance &amp; identify project</h3>
-                  <p className="mb-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                    Decide whether this belongs in InfraWatch, then, if it does, find the actual project. The original message will not be changed.
-                  </p>
-                  <SmsProjectTaggingWizard
-                    key={selected.id}
-                    intakeDecision={intakeDecision}
-                    onIntakeDecisionChange={setIntakeDecision}
-                    category={category}
-                    onCategoryChange={setCategory}
-                    locationTag={locationTag}
-                    onLocationTagChange={setLocationTag}
-                    selectedProject={selectedProject}
-                    onSelectedProjectChange={handleSelectedProjectChange}
-                    decisionReason={decisionReason}
-                    onDecisionReasonChange={setDecisionReason}
-                    duplicateOf={duplicateOf}
-                    onDuplicateOfChange={setDuplicateOf}
-                    assignedUnit={assignedUnit}
-                    onAssignedUnitChange={setAssignedUnit}
-                    assignedRegion={assignedRegion}
-                    onAssignedRegionChange={setAssignedRegion}
-                    intakeButtonLabel={intakeButtonLabel}
-                    onSaveIntakeDecision={saveIntakeDecision}
+                  {canMakeRelevanceDecision ? (
+                    <div className="border-t border-slate-200 pt-5 dark:border-slate-800">
+                      <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Review &amp; tag</h3>
+                      <p className="mb-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                        Decide whether this belongs in InfraWatch, then, if it does, find the actual project. The original message will not be changed.
+                      </p>
+                      <SmsProjectTaggingWizard
+                        key={selected.id}
+                        intakeDecision={intakeDecision}
+                        onIntakeDecisionChange={setIntakeDecision}
+                        category={category}
+                        onCategoryChange={setCategory}
+                        locationTag={locationTag}
+                        onLocationTagChange={setLocationTag}
+                        selectedProject={selectedProject}
+                        onSelectedProjectChange={handleSelectedProjectChange}
+                        decisionReason={decisionReason}
+                        onDecisionReasonChange={setDecisionReason}
+                        assignedUnit={assignedUnit}
+                        onAssignedUnitChange={setAssignedUnit}
+                        assignedRegion={assignedRegion}
+                        onAssignedRegionChange={setAssignedRegion}
+                        intakeButtonLabel={intakeButtonLabel}
+                        onSaveIntakeDecision={saveIntakeDecision}
+                      />
+                    </div>
+                  ) : isClosedWithoutCase ? null : (
+                    <>
+                      <div className="border-t border-slate-200 pt-5 dark:border-slate-800">
+                        <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Review &amp; tag</h3>
+                        {selected.relevance === "confirmed_in_scope" ? (
+                          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+                            <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">Confirmed as a BAFE project</p>
+                            <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
+                              {selected.projectLabel} — {selected.categoryLabel}
+                              {selected.assignedRegion ? ` · ${selected.assignedRegion}` : ""}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/20">
+                            <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Possible BAFE project — pending confirmation</p>
+                            <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+                              {selected.projectLabel} — {selected.categoryLabel}
+                              {selected.assignedRegion ? ` · ${selected.assignedRegion}` : ""}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="border-t border-slate-200 pt-5 dark:border-slate-800">
+                        <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Respond &amp; resolve</h3>
+                        <SmsCaseResponsePanel
+                          isLinked={isLinked}
+                          responseBody={responseBody}
+                          onResponseBodyChange={setResponseBody}
+                          assignedUnit={assignedUnit}
+                          onAssignedUnitChange={setAssignedUnit}
+                          assignedRegion={assignedRegion}
+                          onAssignedRegionChange={setAssignedRegion}
+                          internalNote={internalNote}
+                          onInternalNoteChange={setInternalNote}
+                          onRunAction={runAction}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+                  <SmsGrievanceMetadataCard
+                    record={selected}
+                    statusOptions={statusOptions}
+                    statusTarget={statusTarget}
+                    onStatusTargetChange={setStatusTarget}
+                    statusChangeReason={statusChangeReason}
+                    onStatusChangeReasonChange={setStatusChangeReason}
+                    onConfirmStatusChange={() => {
+                      if (!statusTarget) return;
+                      runAction(
+                        { type: "transition", to: statusTarget, reason: statusChangeReason, authorized: statusTarget === "closed" },
+                        `Grievance status changed to ${SMS_CASE_STATUS_LABELS[statusTarget]}.`,
+                      );
+                    }}
                   />
                 </div>
-              ) : isClosedWithoutCase ? null : (
-                <>
-                  <div className="border-t border-slate-200 pt-5 dark:border-slate-800">
-                    <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Steps 2–3 · Already confirmed</h3>
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
-                      <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">Confirmed as a BAFE project</p>
-                      <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
-                        {selected.projectLabel} — {selected.categoryLabel}
-                        {selected.assignedRegion ? ` · ${selected.assignedRegion}` : ""}
-                      </p>
-                    </div>
-                  </div>
+              </div>
 
-                  <div className="border-t border-slate-200 pt-5 dark:border-slate-800">
-                    <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Step 4 · Respond &amp; resolve</h3>
-                    <SmsCaseResponsePanel
-                      lifecycleAction={lifecycleAction}
-                      responseBody={responseBody}
-                      onResponseBodyChange={setResponseBody}
-                      assignedUnit={assignedUnit}
-                      onAssignedUnitChange={setAssignedUnit}
-                      assignedRegion={assignedRegion}
-                      onAssignedRegionChange={setAssignedRegion}
-                      followUpNote={followUpNote}
-                      onFollowUpNoteChange={setFollowUpNote}
-                      internalNote={internalNote}
-                      onInternalNoteChange={setInternalNote}
-                      restrictionAuthorized={restrictionAuthorized}
-                      onRestrictionAuthorizedChange={setRestrictionAuthorized}
-                      onRunAction={runAction}
-                    />
-                  </div>
-                </>
-              )}
-
-              <SmsConversationTimeline conversation={selected.conversation} />
-
-              <p className="border-t border-slate-200 pt-4 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:text-slate-200" aria-live="polite">{feedback}</p>
+              <div className="mt-6 space-y-4">
+                <SmsConversationTimeline conversation={selected.conversation} />
+                <p className="border-t border-slate-200 pt-4 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:text-slate-200" aria-live="polite">{feedback}</p>
+              </div>
             </div>
           </section>
         </>

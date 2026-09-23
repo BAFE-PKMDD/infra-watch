@@ -574,3 +574,76 @@ export type NewLiveVideo = typeof liveVideos.$inferInsert;
 export type NotificationRow = typeof notifications.$inferSelect;
 export type NewNotificationRow = typeof notifications.$inferInsert;
 export type NotificationRecipientRow = typeof notificationRecipients.$inferSelect;
+
+export const submissionSurveys = pgTable(
+  "submission_surveys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sourceType: text("source_type").notNull(), // 'feedback' | 'e_report'
+    sourceId: text("source_id"), // feedback id or issue ticket/id (optional)
+    userId: text("user_id"), // optional user id
+    name: text("name"), // optional citizen name
+    age: integer("age"),
+    gender: text("gender"),
+    referralSource: text("referral_source").notNull(), // 'facebook' | 'website' | 'instagram' | 'other'
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    sourceTypeIdx: index("submission_surveys_source_type_idx").on(table.sourceType),
+    referralSourceIdx: index("submission_surveys_referral_source_idx").on(table.referralSource),
+    createdAtIdx: index("submission_surveys_created_at_idx").on(table.createdAt),
+  }),
+);
+
+export type SubmissionSurvey = typeof submissionSurveys.$inferSelect;
+export type NewSubmissionSurvey = typeof submissionSurveys.$inferInsert;
+
+export const analyticsEvents = pgTable(
+  "analytics_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventName: text("event_name").notNull(),
+    occurredAt: timestamp("occurred_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    routeTemplate: text("route_template").notNull(),
+    resourceType: text("resource_type"),
+    resourceId: text("resource_id"),
+    entrySurface: text("entry_surface").notNull(),
+    resultCountBand: text("result_count_band"),
+    networkRegionCode: text("network_region_code"),
+  },
+  (table) => ({
+    occurredAtIdx: index("analytics_events_occurred_at_idx").on(table.occurredAt),
+    eventOccurredAtIdx: index("analytics_events_event_occurred_at_idx").on(table.eventName, table.occurredAt),
+    resourceOccurredAtIdx: index("analytics_events_resource_occurred_at_idx").on(table.resourceType, table.resourceId, table.occurredAt),
+  }),
+);
+
+export const analyticsDailyAggregates = pgTable(
+  "analytics_daily_aggregates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    aggregateDate: date("aggregate_date", { mode: "string" }).notNull(),
+    metricKey: text("metric_key").notNull(),
+    dimensionKey: text("dimension_key").notNull().default("all"),
+    dimensionValue: text("dimension_value").notNull().default("all"),
+    resourceType: text("resource_type").notNull().default("all"),
+    resourceId: text("resource_id").notNull().default("all"),
+    count: integer("count").notNull().default(0),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    aggregateKeyIdx: uniqueIndex("analytics_daily_aggregates_key_uidx").on(
+      table.aggregateDate,
+      table.metricKey,
+      table.dimensionKey,
+      table.dimensionValue,
+      table.resourceType,
+      table.resourceId,
+    ),
+    dateMetricIdx: index("analytics_daily_aggregates_date_metric_idx").on(table.aggregateDate, table.metricKey),
+  }),
+);
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type NewAnalyticsEvent = typeof analyticsEvents.$inferInsert;
+export type AnalyticsDailyAggregate = typeof analyticsDailyAggregates.$inferSelect;

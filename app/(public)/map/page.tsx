@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicMapPins } from "@/actions/query/public-projects.query";
 import { toSourceBackedMapPins } from "@/lib/public-project-map";
+import { sendCitizenEngagementEvent } from "@/lib/analytics/citizen-event-client";
 
 
 // Dynamically import Leaflet Map Component with SSR disabled
@@ -50,11 +51,28 @@ export default function GISMapPage() {
 
   const [mapCenter, setMapCenter] = useState<[number, number]>(defaultCenter);
   const [mapZoom, setMapZoom] = useState(defaultZoom);
+  const mapViewTrackedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (isLoading || isError || mapViewTrackedRef.current) return;
+    mapViewTrackedRef.current = true;
+    void sendCitizenEngagementEvent({
+      eventName: "map_viewed",
+      routeTemplate: "/map",
+      entrySurface: "map",
+    });
+  }, [isError, isLoading]);
 
   // Sync center and zoom when project selection changes
   const handleSelectProject = (pin: PublicMapPin | null) => {
     setSelectedProject(pin);
     if (pin) {
+      void sendCitizenEngagementEvent({
+        eventName: "map_project_opened",
+        routeTemplate: "/map",
+        resourceId: pin.id,
+        entrySurface: "map",
+      });
       setMapCenter([pin.lat, pin.lng]);
       setMapZoom(12);
     }
@@ -257,7 +275,7 @@ export default function GISMapPage() {
             </div>
 
             <Link
-              href={`/projects/${selectedProject.id}`}
+              href={`/projects/${selectedProject.id}?return=${encodeURIComponent("/map")}`}
               className={cn(
                 buttonVariants({ variant: "default" }),
                 "w-full bg-primary hover:bg-primary/95 text-white text-xs font-bold h-9 rounded-lg flex items-center justify-center gap-1.5 shadow-sm"

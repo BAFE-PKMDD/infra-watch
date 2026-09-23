@@ -1,0 +1,1 @@
+ALTER TABLE "analytics_events" ADD COLUMN "network_region_code" text;

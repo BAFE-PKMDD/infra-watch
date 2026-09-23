@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ProjectHero } from "@/components/projects/project-hero";
@@ -7,6 +8,7 @@ import { ProjectHighlights } from "@/components/projects/project-highlights";
 import { ProjectSidebar } from "@/components/projects/project-sidebar";
 import { ProjectTabPanels } from "@/components/projects/project-tab-panels";
 import type { ProjectDetail, ProjectTabKey } from "@/types";
+import { inferProjectEntrySurface, sendCitizenEngagementEvent } from "@/lib/analytics/citizen-event-client";
 
 interface ProjectDetailClientProps {
   project: ProjectDetail;
@@ -33,6 +35,20 @@ interface ProjectMetadataCounts {
 export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const viewTrackedRef = useRef(false);
+
+  useEffect(() => {
+    if (viewTrackedRef.current) return;
+    viewTrackedRef.current = true;
+    const returnHref = searchParams.get("return");
+    const entrySurface = inferProjectEntrySurface(returnHref);
+    void sendCitizenEngagementEvent({
+      eventName: "project_viewed",
+      routeTemplate: "/projects/[id]",
+      resourceId: project.id,
+      entrySurface,
+    });
+  }, [project.id, searchParams]);
 
   const tabFromUrl = searchParams.get("tab") as ProjectTabKey | null;
   const activeTab = tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : "overview";
@@ -47,6 +63,12 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
 
   // Navigate to photos tab with map view
   const handleShowOnMap = () => {
+
+    void sendCitizenEngagementEvent({
+      eventName: "map_viewed",
+      routeTemplate: "/projects/[id]",
+      entrySurface: "map",
+    });
 
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", "photos");

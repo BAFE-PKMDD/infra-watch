@@ -3,7 +3,8 @@ import { Image as ImageIcon, MapPin, X, Download, Share2, ChevronLeft, ChevronRi
 import Image from "next/image";
 import { isLocalMinIO } from "@/lib/minio-url";
 import { useState, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { sendCitizenEngagementEvent } from "@/lib/analytics/citizen-event-client";
 import dynamic from "next/dynamic";
 import { PhotoGridView } from "./photo-grid-view";
 import { GeoTag } from "@/types/photo.types";
@@ -214,6 +215,11 @@ export function ProjectPhotos({ projectId, geotags, projectCoordinates, kmlLink 
               <button
                 onClick={() => {
 
+                  void sendCitizenEngagementEvent({
+                    eventName: "map_viewed",
+                    routeTemplate: "/projects/[id]",
+                    entrySurface: "map",
+                  });
                   const params = new URLSearchParams(searchParams.toString());
                   params.set("photoView", "maps");
                   router.push(`?${params.toString()}`, { scroll: false });

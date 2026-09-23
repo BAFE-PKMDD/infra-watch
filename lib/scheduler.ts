@@ -8,6 +8,7 @@ import { hasRecentSuccessfulSync, syncAbemisProjects } from "./abemis/sync";
 import { purgeExpiredChatHistory } from "./chat-history";
 import { runFeedbackAutoAcknowledgment } from "./feedback-auto-acknowledgment";
 import { runSlaFollowUpReminders } from "./sla-followup";
+import { runCitizenAnalyticsMaintenance } from "./analytics/citizen-analytics-maintenance";
 
 let isSchedulerInitialized = false;
 
@@ -101,6 +102,25 @@ export function initScheduler() {
     {
       timezone: "Asia/Manila",
       name: "ai-chat-history-retention",
+    },
+  );
+
+  cron.schedule(
+    "30 3 * * *",
+    async () => {
+      try {
+        await runCitizenAnalyticsMaintenance();
+        console.log("[Scheduler] Citizen analytics retention maintenance completed.");
+      } catch (error) {
+        console.error(
+          "[Scheduler] Citizen analytics retention maintenance failed:",
+          error instanceof Error ? error.name : "UnknownError",
+        );
+      }
+    },
+    {
+      timezone: "Asia/Manila",
+      name: "citizen-analytics-retention",
     },
   );
 

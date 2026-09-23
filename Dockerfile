@@ -6,6 +6,7 @@ WORKDIR /app
 FROM base AS dependencies
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
+RUN bun run geoip:preload
 
 FROM base AS builder
 COPY --from=dependencies /app/node_modules ./node_modules
