@@ -3,7 +3,7 @@ import type { SmsConversationItem } from "@/types/sms-grievance.types";
 function historyLabel(kind: SmsConversationItem["kind"]) {
   return {
     inbound_sms: "Incoming SMS",
-    outbound_sms: "Sample reply",
+    outbound_sms: "Reply sent",
     internal_note: "Internal note",
     status_event: "Case status",
   }[kind];

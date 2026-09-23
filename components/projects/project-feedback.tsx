@@ -21,6 +21,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { SubmissionSurveyModal } from "@/components/shared/submission-survey-modal";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,7 +66,9 @@ export function ProjectFeedback({
   const [isFeedbackSaving, setIsFeedbackSaving] = useState(false);
   const [editingFeedback, setEditingFeedback] = useState<EditableFeedback | null>(null);
   const [deletingFeedbackId, setDeletingFeedbackId] = useState<string | null>(null);
+  const [pendingSurveyFeedbackId, setPendingSurveyFeedbackId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
   const { notifications } = useNotifications();
   const lastNotificationIdRef = useRef<string | null>(null);
 
@@ -126,12 +130,16 @@ export function ProjectFeedback({
     },
   });
 
-  const handleFeedbackSuccess = () => {
+  const handleFeedbackSuccess = (result?: { data?: { id?: string } }) => {
     setIsFeedbackSaving(false);
     setIsModalOpen(false);
+    if (!editingFeedback) {
+      setPendingSurveyFeedbackId(result?.data?.id || "feedback-submitted");
+    }
     setEditingFeedback(null);
     refetch();
   };
+
 
   const handleEdit = (feedback: FeedbackEditCandidate) => {
     if (!isFeedbackCategory(feedback.category)) return;
@@ -258,6 +266,14 @@ export function ProjectFeedback({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SubmissionSurveyModal
+        isOpen={Boolean(pendingSurveyFeedbackId)}
+        onClose={() => setPendingSurveyFeedbackId(null)}
+        sourceType="feedback"
+        sourceId={pendingSurveyFeedbackId}
+      />
     </motion.div>
+
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import {
   AlertTriangle,
   MessageSquare,
@@ -35,6 +36,7 @@ function getInitials(name: string) {
 
 export function FeedLeftSidebar() {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const pathname = usePathname();
 
   return (
     <aside className="hidden lg:block w-[220px] xl:w-[240px] flex-shrink-0">
@@ -115,7 +117,7 @@ export function FeedLeftSidebar() {
           </p>
           <nav className="space-y-0.5">
             {FEED_VIEWS.map((link) => {
-              const isActive = link.href === "/citizen-feed";
+              const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.href}

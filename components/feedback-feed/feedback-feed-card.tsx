@@ -226,7 +226,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
         )}
 
         {/* Feedback text */}
-        <p className="text-sm sm:text-[15px] text-slate-800 dark:text-slate-200 leading-relaxed">
+        <p className="text-sm sm:text-[15px] text-slate-800 dark:text-slate-200 leading-relaxed break-words">
           {item.comment}
         </p>
 

@@ -35,8 +35,9 @@ import {
 
 interface FeedbackSubmissionFormProps {
   projectId: string;
-  onSuccess?: () => void;
+  onSuccess?: (result?: { data?: { id?: string } }) => void;
   onBusyChange?: (busy: boolean) => void;
+
   editMode?: boolean;
   initialData?: {
     id: string;
@@ -173,7 +174,7 @@ export function FeedbackSubmissionForm({
 
       // Call success callback
       if (onSuccess) {
-        onSuccess();
+        onSuccess(result ?? undefined);
       }
     },
     onError: (error: Error) => {

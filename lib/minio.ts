@@ -1,13 +1,60 @@
-import * as Minio from "minio";
 import { randomBytes } from "crypto";
 import { createWriteStream, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
+import * as Minio from "minio";
 import path from "path";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
+import { isPrivateStoragePath } from "./minio-url";
+
 export { getFileUrl, getFullUrl, isFullUrl } from "./minio-url";
 
-const bucketName = process.env.MINIO_BUCKET_NAME || "infra-watch";
+const publicBucketName = process.env.MINIO_BUCKET_NAME || "infra-watch";
+const privateBucketName = process.env.MINIO_PRIVATE_BUCKET_NAME || `${publicBucketName}-private`;
+const publicMediaPrefixes = ["feedback", "feedback-comment", "live-videos"] as const;
+
+type StorageAccess = "public" | "private";
+type StorageBuckets = { publicBucket?: string; privateBucket?: string };
+
+type BucketPolicy = {
+  Version: "2012-10-17";
+  Statement: Array<{
+    Effect: "Allow";
+    Principal: { AWS: string[] };
+    Action: string[];
+    Resource: string[];
+  }>;
+};
+
+export function getStorageAccessForPath(fileName: string): StorageAccess {
+  return isPrivateStoragePath(fileName) ? "private" : "public";
+}
+
+export function getStorageBucketForPath(
+  fileName: string,
+  config: StorageBuckets = {},
+): string {
+  const publicBucket = config.publicBucket ?? publicBucketName;
+  const privateBucket = config.privateBucket ?? privateBucketName;
+  if (publicBucket === privateBucket) {
+    throw new Error("Public and private storage must use different buckets.");
+  }
+  return getStorageAccessForPath(fileName) === "private" ? privateBucket : publicBucket;
+}
+
+export function buildPublicReadPolicy(bucketName: string): BucketPolicy {
+  return {
+    Version: "2012-10-17",
+    Statement: [
+      {
+        Effect: "Allow",
+        Principal: { AWS: ["*"] },
+        Action: ["s3:GetObject"],
+        Resource: publicMediaPrefixes.map((prefix) => `arn:aws:s3:::${bucketName}/${prefix}/*`),
+      },
+    ],
+  };
+}
 
 type BucketCorsConfiguration = {
   CORSRules: Array<{
@@ -29,11 +76,44 @@ function getStorageErrorCode(error: unknown): string | undefined {
     : undefined;
 }
 
+function isMissingPolicyError(error: unknown) {
+  const code = getStorageErrorCode(error);
+  return code === "NoSuchBucketPolicy" || code === "NoSuchPolicy";
+}
+
+export function policyAllowsAnonymousRead(policyText: string) {
+  try {
+    const policy = JSON.parse(policyText) as {
+      Statement?: Array<{
+        Effect?: unknown;
+        Principal?: unknown;
+        NotPrincipal?: unknown;
+      }>;
+    };
+    return (policy.Statement ?? []).some((statement) => {
+      if (statement.Effect !== "Allow") return false;
+      if (statement.NotPrincipal !== undefined) return true;
+
+      const containsWildcard = (value: unknown): boolean => {
+        if (value === "*") return true;
+        if (Array.isArray(value)) return value.some(containsWildcard);
+        if (typeof value === "object" && value !== null) {
+          return Object.values(value).some(containsWildcard);
+        }
+        return false;
+      };
+
+      return statement.Principal === undefined || containsWildcard(statement.Principal);
+    });
+  } catch {
+    return true;
+  }
+}
+
 function isWebReadableStream(value: unknown): value is ReadableStream<Uint8Array> {
   if (typeof value !== "object" || value === null || !("getReader" in value)) {
     return false;
   }
-
   return typeof value.getReader === "function";
 }
 
@@ -47,35 +127,25 @@ const minioConfig: Minio.ClientOptions = {
 
 export const minioClient = new Minio.Client(minioConfig);
 
-export async function ensureBucketExists(): Promise<void> {
-  const exists = await minioClient.bucketExists(bucketName);
-
-  if (exists) {
-    return;
+async function ensurePublicBucket(): Promise<void> {
+  // Validate the global boundary before any bucket creation or policy write.
+  getStorageBucketForPath("knowledge-base/policy-check.bin");
+  const exists = await minioClient.bucketExists(publicBucketName);
+  if (!exists) {
+    await minioClient.makeBucket(publicBucketName, "us-east-1");
   }
 
-  await minioClient.makeBucket(bucketName, "us-east-1");
-
-  const policy = {
-    Version: "2012-10-17",
-    Statement: [
-      {
-        Effect: "Allow",
-        Principal: { AWS: ["*"] },
-        Action: ["s3:GetObject"],
-        Resource: [`arn:aws:s3:::${bucketName}/*`],
-      },
-    ],
-  };
-
-  await minioClient.setBucketPolicy(bucketName, JSON.stringify(policy));
+  await minioClient.setBucketPolicy(
+    publicBucketName,
+    JSON.stringify(buildPublicReadPolicy(publicBucketName)),
+  );
 
   try {
-    await (minioClient as MinioClientWithCors).setBucketCors(bucketName, {
+    await (minioClient as MinioClientWithCors).setBucketCors(publicBucketName, {
       CORSRules: [
         {
           AllowedHeaders: ["*"],
-          AllowedMethods: ["PUT", "POST", "GET", "HEAD"],
+          AllowedMethods: ["GET", "HEAD"],
           AllowedOrigins: ["*"],
           ExposeHeaders: ["ETag"],
           MaxAgeSeconds: 3000,
@@ -83,8 +153,44 @@ export async function ensureBucketExists(): Promise<void> {
       ],
     });
   } catch (error) {
-    console.warn("Failed to set MinIO bucket CORS policy", error);
+    console.warn("Failed to set MinIO public bucket CORS policy", error);
   }
+}
+
+async function ensurePrivateBucket(): Promise<void> {
+  getStorageBucketForPath("knowledge-base/policy-check.bin");
+  const exists = await minioClient.bucketExists(privateBucketName);
+  if (!exists) {
+    await minioClient.makeBucket(privateBucketName, "us-east-1");
+    return;
+  }
+
+  try {
+    const policy = await minioClient.getBucketPolicy(privateBucketName);
+    if (policy && policyAllowsAnonymousRead(policy)) {
+      throw new Error(
+        `Private MinIO bucket "${privateBucketName}" permits anonymous reads. Remove its public policy before starting InfraWatch.`,
+      );
+    }
+  } catch (error) {
+    if (!isMissingPolicyError(error)) {
+      throw error;
+    }
+  }
+}
+
+export async function ensureStorageBuckets(): Promise<void> {
+  await ensurePublicBucket();
+  await ensurePrivateBucket();
+}
+
+export async function ensureBucketExists(fileName = "articles/default.bin"): Promise<void> {
+  if (getStorageAccessForPath(fileName) === "private") {
+    await ensurePublicBucket();
+    await ensurePrivateBucket();
+    return;
+  }
+  await ensurePublicBucket();
 }
 
 export async function uploadFile(
@@ -110,8 +216,8 @@ export async function uploadFile(
   }
 
   try {
-    await ensureBucketExists();
-    await minioClient.putObject(bucketName, fileName, stream, size, {
+    await ensureBucketExists(fileName);
+    await minioClient.putObject(getStorageBucketForPath(fileName), fileName, stream, size, {
       "Content-Type": contentType,
     });
   } catch (error: unknown) {
@@ -137,7 +243,10 @@ export async function uploadFile(
 
 export async function deleteFile(fileName: string): Promise<void> {
   try {
-    await minioClient.removeObject(bucketName, fileName);
+    await minioClient.removeObject(getStorageBucketForPath(fileName), fileName);
+    if (getStorageAccessForPath(fileName) === "private") {
+      await minioClient.removeObject(publicBucketName, fileName).catch(() => undefined);
+    }
   } catch (error: unknown) {
     const code = getStorageErrorCode(error);
     if (code === "ECONNREFUSED" || code === "ENOTFOUND") {
@@ -151,14 +260,28 @@ export async function deleteFile(fileName: string): Promise<void> {
   }
 }
 
+async function readObject(bucketName: string, fileName: string): Promise<Buffer> {
+  const fileStream = await minioClient.getObject(bucketName, fileName);
+  const chunks: Buffer[] = [];
+  for await (const chunk of fileStream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
 export async function downloadFile(fileName: string): Promise<Buffer> {
+  const access = getStorageAccessForPath(fileName);
   try {
-    const fileStream = await minioClient.getObject(bucketName, fileName);
-    const chunks: Buffer[] = [];
-    for await (const chunk of fileStream) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    await ensureBucketExists(fileName);
+    try {
+      return await readObject(getStorageBucketForPath(fileName), fileName);
+    } catch (error) {
+      const code = getStorageErrorCode(error);
+      if (access === "private" && (code === "NoSuchKey" || code === "NoSuchBucket")) {
+        return await readObject(publicBucketName, fileName);
+      }
+      throw error;
     }
-    return Buffer.concat(chunks);
   } catch (error: unknown) {
     const code = getStorageErrorCode(error);
     if (code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "NoSuchKey") {

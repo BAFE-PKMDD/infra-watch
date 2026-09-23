@@ -38,7 +38,7 @@ export function ReportingMethods() {
               <div>
                 <h3 className="font-heading text-lg font-semibold text-slate-950 dark:text-white">Send an SMS Grievance</h3>
                 <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Read the English and Filipino format guide before sending a text from your own phone. The SMS connection is not active in this prototype.
+                  Read the English and Filipino format guide before sending a text from your own phone.
                 </p>
               </div>
             </div>

@@ -44,7 +44,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ProjectSearchInput, type SelectedProject } from "@/components/ui/project-search-input";
 import { MediaViewer } from "@/components/ui/media-viewer";
 import { GeoEvidenceUpload, type GeoEvidenceReadyItem } from "@/components/shared/geo-evidence-upload";
+import { SubmissionSurveyModal } from "@/components/shared/submission-survey-modal";
 import type { IssueEvidenceItem } from "@/types/geo-evidence.types";
+
 import { dispatchClientNotification } from "@/lib/client-notifications";
 import { useAuth } from "@/providers/auth-provider";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
@@ -125,7 +127,9 @@ export default function ReportIssuePage() {
   const [evidence, setEvidence] = useState<GeoEvidenceReadyItem[]>([]);
   const [isEvidenceProcessing, setIsEvidenceProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdIssueData, setCreatedIssueData] = useState<{ id: string; ticketNumber: string } | null>(null);
   const [selectedRegionCode, setSelectedRegionCode] = useState("");
+
   const [selectedProvinceCode, setSelectedProvinceCode] = useState("");
   const [selectedCityCode, setSelectedCityCode] = useState("");
   const [selectedBarangayCode, setSelectedBarangayCode] = useState("");
@@ -404,8 +408,12 @@ export default function ReportIssuePage() {
           projectId: selectedProject?.sourceId || selectedProject?.id || null,
         },
       });
-      router.push("/report-issue/" + (data.data?.id || ""));
+      setCreatedIssueData({
+        id: data.data?.id || "",
+        ticketNumber: data.data?.ticketNumber || "",
+      });
     } catch (error) {
+
       const message = error instanceof Error ? error.message : "Failed to submit issue";
       toast.error(getUploadErrorTitle(message), { description: message, duration: 6500 });
     } finally {
@@ -660,9 +668,27 @@ export default function ReportIssuePage() {
           </AnimatePresence>
         </div>
       </div>
+
+      <SubmissionSurveyModal
+        isOpen={Boolean(createdIssueData)}
+        onClose={() => {
+          const targetId = createdIssueData?.id;
+          setCreatedIssueData(null);
+          router.push("/report-issue/" + (targetId || ""));
+        }}
+        sourceType="e_report"
+        sourceId={createdIssueData?.ticketNumber || createdIssueData?.id}
+        defaultName={form.isAnonymous ? "" : user?.name || ""}
+        onComplete={() => {
+          const targetId = createdIssueData?.id;
+          setCreatedIssueData(null);
+          router.push("/report-issue/" + (targetId || ""));
+        }}
+      />
     </div>
   );
 }
+
 
 function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; currentStepIndex: number }) {
   return (

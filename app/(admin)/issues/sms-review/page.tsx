@@ -8,8 +8,8 @@ import { SMS_MOCK_SCENARIOS } from "@/lib/sms-grievance/mock-fixtures";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "SMS Grievance Prototype | INFRA Watch",
-  description: "Development-only workspace for reviewing sample SMS grievance messages.",
+  title: "SMS Grievance | INFRA Watch",
+  description: "Review incoming SMS grievance messages and route each one to the right team.",
 };
 
 export default function SmsReviewPage() {
@@ -19,7 +19,7 @@ export default function SmsReviewPage() {
     <AdminPageWrapper
       breadcrumbs={[{ label: "Admin" }, { label: "Reported Issues" }, { label: "SMS Grievance" }]}
       title="SMS Grievance"
-      description="Try the review flow with sample messages. No SMS service is connected, and nothing on this page sends a real message."
+      description="Review each message, confirm whether it belongs in InfraWatch, and route it to the right team."
     >
       <SmsGrievanceTable initialRecords={SMS_MOCK_SCENARIOS} />
     </AdminPageWrapper>

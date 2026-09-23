@@ -3,7 +3,7 @@ import type { SmsMockScenario } from "@/types/sms-grievance.types";
 // Bump this suffix whenever fixture content changes meaningfully (wording, masking
 // format, new fields) so browsers with an older cached prototype state fall back to the
 // fresh fixtures automatically instead of showing stale sample text indefinitely.
-export const SMS_PROTOTYPE_STORAGE_KEY = "infrawatch:sms-grievance-prototype:v3";
+export const SMS_PROTOTYPE_STORAGE_KEY = "infrawatch:sms-grievance-prototype:v4";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
@@ -18,7 +18,7 @@ function isControlledSampleRecord(value: unknown, knownIds: ReadonlySet<string>)
     && knownIds.has(record.id)
     && typeof record.originalText === "string"
     && record.originalText.trim().length > 0
-    && record.maskedContact === "*** *** ****"
+    && record.maskedContact === "09*******89"
     && Array.isArray(record.conversation);
 
   if (!isControlledSample) return false;

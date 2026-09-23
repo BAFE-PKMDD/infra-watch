@@ -26,7 +26,9 @@ import { getFileUrl } from "@/lib/minio-url";
 import { getUploadErrorTitle } from "@/lib/upload-errors";
 import { isAllowedClientUploadType, UPLOAD_ACCEPT, uploadKindFromType } from "@/lib/upload-policy";
 import { ProjectSearchInput, type SelectedProject } from "@/components/ui/project-search-input";
+import { SubmissionSurveyModal } from "@/components/shared/submission-survey-modal";
 import type { FeedbackCategory, FeedbackMedia } from "@/types/feedback.types";
+
 
 const CATEGORIES: { value: FeedbackCategory; label: string; icon: LucideIcon }[] = [
   { value: "general", label: "General", icon: MessageCircle },
@@ -95,7 +97,9 @@ export function FeedbackComposer() {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [media, setMedia] = useState<FeedbackMedia[]>([]);
   const [isProcessingMedia, setIsProcessingMedia] = useState(false);
+  const [submittedFeedbackId, setSubmittedFeedbackId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   // File upload mutation
   const uploadMutation = useMutation({
@@ -155,11 +159,14 @@ export function FeedbackComposer() {
           projectId: selectedProject?.sourceId || selectedProject?.id,
         },
       });
+      // Open survey modal
+      setSubmittedFeedbackId(result?.data?.id || "feedback-submitted");
       // Reset form
       resetForm();
       // Refresh the feed
       queryClient.invalidateQueries({ queryKey: ["activity-feed"] });
     },
+
     onError: (error: Error) => {
       toast.error("Submission failed", { description: error.message });
     },
@@ -479,6 +486,15 @@ export function FeedbackComposer() {
           </div>
         </div>
       </div>
+
+      <SubmissionSurveyModal
+        isOpen={Boolean(submittedFeedbackId)}
+        onClose={() => setSubmittedFeedbackId(null)}
+        sourceType="feedback"
+        sourceId={submittedFeedbackId}
+        defaultName={user?.name || ""}
+      />
     </div>
+
   );
 }

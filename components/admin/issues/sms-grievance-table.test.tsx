@@ -22,7 +22,8 @@ test("SMS grievance table is a scannable list with a prototype notice and a link
   }
 });
 
-test("table rows carry the masked contact and never the raw sample text alone without it", () => {
+test("queue items show a GCash-style masked mobile number", () => {
   const html = renderToStaticMarkup(<SmsGrievanceTable initialRecords={SMS_MOCK_SCENARIOS} />);
-  assert.match(html, /\*\*\* \*\*\* \*\*\*\*/);
+  assert.match(html, /09\*{7}89/);
+  assert.doesNotMatch(html, /\*\*\* \*\*\* \*\*\*\*/);
 });

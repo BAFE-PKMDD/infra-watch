@@ -38,7 +38,7 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
   const displayName = "Citizen report";
 
   return (
-    <div className="bg-white dark:bg-[#0d1526] rounded-2xl border border-slate-200 dark:border-[#1e3a5f]/30 overflow-hidden transition-shadow hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50">
+    <div className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-shadow hover:shadow-md hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50">
       <div className="p-4 sm:p-5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3 mb-3">
@@ -51,20 +51,20 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+              <div className="font-bold text-sm text-slate-900 dark:text-white truncate">
                 {displayName}
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 flex-wrap">
                 <span className="whitespace-nowrap">
                   {format(new Date(item.createdAt), "MMM d, yyyy")}
                 </span>
-                <span className="text-slate-300 dark:text-slate-600">·</span>
+                <span className="text-slate-400 dark:text-slate-500">·</span>
                 <span className="text-orange-600 dark:text-orange-400 font-medium">
                   Reported Issue
                 </span>
                 {item.project && (
                   <>
-                    <span className="text-slate-300 dark:text-slate-600">·</span>
+                    <span className="text-slate-400 dark:text-slate-500">·</span>
                     <button
                       type="button"
                       onClick={() => setPreviewProjectId(item.project!.id)}
@@ -79,20 +79,10 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
               </div>
             </div>
           </div>
-
-          {/* Badges */}
-          {/* <div className="flex items-center gap-1.5 flex-shrink-0 self-start">
-            <span
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${typeCfg.color}`}
-            >
-              <TypeIcon className="w-3 h-3" />
-              {typeCfg.label}
-            </span>
-          </div> */}
         </div>
 
         {/* Issue description */}
-        <p className="text-sm sm:text-[15px] text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-3 mb-2">
+        <p className="text-sm sm:text-[15px] text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-3 mb-2 break-words">
           {item.issueDescription}
         </p>
 

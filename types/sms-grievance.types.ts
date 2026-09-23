@@ -63,7 +63,7 @@ export type SmsMockScenario = {
   duplicateOf?: string;
   receivedAt: string;
   originalText: string;
-  maskedContact: "*** *** ****";
+  maskedContact: "09*******89";
   senderMode: "anonymous" | "identified";
   relevance: SmsRelevanceStatus;
   relevanceReason: string;
