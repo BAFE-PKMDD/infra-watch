@@ -36,6 +36,7 @@ interface KbDocument {
   id: string;
   title: string;
   category: string;
+  visibility: string;
   fileType: string;
   fileName: string | null;
   fileSize: number | null;
@@ -118,6 +119,7 @@ export default function KnowledgeBasePage() {
 
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadCategory, setUploadCategory] = useState("Guidelines");
+  const [uploadVisibility, setUploadVisibility] = useState<"public" | "admin_only">("public");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadSubmitting, setUploadSubmitting] = useState(false);
 
@@ -210,6 +212,7 @@ export default function KnowledgeBasePage() {
       formData.append("file", uploadFile);
       formData.append("title", uploadTitle.trim());
       formData.append("category", uploadCategory);
+      formData.append("visibility", uploadVisibility);
 
       const response = await fetch("/api/knowledge-base/upload", {
         method: "POST",
@@ -224,6 +227,7 @@ export default function KnowledgeBasePage() {
         const documentId = result.document.id;
         setUploadTitle("");
         setUploadFile(null);
+        setUploadVisibility("public");
         setUploadModalOpen(false);
         void processKnowledgeBaseDocument(documentId)
           .then(() => fetchData())
@@ -483,6 +487,11 @@ export default function KnowledgeBasePage() {
                       <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                         {doc.category}
                       </span>
+                      {doc.visibility === "admin_only" && (
+                        <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-extrabold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                          Admin only
+                        </span>
+                      )}
                       <StatusBadge status={doc.status} />
                     </div>
 
@@ -647,6 +656,23 @@ export default function KnowledgeBasePage() {
                     className="mt-1 block w-full text-xs font-semibold text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-950 dark:file:text-blue-300"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Visibility to ARIA
+                </label>
+                <select
+                  value={uploadVisibility}
+                  onChange={(e) => setUploadVisibility(e.target.value === "admin_only" ? "admin_only" : "public")}
+                  className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-primary dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                >
+                  <option value="public">Public - searchable from the citizen and admin surfaces</option>
+                  <option value="admin_only">Admin only - searchable from the admin surface only</option>
+                </select>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  This is enforced when ARIA searches the knowledge base, not just a display label.
+                </p>
               </div>
 
               <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-800 dark:bg-slate-950/50">

@@ -8,7 +8,11 @@ import { fetchInfraProjects } from "./client";
 import { isInfraWatchProject, transformAbemisProject } from "./transform";
 import { eq, sql, or, ilike, and, inArray, gte } from "drizzle-orm";
 import { getProjectScopeConditions, type ScopedUser } from "@/lib/scope";
-import { isYearFundedInSyncScope, projectYearScopeCondition } from "@/lib/abemis/year-scope";
+import {
+  getAbemisSyncExclusionReason,
+  projectYearScopeCondition,
+  type AbemisSyncExclusionReason,
+} from "@/lib/abemis/year-scope";
 
 import {
   captureProjectMetricSnapshots,
@@ -17,6 +21,18 @@ import {
 
 type ProjectInsert = typeof projects.$inferInsert;
 type SyncError = { projectId: string; message: string };
+type SyncExclusionReason = AbemisSyncExclusionReason | "fmr-owned";
+type SyncExclusionCounts = Record<SyncExclusionReason, number>;
+
+function createSyncExclusionCounts(): SyncExclusionCounts {
+  return {
+    "outside-year-scope": 0,
+    "proposal-through-2024": 0,
+    "cancelled-or-archived": 0,
+    "invalid-or-unclassified-stage": 0,
+    "fmr-owned": 0,
+  };
+}
 
 export async function syncAbemisProjects(
   options: { syncType?: string; triggeredBy?: string } | string = "system",
@@ -46,6 +62,7 @@ export async function syncAbemisProjects(
   let totalProcessed = 0;
   const errors: SyncError[] = [];
   const diagnostics: string[] = [];
+  const exclusionCounts = createSyncExclusionCounts();
   const successfullyUpsertedIds = new Set<string>();
 
   try {
@@ -63,9 +80,20 @@ export async function syncAbemisProjects(
       }
 
       const sourceProjects = response.data;
-      const rawProjects = sourceProjects.filter(
-        (project) => isInfraWatchProject(project) && isYearFundedInSyncScope(project.year_funded),
-      );
+      const rawProjects = sourceProjects.filter((project) => {
+        const exclusionReason = getAbemisSyncExclusionReason(project);
+        if (exclusionReason) {
+          exclusionCounts[exclusionReason] += 1;
+          return false;
+        }
+
+        if (!isInfraWatchProject(project)) {
+          exclusionCounts["fmr-owned"] += 1;
+          return false;
+        }
+
+        return true;
+      });
       const totalCount = response.pagination?.total_count || sourceProjects.length;
       
       onProgress?.(
@@ -179,7 +207,12 @@ export async function syncAbemisProjects(
       page++;
     }
 
-    onProgress?.(totalProcessed, totalProcessed, "Sync complete!");
+    const totalExcluded = Object.values(exclusionCounts).reduce((sum, count) => sum + count, 0);
+    onProgress?.(
+      totalProcessed,
+      totalProcessed,
+      `Sync complete. Excluded ${totalExcluded} out-of-scope records.`,
+    );
 
   } catch (error: unknown) {
     console.error("Sync error:", error);
@@ -220,6 +253,8 @@ export async function syncAbemisProjects(
       projectsUpdated: recordsUpdated,
       projectsFailed: recordsFailed,
       totalProcessed,
+      projectsExcluded: Object.values(exclusionCounts).reduce((sum, count) => sum + count, 0),
+      exclusions: exclusionCounts,
     },
     duration: getDurationSeconds(startedAtMs),
     errors,

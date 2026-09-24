@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file");
     const title = formData.get("title");
     const category = formData.get("category");
+    const visibilityInput = formData.get("visibility");
 
     if (!title || typeof title !== "string" || !title.trim()) {
       return NextResponse.json({ error: "Document title is required." }, { status: 400 });
@@ -46,6 +47,8 @@ export async function POST(request: NextRequest) {
     if (!category || typeof category !== "string") {
       return NextResponse.json({ error: "Category is required." }, { status: 400 });
     }
+
+    const visibility = visibilityInput === "admin_only" ? "admin_only" : "public";
 
     let normalizedCategory: string;
     try {
@@ -99,6 +102,7 @@ export async function POST(request: NextRequest) {
         filePath,
         fileSize: file.size,
         status: "pending",
+        visibility,
         contentPreview: `Reference document "${title.trim()}" queued for processing.`,
         uploadedBy: session.user.id,
         uploadedByName: session.user.name ?? "Unknown",
@@ -111,6 +115,7 @@ export async function POST(request: NextRequest) {
         id: doc.id,
         title: doc.title,
         status: doc.status,
+        visibility: doc.visibility,
       },
     });
   } catch (error) {

@@ -486,6 +486,10 @@ export const kbDocuments = pgTable(
     fileSize: integer("file_size"),
     chunkCount: integer("chunk_count").notNull().default(0),
     status: text("status").notNull().default("pending"),
+    // 'public' is searchable from both ARIA surfaces; 'admin_only' is filtered out
+    // of any search made from the public citizen surface (enforced in kb-search.ts,
+    // not left to the model to self-restrict).
+    visibility: text("visibility").notNull().default("public"),
     faqQuestion: text("faq_question"),
     faqAnswer: text("faq_answer"),
     contentPreview: text("content_preview"),
@@ -503,6 +507,7 @@ export const kbDocuments = pgTable(
   (table) => ({
     statusIdx: index("kb_documents_status_idx").on(table.status),
     categoryIdx: index("kb_documents_category_idx").on(table.category),
+    visibilityIdx: index("kb_documents_visibility_idx").on(table.visibility),
     archivedAtIdx: index("kb_documents_archived_at_idx").on(table.archivedAt),
     createdAtIdx: index("kb_documents_created_at_idx").on(table.createdAt),
   }),

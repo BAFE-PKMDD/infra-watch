@@ -7,7 +7,7 @@ import {
   useCallback,
   KeyboardEvent,
 } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, useMotionValue } from "framer-motion";
 import { Mic, MicOff, X, Send, RotateCcw } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -99,6 +99,62 @@ export function AiAssistantWidget({
     kokoroModel: "onnx-community/Kokoro-82M-v1.0-ONNX",
     kokoroVoice: "af_heart",
   };
+
+  // Movable / Draggable floating action button position and constraints
+  const dragX = useMotionValue(0);
+  const dragY = useMotionValue(0);
+  const isDraggingRef = useRef(false);
+  const [dragConstraints, setDragConstraints] = useState<{
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  }>({ left: -1000, right: 8, top: -800, bottom: 8 });
+
+  // Restore saved position on mount and keep bounded to viewport on resize
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const saved = sessionStorage.getItem("ai_widget_pos");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+          dragX.set(parsed.x);
+          dragY.set(parsed.y);
+        }
+      }
+    } catch {
+      // Ignore storage errors
+    }
+
+    const updateConstraints = () => {
+      const margin = 16;
+      const buttonSize = 64;
+      const defRight = 24;
+      const defBottom = 24;
+
+      const newConstraints = {
+        left: -(window.innerWidth - defRight - buttonSize - margin),
+        right: Math.max(0, defRight - margin),
+        top: -(window.innerHeight - defBottom - buttonSize - margin),
+        bottom: Math.max(0, defBottom - margin),
+      };
+      setDragConstraints(newConstraints);
+
+      // Clamp current position if window was resized while placed near edges
+      const curX = dragX.get();
+      const curY = dragY.get();
+      const clampedX = Math.min(Math.max(curX, newConstraints.left), newConstraints.right);
+      const clampedY = Math.min(Math.max(curY, newConstraints.top), newConstraints.bottom);
+      if (curX !== clampedX) dragX.set(clampedX);
+      if (curY !== clampedY) dragY.set(clampedY);
+    };
+
+    updateConstraints();
+    window.addEventListener("resize", updateConstraints);
+    return () => window.removeEventListener("resize", updateConstraints);
+  }, [dragX, dragY]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -265,30 +321,72 @@ export function AiAssistantWidget({
         {!isOpen && (
           <motion.button
             ref={launcherRef}
+            drag
+            dragMomentum={false}
+            dragElastic={0.12}
+            dragConstraints={dragConstraints}
+            style={{ x: dragX, y: dragY }}
+            onDragStart={() => {
+              isDraggingRef.current = true;
+            }}
+            onDragEnd={() => {
+              try {
+                sessionStorage.setItem(
+                  "ai_widget_pos",
+                  JSON.stringify({ x: dragX.get(), y: dragY.get() }),
+                );
+              } catch {
+                // Ignore storage errors
+              }
+              setTimeout(() => {
+                isDraggingRef.current = false;
+              }, 150);
+            }}
             initial={false}
             animate={{ scale: 1 }}
             exit={shouldReduceMotion ? undefined : { scale: 0 }}
-            whileHover={shouldReduceMotion ? undefined : { scale: 1.12 }}
+            whileHover={
+              shouldReduceMotion
+                ? undefined
+                : { scale: 1.08, y: -2 }
+            }
             whileTap={shouldReduceMotion ? undefined : { scale: 0.95 }}
+            whileDrag={
+              shouldReduceMotion
+                ? undefined
+                : { scale: 1.1, cursor: "grabbing" }
+            }
             transition={
               shouldReduceMotion
                 ? { duration: 0 }
                 : { type: "spring", stiffness: 400, damping: 17 }
             }
-            onClick={() => setIsOpen(true)}
-            className="group/fab fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-xl border border-slate-200 hover:bg-slate-50 transition-colors p-1"
+            onClick={() => {
+              if (isDraggingRef.current) return;
+              setIsOpen(true);
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              dragX.set(0);
+              dragY.set(0);
+              try {
+                sessionStorage.removeItem("ai_widget_pos");
+              } catch {
+                // Ignore storage errors
+              }
+            }}
+            title="Click to chat • Drag to move anywhere • Double-click to reset"
+            className="group/fab fixed bottom-6 right-6 z-50 flex h-16 w-16 cursor-grab active:cursor-grabbing touch-none select-none items-center justify-center rounded-full bg-white shadow-[0_10px_25px_-5px_rgba(0,0,0,0.16),0_8px_10px_-6px_rgba(0,0,0,0.1)] hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.22)] dark:shadow-[0_12px_28px_-5px_rgba(0,0,0,0.6)] border border-slate-200/90 hover:bg-slate-50 transition-colors p-1 ring-2 ring-white/90 dark:ring-slate-800/90"
             aria-label={
               adminMode && safeVoiceConfig.enabled
-                ? `Open ANIA. ${voice.statusLabel}`
-                : adminMode
-                  ? "Open ANIA"
-                  : "Open InfraWatch AI"
+                ? `Open ARIA. ${voice.statusLabel}`
+                : "Open ARIA"
             }
           >
             <BotFace className="h-14 w-14" sizes="56px" priority />
             {adminMode && safeVoiceConfig.enabled && (
               <span
-                className="absolute -bottom-7 right-0 flex min-w-max items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-medium text-slate-600 shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                className="absolute -bottom-7 right-0 flex min-w-max items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-medium text-slate-600 shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 pointer-events-none"
                 role="status"
                 aria-live="polite"
               >

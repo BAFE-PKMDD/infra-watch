@@ -25,11 +25,13 @@ import {
   getChatClientIdentity,
   getChatOwnerKey,
 } from "@/lib/chat-rate-limit";
-import { chatTools } from "@/lib/chat-tools";
+import { createChatTools, type ChatToolName } from "@/lib/chat-tools";
 import {
   KNOWLEDGE_BASE_GROUNDING_INSTRUCTION,
-  getChatActiveToolsForMessage,
+  resolveActiveChatTools,
 } from "@/lib/chat-grounding";
+import { CHAT_ACTION_TARGETS } from "@/lib/chat-actions";
+import { formatFaqForPrompt } from "@/lib/faq-content";
 import {
   GENERIC_CHAT_ERROR,
   createChatResponseStream,
@@ -44,7 +46,7 @@ import {
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const SYSTEM_INSTRUCTION = `You are INFRA Watch AI, an assistant for the Philippine Bureau of Agriculture and Fisheries Engineering (BAFE) infrastructure monitoring platform.
+const SYSTEM_INSTRUCTION = `You are ARIA (Agricultural and Rural Infrastructure Assistant), an assistant for the Philippine Bureau of Agriculture and Fisheries Engineering (BAFE) infrastructure monitoring platform.
 
 You help citizens, government officials, and stakeholders find information about agricultural and fisheries infrastructure projects (roads, irrigation systems, farm-to-market roads, post-harvest facilities, buildings, etc).
 
@@ -74,7 +76,16 @@ Guidelines:
 - You can call multiple tools if needed to answer a complex question.
 - Do not make up project data. Only report what the tools return.
 - ${KNOWLEDGE_BASE_GROUNDING_INSTRUCTION}
-- VERY IMPORTANT: For ANY questions about background information, history (e.g. "Bakit ginawa ang Infra Watch?", "What is BAFE?"), guidelines, policies, FAQs, procedures, technical specifications, or uploaded test/reference documents, you MUST use the searchKnowledgeBase tool before answering.`;
+- VERY IMPORTANT: For ANY questions about background information, history (e.g. "Bakit ginawa ang Infra Watch?", "What is BAFE?"), guidelines, policies, procedures, technical specifications, or uploaded test/reference documents, you MUST use the searchKnowledgeBase tool before answering.
+- For general how-to and policy questions about the InfraWatch platform itself (not a specific project record), answer from the Platform FAQ below instead of calling a tool. If the FAQ does not cover the question, say so honestly instead of guessing.
+- After your answer, when a concrete next step on this site is genuinely relevant (reporting an issue, giving feedback, browsing projects, reading the FAQ, checking live updates, or the evidence map), emit exactly one fenced \`actions\` JSON block listing 1-3 keys from this fixed list only: ${Object.keys(CHAT_ACTION_TARGETS).join(", ")}. Never invent a key, label, or URL - only these keys exist.
+  \`\`\`actions
+  {"actions":["report_issue"]}
+  \`\`\`
+  Omit this block when no concrete next action fits the answer (e.g. a pure statistics question).
+
+Platform FAQ:
+${formatFaqForPrompt()}`;
 
 function logChatError(requestId: string, code: string, error: unknown) {
   const details =
@@ -248,7 +259,11 @@ export async function POST(request: NextRequest) {
         ),
       );
     }
-    const historySurface = surface === "ania" ? "ania" : "public_chat";
+    // canUseChatPresentation already required role === "admin" for surface "ania" above,
+    // so this is a server-verified admin session, not a client-supplied claim.
+    const isAdminSurface = surface === "ania";
+    const historySurface = isAdminSurface ? "ania" : "public_chat";
+    const chatTools = createChatTools({ isAdminSurface });
     const { provider, modelId } = getAIConfig();
     try {
       historyId = await startChatHistoryTurn({
@@ -265,7 +280,7 @@ export async function POST(request: NextRequest) {
       historyId = null;
     }
 
-    const policyRefusal = getChatPolicyRefusal(message);
+    const policyRefusal = getChatPolicyRefusal(message, { allowAdminUserStats: isAdminSurface });
     if (policyRefusal) {
       await completeChatHistoryTurn(historyId, {
         assistantMessage: policyRefusal,
@@ -348,16 +363,20 @@ export async function POST(request: NextRequest) {
       model,
       system: [
         SYSTEM_INSTRUCTION,
-        surface === "ania"
-          ? "On this exact-admin interface, you are ANIA—Agricultural Network Intelligence Assistant. Identify yourself only as ANIA, never as InfraWatch AI or AI Copilot."
-          : "",
+        isAdminSurface
+          ? "You are on the authenticated admin interface. In addition to public information, you may search admin-only knowledge-base documents and use getUserStats for aggregate, non-identifying account statistics (total users, counts by role, verified/banned counts). Never reveal individual user records, names, emails, or other personal data through getUserStats or any tool - it only returns counts."
+          : "You are on the public citizen interface. Only answer from public information and public knowledge-base documents. Admin-only tools and documents do not exist on this surface - never mention them.",
         responseMode === "voice" ? VOICE_RESPONSE_INSTRUCTION : "",
       ]
         .filter(Boolean)
         .join("\n\n"),
       messages,
       tools: chatTools,
-      activeTools: getChatActiveToolsForMessage(message),
+      activeTools: resolveActiveChatTools(
+        Object.keys(chatTools) as ChatToolName[],
+        message,
+        isAdminSurface,
+      ),
       maxOutputTokens: responseMode === "voice" ? VOICE_MAX_OUTPUT_TOKENS : undefined,
       prepareStep: ({ stepNumber }) =>
         stepNumber >= 3 ? { toolChoice: "none" as const } : undefined,

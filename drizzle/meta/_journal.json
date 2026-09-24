@@ -169,6 +169,13 @@
       "when": 1790259799473,
       "tag": "0023_real_madame_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790264624471,
+      "tag": "0024_petite_pretty_boy",
+      "breakpoints": true
     }
   ]
 }

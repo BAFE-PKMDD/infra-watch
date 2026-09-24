@@ -1,6 +1,6 @@
 # AI Knowledge Retrieval Plan
 
-> Future implementation plan for adding fast, source-grounded FAQ and public-document retrieval to InfraWatch AI using PostgreSQL, pgvector, and a locally hosted multilingual embedding model.
+> Future implementation plan for adding fast, source-grounded FAQ and public-document retrieval to ARIA (Agricultural and Rural Infrastructure Assistant) using PostgreSQL, pgvector, and a locally hosted multilingual embedding model.
 
 ---
 
@@ -8,7 +8,7 @@
 
 **Status:** Proposed for future implementation. This document is architectural guidance only; it does not indicate that vector retrieval is currently enabled.
 
-InfraWatch AI currently answers structured project questions through bounded backend tools that query the local InfraWatch PostgreSQL read model. The public FAQ is currently static content in `app/(public)/faq/page.tsx`. There is no vector extension, embedding service, knowledge-document schema, ingestion pipeline, or semantic-retrieval tool in the current implementation.
+ARIA currently answers structured project questions through bounded backend tools that query the local InfraWatch PostgreSQL read model. The public FAQ is currently static content in `app/(public)/faq/page.tsx`. There is no vector extension, embedding service, knowledge-document schema, ingestion pipeline, or semantic-retrieval tool in the current implementation.
 
 This plan adds retrieval-augmented generation (RAG) for approved unstructured information such as FAQs, public guidance, definitions, and policies. It must not replace deterministic SQL queries for project counts, budgets, statuses, identifiers, or exact project details.
 

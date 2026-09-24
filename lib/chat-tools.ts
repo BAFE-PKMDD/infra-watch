@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
+import { user as authUser } from "@/auth-schema";
 import { and, count, eq, ilike, or, sum, desc } from "drizzle-orm";
 import { searchKnowledgeBase as kbSearch } from "@/lib/kb-search";
 import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
@@ -365,44 +366,114 @@ const searchKnowledgeBaseSchema = z.object({
     .describe("Optional exact knowledge-base category filter; categories are admin-defined"),
 });
 
-export const searchKnowledgeBase = tool({
-  description:
-    "Search uploaded knowledge-base guidelines, FAQs, policies, technical specs, and reference/test documents. Use this for background, history, rules, procedures, and questions explicitly about uploaded references. Content marked synthetic or test-only is reference data, not an official project database record; do not combine it with project-search results unless the user separately asks for official project data.",
-  inputSchema: searchKnowledgeBaseSchema,
-  execute: async (params: z.infer<typeof searchKnowledgeBaseSchema>) => {
-    const results = await kbSearch(params.query, {
-      limit: 5,
-      category: params.category,
-    });
+function buildSearchKnowledgeBaseTool(context: ChatToolsContext) {
+  return tool({
+    description:
+      "Search uploaded knowledge-base guidelines, FAQs, policies, technical specs, and reference/test documents. Use this for background, history, rules, procedures, and questions explicitly about uploaded references. Content marked synthetic or test-only is reference data, not an official project database record; do not combine it with project-search results unless the user separately asks for official project data.",
+    inputSchema: searchKnowledgeBaseSchema,
+    execute: async (params: z.infer<typeof searchKnowledgeBaseSchema>) => {
+      const results = await kbSearch(params.query, {
+        limit: 5,
+        category: params.category,
+        // Enforced in kb-search.ts, not left to prompt instructions: a public-surface
+        // request can never retrieve a document marked admin-only.
+        visibility: context.isAdminSurface ? undefined : "public",
+      });
 
-    if (results.length === 0) {
+      if (results.length === 0) {
+        return {
+          found: false,
+          message: "No relevant knowledge base content found for this query.",
+        };
+      }
+
       return {
-        found: false,
-        message: "No relevant knowledge base content found for this query.",
+        found: true,
+        resultCount: results.length,
+        results: results.map((r) => ({
+          documentTitle: r.documentTitle,
+          category: r.documentCategory,
+          content: r.chunkContent,
+          relevance: `${Math.round(r.similarity * 100)}%`,
+        })),
       };
-    }
+    },
+  });
+}
 
-    return {
-      found: true,
-      resultCount: results.length,
-      results: results.map((r) => ({
-        documentTitle: r.documentTitle,
-        category: r.documentCategory,
-        content: r.chunkContent,
-        relevance: `${Math.round(r.similarity * 100)}%`,
-      })),
-    };
-  },
-});
+// ---------------------------------------------------------------------------
+// getUserStats — admin-only aggregate account statistics (never individual records)
+// ---------------------------------------------------------------------------
+
+const getUserStatsSchema = z.object({});
+
+function buildGetUserStatsTool(context: ChatToolsContext) {
+  return tool({
+    description:
+      "Admin-only. Get aggregate account statistics: total user count, counts by role, email-verified count, and banned count. Never returns names, emails, or any individual user record - counts only.",
+    inputSchema: getUserStatsSchema,
+    execute: async () => {
+      if (!context.isAdminSurface) {
+        return {
+          allowed: false,
+          message: "Account statistics are only available on the admin interface.",
+        };
+      }
+
+      const [totals] = await db.select({ value: count() }).from(authUser);
+      const byRole = await db
+        .select({ role: authUser.role, value: count() })
+        .from(authUser)
+        .groupBy(authUser.role)
+        .orderBy(desc(count()));
+      const [verified] = await db
+        .select({ value: count() })
+        .from(authUser)
+        .where(eq(authUser.emailVerified, true));
+      const [banned] = await db
+        .select({ value: count() })
+        .from(authUser)
+        .where(eq(authUser.banned, true));
+
+      return {
+        allowed: true,
+        totalUsers: totals?.value ?? 0,
+        byRole: byRole.map((row) => ({ role: row.role ?? "unspecified", count: row.value })),
+        emailVerifiedCount: verified?.value ?? 0,
+        bannedCount: banned?.value ?? 0,
+      };
+    },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // All tools bundled for the chat route
 // ---------------------------------------------------------------------------
 
-export const chatTools = {
-  searchProjects,
-  getProjectStats,
-  getDelayedProjectsSummary,
-  getProjectById,
-  searchKnowledgeBase,
-};
+export interface ChatToolsContext {
+  /** True for the authenticated admin surface (surface === "ania"), false for public. */
+  isAdminSurface: boolean;
+}
+
+/**
+ * Builds the tool set for one request. Tool shape (keys) stays constant across
+ * surfaces so `activeTools` typing stays simple; per-surface restriction happens
+ * inside each tool (searchKnowledgeBase's visibility filter, getUserStats's own
+ * admin check) and again at the `activeTools` allowlist in chat-grounding.ts, so
+ * a public request can't reach admin-only data even if one layer has a bug.
+ */
+export function createChatTools(context: ChatToolsContext) {
+  return {
+    searchProjects,
+    getProjectStats,
+    getDelayedProjectsSummary,
+    getProjectById,
+    searchKnowledgeBase: buildSearchKnowledgeBaseTool(context),
+    getUserStats: buildGetUserStatsTool(context),
+  };
+}
+
+export type ChatTools = ReturnType<typeof createChatTools>;
+export type ChatToolName = keyof ChatTools;
+
+export const ADMIN_ONLY_TOOL_NAMES: ChatToolName[] = ["getUserStats"];

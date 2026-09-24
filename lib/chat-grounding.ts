@@ -1,3 +1,6 @@
+import type { ChatToolName } from "@/lib/chat-tools";
+import { ADMIN_ONLY_TOOL_NAMES } from "@/lib/chat-tools";
+
 export const KNOWLEDGE_BASE_GROUNDING_INSTRUCTION = `Knowledge-base grounding rules:
 - Use knowledge-base results only as reference-document content. Do not represent them as rows from the official infrastructure project database.
 - If a result is explicitly described as a synthetic or test record, state prominently that it is not an official infrastructure project. Do not call project-database tools merely to verify, enrich, link, or blend that synthetic example with real project data.
@@ -21,4 +24,25 @@ export function getChatActiveToolsForMessage(
   }
 
   return undefined;
+}
+
+/**
+ * The full active-tools allowlist for one request: admin-only tools are dropped
+ * entirely for the public surface (the model can't reach them regardless of how
+ * the question is phrased), then narrowed further by the existing test-reference
+ * heuristic above.
+ */
+export function resolveActiveChatTools(
+  allToolNames: ChatToolName[],
+  message: string,
+  isAdminSurface: boolean,
+): ChatToolName[] {
+  const surfaceAllowed = isAdminSurface
+    ? allToolNames
+    : allToolNames.filter((name) => !ADMIN_ONLY_TOOL_NAMES.includes(name));
+
+  const messageRestriction = getChatActiveToolsForMessage(message);
+  if (!messageRestriction) return surfaceAllowed;
+
+  return surfaceAllowed.filter((name) => (messageRestriction as string[]).includes(name));
 }

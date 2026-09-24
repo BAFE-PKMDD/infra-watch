@@ -30,7 +30,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 export async function searchKnowledgeBase(
   query: string,
-  opts?: { limit?: number; minSimilarity?: number; category?: string }
+  opts?: { limit?: number; minSimilarity?: number; category?: string; visibility?: 'public' }
 ): Promise<KbSearchResult[]> {
   try {
     const limit = opts?.limit ?? 5;
@@ -46,6 +46,12 @@ export async function searchKnowledgeBase(
     const conditions = [eq(kbDocuments.status, 'embedded'), isNull(kbDocuments.archivedAt)];
     if (opts?.category) {
       conditions.push(eq(kbDocuments.category, opts.category));
+    }
+    // Callers pass 'public' for the public citizen surface; admin callers omit this
+    // so both visibility tiers are searchable. This filter is the actual enforcement
+    // point - the model is never trusted to self-restrict which documents it surfaces.
+    if (opts?.visibility === 'public') {
+      conditions.push(eq(kbDocuments.visibility, 'public'));
     }
 
     // Query candidate chunks from active embedded documents.

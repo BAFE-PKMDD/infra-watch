@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { PgDialect } from "drizzle-orm/pg-core";
 
-import { ABEMIS_SYNC_YEARS, isYearFundedInSyncScope } from "./year-scope";
+import {
+  ABEMIS_SYNC_YEARS,
+  getAbemisSyncExclusionReason,
+  isYearFundedInSyncScope,
+  projectYearScopeCondition,
+} from "./year-scope";
 
 test("accepts every year in the documented 2021-2026 ABEMIS scope", () => {
   for (const year of ["2021", "2022", "2023", "2024", "2025", "2026"]) {
@@ -20,4 +26,63 @@ test("rejects missing or non-numeric funding years", () => {
   for (const value of [null, undefined, "", "OVERALL", "not-a-year"]) {
     assert.equal(isYearFundedInSyncScope(value), false);
   }
+});
+
+test("excludes proposal-stage projects funded through 2024", () => {
+  for (const yearFunded of ["2021", "2022", "2023", "2024"]) {
+    assert.equal(
+      getAbemisSyncExclusionReason({ year_funded: yearFunded, stage: " Proposal ", status: "For Review" }),
+      "proposal-through-2024",
+    );
+  }
+});
+
+test("includes proposal-stage projects funded from 2025 onward", () => {
+  for (const yearFunded of ["2025", "2026"]) {
+    assert.equal(
+      getAbemisSyncExclusionReason({ year_funded: yearFunded, stage: "proposal", status: "For Validation" }),
+      null,
+    );
+  }
+});
+
+test("excludes cancelled or archived projects regardless of stage", () => {
+  for (const status of ["Cancelled", "Canceled", "Archived", "Archive"]) {
+    assert.equal(
+      getAbemisSyncExclusionReason({ year_funded: "2026", stage: "Implementation", status }),
+      "cancelled-or-archived",
+    );
+  }
+});
+
+test("excludes invalid or unclassified project stages", () => {
+  for (const stage of [null, undefined, "", "0", "invalid", "unclassified"]) {
+    assert.equal(
+      getAbemisSyncExclusionReason({ year_funded: "2026", stage, status: "For Validation" }),
+      "invalid-or-unclassified-stage",
+    );
+  }
+});
+
+test("keeps recognized non-proposal stages in the documented year scope", () => {
+  for (const stage of ["Inventory", "Pre-implementation", "Procurement", "Implementation", "Completed"]) {
+    assert.equal(
+      getAbemisSyncExclusionReason({ year_funded: "2024", stage, status: "For Review" }),
+      null,
+    );
+  }
+});
+
+test("database project scope applies the same lifecycle exclusions as synchronization", () => {
+  const query = new PgDialect().sqlToQuery(projectYearScopeCondition());
+
+  assert.match(query.sql, /year_funded/);
+  assert.match(query.sql, /stage/);
+  assert.match(query.sql, /status/);
+  assert.deepEqual(query.params, [
+    "2021", "2022", "2023", "2024", "2025", "2026",
+    "", "0", "invalid", "unclassified",
+    "proposal", "2021", "2022", "2023", "2024",
+    "%cancel%", "%archiv%",
+  ]);
 });

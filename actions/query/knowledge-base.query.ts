@@ -44,6 +44,7 @@ export async function getKbDocuments(filters?: {
       id: kbDocuments.id,
       title: kbDocuments.title,
       category: kbDocuments.category,
+      visibility: kbDocuments.visibility,
       fileType: kbDocuments.fileType,
       fileName: kbDocuments.fileName,
       fileSize: kbDocuments.fileSize,

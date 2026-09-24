@@ -4,7 +4,17 @@ import test from "node:test";
 import {
   KNOWLEDGE_BASE_GROUNDING_INSTRUCTION,
   getChatActiveToolsForMessage,
+  resolveActiveChatTools,
 } from "./chat-grounding";
+
+const ALL_TOOL_NAMES = [
+  "searchProjects",
+  "getProjectStats",
+  "getDelayedProjectsSummary",
+  "getProjectById",
+  "searchKnowledgeBase",
+  "getUserStats",
+] as const;
 
 test("knowledge-base grounding keeps synthetic test records separate from official projects", () => {
   assert.match(
@@ -43,4 +53,35 @@ test("ordinary official project questions keep all project tools available", () 
     getChatActiveToolsForMessage("Show ongoing farm-to-market road projects"),
     undefined,
   );
+});
+
+test("the public surface never gets getUserStats, no matter how the question is phrased", () => {
+  const active = resolveActiveChatTools(
+    [...ALL_TOOL_NAMES],
+    "Show ongoing farm-to-market road projects",
+    false,
+  );
+  assert.ok(!active.includes("getUserStats"));
+  assert.deepEqual(active.sort(), ALL_TOOL_NAMES.filter((n) => n !== "getUserStats").sort());
+});
+
+test("the admin surface keeps getUserStats available for an ordinary question", () => {
+  const active = resolveActiveChatTools([...ALL_TOOL_NAMES], "how many users do we have", true);
+  assert.ok(active.includes("getUserStats"));
+});
+
+test("a test-reference question narrows to searchKnowledgeBase on both surfaces, and getUserStats is still excluded for public", () => {
+  const publicActive = resolveActiveChatTools(
+    [...ALL_TOOL_NAMES],
+    "what is the test QA reference document?",
+    false,
+  );
+  assert.deepEqual(publicActive, ["searchKnowledgeBase"]);
+
+  const adminActive = resolveActiveChatTools(
+    [...ALL_TOOL_NAMES],
+    "what is the test QA reference document?",
+    true,
+  );
+  assert.deepEqual(adminActive, ["searchKnowledgeBase"]);
 });

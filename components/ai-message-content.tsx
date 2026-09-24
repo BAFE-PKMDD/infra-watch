@@ -3,7 +3,7 @@
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -19,6 +19,7 @@ import {
 
 import { ChartSpec, parseChartSpec } from "@/lib/chat-visuals";
 import { getProjectHref, isProjectHref } from "@/lib/chat-links";
+import { type ChatActionItem, parseActionSpec } from "@/lib/chat-actions";
 
 type MarkdownNode = {
   type: string;
@@ -198,6 +199,23 @@ function PendingChart() {
   );
 }
 
+function ActionButtons({ actions }: { actions: ChatActionItem[] }) {
+  return (
+    <div className="my-3 flex flex-wrap gap-2" role="group" aria-label="Suggested next steps">
+      {actions.map((action) => (
+        <Link
+          key={action.key}
+          href={action.href}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+        >
+          {action.label}
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export function AiMessageContent({
   content,
   isStreaming = false,
@@ -324,6 +342,12 @@ export function AiMessageContent({
               const chart = parseChartSpec(source);
               if (chart) return <ChartCard chart={chart} />;
               if (isStreaming) return <PendingChart />;
+            }
+
+            if (className === "language-actions") {
+              const spec = parseActionSpec(source);
+              if (spec) return <ActionButtons actions={spec.actions} />;
+              if (isStreaming) return null;
             }
 
             if (className) {

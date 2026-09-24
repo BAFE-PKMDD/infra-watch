@@ -256,7 +256,7 @@ export async function toggleLiveVideoActive(id: string): Promise<{ success: bool
     return { success: true };
   } catch (error) {
     console.error("Failed to toggle video active status:", error);
-    return { success: false, error: "Failed to toggle video active status" };
+    return { success: false, error: error instanceof Error ? error.message : "Failed to toggle video active status" };
   }
 }
 
@@ -317,6 +317,6 @@ export async function toggleLiveVideoLive(id: string): Promise<{ success: boolea
     return { success: true };
   } catch (error) {
     console.error("Failed to toggle video live status:", error);
-    return { success: false, error: "Failed to toggle video live status" };
+    return { success: false, error: error instanceof Error ? error.message : "Failed to toggle video live status" };
   }
 }
