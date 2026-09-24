@@ -85,6 +85,7 @@ export const projects = pgTable(
     psgcCode: text("psgc_code"),
     metadata: jsonb("metadata"),
     commodities: jsonb("commodities").$type<string[]>().default([]),
+    farmOperation: text("farm_operation"),
     geom: geometry("geom"),
     lastSyncedAt: timestamp("last_synced_at", { mode: "date" }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -181,6 +182,9 @@ export const issues = pgTable(
     publicDescription: text("public_description"),
     publicApprovedAt: timestamp("public_approved_at", { mode: "date" }),
     publicApprovedBy: text("public_approved_by"),
+    // Citizen-selected classification hints when no specific project is matched; unverified, unlike projects.farm_operation/project_type.
+    reportedFarmOperation: text("reported_farm_operation"),
+    reportedProjectType: text("reported_project_type"),
     region: text("region"),
     province: text("province"),
     municipality: text("municipality"),
@@ -580,18 +584,21 @@ export const submissionSurveys = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     sourceType: text("source_type").notNull(), // 'feedback' | 'e_report'
-    sourceId: text("source_id"), // feedback id or issue ticket/id (optional)
+    sourceId: text("source_id"), // feedback id or issue ticket/id (optional; null when the survey ran before submission)
     userId: text("user_id"), // optional user id
+    respondentType: text("respondent_type"), // 'student' | 'farmer' | 'normal_citizen' | 'bafe_employee' | 'raed_staff' | 'other'
     name: text("name"), // optional citizen name
     age: integer("age"),
     gender: text("gender"),
-    referralSource: text("referral_source").notNull(), // 'facebook' | 'website' | 'instagram' | 'other'
+    referralSource: text("referral_source"), // 'facebook' | 'website' | 'instagram' | 'other'; null when skipped
+    skipped: boolean("skipped").default(false).notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },
   (table) => ({
     sourceTypeIdx: index("submission_surveys_source_type_idx").on(table.sourceType),
     referralSourceIdx: index("submission_surveys_referral_source_idx").on(table.referralSource),
     createdAtIdx: index("submission_surveys_created_at_idx").on(table.createdAt),
+    userIdIdx: index("submission_surveys_user_id_idx").on(table.userId),
   }),
 );
 

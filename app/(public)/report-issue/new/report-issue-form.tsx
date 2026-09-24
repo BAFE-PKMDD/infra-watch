@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -18,14 +18,19 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   ExternalLink,
   FileText,
-  HelpCircle,
+  Image as ImageIcon,
   Loader2,
   MapPin,
   MessageSquare,
+  Pencil,
   Search,
+  Sprout,
+  Tag,
   User,
+  Video as VideoIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,7 +43,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ProjectSearchInput, type SelectedProject } from "@/components/ui/project-search-input";
@@ -60,9 +64,13 @@ import {
   getRegions,
   type LocationOption,
 } from "@/actions/query/get-location-options";
+import { FARM_OPERATIONS, getProjectTypesForFarmOperation } from "@/lib/abemis/project-type-map";
+import { parseIssueTypeValue } from "@/lib/abemis/issue-type-map";
+import { IssueTypePicker } from "@/components/report-issue/issue-type-picker";
+import { useSubmissionSurveyGate } from "@/hooks/use-submission-survey-gate";
 
 type FlowPath = "knows-project" | "no-project" | null;
-type StepId = "awareness" | "project-search" | "location" | "match" | "issue-details" | "contact";
+type StepId = "project-search" | "farm-operation" | "project-type" | "location" | "match" | "issue-details" | "contact" | "review";
 
 type StepDefinition = {
   id: StepId;
@@ -84,28 +92,21 @@ type ProjectDetails = {
   metadata?: Record<string, unknown>;
 };
 
-const issueTypes = [
-  { value: "infrastructure", label: "Infrastructure Issues" },
-  { value: "damage", label: "Equipment Damage" },
-  { value: "delay", label: "Construction Delay" },
-  { value: "flooding", label: "Water Leak / Flooding" },
-  { value: "safety", label: "Safety Hazard" },
-  { value: "other", label: "Other" },
-];
-
 const stepsKnowsProject: StepDefinition[] = [
-  { id: "awareness", label: "Start", icon: HelpCircle },
   { id: "project-search", label: "Project", icon: Search },
   { id: "issue-details", label: "Details", icon: FileText },
-  { id: "contact", label: "Submit", icon: User },
+  { id: "contact", label: "Contact", icon: User },
+  { id: "review", label: "Review", icon: ClipboardCheck },
 ];
 
 const stepsNoProject: StepDefinition[] = [
-  { id: "awareness", label: "Start", icon: HelpCircle },
+  { id: "farm-operation", label: "Farm Operation", icon: Sprout },
+  { id: "project-type", label: "Project Type", icon: Tag },
   { id: "location", label: "Location", icon: MapPin },
   { id: "match", label: "Match", icon: Search },
   { id: "issue-details", label: "Details", icon: FileText },
-  { id: "contact", label: "Submit", icon: User },
+  { id: "contact", label: "Contact", icon: User },
+  { id: "review", label: "Review", icon: ClipboardCheck },
 ];
 
 const stepVariants = {
@@ -114,20 +115,29 @@ const stepVariants = {
   exit: (direction: number) => ({ x: direction > 0 ? -80 : 80, opacity: 0 }),
 };
 
+// A viewer who prefers reduced motion still gets a state change, just without the slide.
+const reducedStepVariants = {
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
+  exit: { opacity: 0 },
+};
+
 export default function ReportIssuePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedProjectId = searchParams.get("projectId")?.trim() || "";
   const { user, isLoading: isSessionLoading } = useAuth();
-  const [currentStep, setCurrentStep] = useState<StepId>("awareness");
-  const [flowPath, setFlowPath] = useState<FlowPath>(null);
+  const { needsSurvey } = useSubmissionSurveyGate(Boolean(user));
+  const prefersReducedMotion = useReducedMotion();
+  const [currentStep, setCurrentStep] = useState<StepId>("farm-operation");
+  const [flowPath, setFlowPath] = useState<FlowPath>("no-project");
   const [direction, setDirection] = useState(1);
   const [selectedProject, setSelectedProject] = useState<SelectedProject | null>(null);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<GeoEvidenceReadyItem[]>([]);
   const [isEvidenceProcessing, setIsEvidenceProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [createdIssueData, setCreatedIssueData] = useState<{ id: string; ticketNumber: string } | null>(null);
+  const [showPreSubmitSurvey, setShowPreSubmitSurvey] = useState(false);
   const [selectedRegionCode, setSelectedRegionCode] = useState("");
 
   const [selectedProvinceCode, setSelectedProvinceCode] = useState("");
@@ -136,6 +146,8 @@ export default function ReportIssuePage() {
   const linkedProjectInitialized = useRef(false);
 
   const [form, setForm] = useState({
+    farmOperation: "",
+    projectType: "",
     region: "",
     province: "",
     city: "",
@@ -234,6 +246,27 @@ export default function ReportIssuePage() {
     staleTime: 30000,
   });
 
+  const { data: typeSuggestedProjects = [], isFetching: isTypeSuggestionsLoading } = useQuery({
+    queryKey: ["issue-project-type-suggestions", form.projectType, form.province],
+    queryFn: async (): Promise<SelectedProject[]> => {
+      const params = new URLSearchParams({ type: form.projectType, limit: "4" });
+      if (form.province) params.set("province", form.province);
+      const response = await fetch(`/api/projects?${params.toString()}`);
+      if (!response.ok) throw new Error("Failed to find similar projects");
+      const result = await response.json();
+      return ((result.data || []) as Array<{ id: string; name: string; sourceId?: string; code?: string; province?: string; municipality?: string }>).map((project) => ({
+        id: project.id,
+        name: project.name,
+        sourceId: project.sourceId,
+        sourceProjectId: project.code,
+        province: project.province,
+        municipality: project.municipality,
+      }));
+    },
+    enabled: currentStep === "match" && !isSuggestionsLoading && suggestedProjects.length === 0 && !!form.projectType,
+    staleTime: 30000,
+  });
+
   const activeSteps = useMemo(() => {
     if (flowPath === "knows-project") return stepsKnowsProject;
     if (flowPath === "no-project") return stepsNoProject;
@@ -245,6 +278,15 @@ export default function ReportIssuePage() {
   const setValue = (name: keyof typeof form, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleFarmOperationChange = (value: string) => {
+    setForm((prev) => ({ ...prev, farmOperation: value, projectType: "" }));
+  };
+
+  const projectTypeOptions = useMemo(
+    () => getProjectTypesForFarmOperation(form.farmOperation),
+    [form.farmOperation],
+  );
 
   const findLabel = (options: LocationOption[], value: string) => options.find((option) => option.value === value)?.label || "";
 
@@ -312,7 +354,7 @@ export default function ReportIssuePage() {
 
   const validateIssueDetails = () => {
     if (!form.issueType) {
-      toast.error("Please select an issue type.");
+      toast.error("Please select at least one issue type.");
       return false;
     }
     if (form.issueDescription.trim().length < 20) {
@@ -326,20 +368,37 @@ export default function ReportIssuePage() {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const validateContactStep = () => {
     if (!form.contactNumber.trim()) {
       toast.error("Contact number is required.");
-      return;
+      return false;
     }
     if (!form.confirmAccuracy || !form.agreeToTerms) {
       toast.error("Please confirm accuracy and agree to the terms.");
-      return;
+      return false;
     }
     if (isEvidenceProcessing) {
       toast.error("Please wait for location metadata to finish processing.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleGoToReview = () => {
+    if (!validateContactStep()) return;
+    goToStep("review");
+  };
+
+  const handleSubmitClick = () => {
+    if (!validateContactStep()) return;
+    if (needsSurvey) {
+      setShowPreSubmitSurvey(true);
       return;
     }
+    submitIssueReport();
+  };
 
+  const submitIssueReport = async () => {
     try {
       setIsSubmitting(true);
       const uploadedEvidence: IssueEvidenceItem[] = [];
@@ -377,6 +436,8 @@ export default function ReportIssuePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: selectedProject?.sourceId || selectedProject?.id || null,
+          farmOperation: form.farmOperation || null,
+          projectType: form.projectType || null,
           region: form.region || "N/A",
           province: form.province || "N/A",
           city: form.city || "N/A",
@@ -408,10 +469,7 @@ export default function ReportIssuePage() {
           projectId: selectedProject?.sourceId || selectedProject?.id || null,
         },
       });
-      setCreatedIssueData({
-        id: data.data?.id || "",
-        ticketNumber: data.data?.ticketNumber || "",
-      });
+      router.push("/report-issue/" + (data.data?.id || ""));
     } catch (error) {
 
       const message = error instanceof Error ? error.message : "Failed to submit issue";
@@ -450,38 +508,17 @@ export default function ReportIssuePage() {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-700 dark:bg-slate-900">
           <AnimatePresence mode="wait" custom={direction}>
-            <motion.div key={currentStep} custom={direction} variants={stepVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
-              {currentStep === "awareness" && (
-                <div className="space-y-7 text-center">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-950 dark:text-white">Is this issue related to a specific project?</h2>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">This helps us respond to your report faster</p>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <ChoiceCard
-                      icon={<Search className="size-7" />}
-                      title="Yes, I know the project"
-                      body="I can search for the project by name or code"
-                      onClick={() => {
-                        setFlowPath("knows-project");
-                        goToStep("project-search");
-                      }}
-                    />
-                    <ChoiceCard
-                      icon={<MapPin className="size-7" />}
-                      title="No, I'm not sure"
-                      body="I'll describe the location and we'll find nearby projects"
-                      onClick={() => {
-                        setFlowPath("no-project");
-                        goToStep("location");
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
+            <motion.div
+              key={currentStep}
+              custom={direction}
+              variants={prefersReducedMotion ? reducedStepVariants : stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: prefersReducedMotion ? 0.15 : 0.25, ease: "easeInOut" }}
+            >
               {currentStep === "project-search" && (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <StepHeader title="Find the related project" body="Search by project name, code, municipality, or province." />
                   <ProjectSearchInput value={selectedProject} onSelect={handleProjectSelect} onClear={() => setSelectedProject(null)} autoFocus />
                   {selectedProject && (
@@ -494,9 +531,43 @@ export default function ReportIssuePage() {
                       actionLabel="Continue with this Project"
                     />
                   )}
-                  <div className="flex items-center justify-between pt-2">
-                    <Button type="button" variant="ghost" onClick={() => { setFlowPath(null); goToStep("awareness", -1); }}>Back</Button>
+                  <div className="flex items-center justify-end pt-2">
                     <Button type="button" onClick={() => goToStep("issue-details")} disabled={!selectedProject} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === "farm-operation" && (
+                <div className="space-y-5">
+                  <StepHeader title="What kind of agricultural operation is it?" body="Choose the category that best matches the facility." />
+                  <LocationSelect
+                    label="Farm Operation"
+                    required
+                    value={form.farmOperation}
+                    placeholder="Select farm operation"
+                    options={FARM_OPERATIONS.map((value) => ({ value, label: value }))}
+                    onChange={handleFarmOperationChange}
+                  />
+                  <div className="flex items-center justify-end pt-2">
+                    <Button type="button" onClick={() => goToStep("project-type")} disabled={!form.farmOperation} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === "project-type" && (
+                <div className="space-y-5">
+                  <StepHeader title="What type of project is it?" body="Choose the specific project type under that operation." />
+                  <LocationSelect
+                    label="Project Type"
+                    required
+                    value={form.projectType}
+                    placeholder="Select project type"
+                    options={projectTypeOptions.map((value) => ({ value, label: value }))}
+                    onChange={(value) => setValue("projectType", value)}
+                  />
+                  <div className="flex items-center justify-between pt-2">
+                    <Button type="button" variant="ghost" onClick={() => goToStep("farm-operation", -1)}>Back</Button>
+                    <Button type="button" onClick={() => goToStep("location")} disabled={!form.projectType} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
                   </div>
                 </div>
               )}
@@ -543,7 +614,7 @@ export default function ReportIssuePage() {
                   </div>
                   <Field label="Street / Landmark" value={form.streetLandmark} onChange={(value) => setValue("streetLandmark", value)} />
                   <div className="flex items-center justify-between pt-2">
-                    <Button type="button" variant="ghost" onClick={() => { setFlowPath(null); goToStep("awareness", -1); }}>Back</Button>
+                    <Button type="button" variant="ghost" onClick={() => goToStep("project-type", -1)}>Back</Button>
                     <Button type="button" onClick={() => goToStep("match")} disabled={!form.province || !form.city || !form.barangay || !form.streetLandmark} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
                   </div>
                 </div>
@@ -582,10 +653,42 @@ export default function ReportIssuePage() {
                       })}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
-                      <Search className="mx-auto mb-3 size-8 text-slate-500" />
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No nearby project match found</p>
-                      <p className="mt-1 text-xs text-slate-500">You can still continue and submit this report without linking it to a project.</p>
+                    <div className="space-y-4">
+                      <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                        <Search className="mx-auto mb-3 size-8 text-slate-500" />
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No nearby project match found</p>
+                        <p className="mt-1 text-xs text-slate-500">You can still continue and submit this report without linking it to a project.</p>
+                      </div>
+
+                      {isTypeSuggestionsLoading ? (
+                        <div className="space-y-3">
+                          {[1, 2].map((item) => (
+                            <div key={item} className="h-20 animate-pulse rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-950" />
+                          ))}
+                        </div>
+                      ) : typeSuggestedProjects.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                            <p>These are other &ldquo;{form.projectType}&rdquo; projects, shown because none matched your location. <strong>They are not based on your description.</strong> Only select one if you&apos;re sure it&apos;s the same project.</p>
+                          </div>
+                          <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+                            {typeSuggestedProjects.map((project) => (
+                              <ProjectSuggestionCard
+                                key={project.id}
+                                project={project}
+                                selected={selectedProject?.id === project.id}
+                                expanded={expandedProjectId === project.id}
+                                onToggle={() => setExpandedProjectId(expandedProjectId === project.id ? null : project.id)}
+                                onSelect={() => {
+                                  setSelectedProject(project);
+                                  goToStep("issue-details");
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -596,7 +699,7 @@ export default function ReportIssuePage() {
                         <Button type="button" variant="ghost" onClick={() => setSelectedProject(null)}>Clear Match</Button>
                       )}
                       <Button type="button" onClick={() => goToStep("issue-details")} className="bg-emerald-600 text-white hover:bg-emerald-700">
-                        {selectedProject ? "Use Match" : "Continue"}
+                        {selectedProject ? "Use Match" : "None of these, continue"}
                       </Button>
                     </div>
                   </div>
@@ -606,18 +709,12 @@ export default function ReportIssuePage() {
               {currentStep === "issue-details" && (
                 <div className="space-y-5">
                   <StepHeader title="Issue details" body="Describe what happened and attach photos or videos when available." />
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Issue Type <span className="text-red-500 dark:text-red-400">*</span></Label>
-                      <Select value={form.issueType} onValueChange={(value) => value && setValue("issueType", value)}>
-                        <SelectTrigger className="h-10 w-full border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
-                          <SelectValue placeholder="Select issue type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {issueTypes.map((type) => <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <IssueTypePicker
+                    value={form.issueType}
+                    farmOperation={form.farmOperation}
+                    onChange={(value) => setValue("issueType", value)}
+                  />
+                  <div className="sm:max-w-xs">
                     <DateField value={form.dateNoticed} onChange={(value) => setValue("dateNoticed", value)} />
                   </div>
                   <div className="space-y-1.5">
@@ -658,8 +755,78 @@ export default function ReportIssuePage() {
                   <CheckRow checked={form.agreeToTerms} onChange={(value) => setValue("agreeToTerms", value)} label="I agree to the Terms of Service and Privacy Policy." />
                   <div className="flex items-center justify-between border-t border-slate-200 pt-5 dark:border-slate-800">
                     <Button type="button" variant="ghost" onClick={() => goToStep("issue-details", -1)}>Back</Button>
-                    <Button type="button" size="lg" onClick={handleSubmit} disabled={isSubmitting || isEvidenceProcessing} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
-                      {isSubmitting ? "Uploading & submitting..." : "Submit Issue"}
+                    <Button type="button" size="lg" onClick={handleGoToReview} disabled={isEvidenceProcessing} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
+                      Review Report
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === "review" && (
+                <div className="space-y-5">
+                  <StepHeader title="Review your report" body="Check everything below, then confirm to submit." />
+
+                  {flowPath === "knows-project" ? (
+                    <ReviewSection title="Project" onEdit={() => goToStep("project-search", -1)}>
+                      <ReviewRow label="Project" value={selectedProject?.name || "Not selected"} />
+                    </ReviewSection>
+                  ) : (
+                    <>
+                      <ReviewSection title="Farm operation" onEdit={() => goToStep("farm-operation", -1)}>
+                        <ReviewRow label="Farm Operation" value={form.farmOperation || "Not selected"} />
+                        <ReviewRow label="Project Type" value={form.projectType || "Not selected"} />
+                      </ReviewSection>
+                      <ReviewSection title="Location" onEdit={() => goToStep("location", -1)}>
+                        <ReviewRow label="Region" value={form.region || "N/A"} />
+                        <ReviewRow label="Province" value={form.province || "N/A"} />
+                        <ReviewRow label="City / Municipality" value={form.city || "N/A"} />
+                        <ReviewRow label="Barangay" value={form.barangay || "N/A"} />
+                        <ReviewRow label="Street / Landmark" value={form.streetLandmark || "N/A"} />
+                        <ReviewRow label="Matched Project" value={selectedProject?.name || "None - submitted without a project match"} />
+                      </ReviewSection>
+                    </>
+                  )}
+
+                  <ReviewSection title="Issue details" onEdit={() => goToStep("issue-details", -1)}>
+                    <ReviewRow label="Issue Type" value={parseIssueTypeValue(form.issueType).join(", ") || "Not selected"} />
+                    <ReviewRow label="Date Noticed" value={form.dateNoticed || "Not provided"} />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Description</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{form.issueDescription || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Evidence ({evidence.length})</p>
+                      {evidence.length === 0 ? (
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">No photos or videos attached</p>
+                      ) : (
+                        <ul className="mt-1 space-y-1">
+                          {evidence.map((item, index) => {
+                            const EvidenceIcon = item.type === "image" ? ImageIcon : VideoIcon;
+                            return (
+                              <li key={index} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                                <EvidenceIcon className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+                                <span className="truncate">{item.file.name}</span>
+                                {item.lat !== null && item.lon !== null && (
+                                  <span className="shrink-0 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Geotagged</span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </ReviewSection>
+
+                  <ReviewSection title="Contact and consent" onEdit={() => goToStep("contact", -1)}>
+                    <ReviewRow label="Contact Number" value={form.contactNumber || "Not provided"} />
+                    <ReviewRow label="Email Address" value={form.email || "Not provided"} />
+                    <ReviewRow label="Submitting as" value={form.isAnonymous ? "Anonymous" : user?.name || "Signed-in citizen"} />
+                  </ReviewSection>
+
+                  <div className="flex items-center justify-between border-t border-slate-200 pt-5 dark:border-slate-800">
+                    <Button type="button" variant="ghost" onClick={() => goToStep("contact", -1)}>Back</Button>
+                    <Button type="button" size="lg" onClick={handleSubmitClick} disabled={isSubmitting || isEvidenceProcessing || showPreSubmitSurvey} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
+                      {isSubmitting ? "Uploading & submitting..." : "Confirm & Submit"}
                     </Button>
                   </div>
                 </div>
@@ -670,20 +837,15 @@ export default function ReportIssuePage() {
       </div>
 
       <SubmissionSurveyModal
-        isOpen={Boolean(createdIssueData)}
-        onClose={() => {
-          const targetId = createdIssueData?.id;
-          setCreatedIssueData(null);
-          router.push("/report-issue/" + (targetId || ""));
+        isOpen={showPreSubmitSurvey}
+        onClose={() => setShowPreSubmitSurvey(false)}
+        onComplete={() => {
+          setShowPreSubmitSurvey(false);
+          submitIssueReport();
         }}
         sourceType="e_report"
-        sourceId={createdIssueData?.ticketNumber || createdIssueData?.id}
+        sourceId={null}
         defaultName={form.isAnonymous ? "" : user?.name || ""}
-        onComplete={() => {
-          const targetId = createdIssueData?.id;
-          setCreatedIssueData(null);
-          router.push("/report-issue/" + (targetId || ""));
-        }}
       />
     </div>
   );
@@ -691,15 +853,20 @@ export default function ReportIssuePage() {
 
 
 function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; currentStepIndex: number }) {
+  const prefersReducedMotion = useReducedMotion();
+  const lineDuration = prefersReducedMotion ? 0 : 0.4;
+  const nodeDuration = prefersReducedMotion ? 0 : 0.25;
+  const dotDuration = prefersReducedMotion ? 0 : 0.3;
+
   return (
-    <div className="mb-8 w-full">
-      <div className="relative hidden items-center justify-between md:flex">
+    <nav aria-label="Report progress" className="mb-8 w-full">
+      <ol className="relative hidden items-center justify-between md:flex">
         <div className="absolute left-0 right-0 top-5 h-0.5 bg-slate-200 dark:bg-slate-700" />
         <motion.div
           className="absolute left-0 top-5 h-0.5 bg-emerald-500"
           initial={false}
           animate={{ width: steps.length > 1 ? `${(currentStepIndex / (steps.length - 1)) * 100}%` : "0%" }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
+          transition={{ duration: lineDuration, ease: "easeInOut" }}
         />
 
         {steps.map((step, index) => {
@@ -708,28 +875,32 @@ function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; cu
           const StepIcon = step.icon;
 
           return (
-            <div key={step.id} className="relative z-10 flex flex-col items-center gap-2">
+            <li
+              key={step.id}
+              aria-current={isCurrent ? "step" : undefined}
+              className="relative z-10 flex flex-col items-center gap-2"
+            >
               <motion.div
                 initial={false}
                 animate={{
                   scale: isCurrent ? 1.1 : 1,
                   backgroundColor: isCompleted || isCurrent ? "rgb(5 150 105)" : "rgb(241 245 249)",
                 }}
-                transition={{ duration: 0.25 }}
+                transition={{ duration: nodeDuration }}
                 className={`flex size-10 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-950 ${isCompleted || isCurrent ? "text-white" : "bg-slate-100 text-slate-500"}`}
               >
-                {isCompleted ? <Check className="size-4" /> : <StepIcon className="size-4" />}
+                {isCompleted ? <Check className="size-4" aria-hidden="true" /> : <StepIcon className="size-4" aria-hidden="true" />}
               </motion.div>
               <span className={`max-w-20 text-center text-xs font-medium leading-tight ${isCurrent ? "text-emerald-600 dark:text-emerald-400" : isCompleted ? "text-slate-700 dark:text-slate-300" : "text-slate-500"}`}>
                 {step.label}
               </span>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
-      <div className="flex flex-col items-center gap-2 md:hidden">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col items-center gap-2 md:hidden" role="status" aria-live="polite">
+        <div className="flex items-center gap-2" aria-hidden="true">
           {steps.map((step, index) => {
             const isCompleted = index < currentStepIndex;
             const isCurrent = index === currentStepIndex;
@@ -741,7 +912,7 @@ function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; cu
                   width: isCurrent ? 24 : 8,
                   backgroundColor: isCompleted || isCurrent ? "rgb(5 150 105)" : "rgb(203 213 225)",
                 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: dotDuration }}
                 className="h-2 rounded-full"
               />
             );
@@ -749,7 +920,7 @@ function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; cu
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400">{steps[currentStepIndex]?.label} ({currentStepIndex + 1}/{steps.length})</p>
       </div>
-    </div>
+    </nav>
   );
 }
 
@@ -964,21 +1135,40 @@ function ProjectDetailItem({ icon, label, value }: { icon: ReactNode; label: str
   );
 }
 
-function ChoiceCard({ icon, title, body, onClick }: { icon: ReactNode; title: string; body: string; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm transition-colors hover:border-emerald-500 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:bg-slate-800">
-      <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400">{icon}</div>
-      <h3 className="font-bold text-slate-950 dark:text-white">{title}</h3>
-      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{body}</p>
-    </button>
-  );
-}
 
 function StepHeader({ title, body }: { title: string; body: string }) {
   return (
     <div>
       <h2 className="text-lg font-bold text-slate-950 dark:text-white">{title}</h2>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{body}</p>
+    </div>
+  );
+}
+
+function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () => void; children: ReactNode }) {
+  return (
+    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{title}</h3>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+        >
+          <Pencil className="size-3.5" aria-hidden="true" />
+          Edit
+        </button>
+      </div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</span>
+      <span className="text-sm font-medium text-slate-900 dark:text-white sm:text-right">{value}</span>
     </div>
   );
 }

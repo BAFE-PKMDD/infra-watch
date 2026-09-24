@@ -28,7 +28,7 @@ export function formatPublicProjectRecord(row: PublicProjectRecord) {
     name: row.name,
     code: row.projectCode || row.abemisId || row.id,
     program: row.program?.toLowerCase() || "unclassified",
-    sector: row.projectType,
+    projectType: row.projectType,
     region: row.region,
     province: row.province,
     municipality: row.municipality,

@@ -85,7 +85,6 @@ export async function getProjectPreview(
       completionDate: formatDate(row.targetCompletionDate),
       actualCompletionDate: row.actualCompletionDate ? formatDate(row.actualCompletionDate) : undefined,
       contractor: row.contractorName || "N/A",
-      scope: row.projectType || "Infrastructure",
       projectLength,
       postGeotaggedLength: row.postGeotaggedLength || undefined,
       description: row.description || "No project description available.",
@@ -93,6 +92,7 @@ export async function getProjectPreview(
       coordinates: row.latitude && row.longitude ? `${row.latitude}, ${row.longitude}` : undefined,
       abc: row.abc ?? undefined,
       commodities: row.commodities ?? [],
+      farmOperation: row.farmOperation ?? undefined,
       metadata: {
         ...metadata,
         geotag: metadata.geotag || metadata.geotags || [],

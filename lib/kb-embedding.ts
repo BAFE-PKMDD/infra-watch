@@ -1,4 +1,4 @@
-import 'server-only';
+// import 'server-only';
 
 export const EMBEDDING_DIMENSIONS = 384;
 

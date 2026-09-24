@@ -117,8 +117,11 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const currentMedia = media[currentIndex];
-    const fullUrl = getFullUrl(currentMedia.url);
-    if (!fullUrl) return;
+    const rawUrl = getFullUrl(currentMedia.url);
+    if (!rawUrl) return;
+    const fullUrl = typeof window !== "undefined" && !rawUrl.startsWith("http")
+      ? `${window.location.origin}${rawUrl}`
+      : rawUrl;
 
     if (navigator.share) {
       try {

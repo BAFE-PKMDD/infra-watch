@@ -1,29 +1,59 @@
 "use client";
 
-import { useState } from "react";
-import { Send, Image as ImageIcon, Video, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Send, Image as ImageIcon, Video, X, Loader2 } from "lucide-react";
 import { createFeedbackComment } from "@/actions/mutation/feedback-comment.mutation";
 import { useAuth } from "@/providers/auth-provider";
-import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { toast } from "sonner";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
 import { getUploadErrorTitle } from "@/lib/upload-errors";
 import { isAllowedClientUploadType } from "@/lib/upload-policy";
+import { getAnonymousUser } from "@/lib/anonymous-identifier";
+import { AnonymousIcon } from "@/components/shared/anonymous-avatar";
 
 interface FeedbackCommentFormProps {
   feedbackId: string;
   onCommentAdded?: () => void;
+  replyToName?: string;
+  isReply?: boolean;
+  onCancelReply?: () => void;
+  placeholder?: string;
+  autoFocus?: boolean;
 }
 
-export function FeedbackCommentForm({ feedbackId, onCommentAdded }: FeedbackCommentFormProps) {
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+export function FeedbackCommentForm({
+  feedbackId,
+  onCommentAdded,
+  replyToName,
+  isReply = false,
+  onCancelReply,
+  placeholder,
+  autoFocus = false,
+}: FeedbackCommentFormProps) {
   const { user } = useAuth();
   const [comment, setComment] = useState("");
-  const [media, setMedia] = useState<Array<{ type: 'image' | 'video'; url: string; caption?: string }>>([]);
+  const [media, setMedia] = useState<Array<{ type: "image" | "video"; url: string; caption?: string }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleFileUpload = async (files: FileList | null, type: 'image' | 'video') => {
+  useEffect(() => {
+    if (autoFocus && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [autoFocus]);
+
+  const handleFileUpload = async (files: FileList | null, type: "image" | "video") => {
     if (!files || files.length === 0) return;
 
     setUploadingFiles(true);
@@ -36,7 +66,6 @@ export function FeedbackCommentForm({ feedbackId, onCommentAdded }: FeedbackComm
         const formData = new FormData();
         formData.append("file", file);
 
-        // Upload to feedback-comment folder
         const response = await fetch("/api/upload?folder=feedback-comment", {
           method: "POST",
           body: formData,
@@ -50,7 +79,7 @@ export function FeedbackCommentForm({ feedbackId, onCommentAdded }: FeedbackComm
         const data = await response.json();
         return {
           type,
-          url: data.path, // API returns 'path', not 'url'
+          url: data.path,
         };
       });
 
@@ -58,9 +87,10 @@ export function FeedbackCommentForm({ feedbackId, onCommentAdded }: FeedbackComm
       setMedia((prev) => [...prev, ...uploadedMedia]);
     } catch (error) {
       console.error("Error uploading files:", error);
-      const message = error instanceof Error
-        ? error.message
-        : "Upload blocked. Please choose a valid image or video.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Upload blocked. Please choose a valid image or video.";
       toast.error(getUploadErrorTitle(message), {
         description: message,
         duration: 6500,
@@ -74,24 +104,39 @@ export function FeedbackCommentForm({ feedbackId, onCommentAdded }: FeedbackComm
     setMedia((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const target = e.target;
+    setComment(target.value);
+    requestAnimationFrame(() => {
+      target.style.height = "auto";
+      target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!user) {
-      alert("You must be logged in to comment");
+      toast.error("Please log in to comment");
       return;
     }
 
-    if (!comment.trim()) {
-      alert("Please enter a comment");
+    const trimmedComment = comment.trim();
+    if (!trimmedComment && media.length === 0) {
       return;
     }
+
+    // If this is a reply to someone and the text doesn't already start with @, mention them
+    const finalComment =
+      isReply && replyToName && !trimmedComment.startsWith("@")
+        ? `@${replyToName} ${trimmedComment}`
+        : trimmedComment;
 
     setIsSubmitting(true);
     try {
       const result = await createFeedbackComment({
         feedbackId,
-        comment,
+        comment: finalComment,
         media,
       });
 
@@ -103,15 +148,16 @@ export function FeedbackCommentForm({ feedbackId, onCommentAdded }: FeedbackComm
         return;
       }
 
-      // Reset form
       setComment("");
       setMedia([]);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
 
-      // Notify parent component
       onCommentAdded?.();
     } catch (error) {
       console.error("Error posting comment:", error);
-      alert("Failed to post comment. Please try again.");
+      toast.error("Failed to post comment. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -119,109 +165,202 @@ export function FeedbackCommentForm({ feedbackId, onCommentAdded }: FeedbackComm
 
   if (!user) {
     return (
-      <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 text-center border border-slate-200 dark:border-slate-800">
-        <p className="text-xs text-slate-600 dark:text-slate-400">
-          Please log in to post a comment
+      <div className="bg-[#f0f2f5] dark:bg-[#242526] rounded-xl p-3 text-center border border-slate-200/80 dark:border-slate-800">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Please log in to join the conversation
         </p>
       </div>
     );
   }
 
+  // Determine avatar representation
+  const isAnonymous = !user.name || user.name === "Citizen" || user.name === "Anonymous";
+  const anonUser = isAnonymous ? getAnonymousUser(user.id || "current-user") : null;
+  const avatarSize = isReply ? 28 : 32;
+
   return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-3">
-      {/* Comment Input */}
-      <textarea
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        placeholder="Write a comment..."
-        className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
-        rows={2}
-        disabled={isSubmitting || uploadingFiles}
-      />
-
-      {/* Media Preview */}
-      {media.length > 0 && (
-        <div className="grid grid-cols-3 gap-1.5 mt-2">
-          {media.map((item, index) => {
-            const mediaUrl = getFullUrl(item.url);
-            return (
-              <div key={index} className="relative aspect-square rounded overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                {item.type === 'image' && mediaUrl ? (
-                  <Image
-                    src={mediaUrl}
-                    alt={`Upload ${index + 1}`}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="object-cover"
-                    unoptimized={isLocalMinIO(mediaUrl)}
-                  />
-                ) : item.type === 'video' && mediaUrl ? (
-                  <video
-                    src={mediaUrl}
-                    className="w-full h-full object-cover"
-                    preload="metadata"
-                  />
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => removeMedia(index)}
-                  className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
-                  aria-label="Remove media"
-                >
-                  <X className="w-2.5 h-2.5" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="flex items-center justify-between mt-2">
-        <div className="flex items-center gap-1">
-          {/* Image Upload */}
-          <label className="cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            <ImageIcon className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-            <input
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-              multiple
-              onChange={(e) => handleFileUpload(e.target.files, 'image')}
-              className="hidden"
-              disabled={isSubmitting || uploadingFiles}
-            />
-          </label>
-
-          {/* Video Upload */}
-          <label className="cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            <Video className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-            <input
-              type="file"
-              accept="video/mp4,video/quicktime,video/webm"
-              multiple
-              onChange={(e) => handleFileUpload(e.target.files, 'video')}
-              className="hidden"
-              disabled={isSubmitting || uploadingFiles}
-            />
-          </label>
-        </div>
-
-        {/* Submit Button */}
-        <Button
-          type="submit"
-          disabled={isSubmitting || uploadingFiles || !comment.trim()}
-          className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed h-7 px-3 text-xs"
-        >
-          <Send className="w-3 h-3" />
-          <span>{isSubmitting ? "Posting..." : "Comment"}</span>
-        </Button>
+    <div className={`flex items-start gap-2.5 ${isReply ? "w-full" : ""}`}>
+      {/* User Avatar */}
+      <div
+        className={`${
+          isReply ? "w-7 h-7" : "w-8 h-8"
+        } rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${
+          anonUser
+            ? `${anonUser.gradient} ring-2 ${anonUser.ringColor}`
+            : "bg-gradient-to-br from-blue-600 to-indigo-700"
+        } text-white font-bold text-[10px] shadow-2xs`}
+      >
+        {user.image && getFullUrl(user.image) ? (
+          <Image
+            src={getFullUrl(user.image)!}
+            alt={user.name || "You"}
+            width={avatarSize}
+            height={avatarSize}
+            className="w-full h-full object-cover rounded-full"
+            unoptimized={isLocalMinIO(getFullUrl(user.image)!)}
+          />
+        ) : anonUser ? (
+          <AnonymousIcon
+            name={anonUser.iconName}
+            className={`${isReply ? "w-3.5 h-3.5" : "w-4 h-4"} text-white drop-shadow-xs`}
+          />
+        ) : (
+          <span>{getInitials(user.name || "You")}</span>
+        )}
       </div>
 
-      {uploadingFiles && (
-        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5">
-          Uploading files...
-        </p>
-      )}
-    </form>
+      {/* Main Comment Input Pill Form */}
+      <form onSubmit={handleSubmit} className="flex-1 min-w-0">
+        {/* Reply To Banner */}
+        {isReply && replyToName && (
+          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">
+            <span>
+              Replying to <span className="text-[#1877F2] dark:text-[#2d88ff] font-semibold">@{replyToName}</span>
+            </span>
+            {onCancelReply && (
+              <button
+                type="button"
+                onClick={onCancelReply}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="bg-[#f0f2f5] dark:bg-[#242526] hover:bg-[#eaecee] dark:hover:bg-[#2a2b2c] focus-within:bg-white dark:focus-within:bg-[#1c1d1e] focus-within:ring-2 focus-within:ring-[#1877F2]/40 rounded-[20px] px-3.5 py-2 transition-all border border-slate-200/70 dark:border-slate-700/60 shadow-2xs">
+          {/* Text Area */}
+          <textarea
+            ref={textareaRef}
+            value={comment}
+            onChange={handleTextChange}
+            placeholder={
+              placeholder ||
+              (isReply ? `Write a reply...` : "Write a public comment...")
+            }
+            rows={1}
+            className="w-full bg-transparent border-0 text-xs sm:text-[13px] text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 resize-none focus:outline-none leading-relaxed min-h-[22px] max-h-[120px]"
+            disabled={isSubmitting || uploadingFiles}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if ((comment.trim() || media.length > 0) && !isSubmitting && !uploadingFiles) {
+                  handleSubmit(e);
+                }
+              }
+            }}
+          />
+
+          {/* Media Previews */}
+          {media.length > 0 && (
+            <div className="grid grid-cols-3 gap-1.5 my-2">
+              {media.map((item, index) => {
+                const mediaUrl = getFullUrl(item.url);
+                return (
+                  <div
+                    key={index}
+                    className="relative aspect-square rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700"
+                  >
+                    {item.type === "image" && mediaUrl ? (
+                      <Image
+                        src={mediaUrl}
+                        alt={`Attachment ${index + 1}`}
+                        fill
+                        sizes="100px"
+                        className="object-cover"
+                        unoptimized={isLocalMinIO(mediaUrl)}
+                      />
+                    ) : item.type === "video" && mediaUrl ? (
+                      <video
+                        src={mediaUrl}
+                        className="w-full h-full object-cover"
+                        preload="metadata"
+                      />
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => removeMedia(index)}
+                      className="absolute top-1 right-1 p-0.5 rounded-full bg-black/70 text-white hover:bg-black transition-colors cursor-pointer"
+                      aria-label="Remove media"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pill Action Bar: Media Attachments & Send */}
+          <div className="flex items-center justify-between pt-1 mt-0.5 border-t border-slate-200/50 dark:border-slate-700/50">
+            <div className="flex items-center gap-0.5">
+              {/* Image Upload */}
+              <label
+                className="cursor-pointer p-1.5 rounded-full hover:bg-slate-200/70 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-400 hover:text-[#1877F2] dark:hover:text-[#2d88ff] transition-colors"
+                title="Attach photo"
+              >
+                <ImageIcon className="w-4 h-4" />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                  multiple
+                  onChange={(e) => handleFileUpload(e.target.files, "image")}
+                  className="hidden"
+                  disabled={isSubmitting || uploadingFiles}
+                />
+              </label>
+
+              {/* Video Upload */}
+              <label
+                className="cursor-pointer p-1.5 rounded-full hover:bg-slate-200/70 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-400 hover:text-[#1877F2] dark:hover:text-[#2d88ff] transition-colors"
+                title="Attach video"
+              >
+                <Video className="w-4 h-4" />
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/webm"
+                  multiple
+                  onChange={(e) => handleFileUpload(e.target.files, "video")}
+                  className="hidden"
+                  disabled={isSubmitting || uploadingFiles}
+                />
+              </label>
+
+              {uploadingFiles && (
+                <span className="text-[10px] text-slate-400 animate-pulse ml-1">
+                  Uploading...
+                </span>
+              )}
+            </div>
+
+            {/* Circular Facebook-blue Send Button */}
+            <div className="flex items-center gap-1.5">
+              {isReply && onCancelReply && (
+                <button
+                  type="button"
+                  onClick={onCancelReply}
+                  className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-2 py-1 rounded cursor-pointer"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmitting || uploadingFiles || (!comment.trim() && media.length === 0)}
+                className="w-7 h-7 rounded-full bg-[#1877F2] hover:bg-[#166fe5] text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-xs active:scale-95 cursor-pointer"
+                title="Post comment"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5 ml-0.5" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
   );
 }

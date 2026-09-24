@@ -99,3 +99,39 @@ test("maps approved budget and actual bid without inventing a contract amount", 
   assert.equal(transformed.abc, 1400000);
   assert.equal("contractAmount" in transformed, false);
 });
+
+test("maps project type to the standardized category, farm operation, and commodities", () => {
+  const transformed = transformAbemisProject({
+    id: "raw-greenhouse",
+    project_id: "P-GREENHOUSE",
+    project_type: "Greenhouse",
+  } as unknown as AbemisProject);
+
+  assert.equal(transformed.projectType, "Greenhouse");
+  assert.equal(transformed.farmOperation, "Production Facility");
+  assert.deepEqual(transformed.commodities, ["High Value Crops"]);
+});
+
+test("splits multi-value commodities and matches project types case/dash-insensitively", () => {
+  const transformed = transformAbemisProject({
+    id: "raw-grain-silo",
+    project_id: "P-GRAIN-SILO",
+    project_type: " grain–silo ",
+  } as unknown as AbemisProject);
+
+  assert.equal(transformed.projectType, "Grain Silo");
+  assert.equal(transformed.farmOperation, "Storage Facility");
+  assert.deepEqual(transformed.commodities, ["Rice", "Corn"]);
+});
+
+test("falls back to the raw project_type and empty commodities when unmapped", () => {
+  const transformed = transformAbemisProject({
+    id: "raw-unmapped",
+    project_id: "P-UNMAPPED",
+    project_type: "Some Future Project Type",
+  } as unknown as AbemisProject);
+
+  assert.equal(transformed.projectType, "Some Future Project Type");
+  assert.equal(transformed.farmOperation, null);
+  assert.deepEqual(transformed.commodities, []);
+});

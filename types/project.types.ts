@@ -46,6 +46,7 @@ export interface Project {
 
   // Commodities
   commodities?: string[] | null;
+  farmOperation?: string | null;
 
   // Metadata
   metadata?: Record<string, unknown> | null;

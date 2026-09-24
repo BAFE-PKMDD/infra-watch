@@ -1,0 +1,1425 @@
+[
+  {
+    "abemisProjectType": "Abaca Storage Center",
+    "proposedProjectType": "Abaca Storage Facility",
+    "farmOperation": "Storage Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Agribusiness Center",
+    "proposedProjectType": "Agribusiness Support Facility",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Agricultural Trading Center",
+    "proposedProjectType": "Agricultural Trading Center",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Agricultural Tramline System",
+    "proposedProjectType": "Agricultural Tramline System",
+    "farmOperation": "Agricultural Transport and Infrastructure",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Animal Disease Diagnostic Laboratory",
+    "proposedProjectType": "Animal Disease Diagnostic Laboratory",
+    "farmOperation": "Laboratory",
+    "applicableCommodities": [
+      "Livestock"
+    ]
+  },
+  {
+    "abemisProjectType": "Bamboo Processing Center",
+    "proposedProjectType": "Bamboo Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Bamboo"
+    ]
+  },
+  {
+    "abemisProjectType": "Banana Chips Processing Center",
+    "proposedProjectType": "Banana Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Banana"
+    ]
+  },
+  {
+    "abemisProjectType": "Barangay Food Terminal",
+    "proposedProjectType": "Agricultural Trading Center",
+    "farmOperation": "Agricultural Transport and Infrastructure",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Bio-control Agent Laboratory",
+    "proposedProjectType": "Bio-control Agent Laboratory",
+    "farmOperation": "Laboratory",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Biogas Plant",
+    "proposedProjectType": "Biogas Plant",
+    "farmOperation": "Waste Management and Recovery",
+    "applicableCommodities": [
+      "Agricultural Waste"
+    ]
+  },
+  {
+    "abemisProjectType": "Biomass Plant",
+    "proposedProjectType": "Biomass Plant",
+    "farmOperation": "Waste Management and Recovery",
+    "applicableCommodities": [
+      "Agricultural Waste"
+    ]
+  },
+  {
+    "abemisProjectType": "Botanical Concoction Center",
+    "proposedProjectType": "Botanical Concoction Processing Facility",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Botanical Concoction Facility",
+    "proposedProjectType": "Botanical Concoction Processing Facility",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Broiler Housing for Broiler Production",
+    "proposedProjectType": "Broiler Housing",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Chicken"
+    ]
+  },
+  {
+    "abemisProjectType": "Budwood Garden",
+    "proposedProjectType": "Nursery",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Buying Station",
+    "proposedProjectType": "Wet Market",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Cacao Fermentation Facility",
+    "proposedProjectType": "Cacao Fermentation Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Cacao"
+    ]
+  },
+  {
+    "abemisProjectType": "Cacao Processing Center",
+    "proposedProjectType": "Cacao Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Cacao"
+    ]
+  },
+  {
+    "abemisProjectType": "Cacao Storage Center",
+    "proposedProjectType": "Cacao Storage Facility",
+    "farmOperation": "Storage Facility",
+    "applicableCommodities": [
+      "Cacao"
+    ]
+  },
+  {
+    "abemisProjectType": "Calamansi Juice Processing Center",
+    "proposedProjectType": "Calamansi Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Calamansi"
+    ]
+  },
+  {
+    "abemisProjectType": "Camote Processing Facility",
+    "proposedProjectType": "Root Crops Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Camote"
+    ]
+  },
+  {
+    "abemisProjectType": "Canning Center",
+    "proposedProjectType": "Food Processing",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Carabao Housing",
+    "proposedProjectType": "Carabao Housing",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Carabao"
+    ]
+  },
+  {
+    "abemisProjectType": "Carabao Multiplier Farm",
+    "proposedProjectType": "Carabao Multiplier Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Carabao"
+    ]
+  },
+  {
+    "abemisProjectType": "Cashew Nuts Processing Center",
+    "proposedProjectType": "Cashew Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Cashew"
+    ]
+  },
+  {
+    "abemisProjectType": "Cassava Granule Drying Center (CGDC)",
+    "proposedProjectType": "Cassava Granule Drying Center (CGDC)",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Cassava"
+    ]
+  },
+  {
+    "abemisProjectType": "Cattle Feedlot",
+    "proposedProjectType": "Cattle Feedlot",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Cattle"
+    ]
+  },
+  {
+    "abemisProjectType": "Cattle Multiplier Farm",
+    "proposedProjectType": "Cattle Multiplier Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Cattle"
+    ]
+  },
+  {
+    "abemisProjectType": "Cattle Ranch",
+    "proposedProjectType": "Cattle Ranch",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Cattle"
+    ]
+  },
+  {
+    "abemisProjectType": "Check Dam",
+    "proposedProjectType": "Check Dam",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Chicken Housing",
+    "proposedProjectType": "Chicken Multiplier Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Chicken"
+    ]
+  },
+  {
+    "abemisProjectType": "Chicken Multiplier Farm",
+    "proposedProjectType": "Chicken Multiplier Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Chicken"
+    ]
+  },
+  {
+    "abemisProjectType": "Cistern",
+    "proposedProjectType": "Cistern",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Clonal Garden",
+    "proposedProjectType": "Greenhouse",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Coconut Processing Center",
+    "proposedProjectType": "Coconut Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Coconut"
+    ]
+  },
+  {
+    "abemisProjectType": "Coffee Drying Shed",
+    "proposedProjectType": "Coffee Drying Shed",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Coffee"
+    ]
+  },
+  {
+    "abemisProjectType": "Coffee Processing Center",
+    "proposedProjectType": "Coffee Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Coffee"
+    ]
+  },
+  {
+    "abemisProjectType": "Coffee Roasting Center",
+    "proposedProjectType": "Coffee Roasting Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Coffee"
+    ]
+  },
+  {
+    "abemisProjectType": "Coffee Storage Center",
+    "proposedProjectType": "Coffee Storage Facility",
+    "farmOperation": "Storage Facility",
+    "applicableCommodities": [
+      "Coffee"
+    ]
+  },
+  {
+    "abemisProjectType": "Cold Storage",
+    "proposedProjectType": "Cold Storage",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Community Fish Landing Center",
+    "proposedProjectType": "Community Fish Landing Center",
+    "farmOperation": "Agricultural Transport and Infrastructure",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Community-Based Swine Production thru Clustering",
+    "proposedProjectType": "Swine Production Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Swine"
+    ]
+  },
+  {
+    "abemisProjectType": "Containerized Vertical Farm",
+    "proposedProjectType": "Indoor Cultivation System",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Corn Drying Facility",
+    "proposedProjectType": "Corn Drying Facility",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Corn"
+    ]
+  },
+  {
+    "abemisProjectType": "Crop Protection Center",
+    "proposedProjectType": "Crop Protection Facility",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Crops Nursery",
+    "proposedProjectType": "Nursery",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "DA Laboratory and Research Centers",
+    "proposedProjectType": "DA Research Centers",
+    "farmOperation": "Laboratory",
+    "applicableCommodities": []
+  },
+  {
+    "abemisProjectType": "DA Regional Office",
+    "proposedProjectType": "DA Regional Office",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": []
+  },
+  {
+    "abemisProjectType": "Dairy Cattle Housing",
+    "proposedProjectType": "Dairy Cattle Housing",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Cattle"
+    ]
+  },
+  {
+    "abemisProjectType": "Dairy Processing Center",
+    "proposedProjectType": "Dairy Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Livestock"
+    ]
+  },
+  {
+    "abemisProjectType": "Dairy Processing Centers and Farm",
+    "proposedProjectType": "Dairy Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Livestock"
+    ]
+  },
+  {
+    "abemisProjectType": "Dehydration Facility",
+    "proposedProjectType": "Dehydration Facility",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Diversion Dam",
+    "proposedProjectType": "Diversion Dam",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Drip Irrigation System",
+    "proposedProjectType": "Drip Irrigation System",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Drying and Smoking Center",
+    "proposedProjectType": "Drying and Smoking Facility",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "DTI Shared Service Facilities",
+    "proposedProjectType": "DTI Shared Service Facilities",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Duck Housing",
+    "proposedProjectType": "Duck Multiplier Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Duck"
+    ]
+  },
+  {
+    "abemisProjectType": "Duck Multiplier Farm",
+    "proposedProjectType": "Duck Multiplier Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Duck"
+    ]
+  },
+  {
+    "abemisProjectType": "Durian Pastries Processing Center",
+    "proposedProjectType": "Durian Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Durian"
+    ]
+  },
+  {
+    "abemisProjectType": "Edible Landscape",
+    "proposedProjectType": "Foodscaping",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Farm House",
+    "proposedProjectType": "Farm House",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Farm Machinery Shed",
+    "proposedProjectType": "Farm Machinery Shed",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Farm Service Center",
+    "proposedProjectType": "Farm Service Center",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Farm Tourism Site",
+    "proposedProjectType": "Agricultural Economic Park",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": []
+  },
+  {
+    "abemisProjectType": "Farm Workshop and Machinery Shed",
+    "proposedProjectType": "Farm Workshop and Machinery Shed",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": []
+  },
+  {
+    "abemisProjectType": "Farm-to-Market Road",
+    "proposedProjectType": "Farm-to-Market Road",
+    "farmOperation": "Agricultural Transport and Infrastructure",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Farm-to-Mill Road",
+    "proposedProjectType": "Farm-to-Mill Road",
+    "farmOperation": "Agricultural Transport and Infrastructure",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Feed Chemical Analysis Laboratory",
+    "proposedProjectType": "Feed Chemical Analysis Laboratory",
+    "farmOperation": "Laboratory",
+    "applicableCommodities": []
+  },
+  {
+    "abemisProjectType": "Feed Mill Center",
+    "proposedProjectType": "Feed Mill Facility",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": []
+  },
+  {
+    "abemisProjectType": "Fertilizer Analytical Services Laboratory",
+    "proposedProjectType": "Fertilizer Analytical Services Laboratory",
+    "farmOperation": "Laboratory",
+    "applicableCommodities": [
+      "Fertilizer"
+    ]
+  },
+  {
+    "abemisProjectType": "Fertilizer Processing Center",
+    "proposedProjectType": "Fertilizer Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Fertilizer"
+    ]
+  },
+  {
+    "abemisProjectType": "Fiber Analysis Laboratory",
+    "proposedProjectType": "Fiber Analysis Laboratory",
+    "farmOperation": "Laboratory",
+    "applicableCommodities": [
+      "Agricultural Fiber"
+    ]
+  },
+  {
+    "abemisProjectType": "Fiber Processing Center",
+    "proposedProjectType": "Fiber Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Agricultural Fiber"
+    ]
+  },
+  {
+    "abemisProjectType": "Fish cage",
+    "proposedProjectType": "Fish cage",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Fish pen",
+    "proposedProjectType": "Fish pen",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Fish tank",
+    "proposedProjectType": "Fish tank",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Fisheries Cold Storage and Refrigeration",
+    "proposedProjectType": "Cold Storage",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Fisheries Nursery",
+    "proposedProjectType": "Urban Aquaponics system",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Fisheries Processing Center",
+    "proposedProjectType": "Fisheries Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Fishpond",
+    "proposedProjectType": "Urban Aquaponics system",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Flatbed Type Batch Dryer",
+    "proposedProjectType": "Flatbed Type Batch Dryer",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Rice",
+      "Corn"
+    ]
+  },
+  {
+    "abemisProjectType": "Foundation Scion Grove",
+    "proposedProjectType": "Nursery",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Goat and Sheep Housing",
+    "proposedProjectType": "Goat and Sheep Housing",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Goat and Sheep"
+    ]
+  },
+  {
+    "abemisProjectType": "Goat Meat Processing Facility",
+    "proposedProjectType": "Goat Meat Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Goat"
+    ]
+  },
+  {
+    "abemisProjectType": "Goat Multiplier Farm",
+    "proposedProjectType": "Goat Multiplier Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Goat"
+    ]
+  },
+  {
+    "abemisProjectType": "Grain Silo",
+    "proposedProjectType": "Grain Silo",
+    "farmOperation": "Storage Facility",
+    "applicableCommodities": [
+      "Rice",
+      "Corn"
+    ]
+  },
+  {
+    "abemisProjectType": "Greenhouse",
+    "proposedProjectType": "Greenhouse",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Grow-out",
+    "proposedProjectType": "Nursery",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Gulayan sa Barangay",
+    "proposedProjectType": "Gulayan sa Barangay",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Guyabano Juice Processing Center",
+    "proposedProjectType": "Guyabano Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Guyabano"
+    ]
+  },
+  {
+    "abemisProjectType": "Hatchery",
+    "proposedProjectType": "Hatchery",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Hydraulic Ram Pump System",
+    "proposedProjectType": "Hydraulic Ram Pump System",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Hydroponics System",
+    "proposedProjectType": "Hydroponics System",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Ice Making Center",
+    "proposedProjectType": "Ice Making Center",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Irrigation Canal",
+    "proposedProjectType": "Irrigation Canal",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Lairage",
+    "proposedProjectType": "Lairage",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Livestock"
+    ]
+  },
+  {
+    "abemisProjectType": "Layer Housing for Layer Production",
+    "proposedProjectType": "Layer House",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Chicken"
+    ]
+  },
+  {
+    "abemisProjectType": "Liquid Waste Treatment Plant",
+    "proposedProjectType": "Liquid Waste Treatment Plant",
+    "farmOperation": "Waste Management and Recovery",
+    "applicableCommodities": [
+      "Agricultural Waste"
+    ]
+  },
+  {
+    "abemisProjectType": "Livestock and Livestock Products Quarantine Zone",
+    "proposedProjectType": "Livestock Quarantine Facility",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Livestock"
+    ]
+  },
+  {
+    "abemisProjectType": "Livestock Auction Market",
+    "proposedProjectType": "Livestock Auction Facility",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Livestock"
+    ]
+  },
+  {
+    "abemisProjectType": "Livestock Cold Storage",
+    "proposedProjectType": "Cold Storage",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Livestock"
+    ]
+  },
+  {
+    "abemisProjectType": "Livestock Holding Facility",
+    "proposedProjectType": "Livestock Holding Facility",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Livestock"
+    ]
+  },
+  {
+    "abemisProjectType": "Mango Chips/Dried/Pickled Processing Center",
+    "proposedProjectType": "Mango Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Mango"
+    ]
+  },
+  {
+    "abemisProjectType": "Mangosteen Jam Processing Center",
+    "proposedProjectType": "Mangosteen Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Mangosteen"
+    ]
+  },
+  {
+    "abemisProjectType": "Milking Parlor",
+    "proposedProjectType": "Milking Parlor",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Livestock"
+    ]
+  },
+  {
+    "abemisProjectType": "Mobile Solar Power Irrigation Unit",
+    "proposedProjectType": "Mobile Solar-Powered Irrigation System",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Monolithic Dome",
+    "proposedProjectType": "Monolithic dome warehouse",
+    "farmOperation": "Storage Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Moringa Processing Facility",
+    "proposedProjectType": "Moringa Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Moringa"
+    ]
+  },
+  {
+    "abemisProjectType": "Multi Crop Drying Pavement (MCDP)",
+    "proposedProjectType": "Multi Crop Drying Pavement (MCDP)",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Rice",
+      "Corn"
+    ]
+  },
+  {
+    "abemisProjectType": "Multi-Commodity Drying Shed",
+    "proposedProjectType": "Multi-Commodity Drying Shed",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Rice",
+      "Corn"
+    ]
+  },
+  {
+    "abemisProjectType": "Multi-Purpose Drying Pavement",
+    "proposedProjectType": "Multi-Purpose Drying Pavement (MPDP)",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Rice",
+      "Corn"
+    ]
+  },
+  {
+    "abemisProjectType": "Mungbean Processing Facility",
+    "proposedProjectType": "Mungbean Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Mungbean"
+    ]
+  },
+  {
+    "abemisProjectType": "Municipal/City Fishport",
+    "proposedProjectType": "Municipal/City Fishport",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Muscovado Processing Facility",
+    "proposedProjectType": "Muscovado Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Muscovado"
+    ]
+  },
+  {
+    "abemisProjectType": "Mushroom Fruiting House",
+    "proposedProjectType": "Mushroom Production Center",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Mushroom"
+    ]
+  },
+  {
+    "abemisProjectType": "Nursery",
+    "proposedProjectType": "Nursery",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Nursery Establishment",
+    "proposedProjectType": "Nursery",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Onion Hanger Storage",
+    "proposedProjectType": "Onion Hanger Storage",
+    "farmOperation": "Storage Facility",
+    "applicableCommodities": [
+      "Onion"
+    ]
+  },
+  {
+    "abemisProjectType": "Packinghouse",
+    "proposedProjectType": "Packinghouse",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Palay Shed",
+    "proposedProjectType": "Palay Shed",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Rice"
+    ]
+  },
+  {
+    "abemisProjectType": "Papag Dryer",
+    "proposedProjectType": "Solar Poly Tunnel dryer",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Rice"
+    ]
+  },
+  {
+    "abemisProjectType": "Passionfruit Processing Center",
+    "proposedProjectType": "Passionfruit Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Passion Fruit"
+    ]
+  },
+  {
+    "abemisProjectType": "Perimeter Fence",
+    "proposedProjectType": "Perimeter Fence",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Pesticide Analytical Services Laboratory",
+    "proposedProjectType": "Pesticide Analytical Laboratory",
+    "farmOperation": "Laboratory",
+    "applicableCommodities": [
+      "Pesticide"
+    ]
+  },
+  {
+    "abemisProjectType": "Pili nut/Pili Oil Processing Center",
+    "proposedProjectType": "Pili Nut Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Pili"
+    ]
+  },
+  {
+    "abemisProjectType": "Pineapple Dried Processing Center",
+    "proposedProjectType": "Pineapple Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Pineapple"
+    ]
+  },
+  {
+    "abemisProjectType": "Plant Disease Diagnostic Laboratory",
+    "proposedProjectType": "Plant Disease Diagnostic Laboratory",
+    "farmOperation": "Laboratory",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Plant Tissue Culture Laboratory",
+    "proposedProjectType": "Plant Tissue Culture Laboratory",
+    "farmOperation": "Laboratory",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Poultry Dressing Plant",
+    "proposedProjectType": "Poultry Dressing Plant",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Chicken"
+    ]
+  },
+  {
+    "abemisProjectType": "Public Market",
+    "proposedProjectType": "Agricultural Trading Center",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Pump Irrigation System for Open Source (PISOS)",
+    "proposedProjectType": "Pump Irrigation System for Open Source (PISOS)",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Rabbit Housing",
+    "proposedProjectType": "Rabbit Housing",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Rabbit"
+    ]
+  },
+  {
+    "abemisProjectType": "Rabbit Multiplier Farm",
+    "proposedProjectType": "Rabbit Multiplier Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Rabbit"
+    ]
+  },
+  {
+    "abemisProjectType": "Rainshelter",
+    "proposedProjectType": "Rain Shelter",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Rambutan Wine Processing Center",
+    "proposedProjectType": "Rambutan Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Rambutan"
+    ]
+  },
+  {
+    "abemisProjectType": "Regional Field Office",
+    "proposedProjectType": "Regional Field Office",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": []
+  },
+  {
+    "abemisProjectType": "Regional Fishport",
+    "proposedProjectType": "Regional Fishport",
+    "farmOperation": "Agricultural Transport and Infrastructure",
+    "applicableCommodities": [
+      "Fish"
+    ]
+  },
+  {
+    "abemisProjectType": "Regional Seed Quality Control Services Stations",
+    "proposedProjectType": "Regional Seed Quality Control Station",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Seed"
+    ]
+  },
+  {
+    "abemisProjectType": "Research and Experimental Station",
+    "proposedProjectType": "Research and Experimental Station",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": []
+  },
+  {
+    "abemisProjectType": "Rice Milling Facility",
+    "proposedProjectType": "Rice Mill Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Rice"
+    ]
+  },
+  {
+    "abemisProjectType": "Rice Processing Center",
+    "proposedProjectType": "Rice Processing Center",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Rice"
+    ]
+  },
+  {
+    "abemisProjectType": "Rock Fill Dam",
+    "proposedProjectType": "Rock Fill Dam",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Multi-Commodity"
+    ]
+  },
+  {
+    "abemisProjectType": "Root Crop Chips Processing Center",
+    "proposedProjectType": "Root Crops Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Root crop"
+    ]
+  },
+  {
+    "abemisProjectType": "Rubber Crumb Processing Center",
+    "proposedProjectType": "Rubber Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Rubber"
+    ]
+  },
+  {
+    "abemisProjectType": "School Garden",
+    "proposedProjectType": "Foodscape",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Screenhouse",
+    "proposedProjectType": "Screenhouse",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Seed Storage",
+    "proposedProjectType": "Seed Storage Facility",
+    "farmOperation": "Storage Facility",
+    "applicableCommodities": [
+      "Seed"
+    ]
+  },
+  {
+    "abemisProjectType": "Shallow Tube Well (STW)",
+    "proposedProjectType": "Shallow Tube Well (STW)",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Sheep Multiplier Farm",
+    "proposedProjectType": "Sheep Multiplier Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Sheep"
+    ]
+  },
+  {
+    "abemisProjectType": "Silage Processing and Storage Facility",
+    "proposedProjectType": "Silage Processing Facility",
+    "farmOperation": "Storage Facility",
+    "applicableCommodities": [
+      "Rice",
+      "Corn"
+    ]
+  },
+  {
+    "abemisProjectType": "Silage Shed",
+    "proposedProjectType": "Shed",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Rice",
+      "Corn"
+    ]
+  },
+  {
+    "abemisProjectType": "Slaughterhouse",
+    "proposedProjectType": "Slaughterhouse",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Small Farm Reservoir",
+    "proposedProjectType": "Small Farm Reservoir",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Small Water Impounding Project",
+    "proposedProjectType": "Small Water Impounding System",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Soil Laboratory",
+    "proposedProjectType": "Soil Testing Laboratory",
+    "farmOperation": "Laboratory",
+    "applicableCommodities": []
+  },
+  {
+    "abemisProjectType": "Solar Farm",
+    "proposedProjectType": "Solar Power Plant",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Solar-Powered Fertigation System",
+    "proposedProjectType": "Solar-Powered Fertigation System",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Solar-Powered Irrigation System",
+    "proposedProjectType": "Solar-Powered Irrigation System",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Solid Waste Treatment Plant",
+    "proposedProjectType": "Solid Waste Treatment Plant",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": [
+      "Agricultural Waste"
+    ]
+  },
+  {
+    "abemisProjectType": "Spring Development",
+    "proposedProjectType": "Spring Development",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Sprinkler Irrigation",
+    "proposedProjectType": "Sprinkler Irrigation System",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Squash Processing Center",
+    "proposedProjectType": "Squash Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Squash"
+    ]
+  },
+  {
+    "abemisProjectType": "Strawberry Jam/Wine Processing Center",
+    "proposedProjectType": "Strawberry Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Strawberry"
+    ]
+  },
+  {
+    "abemisProjectType": "Swine Housing",
+    "proposedProjectType": "Swine Housing",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Swine"
+    ]
+  },
+  {
+    "abemisProjectType": "Swine Multiplier Farm",
+    "proposedProjectType": "Swine Multiplier Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Swine"
+    ]
+  },
+  {
+    "abemisProjectType": "Swine Production Farm",
+    "proposedProjectType": "Swine Production Farm",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "Swine"
+    ]
+  },
+  {
+    "abemisProjectType": "Training Center",
+    "proposedProjectType": "Training Center",
+    "farmOperation": "Agricultural Support Services Facility",
+    "applicableCommodities": []
+  },
+  {
+    "abemisProjectType": "Turmeric Processing Facility",
+    "proposedProjectType": "Turmeric Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "Turmeric"
+    ]
+  },
+  {
+    "abemisProjectType": "Urban Agriculture Garden",
+    "proposedProjectType": "Indoor cultivation system",
+    "farmOperation": "Production Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Vegetable Chips Processing Center",
+    "proposedProjectType": "Vegetable Processing Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Vermi-Composting Facilities",
+    "proposedProjectType": "Vermi-Composting Facilities",
+    "farmOperation": "Waste Management and Recovery",
+    "applicableCommodities": [
+      "Agricultural Waste"
+    ]
+  },
+  {
+    "abemisProjectType": "Village Type Corn Postharvest Processing Center (VTCPPC)",
+    "proposedProjectType": "Village Type Corn Postharvest Processing Center (VTCPPC)",
+    "farmOperation": "Post Harvest Facility",
+    "applicableCommodities": [
+      "Corn"
+    ]
+  },
+  {
+    "abemisProjectType": "Warehouse",
+    "proposedProjectType": "Warehouse",
+    "farmOperation": "Storage Facility",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Wind Pump",
+    "proposedProjectType": "Wind-Powered Irrigation System",
+    "farmOperation": "Irrigation System",
+    "applicableCommodities": [
+      "Rice",
+      "Corn",
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Wood Vinegar Facility",
+    "proposedProjectType": "Wood Vinegar Facility",
+    "farmOperation": "Processing Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  },
+  {
+    "abemisProjectType": "Zero Energy Cooling Chamber",
+    "proposedProjectType": "Zero Energy Cooling Chamber",
+    "farmOperation": "Storage Facility",
+    "applicableCommodities": [
+      "High Value Crops"
+    ]
+  }
+]

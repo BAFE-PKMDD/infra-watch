@@ -29,12 +29,6 @@ test("keeps animated hero words intact at narrow widths", () => {
   assert.match(html, /translateY\(50px\)[^>]*>L<\/span><\/span><\/h1>/);
 });
 
-test("uses readable stacked outcome cards on mobile and preserves the desktop comparison slider", () => {
-  assert.match(html, /md:hidden[^>]*>[\s\S]*Illustrative Before[\s\S]*Illustrative After/);
-  assert.match(html, /hidden[^\"]*md:block[^>]*>[\s\S]*type="range"/);
-  assert.match(html, /aria-label="Compare illustrative before and after outcomes"/);
-});
-
 test("uses compact mobile spacing for the main landing sections", () => {
   assert.match(html, /py-16[^>]*md:py-28/);
   assert.match(html, /mb-10[^>]*md:mb-14/);

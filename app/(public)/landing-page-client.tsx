@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight, ClipboardCheck, CloudSun, Droplets, MoveHorizontal, Search, Send, ShieldCheck, Tractor, Waves } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Droplets, Search, Send, ShieldCheck, Tractor } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import Link from "next/link";
@@ -26,10 +26,6 @@ export function LandingPageClient({
   liveVideo?: PublicLiveVideo | null;
   feedbackHighlights?: FeedbackActivityItem[];
 }) {
-  const [sliderPosition, setSliderPosition] = useState(50);
-  const [sliderDemoPlayed, setSliderDemoPlayed] = useState(false);
-  const [sliderInteracted, setSliderInteracted] = useState(false);
-  const sliderInteractedRef = useRef(false);
   const reduceMotion = useReducedMotion();
   const howItWorksRef = useRef<HTMLElement>(null);
   const isHowItWorksInView = useInView(howItWorksRef, { amount: 0.2 });
@@ -89,17 +85,6 @@ export function LandingPageClient({
     };
   }, [reduceMotion, isHowItWorksInView]);
 
-  const runSliderDemo = () => {
-    if (sliderDemoPlayed || reduceMotion) return;
-    setSliderDemoPlayed(true);
-    const keyframes = [50, 26, 74, 50];
-    keyframes.forEach((pos, i) => {
-      window.setTimeout(() => {
-        if (!sliderInteractedRef.current) setSliderPosition(pos);
-      }, 500 + i * 650);
-    });
-  };
-
   const programs = [
     {
       code: "AMEFSS",
@@ -109,9 +94,9 @@ export function LandingPageClient({
       href: "/projects?program=amefip",
       cta: "View AMEFSS Projects",
       topBar: "from-indigo-600 via-sky-500 to-indigo-600",
-      medallion: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-blue-300",
-      chip: "border-slate-300 bg-white/60 text-slate-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
-      btn: "w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 rounded-lg flex items-center justify-center dark:bg-blue-600 dark:hover:bg-blue-500",
+      medallion: "bg-indigo-50 text-primary dark:bg-indigo-950/60 dark:text-indigo-300",
+      chip: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/60 dark:bg-indigo-950/50 dark:text-indigo-300",
+      btn: "w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold h-10 rounded-lg flex items-center justify-center",
     },
     {
       code: "INS",
@@ -450,6 +435,16 @@ export function LandingPageClient({
                     </h2>
                   </div>
                 </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 1.6, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <span className="text-2xl font-bold tracking-wide text-white/90 drop-shadow-lg sm:text-3xl md:text-4xl">
+                    2021 &ndash; 2026
+                  </span>
+                </motion.div>
               </motion.div>
 
               {/* Statistics */}
@@ -521,7 +516,7 @@ export function LandingPageClient({
         >
           <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Scope & Coverage</h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            INFRA Watch aggregates and maps out agricultural and fisheries infrastructure projects under AMEFIP to ensure transparent resource allocation.
+            INFRA Watch gives the public a direct way to track and verify agricultural and fisheries infrastructure projects under AMEFIP, from budget allocation to on-the-ground progress.
           </p>
         </motion.div>
 
@@ -580,189 +575,6 @@ export function LandingPageClient({
               </Card>
             </motion.div>
           ))}
-        </div>
-      </section>
-
-      {/* Before/After Visual Slider */}
-      <section className="border-y border-slate-200 bg-white px-4 py-16 dark:border-slate-800 dark:bg-slate-950 md:py-28">
-        <div className="mx-auto max-w-5xl">
-          <motion.div
-            className="mx-auto mb-10 max-w-2xl text-center md:mb-14"
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="mb-4 flex items-center justify-center gap-3">
-              <span aria-hidden className="h-px w-10 bg-gradient-to-r from-transparent to-amber-400" />
-              <span className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-amber-600 dark:text-amber-400">Illustrative Outcomes</span>
-              <span aria-hidden className="h-px w-10 bg-gradient-to-l from-transparent to-amber-400" />
-            </div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Before & After</h2>
-          </motion.div>
-
-          <div className="grid gap-4 md:hidden">
-            <motion.article
-              className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 p-6 text-center shadow-sm dark:border-slate-700 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800/60"
-              initial={{ opacity: 0, x: -24 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <CloudSun aria-hidden className="mx-auto mb-3 h-8 w-8 text-amber-600 dark:text-amber-400" />
-              <span className="mb-3 inline-block rounded-full bg-amber-500 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white">Illustrative Before</span>
-              <h3 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">Impassable & Dry Canals</h3>
-              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                Inoperative systems and dry soil fields prior to government intervention and construction.
-              </p>
-            </motion.article>
-            <motion.article
-              className="rounded-2xl border border-primary/25 bg-gradient-to-br from-sky-50 via-teal-50 to-emerald-50 p-6 text-center shadow-sm dark:border-primary/30 dark:from-indigo-950/40 dark:via-slate-900 dark:to-slate-950"
-              initial={{ opacity: 0, x: 24 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ duration: 0.6, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <Waves aria-hidden className="mx-auto mb-3 h-8 w-8 text-sky-600 dark:text-sky-400" />
-              <span className="mb-3 inline-block rounded-full bg-primary px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary-foreground">Illustrative After</span>
-              <h3 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">Modern Concrete Infrastructure</h3>
-              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                Operational concrete canal networks flowing with water to irrigate adjacent farmland.
-              </p>
-            </motion.article>
-          </div>
-
-          <motion.div
-            className="relative hidden h-[420px] w-full select-none overflow-hidden rounded-3xl border-2 border-slate-200 shadow-xl dark:border-slate-800 lg:h-[480px] md:block"
-            initial={{ opacity: 0, scale: 0.96, y: 32 }}
-            whileInView={{ opacity: 1, scale: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            onViewportEnter={runSliderDemo}
-          >
-            {/* Before Stage */}
-            <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-amber-50 via-orange-100/70 to-amber-200 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
-              <div aria-hidden className="absolute right-10 top-4 h-32 w-32 rounded-full bg-amber-300/60 blur-2xl dark:bg-amber-500/10" />
-              <div aria-hidden className="absolute right-24 top-12 h-12 w-12 rounded-full bg-amber-200 dark:bg-amber-400/20" />
-              <svg aria-hidden viewBox="0 0 1000 240" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-44 w-full lg:h-52">
-                <path d="M0 96 Q180 76 380 90 T720 86 T1000 92 L1000 240 L0 240 Z" fill="#E2BC85" opacity="0.9" />
-                <path d="M0 150 Q250 132 520 146 T1000 140 L1000 240 L0 240 Z" fill="#D3A66C" opacity="0.95" />
-                <polygon points="370,118 630,118 585,196 415,196" fill="#C08F55" />
-                <polygon points="392,126 608,126 574,188 426,188" fill="#A97843" />
-                <g stroke="#8A6134" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.55">
-                  <path d="M120 176 l34 -14 l28 12 l36 -16" />
-                  <path d="M210 198 l30 -10 l26 10 l32 -12" />
-                  <path d="M700 182 l32 -12 l26 10 l34 -14" />
-                  <path d="M800 204 l28 -10 l26 8 l30 -12" />
-                  <path d="M80 210 l26 -8 l22 8 l28 -10" />
-                </g>
-                <g stroke="#77602F" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.7">
-                  <path d="M170 112 q-8 -20 2 -34 q10 12 4 34" />
-                  <path d="M255 104 q-6 -16 4 -28 q8 10 2 28" />
-                  <path d="M745 108 q-8 -18 0 -32 q10 12 6 32" />
-                  <path d="M835 116 q-6 -14 2 -26 q8 10 4 26" />
-                </g>
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
-                <div className="max-w-md rounded-2xl border border-white/60 bg-white/60 p-6 shadow-lg backdrop-blur-md dark:border-slate-700/70 dark:bg-slate-900/70">
-                  <span className="inline-block rounded-full bg-amber-500 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white">Illustrative Before</span>
-                  <h3 className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">Impassable & Dry Canals</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                    Inoperative systems and dry soil fields prior to government intervention and construction.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* After Stage */}
-            <div
-              className="absolute inset-0 overflow-hidden bg-gradient-to-b from-sky-100 via-teal-50 to-emerald-100 transition-all dark:from-slate-950 dark:via-indigo-950/40 dark:to-slate-950"
-              style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}
-            >
-              <div aria-hidden className="absolute left-10 top-6 h-36 w-36 rounded-full bg-teal-200/60 blur-3xl dark:bg-sky-500/10" />
-              <svg aria-hidden viewBox="0 0 1000 240" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-44 w-full lg:h-52">
-                <defs>
-                  <linearGradient id="infrawatch-water-gradient" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#7DD3FC" />
-                    <stop offset="45%" stopColor="#38BDF8" />
-                    <stop offset="100%" stopColor="#0369A1" />
-                  </linearGradient>
-                </defs>
-                <path d="M0 92 Q180 74 380 86 T720 82 T1000 90 L1000 240 L0 240 Z" fill="#34D399" opacity="0.35" />
-                <path d="M0 128 Q250 112 500 122 T1000 120 L1000 240 L0 240 Z" fill="#4ADE80" opacity="0.45" />
-                <polygon points="320,134 680,134 622,216 378,216" fill="#CBD5E1" />
-                <polygon points="338,142 662,142 606,208 394,208" fill="url(#infrawatch-water-gradient)" />
-                <g stroke="#047857" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.65">
-                  <path d="M118 152 q6 -16 16 -24" />
-                  <path d="M148 162 q6 -14 14 -22" />
-                  <path d="M196 150 q5 -14 13 -21" />
-                  <path d="M806 154 q-6 -16 -16 -24" />
-                  <path d="M838 164 q-6 -14 -14 -22" />
-                  <path d="M884 152 q-5 -14 -13 -21" />
-                </g>
-                <g stroke="#BAE6FD" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.85">
-                  <motion.path d="M420 168 H582" strokeDasharray="16 40" animate={{ strokeDashoffset: [0, -56] }} transition={{ duration: 1.6, ease: "linear", repeat: Infinity }} />
-                  <motion.path d="M430 188 H572" strokeDasharray="12 44" animate={{ strokeDashoffset: [0, -56] }} transition={{ duration: 2, ease: "linear", repeat: Infinity }} />
-                </g>
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
-                <div className="max-w-md rounded-2xl border border-white/60 bg-white/60 p-6 shadow-lg backdrop-blur-md dark:border-slate-700/70 dark:bg-slate-900/70">
-                  <span className="inline-block rounded-full bg-primary px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary-foreground">Illustrative After</span>
-                  <h3 className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">Modern Concrete Infrastructure</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                    Operational concrete canal networks flowing with water to irrigate adjacent farmland.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Stage Labels */}
-            <span className="pointer-events-none absolute left-4 top-4 z-20 rounded-md bg-primary px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-primary-foreground shadow-md">After · Irrigated</span>
-            <span className="pointer-events-none absolute right-4 top-4 z-20 rounded-md bg-amber-500 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow-md">Before · Dry</span>
-
-            {/* Slider Control Line */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-y-0 z-20"
-              style={{ left: `${sliderPosition}%` }}
-            >
-              <div className="absolute inset-y-0 -translate-x-1/2 w-[3px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.2)]" />
-              <motion.div
-                className="absolute top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[3px] border-white bg-slate-900 text-white shadow-xl"
-                animate={!reduceMotion && !sliderInteracted ? { scale: [1, 1.08, 1] } : {}}
-                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <MoveHorizontal className="h-5 w-5" />
-              </motion.div>
-            </div>
-
-            {/* Drag hint */}
-            <motion.span
-              aria-hidden
-              className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full bg-slate-950/70 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-sm"
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.5, delay: 1.4 }}
-            >
-              Drag to compare
-            </motion.span>
-
-            {/* Hidden range input overlay for dragging */}
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={sliderPosition}
-              onChange={(e) => {
-                sliderInteractedRef.current = true;
-                setSliderInteracted(true);
-                setSliderPosition(Number(e.target.value));
-              }}
-              aria-label="Compare illustrative before and after outcomes"
-              className="absolute inset-0 opacity-0 cursor-ew-resize z-30 w-full h-full"
-            />
-          </motion.div>
         </div>
       </section>
 

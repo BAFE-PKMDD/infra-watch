@@ -32,6 +32,8 @@ import {
   GeoEvidenceUpload,
   type GeoEvidenceReadyItem,
 } from "@/components/shared/geo-evidence-upload";
+import { SubmissionSurveyModal } from "@/components/shared/submission-survey-modal";
+import { useSubmissionSurveyGate } from "@/hooks/use-submission-survey-gate";
 
 interface FeedbackSubmissionFormProps {
   projectId: string;
@@ -83,9 +85,13 @@ export function FeedbackSubmissionForm({
   const [isCommitting, setIsCommitting] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(editMode); // Auto-agree in edit mode
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showPreSubmitSurvey, setShowPreSubmitSurvey] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
   const commitRef = useRef(false);
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  // Editing existing feedback never re-asks the survey - it's not a first submission.
+  const { needsSurvey } = useSubmissionSurveyGate(!editMode);
 
   // File upload mutation
   const uploadMutation = useMutation({
@@ -171,6 +177,7 @@ export function FeedbackSubmissionForm({
       setEvidenceInputKey((key) => key + 1);
       setAgreeToTerms(false);
       setValidationErrors({});
+      setIsReviewing(false);
 
       // Call success callback
       if (onSuccess) {
@@ -178,6 +185,8 @@ export function FeedbackSubmissionForm({
       }
     },
     onError: (error: Error) => {
+      // Send them back to the editable form so the error is visible next to the fields.
+      setIsReviewing(false);
       setValidationErrors({ submit: error.message });
     },
   });
@@ -225,6 +234,18 @@ export function FeedbackSubmissionForm({
       return;
     }
 
+    setIsReviewing(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (needsSurvey) {
+      setShowPreSubmitSurvey(true);
+      return;
+    }
+    await performSubmit();
+  };
+
+  const performSubmit = async () => {
     commitRef.current = true;
     setIsCommitting(true);
     onBusyChange?.(true);
@@ -288,12 +309,15 @@ export function FeedbackSubmissionForm({
 
   const isSubmitting = isCommitting || submitMutation.isPending;
   const isUploading = uploadMutation.isPending || isProcessingMedia;
-  const formBusy = isSubmitting || isUploading;
+  const formBusy = isSubmitting || isUploading || showPreSubmitSurvey;
   const characterCount = comment.length;
   const maxCharacters = 1000;
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-6">
+      {!isReviewing && (
+      <>
       {/* Category */}
       <Field>
         <FieldLabel htmlFor="category">Category *</FieldLabel>
@@ -537,6 +561,57 @@ export function FeedbackSubmissionForm({
           </div>
         </div>
       </Field>
+      </>
+      )}
+
+      {isReviewing && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Review your feedback</h3>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Check everything below, then confirm to submit.</p>
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
+            <ReviewRow label="Category" value={categories.find((cat) => cat.value === category)?.label || category} />
+            <div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Your Feedback</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{comment}</p>
+            </div>
+            <ReviewRow label="Rating" value={rating > 0 ? `${rating} star${rating > 1 ? "s" : ""}` : "Not rated"} />
+            <ReviewRow
+              label="Attachments"
+              value={
+                media.length + pendingEvidence.length === 0
+                  ? "None"
+                  : `${media.length + pendingEvidence.length} file${media.length + pendingEvidence.length > 1 ? "s" : ""}`
+              }
+            />
+            <ReviewRow label="Submitting as" value={isAnonymous ? "Anonymous" : "Your account"} />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <Button type="button" variant="outline" onClick={() => setIsReviewing(false)} disabled={formBusy}>
+              Edit
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmSubmit}
+              disabled={formBusy}
+              className="h-11 flex-1 text-base font-medium"
+              size="lg"
+            >
+              {formBusy ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Saving Feedback...
+                </>
+              ) : (
+                "Confirm & Submit"
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* General Error */}
       {validationErrors.submit && (
@@ -549,21 +624,44 @@ export function FeedbackSubmissionForm({
       )}
 
       {/* Submit Button */}
-      <Button
-        type="submit"
-        disabled={formBusy || !comment.trim() || !agreeToTerms || characterCount > maxCharacters}
-        className="w-full h-11 text-base font-medium"
-        size="lg"
-      >
-        {formBusy ? (
-          <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Saving Feedback...
-          </>
-        ) : (
-          "Submit Feedback"
-        )}
-      </Button>
+      {!isReviewing && (
+        <Button
+          type="submit"
+          disabled={formBusy || !comment.trim() || !agreeToTerms || characterCount > maxCharacters}
+          className="w-full h-11 text-base font-medium"
+          size="lg"
+        >
+          {formBusy ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Saving Feedback...
+            </>
+          ) : (
+            "Review Feedback"
+          )}
+        </Button>
+      )}
     </form>
+
+    <SubmissionSurveyModal
+      isOpen={showPreSubmitSurvey}
+      onClose={() => setShowPreSubmitSurvey(false)}
+      onComplete={() => {
+        setShowPreSubmitSurvey(false);
+        performSubmit();
+      }}
+      sourceType="feedback"
+      sourceId={null}
+    />
+    </>
+  );
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</span>
+      <span className="text-sm font-medium text-slate-900 dark:text-white sm:text-right">{value}</span>
+    </div>
   );
 }

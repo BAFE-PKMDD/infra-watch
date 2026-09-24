@@ -15,6 +15,14 @@ import {
 } from "@/lib/public-source-media";
 import { getLastSuccessfulProjectSyncAt } from "@/lib/public-sync";
 
+// `region` may be a single psgcCode prefix or a comma-separated list of prefixes —
+// getRegions() returns the latter for regions like NIR whose provinces don't share a
+// single numeric region prefix with the rest of their psgc_locations region code.
+function regionPrefixCondition(region: string) {
+  const prefixes = region.split(",").filter(Boolean);
+  return or(...prefixes.map((prefix) => ilike(projects.psgcCode, `${prefix}%`)));
+}
+
 export type PublicProjectFilters = {
   searchQuery?: string;
   program?: string;
@@ -64,7 +72,7 @@ export async function getPublicProjects({
     } else if (province && province !== "all") {
       conditions.push(ilike(projects.psgcCode, `${province}%`));
     } else if (region && region !== "all") {
-      conditions.push(ilike(projects.psgcCode, `${region}%`));
+      conditions.push(regionPrefixCondition(region)!);
     }
 
     if (status && status !== "all") {
@@ -154,7 +162,7 @@ export async function getPublicMapPins({
     } else if (province && province !== "all") {
       conditions.push(ilike(projects.psgcCode, `${province}%`));
     } else if (region && region !== "all") {
-      conditions.push(ilike(projects.psgcCode, `${region}%`));
+      conditions.push(regionPrefixCondition(region)!);
     }
 
     if (status && status !== "all") {
@@ -332,7 +340,6 @@ export async function getPublicProjectById(id: string) {
       stage: mapInternalToPublicStage(row.status),
       yearFunded: row.yearFunded || "Unavailable",
       contractor: row.contractorName || "Unavailable",
-      scope: row.projectType,
       projectType: row.projectType,
       projectLength: row.proposedLength ? `${row.proposedLength} ${row.quantityUnit || ""}`.trim() : "Unavailable",
       postGeotaggedLength: row.postGeotaggedLength || undefined,
@@ -371,6 +378,7 @@ export async function getPublicProjectById(id: string) {
       indicatorLevel3: row.indicatorLevel3 || undefined,
       dateTurnOver: row.dateTurnOver || undefined,
       commodities: row.commodities,
+      farmOperation: row.farmOperation || undefined,
       metadata: sanitizePublicProjectMetadata(metadata, {
         physicalProgress: row.physicalProgress || 0,
         financialProgress: row.financialProgress || 0,

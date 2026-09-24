@@ -34,7 +34,7 @@ test("preserves unavailable public catalog values instead of fabricating zero or
   assert.equal(result.year, null);
   assert.equal(result.contractor, null);
   assert.equal(result.program, "unclassified");
-  assert.equal(result.sector, null);
+  assert.equal(result.projectType, null);
   assert.equal(result.stage, "Completed");
 });
 

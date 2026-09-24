@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
-import { and, desc, ilike, or } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
 
 export const runtime = "nodejs";
@@ -40,8 +40,25 @@ const SELECT_COLUMNS = {
 
 export async function GET(request: NextRequest) {
   const search = request.nextUrl.searchParams.get("search")?.trim();
+  const type = request.nextUrl.searchParams.get("type")?.trim();
+  const nearProvince = request.nextUrl.searchParams.get("province")?.trim();
   const limit = Math.min(Number(request.nextUrl.searchParams.get("limit") ?? 10), 25);
   const tokens = search ? tokenize(search) : [];
+
+  // Same standardized project type, when there's no location-based match at all — biased
+  // toward the citizen's province, but not limited to it, so this still returns results.
+  if (type) {
+    const rows = await db
+      .select(SELECT_COLUMNS)
+      .from(projects)
+      .where(and(projectYearScopeCondition(), eq(projects.projectType, type)))
+      .orderBy(
+        nearProvince ? sql`case when lower(${projects.province}) = lower(${nearProvince}) then 0 else 1 end` : sql`0`,
+        desc(projects.lastSyncedAt),
+      )
+      .limit(limit);
+    return NextResponse.json({ success: true, data: rows.map((row) => ({ ...row, matchType: "type" as const })) });
+  }
 
   if (tokens.length === 0) {
     const rows = await db

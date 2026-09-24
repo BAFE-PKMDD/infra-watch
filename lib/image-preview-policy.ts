@@ -1,6 +1,11 @@
 export function isTrustedImagePreviewUrl(value: string | null | undefined) {
   if (!value) return false;
 
+  // Relative URLs originating from our own app (e.g. /api/upload/preview) are safe & trusted
+  if (value.startsWith("/")) {
+    return true;
+  }
+
   try {
     const url = new URL(value);
     if (

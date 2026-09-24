@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import {
   TrendingUp,
   MessageSquare,
   Newspaper,
   ExternalLink,
-  AlertTriangle,
 } from "lucide-react";
 import { getFileUrl } from "@/lib/minio-url";
 import type {
@@ -88,23 +86,6 @@ export function FeedRightSidebar() {
   return (
     <aside className="hidden md:block w-[280px] xl:w-[300px] flex-shrink-0">
       <div className="sticky top-20 space-y-4">
-
-        {/* Report Issue CTA */}
-        <Link
-          href="/report-issue/new"
-          className="group flex items-center gap-3 p-4 bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
-        >
-          <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center flex-shrink-0">
-            <AlertTriangle className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-slate-900 dark:text-white">Report an Issue</p>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-snug">
-              Notice a problem with an agri-infrastructure project? Submit a report.
-            </p>
-          </div>
-        </Link>
-
         {/* Trending Projects */}
         {data.trending.length > 0 && (
           <div className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 p-4">

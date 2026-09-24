@@ -69,6 +69,20 @@ function projectLocation(project: { barangay: string | null; municipality: strin
   return [project.barangay, project.municipality, project.province].filter(Boolean).join(", ") || "Location unavailable";
 }
 
+/**
+ * Many ABEMIS project titles are near-identical, generic phrases that differ
+ * only in a suffix (e.g. "...Chicken Multiplier Farm" vs "...Duck Multiplier
+ * Farm"), so the standardized project type leads the display and the raw
+ * title is shown underneath for full context.
+ */
+function projectDisplayTitle(project: { name: string; projectType: string | null }) {
+  const type = project.projectType?.trim() || null;
+  return {
+    primary: type || project.name,
+    secondary: type ? project.name : null,
+  };
+}
+
 function getGeotagPhotos(metadata: unknown): GeotagPhoto[] {
   if (!metadata || typeof metadata !== "object") return [];
   const geotag = (metadata as Record<string, unknown>).geotag;
@@ -830,8 +844,18 @@ export default function ProjectsCatalog() {
                   <Link href={projectHref(project.id)} onClick={() => recordSearchProjectOpen(project.id)} className="block p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{project.program} · {project.code}</p>
-                        <h3 className="mt-2 line-clamp-2 text-sm font-extrabold text-slate-900 dark:text-white">{project.name}</h3>
+                        {(() => {
+                          const { primary, secondary } = projectDisplayTitle(project);
+                          return (
+                            <>
+                              <h3 className="line-clamp-2 text-sm font-extrabold text-slate-900 dark:text-white">{primary}</h3>
+                              {secondary && (
+                                <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{secondary}</p>
+                              )}
+                            </>
+                          );
+                        })()}
+                        <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">{project.program} · {project.code}</p>
                       </div>
                       <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                         {mapInternalToPublicStage(project.status)}
@@ -882,7 +906,17 @@ export default function ProjectsCatalog() {
                           >
                             <td className="px-6 py-5">
                               <Link href={projectHref(project.id)} onClick={() => recordSearchProjectOpen(project.id)} className="block">
-                                <h3 className="text-sm font-medium text-slate-900 group-hover:text-primary transition-colors line-clamp-2 dark:text-white">{project.name}</h3>
+                                {(() => {
+                                  const { primary, secondary } = projectDisplayTitle(project);
+                                  return (
+                                    <>
+                                      <h3 className="text-sm font-semibold text-slate-900 group-hover:text-primary transition-colors line-clamp-2 dark:text-white">{primary}</h3>
+                                      {secondary && (
+                                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 dark:text-slate-400">{secondary}</p>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                                 <p className="text-xs text-slate-500 mt-1 font-mono dark:text-slate-300">{project.program.toUpperCase()} • {project.id}</p>
                               </Link>
                             </td>

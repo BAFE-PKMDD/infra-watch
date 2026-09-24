@@ -482,6 +482,8 @@ export async function POST(request: NextRequest) {
           status: "pending",
           priority: "normal",
           description,
+          reportedFarmOperation: body.farmOperation || null,
+          reportedProjectType: body.projectType || null,
           region: body.region || null,
           province: body.province || null,
           municipality: body.city || body.municipality || null,

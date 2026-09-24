@@ -46,6 +46,7 @@ test("submission-survey route: rejects out-of-range age", async () => {
     body: JSON.stringify({
       sourceType: "e_report",
       age: 150,
+      respondentType: "farmer",
       referralSource: "facebook",
     }),
   });
@@ -53,6 +54,58 @@ test("submission-survey route: rejects out-of-range age", async () => {
   assert.equal(res.status, 400);
   const data = await res.json();
   assert.equal(data.success, false);
+});
+
+test("submission-survey route: rejects invalid respondentType", async () => {
+  const handler = createSubmissionSurveyHandler({
+    saveSurvey: async () => ({ id: "mock-id" }),
+  });
+  const req = new NextRequest("http://localhost:3001/api/submission-survey", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sourceType: "e_report",
+      respondentType: "astronaut",
+      referralSource: "facebook",
+    }),
+  });
+  const res = await handler(req);
+  assert.equal(res.status, 400);
+  const data = await res.json();
+  assert.equal(data.success, false);
+});
+
+test("submission-survey route: a non-skipped submission requires respondentType and referralSource", async () => {
+  const handler = createSubmissionSurveyHandler({
+    saveSurvey: async () => ({ id: "mock-id" }),
+  });
+  const req = new NextRequest("http://localhost:3001/api/submission-survey", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sourceType: "e_report" }),
+  });
+  const res = await handler(req);
+  assert.equal(res.status, 400);
+});
+
+test("submission-survey route: a skipped submission needs no respondentType or referralSource", async () => {
+  let captured: any = null;
+  const handler = createSubmissionSurveyHandler({
+    saveSurvey: async (data) => {
+      captured = data;
+      return { id: "skip-uuid" };
+    },
+  });
+  const req = new NextRequest("http://localhost:3001/api/submission-survey", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sourceType: "e_report", skipped: true }),
+  });
+  const res = await handler(req);
+  assert.equal(res.status, 201);
+  assert.equal(captured.skipped, true);
+  assert.equal(captured.respondentType, null);
+  assert.equal(captured.referralSource, null);
 });
 
 test("submission-survey route: accepts valid payload with Facebook, Website, and Instagram", async () => {
@@ -70,6 +123,7 @@ test("submission-survey route: accepts valid payload with Facebook, Website, and
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         sourceType: "feedback",
+        respondentType: "normal_citizen",
         name: "Citizen Jane",
         age: 29,
         gender: "Female",
@@ -104,6 +158,7 @@ test("submission-survey route: handles optional name as null when omitted", asyn
     body: JSON.stringify({
       sourceType: "e_report",
       sourceId: "INFRA-2026-123456",
+      respondentType: "farmer",
       age: 42,
       gender: "Male",
       referralSource: "website",

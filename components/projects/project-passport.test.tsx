@@ -21,7 +21,6 @@ const project: ProjectDetail = {
   yearFunded: "2026",
   completionDate: "Apr 30, 2026",
   contractor: "Example supplier",
-  scope: "Irrigation",
   projectLength: "Unavailable",
   description: "Source-backed project record",
   updates: [],

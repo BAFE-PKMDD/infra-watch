@@ -9,20 +9,22 @@ import {
   Loader2,
   AlertTriangle,
   Layers,
+  Bookmark,
 } from "lucide-react";
 import { getActivityFeed } from "@/actions/query/activity-feed.query";
 import { useNotifications } from "@/providers/notification-provider";
+import { getUserPostInteractionsAction } from "@/actions/mutation/post-interactions.mutation";
 import { FeedbackFeedCard } from "./feedback-feed-card";
+import { FeedContributionActions } from "./feed-contribution-actions";
 import { IssueFeedCard } from "./issue-feed-card";
-import { FeedbackComposer } from "./feedback-composer";
 import type { ActivityFeedFilter } from "@/types/activity-feed.types";
 
-const TYPE_FILTERS: { value: ActivityFeedFilter; label: string; icon: typeof Layers }[] = [
+const TYPE_FILTERS: { value: ActivityFeedFilter; label: string; icon: typeof Layers | typeof Bookmark }[] = [
   { value: "all", label: "All", icon: Layers },
   { value: "feedback", label: "Feedback", icon: MessageSquare },
   { value: "issue", label: "Reported Issues", icon: AlertTriangle },
+  { value: "saved", label: "Saved", icon: Bookmark },
 ] as const;
-
 
 const ITEMS_PER_PAGE = 10;
 
@@ -30,6 +32,7 @@ export function FeedbackFeedClient() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ActivityFeedFilter>("all");
+  const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
 
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const queryClient = useQueryClient();
@@ -38,6 +41,55 @@ export function FeedbackFeedClient() {
 
   // Sentinel ref for infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Load saved posts from localStorage and sync from server
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const localIds: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("post_interested_") && localStorage.getItem(key) === "true") {
+          localIds.push(key.replace("post_interested_", ""));
+        }
+      }
+      setSavedPostIds(localIds);
+
+      // Check URL query parameters for ?filter=saved
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("filter") === "saved") {
+        setTypeFilter("saved");
+      }
+    }
+
+    getUserPostInteractionsAction()
+      .then((res) => {
+        if (res.savedPostIds.length > 0) {
+          setSavedPostIds((prev) => Array.from(new Set([...prev, ...res.savedPostIds])));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Listen to post-saved-change custom event
+  useEffect(() => {
+    const handleSavedChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ postId: string; isSaved: boolean }>;
+      if (customEvent.detail) {
+        setSavedPostIds((prev) => {
+          const next = new Set(prev);
+          if (customEvent.detail.isSaved) {
+            next.add(customEvent.detail.postId);
+          } else {
+            next.delete(customEvent.detail.postId);
+          }
+          return Array.from(next);
+        });
+      }
+    };
+
+    window.addEventListener("post-saved-change", handleSavedChange);
+    return () => window.removeEventListener("post-saved-change", handleSavedChange);
+  }, []);
 
   // Debounce search input
   useEffect(() => {
@@ -80,14 +132,13 @@ export function FeedbackFeedClient() {
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["activity-feed", debouncedSearch, typeFilter, sort],
+    queryKey: ["activity-feed", debouncedSearch, typeFilter === "saved" ? "all" : typeFilter, sort],
     queryFn: async ({ pageParam = 1 }) => {
       const result = await getActivityFeed({
         page: pageParam,
         limit: ITEMS_PER_PAGE,
         search: debouncedSearch || undefined,
-        type: typeFilter,
-
+        type: typeFilter === "saved" ? "all" : typeFilter,
         sort,
       });
       return result;
@@ -120,15 +171,17 @@ export function FeedbackFeedClient() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Flatten all pages into a single list
-  const feedItems = data?.pages.flatMap((page) => page.data) ?? [];
-  const totalCount = data?.pages[0]?.pagination.total ?? 0;
+  const allFeedItems = data?.pages.flatMap((page) => page.data) ?? [];
+  const feedItems = typeFilter === "saved"
+    ? allFeedItems.filter((item) => savedPostIds.includes(item.id))
+    : allFeedItems;
+  const totalCount = typeFilter === "saved" ? feedItems.length : (data?.pages[0]?.pagination.total ?? 0);
 
   return (
     <div className="min-w-0">
-      {/* Composer — only show after feed has loaded */}
-      {!isLoading && <FeedbackComposer />}
+      <FeedContributionActions />
 
-      {/* Filters — only show after feed has loaded */}
+      {/* Filters appear once the first feed request is complete. */}
       {!isLoading && (
         <div className="mb-6 space-y-3">
           {/* Search */}
@@ -139,28 +192,46 @@ export function FeedbackFeedClient() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search feedback, issues, or projects..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
             />
           </div>
 
           {/* Type filter pills */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-1.5 flex-wrap">
-              {TYPE_FILTERS.map((tf) => (
-                <button
-                  key={tf.value}
-                  onClick={() => {
-                    setTypeFilter(tf.value);
-                  }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${typeFilter === tf.value
-                    ? "bg-emerald-700 text-white shadow-sm"
-                    : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+              {TYPE_FILTERS.map((tf) => {
+                const isSelected = typeFilter === tf.value;
+                const countBadge =
+                  tf.value === "saved" && savedPostIds.length > 0 ? (
+                    <span
+                      className={`ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                        isSelected
+                          ? "bg-white/25 text-white"
+                          : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400"
+                      }`}
+                    >
+                      {savedPostIds.length}
+                    </span>
+                  ) : null;
+
+                return (
+                  <button
+                    key={tf.value}
+                    onClick={() => {
+                      setTypeFilter(tf.value);
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-emerald-700 text-white shadow-sm"
+                        : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
                     }`}
-                >
-                  <tf.icon className="w-3.5 h-3.5" />
-                  {tf.label}
-                </button>
-              ))}
+                  >
+                    <tf.icon className="w-3.5 h-3.5" />
+                    {tf.label}
+                    {countBadge}
+                  </button>
+                );
+              })}
             </div>
 
             <button
@@ -178,26 +249,7 @@ export function FeedbackFeedClient() {
       <div className="space-y-4">
         {isLoading ? (
           <>
-            {/* Composer skeleton */}
-            <div className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 p-5 mb-6 animate-pulse">
-              <div className="flex gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-[#13233c]/60 flex-shrink-0" />
-                <div className="flex-1 space-y-3">
-                  <div className="h-9 bg-slate-100 dark:bg-[#13233c]/40 rounded-lg" />
-                  <div className="h-16 bg-slate-100 dark:bg-[#13233c]/40 rounded-lg" />
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <div className="h-7 w-16 bg-slate-100 dark:bg-[#13233c]/40 rounded-full" />
-                      <div className="h-7 w-16 bg-slate-100 dark:bg-[#13233c]/40 rounded-full" />
-                      <div className="h-7 w-16 bg-slate-100 dark:bg-[#13233c]/40 rounded-full" />
-                    </div>
-                    <div className="h-8 w-20 bg-slate-200 dark:bg-[#13233c]/60 rounded-lg" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Search & filter skeleton */}
+            {/* Search and filter skeleton */}
             <div className="space-y-3 animate-pulse">
               <div className="h-10 w-full bg-slate-100 dark:bg-[#13233c]/40 rounded-xl" />
               <div className="flex items-center justify-between">
@@ -234,18 +286,33 @@ export function FeedbackFeedClient() {
           </>
         ) : feedItems.length === 0 ? (
           // Empty state
-          <div className="text-center py-16">
-            <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-slate-100 dark:bg-slate-800 mx-auto mb-4">
-              <Layers className="w-7 h-7 text-slate-500 dark:text-slate-400" />
+          <div className="text-center py-16 bg-white dark:bg-[#0d1526] rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 p-8 shadow-2xs">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 mx-auto mb-4 border border-amber-200/60 dark:border-amber-900/40">
+              {typeFilter === "saved" ? (
+                <Bookmark className="w-8 h-8" />
+              ) : (
+                <Layers className="w-8 h-8 text-slate-500 dark:text-slate-400" />
+              )}
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-              No activity found
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+              {typeFilter === "saved" ? "No Saved Posts Yet" : "No Activity Found"}
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-300 max-w-sm mx-auto">
-              {debouncedSearch || typeFilter !== "all"
-                ? "No items match your current filter or search."
-                : "Once citizens submit feedback or report issues on INFRA projects, it will appear here."}
+            <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm mx-auto mb-5 leading-relaxed">
+              {typeFilter === "saved"
+                ? "Posts you mark as Interested or save will appear here so you can easily return to them."
+                : debouncedSearch
+                ? `No items match "${debouncedSearch}". Try another search term.`
+                : "Once citizens submit feedback or report issues on INFRA projects, they will appear here."}
             </p>
+            {typeFilter === "saved" && (
+              <button
+                type="button"
+                onClick={() => setTypeFilter("all")}
+                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-700 text-white hover:bg-emerald-800 transition-colors cursor-pointer inline-flex items-center gap-2"
+              >
+                Browse All Posts
+              </button>
+            )}
           </div>
         ) : (
           <>

@@ -66,7 +66,7 @@ export interface ProjectDetail extends Omit<ProjectDisplayItem, "budget"> {
   completionDate: string; // Target completion date
   actualCompletionDate?: string; // Actual completion date
   contractor: string;
-  scope: string;
+  projectType?: string | null; // Standardized infrastructure category (mapped from the source project_type)
   projectLength: string;
   postGeotaggedLength?: string;
   description: string;
@@ -78,6 +78,7 @@ export interface ProjectDetail extends Omit<ProjectDisplayItem, "budget"> {
   coordinateStatus?: "verified" | "unavailable";
   dataCoverage?: { available: number; total: number };
   commodities?: string[] | null;
+  farmOperation?: string | null;
   metadata?: Record<string, unknown> | null; // Contains geotags, proposalDocuments, powRelation, procurementRelation
   articles?: Article[]; // Related articles and publications
   feedbackCount?: number; // Total approved feedback

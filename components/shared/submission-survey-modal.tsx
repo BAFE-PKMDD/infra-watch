@@ -52,6 +52,24 @@ export function InstagramIcon({ className }: { className?: string }) {
 }
 
 export type ReferralSourceOption = "facebook" | "website" | "instagram" | "other";
+export type RespondentTypeOption =
+  | "student"
+  | "farmer"
+  | "normal_citizen"
+  | "bafe_employee"
+  | "raed_staff"
+  | "other";
+
+export interface SubmissionSurveyPayload {
+  sourceType: "feedback" | "e_report";
+  sourceId: string | null;
+  skipped: boolean;
+  respondentType: RespondentTypeOption | null;
+  name: string | null;
+  age: number | null;
+  gender: string | null;
+  referralSource: ReferralSourceOption | null;
+}
 
 export interface SubmissionSurveyFormProps {
   sourceType: "feedback" | "e_report";
@@ -59,14 +77,7 @@ export interface SubmissionSurveyFormProps {
   defaultName?: string;
   onSuccess?: () => void;
   onSkip?: () => void;
-  submitSurveyFn?: (payload: {
-    sourceType: "feedback" | "e_report";
-    sourceId: string | null;
-    name: string | null;
-    age: number | null;
-    gender: string | null;
-    referralSource: ReferralSourceOption;
-  }) => Promise<void>;
+  submitSurveyFn?: (payload: SubmissionSurveyPayload) => Promise<void>;
 }
 
 export interface SubmissionSurveyModalProps extends Omit<SubmissionSurveyFormProps, "onSuccess" | "onSkip"> {
@@ -74,6 +85,15 @@ export interface SubmissionSurveyModalProps extends Omit<SubmissionSurveyFormPro
   onClose: () => void;
   onComplete?: () => void;
 }
+
+export const RESPONDENT_TYPE_OPTIONS: { value: RespondentTypeOption; label: string }[] = [
+  { value: "farmer", label: "Farmer" },
+  { value: "normal_citizen", label: "Normal Citizen" },
+  { value: "student", label: "Student" },
+  { value: "bafe_employee", label: "BAFE Employee" },
+  { value: "raed_staff", label: "RAED Staff" },
+  { value: "other", label: "Other" },
+];
 
 export const GENDER_OPTIONS = [
   { value: "Female", label: "Female" },
@@ -117,6 +137,7 @@ export function SubmissionSurveyForm({
   onSkip,
   submitSurveyFn,
 }: SubmissionSurveyFormProps) {
+  const [respondentType, setRespondentType] = useState<RespondentTypeOption | "">("");
   const [name, setName] = useState(defaultName);
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
@@ -125,6 +146,7 @@ export function SubmissionSurveyForm({
   const [error, setError] = useState<string | null>(null);
 
   const resetState = () => {
+    setRespondentType("");
     setName(defaultName);
     setAge("");
     setGender("");
@@ -132,7 +154,35 @@ export function SubmissionSurveyForm({
     setError(null);
   };
 
+  const sendSurvey = async (payload: SubmissionSurveyPayload) => {
+    if (submitSurveyFn) {
+      await submitSurveyFn(payload);
+      return;
+    }
+    const response = await fetch("/api/submission-survey", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.success) {
+      throw new Error(data?.error || "Failed to submit survey");
+    }
+  };
+
   const handleSkip = () => {
+    // Best-effort: record that this account was asked, without making the citizen
+    // wait on a network round trip just to move past an optional question.
+    sendSurvey({
+      sourceType,
+      sourceId: sourceId || null,
+      skipped: true,
+      respondentType: null,
+      name: null,
+      age: null,
+      gender: null,
+      referralSource: null,
+    }).catch((err) => console.warn("Failed to record skipped survey:", err));
     resetState();
     onSkip?.();
   };
@@ -142,6 +192,10 @@ export function SubmissionSurveyForm({
     setError(null);
 
     // Validation
+    if (!respondentType) {
+      setError("Please let us know who's answering.");
+      return;
+    }
     if (!referralSource) {
       setError("Please let us know how you found out about us.");
       return;
@@ -155,34 +209,16 @@ export function SubmissionSurveyForm({
 
     setIsSubmitting(true);
     try {
-      if (submitSurveyFn) {
-        await submitSurveyFn({
-          sourceType,
-          sourceId: sourceId || null,
-          name: name.trim() || null,
-          age: parsedAge,
-          gender: gender || null,
-          referralSource,
-        });
-      } else {
-        const response = await fetch("/api/submission-survey", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sourceType,
-            sourceId: sourceId || null,
-            name: name.trim() || null,
-            age: parsedAge,
-            gender: gender || null,
-            referralSource,
-          }),
-        });
-
-        const data = await response.json().catch(() => null);
-        if (!response.ok || !data?.success) {
-          throw new Error(data?.error || "Failed to submit survey");
-        }
-      }
+      await sendSurvey({
+        sourceType,
+        sourceId: sourceId || null,
+        skipped: false,
+        respondentType,
+        name: name.trim() || null,
+        age: parsedAge,
+        gender: gender || null,
+        referralSource,
+      });
 
       toast.success("Thank you for helping us improve InfraWatch!");
       resetState();
@@ -202,13 +238,13 @@ export function SubmissionSurveyForm({
       <div className="text-left space-y-1.5 pb-1 border-b border-border/60">
         <div className="flex items-center gap-2 text-primary font-medium text-xs tracking-wider uppercase">
           <Sparkles className="size-3.5 text-primary" />
-          <span>{isEreport ? "E-Report Submitted" : "Feedback Submitted"}</span>
+          <span>Before You Submit</span>
         </div>
         <h2 className="text-xl font-bold tracking-tight text-foreground">
           Help Us Serve You Better
         </h2>
         <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-          Your {isEreport ? "E-report" : "feedback"} was received! Help BAFE understand who uses InfraWatch by completing these quick questions. Your answers are optional.
+          Help BAFE understand who uses InfraWatch by answering a few quick questions, then we&apos;ll send your {isEreport ? "e-report" : "feedback"}. We only ask once.
         </p>
       </div>
 
@@ -220,11 +256,36 @@ export function SubmissionSurveyForm({
           </div>
         )}
 
-        {/* 1. Name (optional) */}
+        {/* 1. Respondent type */}
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold text-foreground block">
+            1. You are a: <span className="text-primary font-bold">*</span>
+          </Label>
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+            {RESPONDENT_TYPE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setRespondentType(option.value)}
+                disabled={isSubmitting}
+                className={cn(
+                  "h-9 rounded-md border text-xs font-medium transition-all text-center px-2 cursor-pointer",
+                  respondentType === option.value
+                    ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/40 shadow-xs"
+                    : "border-input bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Name (optional) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="survey-name" className="text-xs font-semibold text-foreground">
-              1. Name <span className="font-normal text-muted-foreground">(optional)</span>
+              2. Name <span className="font-normal text-muted-foreground">(optional)</span>
             </Label>
           </div>
           <Input
@@ -238,12 +299,12 @@ export function SubmissionSurveyForm({
           />
         </div>
 
-        {/* 2. Age & 3. Gender */}
+        {/* 3. Age & 4. Gender */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {/* 2. Age */}
+          {/* 3. Age */}
           <div className="space-y-1.5">
             <Label htmlFor="survey-age" className="text-xs font-semibold text-foreground">
-              2. Age
+              3. Age
             </Label>
             <Input
               id="survey-age"
@@ -258,10 +319,10 @@ export function SubmissionSurveyForm({
             />
           </div>
 
-          {/* 3. Gender */}
+          {/* 4. Gender */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground">
-              3. Gender
+              4. Gender
             </Label>
             <div className="grid grid-cols-2 gap-1.5">
               {GENDER_OPTIONS.map((option) => (
@@ -284,10 +345,10 @@ export function SubmissionSurveyForm({
           </div>
         </div>
 
-        {/* 4. How did you find out about us? */}
+        {/* 5. How did you find out about us? */}
         <div className="space-y-2 pt-1">
           <Label className="text-xs font-semibold text-foreground block">
-            4. How did you find out about us? <span className="text-primary font-bold">*</span>
+            5. How did you find out about us? <span className="text-primary font-bold">*</span>
           </Label>
           <div className="grid grid-cols-1 gap-2">
             {REFERRAL_OPTIONS.map((option) => {

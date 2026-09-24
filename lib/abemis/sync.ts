@@ -388,6 +388,7 @@ async function upsertProjectValues(values: ProjectInsert[]) {
         psgcCode: sql`excluded.psgc_code`,
         metadata: sql`excluded.metadata`,
         commodities: sql`excluded.commodities`,
+        farmOperation: sql`excluded.farm_operation`,
         geom: sql`excluded.geom`,
         lastSyncedAt: sql`excluded.last_synced_at`,
         updatedAt: sql`excluded.updated_at`,

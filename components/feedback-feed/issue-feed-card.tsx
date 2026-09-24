@@ -1,19 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import {
   MapPin,
   ArrowUpRight,
-  MessageSquare,
-  ChevronUp,
-  ChevronDown,
+  MessageCircle,
+  AlertTriangle,
+  Globe,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import type { IssueActivityItem } from "@/types/activity-feed.types";
 import { ProjectPreviewSheet } from "@/components/feedback-feed/project-preview-sheet";
-
+import { getAnonymousUser } from "@/lib/anonymous-identifier";
+import { AnonymousIcon } from "@/components/shared/anonymous-avatar";
+import { SocialShareMenu } from "./social-share-menu";
+import { PostOptionsMenu } from "./post-options-menu";
 
 // ─── Helpers ───────────────────────────────────────────
 
@@ -35,92 +38,167 @@ interface IssueFeedCardProps {
 export function IssueFeedCard({ item }: IssueFeedCardProps) {
   const [responsesExpanded, setResponsesExpanded] = useState(false);
   const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
-  const displayName = "Citizen report";
+  const [isExpandedText, setIsExpandedText] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+
+  const anon = useMemo(() => getAnonymousUser(item.id), [item.id]);
+  const displayName = `Citizen Report #${anon.number}`;
+  const locationText = [item.barangay, item.city, item.province].filter(Boolean).join(", ");
+  const responseCount = Math.max(item.responseCount, item.recentResponses.length);
+  const isLongText = (item.issueDescription || "").length > 280;
+  const displayText = isLongText && !isExpandedText ? `${item.issueDescription.slice(0, 280)}...` : item.issueDescription;
+
+  if (isHidden) {
+    return (
+      <div className="bg-slate-100/80 dark:bg-slate-900/40 rounded-xl p-4 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-800/60">
+        <span>Report hidden from your feed.</span>
+        <button
+          type="button"
+          onClick={() => setIsHidden(false)}
+          className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+        >
+          Undo
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-shadow hover:shadow-md hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50">
-      <div className="p-4 sm:p-5">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3 mb-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {/* Reporter avatar */}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-white dark:ring-slate-900">
-              <span className="text-white text-xs font-bold">
-                {getInitials(displayName)}
+    <div className="bg-white dark:bg-[#0d1526] rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md transition-shadow duration-200">
+      {/* Facebook-style Card Header */}
+      <div className="p-4 pb-2.5 flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Reporter avatar */}
+          <div
+            className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full ${anon.gradient} flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ${anon.ringColor} shadow-xs`}
+          >
+            <AnonymousIcon
+              name={anon.iconName}
+              className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-white drop-shadow-xs"
+            />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-[15px] text-slate-900 dark:text-white leading-tight">
+                {displayName}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/40">
+                <AlertTriangle className="w-3 h-3" />
+                Reported Issue
               </span>
             </div>
 
-            <div className="min-w-0 flex-1">
-              <div className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                {displayName}
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 flex-wrap">
-                <span className="whitespace-nowrap">
-                  {format(new Date(item.createdAt), "MMM d, yyyy")}
-                </span>
-                <span className="text-slate-400 dark:text-slate-500">·</span>
-                <span className="text-orange-600 dark:text-orange-400 font-medium">
-                  Reported Issue
-                </span>
-                {item.project && (
-                  <>
-                    <span className="text-slate-400 dark:text-slate-500">·</span>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewProjectId(item.project!.id)}
-                      className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline truncate max-w-[140px] sm:max-w-[200px] cursor-pointer"
-                      title={item.project.name}
-                    >
-                      <MapPin className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">{item.project.name}</span>
-                    </button>
-                  </>
-                )}
-              </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex-wrap">
+              <span className="whitespace-nowrap">
+                {format(new Date(item.createdAt), "MMM d, yyyy")}
+              </span>
+              <span className="text-slate-400 dark:text-slate-600">·</span>
+              <span title="Public report" className="inline-flex items-center">
+                <Globe className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+              </span>
+              {item.project && (
+                <>
+                  <span className="text-slate-400 dark:text-slate-600">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewProjectId(item.project!.id)}
+                    className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400 hover:underline truncate max-w-[200px] sm:max-w-[320px] md:max-w-[420px] cursor-pointer"
+                    title={item.project.name}
+                  >
+                    <MapPin className="w-3 h-3 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span className="truncate">{item.project.name}</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Issue description */}
-        <p className="text-sm sm:text-[15px] text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-3 mb-2 break-words">
-          {item.issueDescription}
-        </p>
+        {/* Facebook 3-dots action menu */}
+        <PostOptionsMenu
+          postId={item.id}
+          postType="issue"
+          projectName={item.project?.name}
+          onViewProject={item.project ? () => setPreviewProjectId(item.project!.id) : undefined}
+          onHidePost={() => setIsHidden(true)}
+        />
+      </div>
 
-        {/* Location */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-3">
-          <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-          <span>
-            {[item.barangay, item.city, item.province].filter(Boolean).join(", ") || "Location unavailable"}
+      {/* Issue description */}
+      <div className="px-4 pt-1 pb-3">
+        <p className="text-[15px] sm:text-base text-slate-900 dark:text-slate-100 leading-relaxed break-words whitespace-pre-line">
+          {displayText}
+        </p>
+        {isLongText && (
+          <button
+            type="button"
+            onClick={() => setIsExpandedText((prev) => !prev)}
+            className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:underline mt-1 cursor-pointer"
+          >
+            {isExpandedText ? "See less" : "See more"}
+          </button>
+        )}
+
+        {/* Location badge */}
+        {locationText && (
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-2">
+            <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+            <span>{locationText}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Engagement Counter */}
+      <div className="px-4 py-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-1.5">
+          <span className="px-2 py-0.5 rounded-md font-medium text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 capitalize">
+            Status: {item.status || "Pending"}
           </span>
         </div>
 
-        {/* Action bar */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-[#1e3a5f]/20">
-          {/* View details link */}
-          <Link
-            href={`/report-issue/${item.id}`}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors"
-          >
-            View Details
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </Link>
-
-          {/* Responses toggle */}
+        {responseCount > 0 && (
           <button
+            type="button"
             onClick={() => setResponsesExpanded((prev) => !prev)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            className="hover:underline cursor-pointer font-medium"
           >
-            <MessageSquare className="w-4 h-4" />
-            <span>
-              {Math.max(item.responseCount, item.recentResponses.length)} Response{Math.max(item.responseCount, item.recentResponses.length) !== 1 ? "s" : ""}
-            </span>
-            {responsesExpanded ? (
-              <ChevronUp className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5" />
-            )}
+            {responseCount} response{responseCount !== 1 ? "s" : ""}
           </button>
-        </div>
+        )}
+      </div>
+
+      {/* Facebook Action Bar */}
+      <div className="mx-4 py-1 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-1">
+        {/* View Details link */}
+        <Link
+          href={`/report-issue/${item.id}`}
+          className="flex-1 flex items-center justify-center gap-2 py-2 px-2 rounded-lg text-xs sm:text-sm font-semibold text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/30 transition-colors"
+        >
+          <ArrowUpRight className="w-4 h-4" />
+          <span>View Details</span>
+        </Link>
+
+        {/* Responses toggle */}
+        <button
+          type="button"
+          onClick={() => setResponsesExpanded((prev) => !prev)}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            responsesExpanded
+              ? "text-[#1877F2] dark:text-[#3982f6] bg-blue-50/70 dark:bg-blue-950/40 font-bold"
+              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70"
+          }`}
+        >
+          <MessageCircle className="w-4.5 h-4.5" />
+          <span>Responses</span>
+        </button>
+
+        {/* Social Share Menu (Facebook, X, WhatsApp, LinkedIn, Telegram, Device, Copy) */}
+        <SocialShareMenu
+          url={`/citizen-feed#issue-${item.id}`}
+          title={`Reported Issue on ${item.project?.name || "INFRA Watch"}`}
+          text={item.issueDescription || undefined}
+        />
       </div>
 
       {/* Responses section (expandable) */}
@@ -133,38 +211,36 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-slate-100 dark:border-[#1e3a5f]/20 pt-3 space-y-2 bg-slate-50/50 dark:bg-[#080d16]/55">
+            <div className="p-4 border-t border-slate-200/80 dark:border-slate-800 space-y-2.5 bg-slate-50/60 dark:bg-[#070b14]/70">
               {item.recentResponses.length > 0 ? (
                 <>
                   {item.recentResponses.map((response) => (
                     <div
                       key={response.id}
-                      className="flex items-start gap-2.5 p-2.5 rounded-lg bg-white dark:bg-[#0d1526] border border-transparent dark:border-[#1e3a5f]/10"
+                      className="flex items-start gap-2.5"
                     >
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center flex-shrink-0">
-                        <span className="text-white text-[10px] font-bold">
-                          {getInitials(response.responderName)}
-                        </span>
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center flex-shrink-0 text-white text-[11px] font-bold shadow-2xs">
+                        {getInitials(response.responderName)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                        <div className="inline-block bg-white dark:bg-[#0d1526] px-3.5 py-2 rounded-[18px] border border-slate-200/60 dark:border-slate-800/60 shadow-2xs max-w-[95%]">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white block">
                             {response.responderName}
                           </span>
-                          <span className="text-[10px] text-slate-400">
-                            {format(new Date(response.createdAt), "MMM d")}
-                          </span>
+                          <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5 leading-relaxed break-words whitespace-pre-line">
+                            {response.message}
+                          </p>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
-                          {response.message}
-                        </p>
+                        <div className="flex items-center gap-3 px-3 mt-0.5 text-[10px] text-slate-400 font-medium">
+                          <span>{format(new Date(response.createdAt), "MMM d, yyyy")}</span>
+                        </div>
                       </div>
                     </div>
                   ))}
                   {item.responseCount > item.recentResponses.length && (
                     <Link
                       href={`/report-issue/${item.id}`}
-                      className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline pl-2"
+                      className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline pl-2 inline-block pt-1"
                     >
                       View all {item.responseCount} responses
                     </Link>

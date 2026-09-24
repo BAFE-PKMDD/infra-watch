@@ -40,7 +40,6 @@ interface ProjectOverviewProps {
     subProgram?: string;
     prexcProgram?: string;
     yearFunded?: string | number;
-    projectType?: string;
     roadClass?: string;
     roadType?: string;
     roadUsed?: string;
@@ -55,6 +54,7 @@ interface ProjectOverviewProps {
     actualCompletionDate?: Date | string;
     lastSyncedAt?: Date | string;
     commodities?: string[] | null;
+    farmOperation?: string | null;
     agencyData?: Record<string, string | number | boolean | null> | null;
   };
   onShowOnMap?: () => void;
@@ -105,7 +105,7 @@ function DataField({ label, tooltip, value, isMono = false }: DataFieldProps) {
         </Tooltip>
       </div>
       <p className={`text-sm font-medium text-slate-900 dark:text-white break-words ${isMono ? "font-mono text-xs" : ""}`}>
-        {value || "—"}
+        {value || "-"}
       </p>
     </div>
   );
@@ -152,12 +152,12 @@ export function ProjectOverview({ project, onShowOnMap }: ProjectOverviewProps) 
             {/* ── Card 1: Project Identity ────────────────── */}
             <SectionCard
               icon={<ClipboardList className="w-4 h-4" />}
-              title={t("projectDetail.overview.projectTitle")}
+              title={t("projectDetail.overview.projectType")}
             >
               <DataField
-                label={t("projectDetail.overview.projectTitle")}
-                tooltip={t("projectDetail.overview.projectTitleTooltip")}
-                value={project.name}
+                label={t("projectDetail.overview.projectType")}
+                tooltip={t("projectDetail.overview.projectTypeTooltip")}
+                value={project.projectType}
               />
               <DataField
                 label={t("projectDetail.overview.projectCode")}
@@ -314,11 +314,6 @@ export function ProjectOverview({ project, onShowOnMap }: ProjectOverviewProps) 
                   />
                 )}
               </div>
-              <DataField
-                label={t("projectDetail.overview.scopeOfWork")}
-                tooltip={t("projectDetail.overview.scopeOfWorkTooltip")}
-                value={project.scope}
-              />
               {(project.roadClass || project.roadType) && (
                 <div className="grid grid-cols-2 gap-4">
                   {project.roadClass && (
@@ -336,6 +331,14 @@ export function ProjectOverview({ project, onShowOnMap }: ProjectOverviewProps) 
                     />
                   )}
                 </div>
+              )}
+
+              {project.farmOperation && (
+                <DataField
+                  label={t("projectDetail.overview.farmOperation")}
+                  tooltip={t("projectDetail.overview.farmOperationTooltip")}
+                  value={project.farmOperation}
+                />
               )}
 
               {/* Commodities */}
@@ -391,7 +394,7 @@ export function ProjectOverview({ project, onShowOnMap }: ProjectOverviewProps) 
                           <span className="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">{key}</span>
                         </div>
                         <p className="text-sm font-medium text-slate-900 dark:text-white break-words">
-                          {value !== null && value !== undefined ? String(value) : "—"}
+                          {value !== null && value !== undefined ? String(value) : "-"}
                         </p>
                       </div>
                     ))}

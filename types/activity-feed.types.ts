@@ -57,4 +57,4 @@ export interface IssueActivityItem {
 export type ActivityFeedItem = FeedbackActivityItem | IssueActivityItem;
 
 /** Filter type for the activity feed */
-export type ActivityFeedFilter = "all" | "feedback" | "issue";
+export type ActivityFeedFilter = "all" | "feedback" | "issue" | "saved";

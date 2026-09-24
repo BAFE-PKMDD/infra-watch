@@ -58,6 +58,11 @@ const LeafletEvidenceMap = dynamic(
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+// Target ~195 KB/s combined so a recording can run roughly 8-9 minutes before
+// hitting MAX_VIDEO_BYTES, instead of the browser's default (much higher, and
+// resolution-dependent) bitrate silently eating into that budget in 2-3 minutes.
+const VIDEO_BITS_PER_SECOND = 1_500_000;
+const AUDIO_BITS_PER_SECOND = 64_000;
 const GEO_EVIDENCE_ACCEPT = `${UPLOAD_ACCEPT},${GPS_INFO_ACCEPT}`;
 
 export type GeoEvidenceReadyItem = {
@@ -669,7 +674,12 @@ export function GeoEvidenceUpload({
     setCameraStarting(true);
     void requestCameraLocation(session);
     try {
-      const video = { facingMode: { ideal: "environment" } };
+      // Cap the video-mode capture resolution so the recording stays well under
+      // MAX_VIDEO_BYTES at a longer duration; photo mode keeps the camera's native
+      // resolution since a single still frame is nowhere near the 5 MB photo limit.
+      const video: MediaTrackConstraints = mode === "video"
+        ? { facingMode: { ideal: "environment" }, width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: { ideal: 24, max: 30 } }
+        : { facingMode: { ideal: "environment" } };
       let stream: MediaStream;
       let withoutAudio = false;
       try {
@@ -757,11 +767,11 @@ export function GeoEvidenceUpload({
     stopCamera();
   };
 
-  const startRecording = () => {
+  const startRecording = (withoutLocation = false) => {
     const stream = streamRef.current;
     if (captureBusyRef.current || (recorderRef.current && recorderRef.current.state !== "inactive")) return;
     const initialPosition = cameraPositionRef.current;
-    if (!initialPosition) {
+    if (!withoutLocation && !initialPosition) {
       toast.error("A location fix is required before starting a GeoVideo.", {
         description: cameraLocationError || "Wait for GPS or choose Retry location.",
       });
@@ -775,7 +785,12 @@ export function GeoEvidenceUpload({
     const session = cameraSessionRef.current;
     const mimeType = recordingMimeType();
     try {
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const recorderOptions: MediaRecorderOptions = {
+        videoBitsPerSecond: VIDEO_BITS_PER_SECOND,
+        audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+        ...(mimeType ? { mimeType } : {}),
+      };
+      const recorder = new MediaRecorder(stream, recorderOptions);
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -788,17 +803,14 @@ export function GeoEvidenceUpload({
       recorderRef.current = recorder;
       const startedAt = performance.now();
       recordingStartedAtRef.current = startedAt;
-      const initialPoint: GeoTrackPoint = {
-        lat: initialPosition.lat,
-        lon: initialPosition.lon,
-        accuracy: initialPosition.accuracy,
-        timeSeconds: 0,
-      };
-      recordingTrackRef.current = [initialPoint];
+      const initialPoint: GeoTrackPoint | null = initialPosition
+        ? { lat: initialPosition.lat, lon: initialPosition.lon, accuracy: initialPosition.accuracy, timeSeconds: 0 }
+        : null;
+      recordingTrackRef.current = initialPoint ? [initialPoint] : [];
       recordingActiveRef.current = true;
-      recordingLocationPromiseRef.current = Promise.resolve(initialPoint);
+      recordingLocationPromiseRef.current = initialPoint ? Promise.resolve(initialPoint) : null;
       recorder.start(1000);
-      setRecordingPointCount(1);
+      setRecordingPointCount(recordingTrackRef.current.length);
       if (navigator.geolocation) {
         locationWatchIdRef.current = navigator.geolocation.watchPosition(
           (browserPosition) => {
@@ -959,15 +971,14 @@ export function GeoEvidenceUpload({
             htmlFor={inputId}
             className={cn(
               "group flex flex-col items-center justify-center gap-2 border-slate-200 text-center transition dark:border-slate-800",
-              compact ? "min-h-24 border-r p-3" : "min-h-32 border-b p-5 sm:border-r sm:border-b-0",
-              canChooseFiles ? "cursor-pointer hover:bg-emerald-500/5" : "cursor-not-allowed opacity-50",
+              compact ? "min-h-20 border-r p-3" : "min-h-24 border-b p-4 sm:border-r sm:border-b-0",
+              canChooseFiles ? "cursor-pointer hover:bg-primary/5" : "cursor-not-allowed opacity-50",
             )}
           >
-            <span className={cn("grid place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 transition-transform group-hover:-translate-y-0.5 dark:text-emerald-400", compact ? "size-9" : "size-11")}>
+            <span className={cn("grid place-items-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:-translate-y-0.5", compact ? "size-9" : "size-10")}>
               <FileUp className="size-5" />
             </span>
             <span className={cn("font-extrabold text-slate-900 dark:text-white", compact ? "text-xs" : "text-sm")}>Upload files</span>
-            <span className={cn("text-[11px] leading-4 text-slate-500", compact && "hidden sm:block")}>Photos, videos, or a DA MP4 + GPS .info pair</span>
             <input
               id={inputId}
               type="file"
@@ -984,15 +995,14 @@ export function GeoEvidenceUpload({
             disabled={!canAddMore}
             onClick={() => void openCamera("photo")}
             className={cn(
-              "group flex flex-col items-center justify-center gap-2 border-slate-200 text-center transition hover:bg-sky-500/5 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800",
-              compact ? "min-h-24 border-r p-3" : "min-h-32 border-b p-5 sm:border-r sm:border-b-0",
+              "group flex flex-col items-center justify-center gap-2 border-slate-200 text-center transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800",
+              compact ? "min-h-20 border-r p-3" : "min-h-24 border-b p-4 sm:border-r sm:border-b-0",
             )}
           >
-            <span className={cn("grid place-items-center rounded-xl bg-sky-500/10 text-sky-600 transition-transform group-hover:-translate-y-0.5 dark:text-sky-400", compact ? "size-9" : "size-11")}>
+            <span className={cn("grid place-items-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:-translate-y-0.5", compact ? "size-9" : "size-10")}>
               <Camera className="size-5" />
             </span>
             <span className={cn("font-extrabold text-slate-900 dark:text-white", compact ? "text-xs" : "text-sm")}>Take photo</span>
-            <span className={cn("text-[11px] leading-4 text-slate-500", compact && "hidden sm:block")}>Camera + current GPS position</span>
           </button>
 
           <button
@@ -1000,26 +1010,31 @@ export function GeoEvidenceUpload({
             disabled={!canAddMore}
             onClick={() => void openCamera("video")}
             className={cn(
-              "group flex flex-col items-center justify-center gap-2 text-center transition hover:bg-amber-500/5 disabled:cursor-not-allowed disabled:opacity-50",
-              compact ? "min-h-24 p-3" : "min-h-32 p-5",
+              "group flex flex-col items-center justify-center gap-2 text-center transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50",
+              compact ? "min-h-20 p-3" : "min-h-24 p-4",
             )}
           >
-            <span className={cn("grid place-items-center rounded-xl bg-amber-500/10 text-amber-600 transition-transform group-hover:-translate-y-0.5 dark:text-amber-400", compact ? "size-9" : "size-11")}>
+            <span className={cn("grid place-items-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:-translate-y-0.5", compact ? "size-9" : "size-10")}>
               <Video className="size-5" />
             </span>
             <span className={cn("font-extrabold text-slate-900 dark:text-white", compact ? "text-xs" : "text-sm")}>Record video</span>
-            <span className={cn("text-[11px] leading-4 text-slate-500", compact && "hidden sm:block")}>Timed GPS route while recording</span>
           </button>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-2.5 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-          <span className="inline-flex items-center gap-1.5 font-semibold">
-            <Crosshair className="size-3.5 text-emerald-500" />
-            {sidecarProcessing
-              ? <><Loader2 className="size-3.5 animate-spin" /> Reading DA GeoCamera route&hellip;</>
-              : <>DA GPS .info files stay on your device; the extracted route is submitted with the video.</>}
-          </span>
-          {!compact ? <span className="font-bold tabular-nums">{items.length}/{maxFiles} files</span> : null}
-        </div>
+        {(sidecarProcessing || !compact) && (
+          <div className={cn(
+            "flex items-center gap-2 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400",
+            sidecarProcessing ? "justify-between" : "justify-end",
+          )}>
+            {sidecarProcessing && (
+              <span className="inline-flex items-center gap-1.5 font-semibold">
+                <Loader2 className="size-3.5 animate-spin" /> Reading DA GeoCamera route&hellip;
+              </span>
+            )}
+            {!compact && (
+              <span className="font-bold tabular-nums">Maximum {maxFiles} files ({items.length}/{maxFiles})</span>
+            )}
+          </div>
+        )}
       </div>
 
       {items.length > 0 ? (
@@ -1299,19 +1314,33 @@ export function GeoEvidenceUpload({
                     {captureBusy ? "Finalizing…" : "Stop recording"}
                   </Button>
                 ) : (
-                  <Button
-                    type="button"
-                    size="lg"
-                    disabled={cameraStarting || captureBusy || !cameraLocationReady}
-                    aria-describedby={cameraGpsStatusId}
-                    onClick={startRecording}
-                    className="min-h-11 rounded-full bg-amber-500 px-7 text-slate-950 hover:bg-amber-400"
-                  >
-                    {cameraLocationStatus === "locating"
-                      ? <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                      : <Radio className="size-4" aria-hidden="true" />}
-                    {cameraLocationStatus === "locating" ? "Finding GPS…" : "Start GeoVideo recording"}
-                  </Button>
+                  <>
+                    <Button
+                      type="button"
+                      size="lg"
+                      disabled={cameraStarting || captureBusy || !cameraLocationReady}
+                      aria-describedby={cameraGpsStatusId}
+                      onClick={() => startRecording()}
+                      className="min-h-11 rounded-full bg-amber-500 px-7 text-slate-950 hover:bg-amber-400"
+                    >
+                      {cameraLocationStatus === "locating"
+                        ? <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                        : <Radio className="size-4" aria-hidden="true" />}
+                      {cameraLocationStatus === "locating" ? "Finding GPS…" : "Start GeoVideo recording"}
+                    </Button>
+                    {cameraLocationStatus === "error" ? (
+                      <Button
+                        type="button"
+                        size="lg"
+                        variant="outline"
+                        disabled={cameraStarting || captureBusy}
+                        onClick={() => startRecording(true)}
+                        className="min-h-11 rounded-full border-white/25 bg-white/5 px-6 text-white hover:bg-white/15 hover:text-white"
+                      >
+                        <Radio className="size-4" aria-hidden="true" /> Record without location
+                      </Button>
+                    ) : null}
+                  </>
                 )}
               </div>
             </div>

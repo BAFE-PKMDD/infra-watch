@@ -1,5 +1,6 @@
 import type { AbemisProject } from "@/types/api.types";
 import { buildProjectGeometry } from "@/lib/data-quality/project-quality";
+import { getProjectTypeMapping, normalizeProjectType } from "./project-type-map";
 
 
 function parseNumber(value: string | number | null | undefined) {
@@ -68,15 +69,6 @@ function inferProgram(project: AbemisProject) {
   return "AMEFIP";
 }
 
-function normalizeProjectType(value: string | null | undefined) {
-  return (value ?? "")
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/[-\u2010-\u2015]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 /**
  * InfraWatch excludes Farm-to-Market Road records because those are owned by
  * the separate FMR Watch application.
@@ -112,6 +104,7 @@ export function transformAbemisProject(project: AbemisProject) {
   const financialProgress = inferProgress(project, "target");
   const latitude = parseCoordinate(project.latitude, -90, 90);
   const longitude = parseCoordinate(project.longitude, -180, 180);
+  const typeMapping = getProjectTypeMapping(project.project_type);
 
   return {
     abemisRawId: project.id,
@@ -138,7 +131,8 @@ export function transformAbemisProject(project: AbemisProject) {
     operatingUnit: project.operating_unit || null,
     bannerProgram: project.banner_program || null,
     yearFunded: project.year_funded || null,
-    projectType: project.project_type || "Infrastructure",
+    projectType: typeMapping?.proposedProjectType || project.project_type || "Infrastructure",
+    farmOperation: typeMapping?.farmOperation || null,
     region: project.region || project.psgc?.region || null,
     district: project.district || null,
     stage: project.stage || null,
@@ -169,7 +163,7 @@ export function transformAbemisProject(project: AbemisProject) {
       procurementRelation: getProcurementRows(project),
       kmllink: project.kmllink ?? project.kml_link,
     },
-    commodities: [],
+    commodities: typeMapping?.applicableCommodities ?? [],
     geom: buildProjectGeometry(latitude, longitude),
   };
 }

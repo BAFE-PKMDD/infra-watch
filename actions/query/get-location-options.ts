@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { projects, psgcLocations } from "@/lib/db/schema";
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, inArray, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { PUBLIC_STAGES } from "@/constants/stage-mapping";
 
@@ -16,87 +16,87 @@ export type LocationOption = {
 const CACHE_TTL = 3600; // 1 hour
 
 
-/**
- * Get all available regions
- */
+// The upstream PSGC API reuses the same 2-digit regCode1 across genuinely different
+// regions (e.g. Negros Occidental keeps Region VI's "06" and Negros Oriental keeps
+// Region VII's "07" even though both are tagged region_name "NEGROS ISLAND REGION
+// (NIR)"; BARMM rows are similarly split across regCode1 "12" and "15"). regCode1
+// alone can't identify a region, so we group by region_name instead and derive each
+// region's "value" as the set of province-level (regCode1+provCode1) prefixes that
+// actually carry that name — that's the finest granularity where e.g. Negros Occidental
+// is distinguishable from the rest of Western Visayas despite sharing a region code.
+const REGION_NAME_ORDER: Record<string, number> = {
+  "REGION I (ILOCOS REGION)": 1,
+  "REGION II (CAGAYAN VALLEY)": 2,
+  "REGION III (CENTRAL LUZON)": 3,
+  "REGION IV-A (CALABARZON)": 4,
+  "REGION IV-B (MIMAROPA)": 5,
+  "REGION V (BICOL REGION)": 6,
+  "REGION VI (WESTERN VISAYAS)": 7,
+  "NEGROS ISLAND REGION (NIR)": 8,
+  "REGION VII (CENTRAL VISAYAS)": 9,
+  "REGION VIII (EASTERN VISAYAS)": 10,
+  "REGION IX (ZAMBOANGA PENINSULA)": 11,
+  "REGION X (NORTHERN MINDANAO)": 12,
+  "REGION XI (DAVAO REGION)": 13,
+  "REGION XII (SOCCSKSARGEN)": 14,
+  "REGION XIII (CARAGA)": 15,
+  "CORDILLERA ADMINISTRATIVE REGION (CAR)": 16,
+  "NATIONAL CAPITAL REGION (NCR)": 17,
+  "BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO (BARMM)": 18,
+};
+
 /**
  * Get all available regions
  */
 export async function getRegions() {
   return unstable_cache(
     async (): Promise<LocationOption[]> => {
-      const regions = await db
+      const rows = await db
         .selectDistinct({
-          name: psgcLocations.regionName,
-          code: psgcLocations.regCode1,
+          name: sql<string>`btrim(${psgcLocations.regionName})`,
+          regCode: psgcLocations.regCode1,
+          provCode: psgcLocations.provCode1,
         })
-        .from(psgcLocations)
-        .orderBy(asc(psgcLocations.regionName));
+        .from(psgcLocations);
 
-      const uniqueMap = new Map<string, LocationOption>();
+      const groups = new Map<string, Set<string>>();
 
-      regions.forEach(r => {
-        if (r.name && r.code && !uniqueMap.has(r.code)) {
-          // TODO: To fix this more permanently later, we should consider using geoCode instead of regCode1 (geo_code1)
-          // as the primary identifier for regions to avoid mapping inconsistencies in the source data.
-          let label = r.name;
-
-          // Override inconsistent database names
-          if (r.code === "12") {
-            label = "REGION XII (SOCCSKSARGEN)";
-          } else if (r.code === "15") {
-            label = "BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO (BARMM)";
-          }
-
-          uniqueMap.set(r.code, {
-            label: label,
-            value: r.code
-          });
-        }
+      rows.forEach(r => {
+        if (!r.name || !r.regCode || !r.provCode) return;
+        if (!groups.has(r.name)) groups.set(r.name, new Set());
+        groups.get(r.name)!.add(`${r.regCode}${r.provCode}`);
       });
 
-      // Custom sort order for Philippine regions
-      // IV-B (17) should come after IV-A (04), XIII (13) should come after XII (12)
-      const regionOrder: Record<string, number> = {
-        "01": 1,  // Region I
-        "02": 2,  // Region II
-        "03": 3,  // Region III
-        "04": 4,  // Region IV-A
-        "17": 5,  // Region IV-B (MIMAROPA)
-        "05": 6,  // Region V
-        "06": 7,  // Region VI
-        "07": 8,  // Region VII
-        "08": 9,  // Region VIII
-        "09": 10, // Region IX
-        "10": 11, // Region X
-        "11": 12, // Region XI
-        "12": 13, // Region XII
-        "13": 16, // Region XIII (Caraga)
-        "14": 15, // CAR
-        "16": 13, // NCR
-        "15": 17, // BARMM
-      };
+      const regions = Array.from(groups.entries()).map(([name, prefixes]) => ({
+        label: name,
+        value: Array.from(prefixes).sort().join(","),
+      }));
 
-      return Array.from(uniqueMap.values()).sort((a, b) => {
-        const orderA = regionOrder[a.value] ?? parseInt(a.value);
-        const orderB = regionOrder[b.value] ?? parseInt(b.value);
-        return orderA - orderB;
+      return regions.sort((a, b) => {
+        const orderA = REGION_NAME_ORDER[a.label] ?? 99;
+        const orderB = REGION_NAME_ORDER[b.label] ?? 99;
+        return orderA !== orderB ? orderA - orderB : a.label.localeCompare(b.label);
       });
     },
-    ["location-regions-codes-v3"],
+    ["location-regions-codes-v4"],
     { revalidate: CACHE_TTL }
   )();
 }
 
 /**
  * Get provinces for a specific region
- * @param regionCode - The region code (regCode1 e.g. "01")
+ * @param regionValue - Comma-separated province-level prefixes (regCode1+provCode1) from getRegions()
  */
-export async function getProvinces(regionCode: string) {
-  if (!regionCode || regionCode === "all") return [];
+export async function getProvinces(regionValue: string) {
+  if (!regionValue || regionValue === "all") return [];
+
+  const prefixes = regionValue.split(",").filter(Boolean);
+  if (prefixes.length === 0) return [];
 
   return unstable_cache(
     async (): Promise<LocationOption[]> => {
+      const provinceKey = sql`${psgcLocations.regCode1} || ${psgcLocations.provCode1}`;
+
       const provinces = await db
         .selectDistinct({
           name: psgcLocations.provinceName,
@@ -104,7 +104,7 @@ export async function getProvinces(regionCode: string) {
           provCode: psgcLocations.provCode1,
         })
         .from(psgcLocations)
-        .where(eq(psgcLocations.regCode1, regionCode))
+        .where(inArray(provinceKey, prefixes))
         .orderBy(asc(psgcLocations.provinceName));
 
       const uniqueMap = new Map<string, LocationOption>();
@@ -123,7 +123,7 @@ export async function getProvinces(regionCode: string) {
 
       return Array.from(uniqueMap.values());
     },
-    [`location-provinces-code-v2-${regionCode}`],
+    [`location-provinces-code-v3-${regionValue}`],
     { revalidate: CACHE_TTL }
   )();
 }

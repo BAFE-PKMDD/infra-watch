@@ -27,7 +27,10 @@ import { getUploadErrorTitle } from "@/lib/upload-errors";
 import { isAllowedClientUploadType, UPLOAD_ACCEPT, uploadKindFromType } from "@/lib/upload-policy";
 import { ProjectSearchInput, type SelectedProject } from "@/components/ui/project-search-input";
 import { SubmissionSurveyModal } from "@/components/shared/submission-survey-modal";
+import { useSubmissionSurveyGate } from "@/hooks/use-submission-survey-gate";
 import type { FeedbackCategory, FeedbackMedia } from "@/types/feedback.types";
+import { getAnonymousUser } from "@/lib/anonymous-identifier";
+import { AnonymousIcon } from "@/components/shared/anonymous-avatar";
 
 
 const CATEGORIES: { value: FeedbackCategory; label: string; icon: LucideIcon }[] = [
@@ -81,6 +84,7 @@ function getInitials(name: string): string {
 
 export function FeedbackComposer() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { needsSurvey } = useSubmissionSurveyGate(isAuthenticated);
   const queryClient = useQueryClient();
 
 
@@ -97,7 +101,8 @@ export function FeedbackComposer() {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [media, setMedia] = useState<FeedbackMedia[]>([]);
   const [isProcessingMedia, setIsProcessingMedia] = useState(false);
-  const [submittedFeedbackId, setSubmittedFeedbackId] = useState<string | null>(null);
+  const [showPreSubmitSurvey, setShowPreSubmitSurvey] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -159,8 +164,6 @@ export function FeedbackComposer() {
           projectId: selectedProject?.sourceId || selectedProject?.id,
         },
       });
-      // Open survey modal
-      setSubmittedFeedbackId(result?.data?.id || "feedback-submitted");
       // Reset form
       resetForm();
       // Refresh the feed
@@ -168,6 +171,8 @@ export function FeedbackComposer() {
     },
 
     onError: (error: Error) => {
+      // Send them back to the editable form so they can see and fix the problem.
+      setIsReviewing(false);
       toast.error("Submission failed", { description: error.message });
     },
   });
@@ -179,6 +184,7 @@ export function FeedbackComposer() {
     setIsAnonymous(false);
     setMedia([]);
     setSelectedProject(null);
+    setIsReviewing(false);
   };
 
   // Handle file upload
@@ -239,6 +245,18 @@ export function FeedbackComposer() {
     }
   };
 
+  const submitFeedback = () => {
+    if (!selectedProject) return;
+    submitMutation.mutate({
+      projectId: selectedProject.sourceId || selectedProject.id,
+      comment,
+      category,
+      rating: rating || undefined,
+      isAnonymous,
+      media,
+    });
+  };
+
   // Submit handler
   const handleSubmit = () => {
     if (!selectedProject) {
@@ -250,19 +268,20 @@ export function FeedbackComposer() {
       return;
     }
 
-    submitMutation.mutate({
-      projectId: selectedProject.sourceId || selectedProject.id,
-      comment,
-      category,
-      rating: rating || undefined,
-      isAnonymous,
-      media,
-    });
+    setIsReviewing(true);
+  };
+
+  const handleConfirmSubmit = () => {
+    if (needsSurvey) {
+      setShowPreSubmitSurvey(true);
+      return;
+    }
+    submitFeedback();
   };
 
   const isSubmitting = submitMutation.isPending;
   const isUploading = uploadMutation.isPending || isProcessingMedia;
-  const canSubmit = !!selectedProject && comment.trim().length > 0 && !isSubmitting && !isUploading;
+  const canSubmit = !!selectedProject && comment.trim().length > 0 && !isSubmitting && !isUploading && !showPreSubmitSurvey;
 
   // Non-authenticated prompt
   if (!authLoading && !isAuthenticated) {
@@ -294,29 +313,56 @@ export function FeedbackComposer() {
       <div className="p-4 sm:p-5">
         {/* Header */}
         <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-500 to-teal-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-            {user?.image ? (
-              <Image
-                src={user.image}
-                alt={user.name || "You"}
-                width={36}
-                height={36}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-white text-[10px] font-bold">
-                {getInitials(user?.name || "U")}
-              </span>
-            )}
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">
-              {isAnonymous ? "Anonymous" : user?.name || "You"}
-            </p>
-            <p className="text-[11px] text-slate-400">Sharing feedback</p>
-          </div>
+          {(() => {
+            const anonUser = isAnonymous ? getAnonymousUser(user?.id || "draft-anonymous") : null;
+            return (
+              <>
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 text-white text-[11px] font-bold shadow-2xs ${
+                    anonUser
+                      ? `${anonUser.gradient} ring-2 ${anonUser.ringColor}`
+                      : "bg-gradient-to-br from-sky-500 to-teal-600"
+                  }`}
+                >
+                  {!isAnonymous && user?.image ? (
+                    <Image
+                      src={user.image}
+                      alt={user.name || "You"}
+                      width={36}
+                      height={36}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : anonUser ? (
+                    <AnonymousIcon
+                      name={anonUser.iconName}
+                      className="w-4.5 h-4.5 text-white drop-shadow-xs"
+                    />
+                  ) : (
+                    <span>{getInitials(user?.name || "U")}</span>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {anonUser ? anonUser.displayName : user?.name || "You"}
+                    </p>
+                    {anonUser && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                        #{anonUser.number}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    {isAnonymous ? "Sharing feedback anonymously" : "Sharing feedback"}
+                  </p>
+                </div>
+              </>
+            );
+          })()}
         </div>
 
+        {!isReviewing && (
+        <>
         {/* Project Search */}
         <div className="mb-3">
           <ProjectSearchInput
@@ -471,30 +517,86 @@ export function FeedbackComposer() {
               disabled={!canSubmit}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-700 shadow-sm"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span className="hidden sm:inline">Posting...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Post</span>
-                </>
-              )}
+              <Send className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Review</span>
             </button>
           </div>
         </div>
+        </>
+        )}
+
+        {isReviewing && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Review your feedback</h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Check everything below, then confirm to post.</p>
+            </div>
+
+            <div className="space-y-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-[#0a1220]">
+              <ReviewRow label="Project" value={selectedProject?.name || "Not selected"} />
+              <ReviewRow label="Category" value={CATEGORIES.find((cat) => cat.value === category)?.label || category} />
+              <div>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Your Feedback</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{comment}</p>
+              </div>
+              <ReviewRow label="Rating" value={rating > 0 ? `${rating} star${rating > 1 ? "s" : ""}` : "Not rated"} />
+              <ReviewRow label="Attachments" value={media.length === 0 ? "None" : `${media.length} file${media.length > 1 ? "s" : ""}`} />
+              <ReviewRow label="Posting as" value={isAnonymous ? "Anonymous" : user?.name || "You"} />
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setIsReviewing(false)}
+                disabled={isSubmitting}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSubmit}
+                disabled={isSubmitting}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-emerald-700"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Posting...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    Confirm & Post
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <SubmissionSurveyModal
-        isOpen={Boolean(submittedFeedbackId)}
-        onClose={() => setSubmittedFeedbackId(null)}
+        isOpen={showPreSubmitSurvey}
+        onClose={() => setShowPreSubmitSurvey(false)}
+        onComplete={() => {
+          setShowPreSubmitSurvey(false);
+          submitFeedback();
+        }}
         sourceType="feedback"
-        sourceId={submittedFeedbackId}
+        sourceId={null}
         defaultName={user?.name || ""}
       />
     </div>
 
+  );
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</span>
+      <span className="text-sm font-medium text-slate-900 dark:text-white sm:text-right">{value}</span>
+    </div>
   );
 }

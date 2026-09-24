@@ -94,7 +94,7 @@ function StatCard({
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-xl border border-white/15 bg-slate-900 px-3 py-5 text-center shadow-md sm:px-4">
+    <div className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-xl border border-white/20 bg-slate-950/35 px-3 py-5 text-center shadow-md backdrop-blur-md sm:px-4">
       <motion.p
         className="text-2xl font-extrabold tabular-nums text-white md:text-3xl lg:text-4xl"
         animate={!reduceMotion && settled ? { scale: [1, 1.1, 1] } : {}}

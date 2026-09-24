@@ -50,7 +50,7 @@ export function getFileUrl(filePath: string): string {
  * @returns true if it's a full URL, false if it's just a path
  */
 export function isFullUrl(urlOrPath: string): boolean {
-  return urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://');
+  return urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://') || urlOrPath.startsWith('/');
 }
 
 function getLegacyPrivateStoragePath(urlOrPath: string): string | null {

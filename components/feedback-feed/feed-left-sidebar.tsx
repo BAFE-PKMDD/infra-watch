@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -10,8 +11,11 @@ import {
   Bell,
   LogIn,
   User as UserIcon,
+  Bookmark,
 } from "lucide-react";
 import { useAuth } from "@/providers/auth-provider";
+
+const subscribe = () => () => {};
 
 const FEED_VIEWS = [
   { href: "/citizen-feed", label: "Citizen Feed", icon: MessageSquare },
@@ -20,6 +24,7 @@ const FEED_VIEWS = [
 ] as const;
 
 const USER_LINKS = [
+  { href: "/citizen-feed?filter=saved", label: "Saved Posts", icon: Bookmark },
   { href: "/my-feedbacks", label: "My Feedbacks", icon: MessageSquare },
   { href: "/my-issues", label: "My Issues", icon: AlertTriangle },
   { href: "/my-notifications", label: "Notifications", icon: Bell },
@@ -36,6 +41,7 @@ function getInitials(name: string) {
 
 export function FeedLeftSidebar() {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
   const pathname = usePathname();
 
   return (
@@ -43,7 +49,7 @@ export function FeedLeftSidebar() {
       <div className="sticky top-20 space-y-4">
         {/* Profile Card */}
         <div className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          {isLoading ? (
+          {!mounted || isLoading ? (
             <div className="animate-pulse space-y-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-[#13233c]/60" />

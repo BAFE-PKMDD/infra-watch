@@ -105,7 +105,7 @@ export function ProjectHero({ project }: ProjectHeroProps) {
               </div>
             )}
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight drop-shadow-md">{project.name}</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight drop-shadow-md">{project.projectType || project.name}</h1>
           <p className="text-white/90 text-sm md:text-xs max-w-3xl mb-4 line-clamp-2 md:line-clamp-3 drop-shadow-sm font-medium leading-relaxed">
             {project.description || t("projectDetail.monitoringFallback")
               .replace("{name}", project.name)
