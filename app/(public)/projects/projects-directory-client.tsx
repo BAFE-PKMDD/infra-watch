@@ -208,7 +208,6 @@ export default function ProjectsCatalog() {
   const filteredProjects = queryData?.pages.flatMap((page) => page.data) || [];
   const directoryUnavailable = isError || (viewMode === "map" && isMapError);
   const totalCount = queryData?.pages[0]?.totalCount || 0;
-  const directorySource = queryData?.pages[0]?.source;
   const directoryParams = React.useMemo(() => serializePublicProjectDirectoryState({
     searchQuery,
     program: activeProgram,
@@ -482,10 +481,6 @@ export default function ProjectsCatalog() {
               <p className="text-base font-extrabold leading-none text-slate-900 dark:text-white">
                 {totalCount.toLocaleString()} projects found
               </p>
-              <p className="mt-1.5 text-[11px] font-medium text-slate-500 truncate">
-                Source: {directorySource?.name || "ABEMIS infrastructure project feed"}
-                {directorySource?.lastSuccessfulSync ? ` · Last successful sync: ${directorySource.lastSuccessfulSync}` : ""}
-              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
@@ -496,7 +491,7 @@ export default function ProjectsCatalog() {
                 className="w-full sm:w-auto max-w-[210px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
                 style={SELECT_CHEVRON_STYLE}
               >
-                <option value="newest">Recently synchronized</option>
+                <option value="newest">Recently updated</option>
                 <option value="name-asc">Project name A–Z</option>
                 <option value="budget-desc">Approved budget: high to low</option>
                 <option value="budget-asc">Approved budget: low to high</option>

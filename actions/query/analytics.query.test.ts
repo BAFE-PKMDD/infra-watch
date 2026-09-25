@@ -26,6 +26,36 @@ test("returns a typed empty state instead of reference figures", () => {
   assert.deepEqual(result, { status: "empty", data: null });
 });
 
+test("sums approved budget per region, not just national totals", () => {
+  const rows: InfraAnalyticsRow[] = [
+    { ...row, region: "Region VIII", budget: "1000000" },
+    { ...row, region: "Region VIII", budget: "500000" },
+    { ...row, region: "National Capital Region (NCR)", budget: "2000000" },
+    { ...row, region: "Region VIII", budget: null },
+  ];
+  const result = aggregateInfraAnalyticsRows(rows, null);
+  const r8 = result.data?.regionalStats.find((r) => r.region === "R8");
+  const ncr = result.data?.regionalStats.find((r) => r.region === "NCR");
+  assert.equal(r8?.approvedBudget, 1_500_000);
+  assert.equal(r8?.target, 3);
+  assert.equal(ncr?.approvedBudget, 2_000_000);
+});
+
+test("tracks completed-or-turned-over counts per region, matching the national definition", () => {
+  const rows: InfraAnalyticsRow[] = [
+    { ...row, region: "Region VIII", status: "Inventory", stage: null },
+    { ...row, region: "Region VIII", status: "ongoing", stage: "Turned Over" },
+    { ...row, region: "Region VIII", status: "ongoing", stage: "Implementation" },
+    { ...row, region: "National Capital Region (NCR)", status: "ongoing", stage: "Implementation" },
+  ];
+  const result = aggregateInfraAnalyticsRows(rows, null);
+  const r8 = result.data?.regionalStats.find((r) => r.region === "R8");
+  const ncr = result.data?.regionalStats.find((r) => r.region === "NCR");
+  assert.equal(r8?.target, 3);
+  assert.equal(r8?.completedOrTurnedOver, 2);
+  assert.equal(ncr?.completedOrTurnedOver, 0);
+});
+
 test("does not label project-row ingestion time as a successful synchronization", () => {
   const result = aggregateInfraAnalyticsRows([row], null);
   assert.equal(result.data?.source.lastSuccessfulSync, "Unknown");

@@ -6,6 +6,7 @@ import { LanguageProvider } from "@/providers/language-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { NotificationProvider } from "@/providers/notification-provider";
 import { LanguageDialog } from "@/components/language/language-dialog";
+import { CookieConsentBanner } from "@/components/cookie-consent/cookie-consent-banner";
 import { Toaster } from "@/components/ui/sonner";
 
 const poppins = Poppins({
@@ -45,6 +46,7 @@ export default function RootLayout({
               <LanguageProvider>
               <LanguageDialog />
               {children}
+              <CookieConsentBanner />
               <Toaster />
               </LanguageProvider>
             </NotificationProvider>

@@ -191,14 +191,118 @@ export const translations = {
     about: {
       title: "About Us",
       subtitle: "Building Trust Through Transparency",
-      description: "INFRA Watch is the official transparency portal for agricultural infrastructure projects in the Philippines. We empower citizens to monitor, report, and engage with infrastructure developments in their communities.",
+      description: "INFRA Watch is the official transparency portal for agricultural infrastructure projects in the Philippines, led by the Department of Agriculture – Bureau of Agricultural and Fisheries Engineering (DA-BAFE). We empower citizens to monitor, report, and engage with infrastructure developments in their communities.",
       mission: {
         title: "Our Mission",
-        desc: "To provide a transparent, accessible, and participatory monitoring system that ensures quality implementation of agricultural infrastructure."
+        desc: "To provide efficient and effective engineering services for the development and maintenance of agricultural and fisheries infrastructure that improve rural connectivity, enhance food production, and uplift the quality of life of Filipino farmers and fisherfolk."
       },
       vision: {
         title: "Our Vision",
-        desc: "A corruption-free infrastructure development process that directly benefits Filipino farmers and rural communities."
+        desc: "A modernized agricultural and fisheries sector supported by world-class, resilient infrastructure, connecting every farm to market, ensuring every community has access to irrigation and post-harvest facilities, and sustaining national food security."
+      },
+      mandate: {
+        title: "Mandate & Functions",
+        legalBasis: "Republic Act No. 10601 (AFMech Law), Section 24",
+        desc: "Pursuant to Section 24 of Republic Act No. 10601 (Agricultural and Fisheries Mechanization Law), the Bureau of Agricultural and Fisheries Engineering (BAFE) is the regular staff bureau of the Department of Agriculture mandated to coordinate, oversee, and monitor the national planning, implementation, and regulation of agricultural and fisheries engineering projects, farm-to-market road (FMR) networks, and mechanization programs across the country.",
+        functionsTitle: "Core Functions & Responsibilities",
+        functions: [
+          {
+            title: "Infrastructure Planning & Oversight",
+            desc: "Coordinate, oversee, and monitor the national planning and implementation of agri-fisheries engineering, farm-to-market road (FMR) networks, and agricultural infrastructure projects."
+          },
+          {
+            title: "Mechanization Programs",
+            desc: "Assist in the national planning, coordination, and execution of the country's comprehensive agri-fisheries mechanization and modernization programs."
+          },
+          {
+            title: "Engineering Plans, Designs & Standards",
+            desc: "Prepare, evaluate, validate, and recommend engineering plans, designs, and technical specifications for agri-fisheries infrastructure and machinery in adherence to Philippine Agricultural and Biosystems Engineering Standards (PABES)."
+          },
+          {
+            title: "Testing, Accreditation & Regulation",
+            desc: "Promulgate and implement accreditation guidelines for testing centers, validate permits to operate (PTO), and enforce machinery quality and safety standards."
+          },
+          {
+            title: "Capacity Building & LGU Support",
+            desc: "Strengthen and support Agricultural and Biosystems Engineering (ABE) groups in Local Government Units (LGUs) and DA Regional Field Offices for decentralized engineering service delivery."
+          }
+        ]
+      },
+      history: {
+        eyebrow: "Institutional History",
+        agencyName: "Bureau of Agricultural and Fisheries Engineering",
+        acronym: "BAFE",
+        est: "2013",
+        legal: "Republic Act No. 10601 (AFMech Law)",
+        intro: [
+          "The Bureau of Agricultural and Fisheries Engineering (BAFE) is the national engineering arm of the Department of Agriculture, responsible for the development, coordination, regulation, and implementation of agricultural and fisheries engineering, mechanization, and infrastructure programs.",
+          "BAFE was formally established as a regular bureau of the Department through Republic Act No. 10601, the Agricultural and Fisheries Mechanization (AFMech) Law of 2013. Its institutional roots, however, reach further back — to the agricultural engineering structures and mandates that existed within the Department before the bureau's creation.",
+          "The bureau's history traces a single continuous line: from the agricultural engineering foundations laid by earlier legislation, through the Central Agri-Fishery Engineering Division (CAFED), to the creation of BAFE under the AFMech Law, its institutionalization and the strengthening of the national Regional Agricultural Engineering Division (RAED) network, its expanding mechanization and regulatory functions, and — most recently — its leadership of nationwide farm-to-market road implementation and the launch of public monitoring platforms such as this one."
+        ],
+        milestonesLabel: "Milestones",
+        milestones: [
+          {
+            year: "1997",
+            title: "Agriculture and Fisheries Modernization Act",
+            desc: "Republic Act No. 8435, the Agriculture and Fisheries Modernization Act of 1997 (AFMA), provided the framework for modernizing Philippine agriculture and fisheries and recognized the importance of infrastructure and engineering support in raising productivity and improving services for farmers and fisherfolk. AFMA directed the Department of Agriculture and local government units to strengthen their agricultural engineering support, laying an important foundation for the dedicated engineering structures that followed."
+          },
+          {
+            year: "1998",
+            title: "Professionalization of Agricultural Engineering",
+            desc: "Republic Act No. 8559, the Philippine Agricultural Engineering Act of 1998, established the professional and regulatory framework for agricultural engineering in the Philippines, covering agricultural machinery, irrigation and water management, agricultural structures, farm electrification, post-harvest systems, and other engineering applications related to agriculture and fisheries. The law provided the technical and professional foundation for the engineering functions later consolidated under BAFE."
+          },
+          {
+            year: "Before 2013",
+            title: "The Central Agri-Fishery Engineering Division",
+            desc: "Before BAFE was established as a bureau, the Department carried out its central agricultural and fisheries engineering functions through the Central Agri-Fishery Engineering Division (CAFED) under the Department's Project Development Service. CAFED was the focal unit ensuring that the planning, construction, and delivery of agri-fishery infrastructure met the Department's technical and financial requirements — an important part of BAFE's institutional history, though organizationally distinct from the bureau later created by law."
+          },
+          {
+            year: "2013",
+            title: "The Establishment of BAFE",
+            desc: "Republic Act No. 10601, the Agricultural and Fisheries Mechanization (AFMech) Law of 2013, established BAFE as a regular bureau of the Department of Agriculture, consolidating agricultural engineering functions — engineering plans and designs, technical standards, regulatory enforcement, project management, mechanization, and infrastructure — into a strengthened national framework. The law also strengthened the Regional Agricultural Engineering Divisions (RAEDs) in the DA Regional Field Offices, together forming a national-regional engineering structure."
+          },
+          {
+            year: "2013–2017",
+            title: "Building the New Bureau",
+            desc: "Following RA 10601, the Department undertook the organizational work of establishing BAFE — developing its structure, staffing, systems, programs, and coordination mechanisms with the Regional Field Offices. During this transition, BAFE was already performing national mechanization functions, including Luzon-wide consultations in 2015 for the draft National Agricultural and Fisheries Mechanization Program (NAFMP)."
+          },
+          {
+            year: "2018",
+            title: "BAFE Becomes Operational",
+            desc: "By January 2018, BAFE was operating as a newly formed bureau, described by DA Region 10 as the central engineering arm of the entire Department of Agriculture and its attached agencies. Its responsibilities included coordinating, overseeing, and monitoring the national planning and implementation of agricultural and fisheries engineering projects — including farm-to-market roads — and supporting mechanization programs through the RAEDs. The bureau also began capability-building for RAED personnel and developing its regulatory systems for agricultural and fisheries machinery."
+          },
+          {
+            year: "2019",
+            title: "Strengthening the BAFE–RAED Partnership",
+            desc: "Department Order No. 12, Series of 2019, formally strengthened the institutional linkage between BAFE and the Regional Agricultural Engineering Divisions, recognizing their respective responsibility for agricultural and fisheries engineering, mechanization, and infrastructure at the national and regional levels — synchronizing engineering plans, standards, monitoring, and implementation nationwide."
+          },
+          {
+            year: "2020–2022",
+            title: "Expanding Engineering and Mechanization Services",
+            desc: "BAFE's responsibilities continued to expand across agricultural mechanization programs, machinery regulation, engineering standards, infrastructure development, and technical assistance — including the registration of agricultural and fisheries machinery and equipment and the issuance of Certificates of Conformity, functions that remain part of the Department's current regulatory framework."
+          },
+          {
+            year: "2023",
+            title: "The National Agricultural and Fisheries Mechanization Program",
+            desc: "BAFE took a central role in implementing the National Agricultural and Fisheries Mechanization Program (NAFMP) 2023–2028, covering the local assembly and manufacture of agricultural machinery, research and development, standards and regulation, support services, institutional development, and human resource development."
+          },
+          {
+            year: "2024",
+            title: "Strengthening National Engineering Coordination",
+            desc: "A 2024 Joint Memorandum Circular on functional complementation and delineation set guidelines for coordinating BAFE, the RAEDs, and LGU agricultural and biosystems engineering offices in planning, implementing, and monitoring agri-fisheries engineering, infrastructure, and mechanization programs — extending the governance structure begun under the AFMech Law over a decade earlier."
+          },
+          {
+            year: "2025",
+            title: "Twelve Years of Advancing Agricultural and Fisheries Engineering",
+            desc: "In June 2025, DA-BAFE marked its 12th founding anniversary, highlighting its continuing contributions to engineering designs, plans, and standards for farm-to-market roads, irrigation facilities, post-harvest facilities, and other agricultural infrastructure."
+          },
+          {
+            year: "2026",
+            title: "A New Era in Agricultural Infrastructure",
+            desc: "The Department of Agriculture designated BAFE to lead the nationwide implementation of farm-to-market road projects, placing the bureau at the center of national efforts to strengthen the engineering quality, implementation, monitoring, and coordination of agricultural road projects. BAFE also developed FMR Watch, a public monitoring platform for farm-to-market roads that, as of January 2026, was tracking 4,810 projects implemented from 2021 to 2025 — representing approximately ₱76.52 billion in investment and nearly 2,400 kilometers of roads nationwide. INFRA Watch extends that same public-monitoring approach across BAFE's broader agricultural and fisheries infrastructure programs."
+          }
+        ],
+        closing: "From the agricultural engineering structures that existed before its creation to its present role leading national farm-to-market road implementation and public infrastructure monitoring, BAFE's history reflects the Department of Agriculture's continuing effort to place engineering and technology at the center of agricultural modernization."
       },
       values: [
         { title: "Transparency", desc: "Open access to project data" },
@@ -447,7 +551,7 @@ export const translations = {
           subtitle: "We found the following projects near your location. Select one if it matches.",
           searching: "Looking for projects in your area...",
           info: "Selecting a project helps us respond faster. If none match, you can skip this step.",
-          skip: "None of these — skip",
+          skip: "None of these (skip)",
           noResults: "No projects found in this area",
           noResultsHint: "You can continue without selecting a project.",
         },
@@ -926,14 +1030,118 @@ export const translations = {
     about: {
       title: "Tungkol sa Amin",
       subtitle: "Pagtataguyod ng Tiwala sa Pamamagitan ng Transparency",
-      description: "Ang INFRA Watch ay ang opisyal na transparency portal para sa mga proyekto ng imprastrakturang pang-agrikultura sa Pilipinas. Binibigyang-kapangyarihan namin ang mga mamamayan na magmonitor, mag-ulat, at makilahok sa mga pagpapaunlad ng imprastraktura sa kanilang mga komunidad.",
+      description: "Ang INFRA Watch ay ang opisyal na transparency portal para sa mga proyekto ng imprastrakturang pang-agrikultura sa Pilipinas sa pamumuno ng Department of Agriculture – Bureau of Agricultural and Fisheries Engineering (DA-BAFE). Binibigyang-kapangyarihan namin ang mga mamamayan na magmonitor, mag-ulat, at makilahok sa mga pagpapaunlad ng imprastraktura sa kanilang mga komunidad.",
       mission: {
         title: "Ang Aming Misyon",
-        desc: "Magbigay ng transparent, accessible, at participatory na sistema ng pagsubaybay na tumitiyak sa kalidad ng implementasyon ng imprastraktura."
+        desc: "Magbigay ng mahusay at epektibong serbisyong pang-inhenyeriya para sa pagpapaunlad at pagpapanatili ng imprastraktura ng agrikultura at pangisdaan na nagpapabuti sa koneksyon sa kanayunan, nagpapataas ng produksyon ng pagkain, at nag-aangat sa kalidad ng buhay ng mga magsasaka at mangingisdang Pilipino."
       },
       vision: {
         title: "Ang Aming Bisyon",
-        desc: "Isang proseso ng pagpapaunlad ng imprastraktura na walang korapsyon at direktang nakikinabang ang mga magsasakang Pilipino."
+        desc: "Isang modernisadong sektor ng agrikultura at pangisdaan na sinusuportahan ng de-kalidad at matatag na imprastraktura, nag-uugnay sa bawat bukid sa merkado, tumitiyak na bawat komunidad ay may access sa irigasyon at mga pasilidad pagkatapos ng ani, at nagpapatibay sa pundasyon ng pambansang seguridad sa pagkain."
+      },
+      mandate: {
+        title: "Mandato at mga Tungkulin",
+        legalBasis: "Batas Republika Blg. 10601 (AFMech Law), Seksyon 24",
+        desc: "Alinsunod sa Seksyon 24 ng Batas Republika Blg. 10601 (Agricultural and Fisheries Mechanization Law), ang Bureau of Agricultural and Fisheries Engineering (BAFE) ay ang regular na kawanihan ng Kagawaran ng Pagsasaka na inatasang mag-ugnay, mangasiwa, at magsubaybay sa pambansang pagpaplano, pagpapatupad, at regulasyon ng mga proyektong pang-inhenyeriya sa agrikultura at pangisdaan, mga farm-to-market road (FMR), at mga programa sa mekanisasyon sa buong bansa.",
+        functionsTitle: "Mga Pangunahing Tungkulin",
+        functions: [
+          {
+            title: "Pagpaplano at Pagsubaybay sa Imprastraktura",
+            desc: "Mag-ugnay, mangasiwa, at magsubaybay sa pambansang pagpaplano at pagpapatupad ng inhenyeriyang pang-agrikultura at pangisdaan, mga network ng farm-to-market road (FMR), at mga proyektong imprastraktura."
+          },
+          {
+            title: "Mga Programa sa Mekanisasyon",
+            desc: "Tumulong sa pambansang pagpaplano, koordinasyon, at pagpapatupad ng mga komprehensibong programa sa mekanisasyon at modernisasyon ng agrikultura at pangisdaan."
+          },
+          {
+            title: "Mga Plano, Disenyo, at Pamantayang Pang-inhenyeriya",
+            desc: "Maghanda, magsuri, magpatunay, at magrekomenda ng mga plano, disenyo, at teknikal na espisipikasyon ayon sa Philippine Agricultural and Biosystems Engineering Standards (PABES)."
+          },
+          {
+            title: "Pagsusuri, Akreditasyon, at Regulasyon",
+            desc: "Magpatupad ng mga alituntunin sa akreditasyon ng mga testing center, magpatunay ng mga permit to operate (PTO), at magpatupad ng mga pamantayan sa kalidad at kaligtasan ng makinarya."
+          },
+          {
+            title: "Pagpapalakas ng Kakayahan ng mga LGU",
+            desc: "Palakasin at suportahan ang mga grupo ng Agricultural and Biosystems Engineering (ABE) sa mga Lokal na Pamahalaan (LGU) at DA Regional Field Offices para sa maayos na serbisyo sa komunidad."
+          }
+        ]
+      },
+      history: {
+        eyebrow: "Kasaysayan ng Institusyon",
+        agencyName: "Bureau of Agricultural and Fisheries Engineering",
+        acronym: "BAFE",
+        est: "2013",
+        legal: "Batas Republika Blg. 10601 (AFMech Law)",
+        intro: [
+          "Ang Bureau of Agricultural and Fisheries Engineering (BAFE) ang pambansang sangay pang-inhenyeriya ng Kagawaran ng Pagsasaka, na responsable sa pagpapaunlad, koordinasyon, regulasyon, at pagpapatupad ng mga programa sa inhenyeriyang pang-agrikultura at pangisdaan, mekanisasyon, at imprastraktura.",
+          "Opisyal na itinatag ang BAFE bilang regular na kawanihan ng Kagawaran sa pamamagitan ng Batas Republika Blg. 10601, ang Agricultural and Fisheries Mechanization (AFMech) Law of 2013. Gayunpaman, mas malalim ang ugat ng institusyong ito — hanggang sa mga istrukturang pang-inhenyeriya at mandato ng agrikultura na umiral na sa loob ng Kagawaran bago pa itatag ang kawanihan.",
+          "Isang tuloy-tuloy na kasaysayan ang sinusundan ng BAFE: mula sa pundasyong itinakda ng naunang batas, tungo sa Central Agri-Fishery Engineering Division (CAFED), hanggang sa paglikha ng BAFE sa ilalim ng AFMech Law, ang institusyonalisasyon nito at ang pagpapalakas ng pambansang network ng Regional Agricultural Engineering Division (RAED), ang lumalawak nitong tungkulin sa mekanisasyon at regulasyon, at — sa kasalukuyan — ang pamumuno nito sa pambansang pagpapatupad ng farm-to-market road at ang paglulunsad ng mga plataporma para sa pagsubaybay ng publiko tulad nito."
+        ],
+        milestonesLabel: "Mga Mahalagang Pangyayari",
+        milestones: [
+          {
+            year: "1997",
+            title: "Agriculture and Fisheries Modernization Act",
+            desc: "Nagbigay ang Batas Republika Blg. 8435, ang Agriculture and Fisheries Modernization Act of 1997 (AFMA), ng balangkas para sa modernisasyon ng agrikultura at pangisdaan sa Pilipinas at kinilala ang kahalagahan ng imprastraktura at suportang pang-inhenyeriya sa pagpapataas ng produktibidad at pagpapabuti ng serbisyo para sa mga magsasaka at mangingisda. Inatasan ng AFMA ang Kagawaran ng Pagsasaka at mga lokal na pamahalaan na palakasin ang kanilang suportang pang-inhenyeriya sa agrikultura, na naging mahalagang pundasyon para sa mga dedikadong istrukturang pang-inhenyeriya na sumunod."
+          },
+          {
+            year: "1998",
+            title: "Propesyonalisasyon ng Agricultural Engineering",
+            desc: "Itinatag ng Batas Republika Blg. 8559, ang Philippine Agricultural Engineering Act of 1998, ang propesyonal at regulatoryong balangkas para sa agricultural engineering sa Pilipinas, saklaw ang makinaryang pang-agrikultura, irigasyon at pamamahala ng tubig, mga istrukturang pang-agrikultura, elektripikasyon ng bukid, sistema pagkatapos ng ani, at iba pang aplikasyong pang-inhenyeriya na may kaugnayan sa agrikultura at pangisdaan. Nagbigay ang batas ng teknikal at propesyonal na pundasyon para sa mga tungkuling pang-inhenyeriya na kalaunan ay pinagsama-sama sa ilalim ng BAFE."
+          },
+          {
+            year: "Bago 2013",
+            title: "Ang Central Agri-Fishery Engineering Division",
+            desc: "Bago pa itatag ang BAFE bilang kawanihan, isinagawa ng Kagawaran ang mga sentral na tungkuling pang-inhenyeriya sa agrikultura at pangisdaan sa pamamagitan ng Central Agri-Fishery Engineering Division (CAFED) sa ilalim ng Project Development Service ng Kagawaran. Ang CAFED ang naging pangunahing yunit na tumitiyak na ang pagpaplano, konstruksyon, at paghahatid ng imprastrakturang agri-pangisdaan ay sumusunod sa teknikal at pinansyal na kahilingan ng Kagawaran — mahalagang bahagi ng kasaysayan ng institusyon ng BAFE, bagama't naiiba sa organisasyon mula sa kawanihang itinatag mamaya ng batas."
+          },
+          {
+            year: "2013",
+            title: "Ang Pagtatatag ng BAFE",
+            desc: "Itinatag ng Batas Republika Blg. 10601, ang Agricultural and Fisheries Mechanization (AFMech) Law of 2013, ang BAFE bilang regular na kawanihan ng Kagawaran ng Pagsasaka, pinagsasama ang mga tungkuling pang-inhenyeriya sa agrikultura — mga plano at disenyong pang-inhenyeriya, teknikal na pamantayan, pagpapatupad ng regulasyon, pamamahala ng proyekto, mekanisasyon, at imprastraktura — sa isang pinalakas na pambansang balangkas. Pinalakas din ng batas ang mga Regional Agricultural Engineering Division (RAED) sa mga DA Regional Field Office, na sama-samang bumuo ng isang pambansa-rehiyonal na istrukturang pang-inhenyeriya."
+          },
+          {
+            year: "2013–2017",
+            title: "Pagbubuo ng Bagong Kawanihan",
+            desc: "Kasunod ng RA 10601, isinagawa ng Kagawaran ang gawaing pang-organisasyon sa pagtatatag ng BAFE — pagbuo ng istruktura, tauhan, sistema, programa, at mekanismo ng koordinasyon nito sa mga Regional Field Office. Sa panahong ito ng transisyon, gumagampan na ang BAFE ng mga pambansang tungkulin sa mekanisasyon, kabilang ang mga konsultasyon sa buong Luzon noong 2015 para sa draft na National Agricultural and Fisheries Mechanization Program (NAFMP)."
+          },
+          {
+            year: "2018",
+            title: "Naging Ganap na Operasyonal ang BAFE",
+            desc: "Sa Enero 2018, ang BAFE ay gumagana na bilang bagong-tatag na kawanihan, inilarawan ng DA Region 10 bilang sentral na sangay pang-inhenyeriya ng buong Kagawaran ng Pagsasaka at mga kaakibat nitong ahensya. Kasama sa mga tungkulin nito ang pag-uugnay, pangangasiwa, at pagsubaybay sa pambansang pagpaplano at pagpapatupad ng mga proyektong pang-inhenyeriya sa agrikultura at pangisdaan — kabilang ang farm-to-market road — at ang pagsuporta sa mga programa sa mekanisasyon sa pamamagitan ng mga RAED. Nagsimula rin ang kawanihan ng capability-building para sa mga tauhan ng RAED at pagbuo ng sistema ng regulasyon para sa makinaryang pang-agrikultura at pangisdaan."
+          },
+          {
+            year: "2019",
+            title: "Pagpapalakas ng Ugnayan ng BAFE–RAED",
+            desc: "Opisyal na pinalakas ng Department Order No. 12, Series of 2019, ang ugnayang institusyonal sa pagitan ng BAFE at ng mga Regional Agricultural Engineering Division, kinikilala ang kani-kanilang responsibilidad sa inhenyeriyang pang-agrikultura at pangisdaan, mekanisasyon, at imprastraktura sa pambansa at rehiyonal na antas — nagpapasinkronisa ng mga plano, pamantayan, pagsubaybay, at pagpapatupad sa buong bansa."
+          },
+          {
+            year: "2020–2022",
+            title: "Paglawak ng Serbisyo sa Inhenyeriya at Mekanisasyon",
+            desc: "Patuloy na lumawak ang mga tungkulin ng BAFE sa mga programa sa mekanisasyon ng agrikultura, regulasyon ng makinarya, pamantayang pang-inhenyeriya, pagpapaunlad ng imprastraktura, at teknikal na tulong — kabilang ang pagpaparehistro ng makinarya at kagamitang pang-agrikultura at pangisdaan at ang pagbibigay ng Certificate of Conformity, mga tungkuling bahagi pa rin ng kasalukuyang balangkas ng regulasyon ng Kagawaran."
+          },
+          {
+            year: "2023",
+            title: "Ang National Agricultural and Fisheries Mechanization Program",
+            desc: "Gumampan ang BAFE ng sentral na tungkulin sa pagpapatupad ng National Agricultural and Fisheries Mechanization Program (NAFMP) 2023–2028, saklaw ang lokal na pagbuo at paggawa ng makinaryang pang-agrikultura, pananaliksik at pagpapaunlad, mga pamantayan at regulasyon, mga suportang serbisyo, pagpapaunlad ng institusyon, at pagpapaunlad ng human resource."
+          },
+          {
+            year: "2024",
+            title: "Pagpapalakas ng Pambansang Koordinasyon sa Inhenyeriya",
+            desc: "Itinakda ng 2024 Joint Memorandum Circular hinggil sa functional complementation and delineation ang mga alituntunin sa koordinasyon ng BAFE, ng mga RAED, at ng mga opisina ng agricultural at biosystems engineering ng LGU sa pagpaplano, pagpapatupad, at pagsubaybay ng mga programang pang-inhenyeriya, imprastraktura, at mekanisasyon sa agrikultura at pangisdaan — pagpapalawig sa istrukturang pamamahala na nagsimula sa ilalim ng AFMech Law higit isang dekada na ang nakalipas."
+          },
+          {
+            year: "2025",
+            title: "Labindalawang Taon ng Pagsulong sa Agricultural and Fisheries Engineering",
+            desc: "Noong Hunyo 2025, ipinagdiwang ng DA-BAFE ang ika-12 anibersaryo nito, binibigyang-diin ang patuloy nitong ambag sa mga disenyong pang-inhenyeriya, plano, at pamantayan para sa farm-to-market road, mga pasilidad sa irigasyon, mga pasilidad pagkatapos ng ani, at iba pang imprastrakturang pang-agrikultura."
+          },
+          {
+            year: "2026",
+            title: "Isang Bagong Panahon sa Imprastrakturang Pang-agrikultura",
+            desc: "Itinalaga ng Kagawaran ng Pagsasaka ang BAFE na mamuno sa pambansang pagpapatupad ng mga proyektong farm-to-market road, na naglagay sa kawanihan sa sentro ng pambansang pagsisikap na palakasin ang kalidad, pagpapatupad, pagsubaybay, at koordinasyon ng mga proyektong daan pang-agrikultura. Binuo rin ng BAFE ang FMR Watch, isang plataporma ng pagsubaybay ng publiko para sa farm-to-market road na, hanggang Enero 2026, sinusubaybayan ang 4,810 proyektong ipinatupad mula 2021 hanggang 2025 — humigit-kumulang ₱76.52 bilyon sa investment at halos 2,400 kilometro ng kalsada sa buong bansa. Pinalalawig ng INFRA Watch ang parehong diskarte sa pagsubaybay ng publiko sa mas malawak na mga programang imprastraktura pang-agrikultura at pangisdaan ng BAFE."
+          }
+        ],
+        closing: "Mula sa mga istrukturang pang-inhenyeriya ng agrikultura na umiral bago pa ito itatag, hanggang sa kasalukuyang tungkulin nito sa pamumuno ng pambansang pagpapatupad ng farm-to-market road at pagsubaybay ng imprastrakturang publiko, ang kasaysayan ng BAFE ay sumasalamin sa patuloy na pagsisikap ng Kagawaran ng Pagsasaka na ilagay ang inhenyeriya at teknolohiya sa sentro ng modernisasyon ng agrikultura."
       },
       values: [
         { title: "Transparency", desc: "Bukas na access sa data" },
@@ -1183,7 +1391,7 @@ export const translations = {
           subtitle: "Nakakita kami ng mga proyekto malapit sa iyong lokasyon. Pumili kung may katugma.",
           searching: "Naghahanap ng mga proyekto sa iyong lugar...",
           info: "Ang pagpili ng proyekto ay makakatulong sa amin na mas mabilis na tumugon. Kung walang katugma, maaari mong laktawan.",
-          skip: "Wala sa mga ito — laktawan",
+          skip: "Wala sa mga ito (laktawan)",
           noResults: "Walang nahanap na mga proyekto sa lugar na ito",
           noResultsHint: "Maaari kang magpatuloy kahit walang napiling proyekto.",
         },

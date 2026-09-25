@@ -12,7 +12,7 @@ import { FeedbackSkeleton } from "./feedback-skeleton";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/i18n";
 import { useNotifications } from "@/providers/notification-provider";
-import type { FeedbackCategory, FeedbackMedia } from "@/types/feedback.types";
+import type { FeedbackCategory, FeedbackMedia, FeedbackSentiment } from "@/types/feedback.types";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,7 @@ import {
 
 interface ProjectFeedbackProps {
   projectId: string;
+  farmOperation?: string | null;
   highlightFeedbackId?: string;
   highlightCommentId?: string;
 }
@@ -44,18 +45,28 @@ interface EditableFeedback {
   rating?: number | null;
   comment: string;
   category: FeedbackCategory;
+  sentiment?: FeedbackSentiment | null;
+  issueType?: string | null;
   isAnonymous: boolean;
   media?: FeedbackMedia[];
 }
 
-type FeedbackEditCandidate = Omit<EditableFeedback, "category"> & { category: string };
+type FeedbackEditCandidate = Omit<EditableFeedback, "category" | "sentiment"> & {
+  category: string;
+  sentiment?: string | null;
+};
 
 function isFeedbackCategory(value: string): value is FeedbackCategory {
   return ["quality", "progress", "concerns", "general"].includes(value);
 }
 
+function toFeedbackSentiment(value: string | null | undefined): FeedbackSentiment | null {
+  return value === "positive" || value === "negative" ? value : null;
+}
+
 export function ProjectFeedback({
   projectId,
+  farmOperation,
   highlightFeedbackId,
   highlightCommentId,
 }: ProjectFeedbackProps) {
@@ -138,7 +149,11 @@ export function ProjectFeedback({
 
   const handleEdit = (feedback: FeedbackEditCandidate) => {
     if (!isFeedbackCategory(feedback.category)) return;
-    setEditingFeedback({ ...feedback, category: feedback.category });
+    setEditingFeedback({
+      ...feedback,
+      category: feedback.category,
+      sentiment: toFeedbackSentiment(feedback.sentiment),
+    });
     setIsModalOpen(true);
   };
 
@@ -200,6 +215,7 @@ export function ProjectFeedback({
                 </DialogHeader>
                 <FeedbackSubmissionForm
                   projectId={projectId}
+                  farmOperation={farmOperation}
                   onSuccess={handleFeedbackSuccess}
                   onBusyChange={setIsFeedbackSaving}
                   editMode={!!editingFeedback}

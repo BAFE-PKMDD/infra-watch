@@ -14,6 +14,8 @@ import {
   HardHat,
   BarChart3,
   AlertTriangle,
+  ThumbsUp,
+  ThumbsDown,
   type LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
@@ -28,7 +30,7 @@ import { isAllowedClientUploadType, UPLOAD_ACCEPT, uploadKindFromType } from "@/
 import { ProjectSearchInput, type SelectedProject } from "@/components/ui/project-search-input";
 import { SubmissionSurveyModal } from "@/components/shared/submission-survey-modal";
 import { useSubmissionSurveyGate } from "@/hooks/use-submission-survey-gate";
-import type { FeedbackCategory, FeedbackMedia } from "@/types/feedback.types";
+import type { FeedbackCategory, FeedbackMedia, FeedbackSentiment } from "@/types/feedback.types";
 import { getAnonymousUser } from "@/lib/anonymous-identifier";
 import { AnonymousIcon } from "@/components/shared/anonymous-avatar";
 
@@ -98,6 +100,7 @@ export function FeedbackComposer() {
   const [category, setCategory] = useState<FeedbackCategory>("general");
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+  const [sentiment, setSentiment] = useState<FeedbackSentiment | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [media, setMedia] = useState<FeedbackMedia[]>([]);
   const [isProcessingMedia, setIsProcessingMedia] = useState(false);
@@ -131,6 +134,7 @@ export function FeedbackComposer() {
       comment: string;
       category: FeedbackCategory;
       rating?: number;
+      sentiment?: FeedbackSentiment | null;
       isAnonymous: boolean;
       media: FeedbackMedia[];
     }) => {
@@ -141,6 +145,7 @@ export function FeedbackComposer() {
           rating: payload.rating || null,
           comment: payload.comment.trim(),
           category: payload.category,
+          sentiment: payload.sentiment || null,
           isAnonymous: payload.isAnonymous,
           media: payload.media,
         }),
@@ -181,6 +186,7 @@ export function FeedbackComposer() {
     setComment("");
     setCategory("general");
     setRating(0);
+    setSentiment(null);
     setIsAnonymous(false);
     setMedia([]);
     setSelectedProject(null);
@@ -252,6 +258,7 @@ export function FeedbackComposer() {
       comment,
       category,
       rating: rating || undefined,
+      sentiment,
       isAnonymous,
       media,
     });
@@ -281,7 +288,10 @@ export function FeedbackComposer() {
 
   const isSubmitting = submitMutation.isPending;
   const isUploading = uploadMutation.isPending || isProcessingMedia;
-  const canSubmit = !!selectedProject && comment.trim().length > 0 && !isSubmitting && !isUploading && !showPreSubmitSurvey;
+  // Missing project/comment are validated (with a toast) inside handleSubmit, not
+  // here - disabling the button for them would swallow the click before the toast
+  // could ever fire.
+  const canSubmit = !isSubmitting && !isUploading && !showPreSubmitSurvey;
 
   // Non-authenticated prompt
   if (!authLoading && !isAuthenticated) {
@@ -473,6 +483,34 @@ export function FeedbackComposer() {
                 ))}
               </div>
 
+              {/* Sentiment (compact) */}
+              <div className="flex items-center gap-0.5 mr-1">
+                <button
+                  type="button"
+                  onClick={() => setSentiment((current) => (current === "positive" ? null : "positive"))}
+                  aria-pressed={sentiment === "positive"}
+                  className={`p-1.5 rounded-lg transition-colors ${sentiment === "positive"
+                    ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  title="Positive experience"
+                >
+                  <ThumbsUp className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSentiment((current) => (current === "negative" ? null : "negative"))}
+                  aria-pressed={sentiment === "negative"}
+                  className={`p-1.5 rounded-lg transition-colors ${sentiment === "negative"
+                    ? "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40"
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  title="Negative experience"
+                >
+                  <ThumbsDown className="w-4 h-4" />
+                </button>
+              </div>
+
               {/* Media upload */}
               <button
                 type="button"
@@ -540,6 +578,10 @@ export function FeedbackComposer() {
                 <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{comment}</p>
               </div>
               <ReviewRow label="Rating" value={rating > 0 ? `${rating} star${rating > 1 ? "s" : ""}` : "Not rated"} />
+              <ReviewRow
+                label="Sentiment"
+                value={sentiment === "positive" ? "Positive" : sentiment === "negative" ? "Negative" : "Not specified"}
+              />
               <ReviewRow label="Attachments" value={media.length === 0 ? "None" : `${media.length} file${media.length > 1 ? "s" : ""}`} />
               <ReviewRow label="Posting as" value={isAnonymous ? "Anonymous" : user?.name || "You"} />
             </div>

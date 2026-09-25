@@ -15,6 +15,8 @@ export interface RegionalStat {
   region: string;
   target: number;
   turnedOver: number;
+  completedOrTurnedOver: number;
+  approvedBudget: number;
 }
 
 export interface BannerStat {
@@ -89,7 +91,10 @@ export function aggregateInfraAnalyticsRows(
     (typeof stageKeys)[number],
     number
   >;
-  const regionalCounts = new Map<string, { target: number; turnedOver: number }>();
+  const regionalCounts = new Map<
+    string,
+    { target: number; turnedOver: number; completedOrTurnedOver: number; approvedBudget: number }
+  >();
   const bannerCounts = new Map<string, { target: number; turnedOver: number }>();
   let approvedBudget = 0;
   let budgetCoverage = 0;
@@ -98,7 +103,14 @@ export function aggregateInfraAnalyticsRows(
   for (const row of rows) {
     const stage = getProjectStage(row.status, row.stage);
     stageCounts[stage] += 1;
-    increment(regionalCounts, mapDbRegionToLabel(row.region), stage === "turnedOver");
+    const regionBudget = row.budget !== null && Number.isFinite(Number(row.budget)) ? Number(row.budget) : 0;
+    increment(
+      regionalCounts,
+      mapDbRegionToLabel(row.region),
+      stage === "turnedOver",
+      stage === "completed" || stage === "turnedOver",
+      regionBudget,
+    );
     increment(bannerCounts, normalizedDimension(row.bannerProgram), stage === "turnedOver");
     if (row.budget !== null) {
       const amount = Number(row.budget);
@@ -138,7 +150,13 @@ export function aggregateInfraAnalyticsRows(
       totalTarget: rows.length,
       stages,
       regionalStats: [...regionalCounts.entries()]
-        .map(([region, value]) => ({ region, ...value }))
+        .map(([region, value]) => ({
+          region,
+          target: value.target,
+          turnedOver: value.turnedOver,
+          completedOrTurnedOver: value.completedOrTurnedOver,
+          approvedBudget: value.approvedBudget ?? 0,
+        }))
         .sort((a, b) => a.region.localeCompare(b.region, undefined, { numeric: true })),
       bannerStats: limitBannerStats(
         [...bannerCounts.entries()]
@@ -249,13 +267,20 @@ function normalizedDimension(value: string | null) {
 }
 
 function increment(
-  map: Map<string, { target: number; turnedOver: number }>,
+  map: Map<
+    string,
+    { target: number; turnedOver: number; completedOrTurnedOver?: number; approvedBudget?: number }
+  >,
   key: string,
   turnedOver: boolean,
+  completedOrTurnedOver = false,
+  budget = 0,
 ) {
-  const current = map.get(key) ?? { target: 0, turnedOver: 0 };
+  const current = map.get(key) ?? { target: 0, turnedOver: 0, completedOrTurnedOver: 0, approvedBudget: 0 };
   current.target += 1;
   if (turnedOver) current.turnedOver += 1;
+  if (current.completedOrTurnedOver !== undefined && completedOrTurnedOver) current.completedOrTurnedOver += 1;
+  if (current.approvedBudget !== undefined) current.approvedBudget += budget;
   map.set(key, current);
 }
 

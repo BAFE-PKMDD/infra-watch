@@ -17,6 +17,8 @@ export type AdminFeedbackItem = {
   rating: number | null;
   comment: string;
   category: string;
+  sentiment: string | null;
+  issueType: string | null;
   media: Array<{ type: "image" | "video"; url: string; caption?: string }>;
   isAnonymous: boolean;
   helpfulCount: number;
@@ -52,10 +54,15 @@ type Pagination = {
 
 type FeedbackListParams = {
   status?: string;
+  sentiment?: string;
   page?: number;
   limit?: number;
   search?: string;
 };
+
+function getSentimentFilter(value: string | undefined): "positive" | "negative" | null {
+  return value === "positive" || value === "negative" ? value : null;
+}
 
 export type MyFeedbackItem = {
   id: string;
@@ -127,6 +134,7 @@ export async function getAllFeedback(params: FeedbackListParams = {}): Promise<{
     const currentUser = await requireFeedbackListPermission();
 
     const status = getStatus(params.status);
+    const sentimentFilter = getSentimentFilter(params.sentiment);
     const search = params.search?.trim();
     const conditions = [];
 
@@ -166,6 +174,10 @@ export async function getAllFeedback(params: FeedbackListParams = {}): Promise<{
       conditions.push(eq(feedback.status, status));
     }
 
+    if (sentimentFilter) {
+      conditions.push(eq(feedback.sentiment, sentimentFilter));
+    }
+
     if (search) {
       const pattern = `%${search}%`;
       conditions.push(
@@ -191,6 +203,8 @@ export async function getAllFeedback(params: FeedbackListParams = {}): Promise<{
         rating: feedback.rating,
         comment: feedback.comment,
         category: feedback.category,
+        sentiment: feedback.sentiment,
+        issueType: feedback.issueType,
         media: feedback.media,
         isAnonymous: feedback.isAnonymous,
         helpfulCount: feedback.helpfulCount,
@@ -236,6 +250,8 @@ export async function getAllFeedback(params: FeedbackListParams = {}): Promise<{
         rating: row.rating,
         comment: row.comment ?? "",
         category: row.category ?? "general",
+        sentiment: row.sentiment,
+        issueType: row.issueType,
         media: row.media ?? [],
         isAnonymous: row.isAnonymous,
         helpfulCount: row.helpfulCount,
@@ -369,6 +385,8 @@ export async function getFeedbackStats(): Promise<{
     approved: number;
     rejected: number;
     averageRating: number;
+    positiveSentiment: number;
+    negativeSentiment: number;
   };
   error?: string;
   status?: number;
@@ -418,6 +436,8 @@ export async function getFeedbackStats(): Promise<{
         approved: sql<number>`count(*) filter (where ${feedback.status} = 'approved')`,
         rejected: sql<number>`count(*) filter (where ${feedback.status} = 'rejected')`,
         averageRating: sql<number>`coalesce(avg(case when ${feedback.status} = 'approved' then ${feedback.rating} else null end), 0)`,
+        positiveSentiment: sql<number>`count(*) filter (where ${feedback.sentiment} = 'positive')`,
+        negativeSentiment: sql<number>`count(*) filter (where ${feedback.sentiment} = 'negative')`,
       })
       .from(feedback)
       .where(whereClause);
@@ -430,6 +450,8 @@ export async function getFeedbackStats(): Promise<{
         approved: Number(stats?.approved ?? 0),
         rejected: Number(stats?.rejected ?? 0),
         averageRating: Number(stats?.averageRating ?? 0),
+        positiveSentiment: Number(stats?.positiveSentiment ?? 0),
+        negativeSentiment: Number(stats?.negativeSentiment ?? 0),
       },
     };
   } catch (error) {
@@ -443,6 +465,8 @@ export async function getFeedbackStats(): Promise<{
         approved: 0,
         rejected: 0,
         averageRating: 0,
+        positiveSentiment: 0,
+        negativeSentiment: 0,
       },
     };
   }

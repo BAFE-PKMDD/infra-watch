@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
 
   const result = await getAllFeedback({
     status: params.get("status") ?? undefined,
+    sentiment: params.get("sentiment") ?? undefined,
     search: params.get("search") ?? undefined,
     page: Number(params.get("page") ?? 1),
     limit: Number(params.get("limit") ?? params.get("pageSize") ?? 10),

@@ -15,6 +15,7 @@ export const runtime = "nodejs";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const FEEDBACK_CATEGORIES = new Set(["quality", "progress", "concerns", "general"]);
+const FEEDBACK_SENTIMENTS = new Set(["positive", "negative"]);
 const MAX_MEDIA_ITEMS = 5;
 const MAX_GEO_TRACK_POINTS = 10_000;
 const MAX_TRACK_TIME_SECONDS = 7 * 24 * 60 * 60;
@@ -203,6 +204,8 @@ export async function GET(
         rating: feedback.rating,
         comment: feedback.comment,
         category: feedback.category,
+        sentiment: feedback.sentiment,
+        issueType: feedback.issueType,
         media: feedback.media,
         isAnonymous: feedback.isAnonymous,
         helpfulCount: feedback.helpfulCount,
@@ -227,6 +230,8 @@ export async function GET(
         rating: row.rating,
         comment: row.comment ?? "",
         category: row.category ?? "general",
+        sentiment: row.sentiment ?? null,
+        issueType: row.issueType ?? null,
         media: row.media ?? [],
         isAnonymous: row.isAnonymous,
         helpfulCount: row.helpfulCount,
@@ -278,6 +283,14 @@ export async function POST(
     const rating = Number.isInteger(body.rating) && body.rating >= 1 && body.rating <= 5
       ? body.rating
       : null;
+    const sentiment = typeof body.sentiment === "string" && FEEDBACK_SENTIMENTS.has(body.sentiment)
+      ? body.sentiment
+      : null;
+    // Issue type only means something for "Concerns & Issues" feedback - discard it
+    // for any other category even if the client sent one.
+    const issueType = category === "concerns" && typeof body.issueType === "string" && body.issueType.trim()
+      ? body.issueType.trim().slice(0, 500)
+      : null;
     const parsedMedia = normalizeMedia(body.media);
 
     if (!parsedMedia.success) {
@@ -311,6 +324,8 @@ export async function POST(
         rating,
         comment,
         category,
+        sentiment,
+        issueType,
         media,
         isAnonymous: Boolean(body.isAnonymous),
         helpfulCount: 0,

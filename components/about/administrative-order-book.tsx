@@ -8,7 +8,7 @@ export function AdministrativeOrderBook() {
   const pdfUrl = "/Administrative-Order-No.-4-Series-of-2026.pdf";
 
   return (
-    <div className="w-full flex flex-col md:flex-row items-center gap-8 md:gap-12 p-8 md:p-10 rounded-2xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 shadow-sm relative overflow-hidden group">
+    <div className="w-full flex flex-col md:flex-row items-center gap-8 md:gap-12 p-6 md:p-8 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 relative overflow-hidden group">
 
       {/* Background Image */}
       <div className="absolute inset-0 left-1/2 opacity-25 dark:opacity-10 pointer-events-none">
@@ -28,7 +28,8 @@ export function AdministrativeOrderBook() {
           href={pdfUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="block relative w-[180px] h-[260px] md:w-[220px] md:h-[320px] transform-style-3d rotate-y-[-25deg] rotate-x-[10deg] group-hover:rotate-y-[-15deg] group-hover:rotate-x-[5deg] transition-all duration-500 ease-out shadow-2xl"
+          aria-label="Open Administrative Order No. 4 in a new tab"
+          className="block relative w-[180px] h-[260px] md:w-[220px] md:h-[320px] transform-style-3d rotate-y-[-25deg] rotate-x-[10deg] group-hover:rotate-y-[-15deg] group-hover:rotate-x-[5deg] transition-all duration-500 ease-out shadow-2xl focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none rounded-r-md rounded-l-sm"
           style={{ transformStyle: 'preserve-3d' }}
         >
           {/* Front Cover */}
@@ -98,14 +99,14 @@ export function AdministrativeOrderBook() {
         <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-4">
           Administrative Order No. 4, Series of 2026
         </p>
-        <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base leading-relaxed mb-8 max-w-[360px]">
+        <p className="text-slate-600 dark:text-slate-300 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
           The official <strong>General Guidelines on the Implementation of the Department of Agriculture&apos;s Farm-to-Market Road Projects</strong> for FY 2026 and onwards. This document outlines procedures, requirements, and standards for all FMR project stakeholders.
         </p>
 
         <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
           <Button
             asChild
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-blue-900/20 transition-all transform active:scale-95"
+            className="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-lg shadow-sm hover:shadow transition-all transform active:scale-95 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
           >
             <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
               <BookOpen className="w-4 h-4" />
@@ -114,7 +115,11 @@ export function AdministrativeOrderBook() {
             </a>
           </Button>
 
-          <Button variant="outline" asChild className="hidden md:flex border-slate-200 dark:border-slate-800">
+          <Button
+            variant="outline"
+            asChild
+            className="inline-flex items-center gap-2 px-5 py-3 min-h-[44px] border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-lg transition-colors dark:border-[#1e3a5f]/40 dark:text-slate-200 dark:hover:bg-[#13233c]/50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
+          >
             <a href={pdfUrl} download="AO-No-4-Series-2026-FMR-Guidelines.pdf">
               <Download className="w-4 h-4 mr-2" />
               Download PDF

@@ -2,15 +2,18 @@
 
 import { motion } from "motion/react";
 import { useTranslation } from "@/i18n";
-import { Target, Eye } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { getBlurDataURL } from "@/lib/image-utils";
 import { BluecopyBook } from "@/components/about/bluecopy-book";
 import { AdministrativeOrderBook } from "@/components/about/administrative-order-book";
+import { LguGuidebook } from "@/components/about/lgu-guidebook";
+import { HistorySection } from "@/components/about/history-section";
 
 export default function AboutPage() {
   const { t } = useTranslation();
+  const mandateFunctions = t<{ title: string; desc: string }[]>("about.mandate.functions");
+  const functionsList = Array.isArray(mandateFunctions) ? mandateFunctions : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-slate-950 dark:via-[#0d1526]/30 dark:to-slate-950">
@@ -45,61 +48,118 @@ export default function AboutPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
-        {/* Mission & Vision Section - Using Minimalist Card Style */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Mission */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.3 }}
-            className="rounded-2xl bg-white shadow-sm border border-slate-200 p-8 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30 flex flex-col items-start"
-          >
-            <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-5 text-orange-600 dark:text-orange-400">
-              <Target className="w-5 h-5" strokeWidth={2.5} />
-            </div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-3">{t("about.mission.title")}</h2>
-            <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-              {t("about.mission.desc")}
-            </p>
-          </motion.div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-6">
+        {/* History Section */}
+        <HistorySection />
 
-          {/* Vision */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="rounded-2xl bg-white shadow-sm border border-slate-200 p-8 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30 flex flex-col items-start"
-          >
-            <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center mb-5 text-teal-600 dark:text-teal-400">
-              <Eye className="w-5 h-5" strokeWidth={2.5} />
+        {/* Mission & Vision Section - Unified Full-Width Card */}
+        <div className="rounded-xl bg-white border border-slate-200 p-6 md:p-8 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 md:divide-x md:divide-slate-200 dark:md:divide-[#1e3a5f]/30">
+            <div className="flex flex-col items-start space-y-2">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                {t("about.mission.title")}
+              </h2>
+              <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+                {t("about.mission.desc")}
+              </p>
             </div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-3">{t("about.vision.title")}</h2>
-            <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-              {t("about.vision.desc")}
-            </p>
-          </motion.div>
+            <div className="flex flex-col items-start space-y-2 md:pl-12">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                {t("about.vision.title")}
+              </h2>
+              <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+                {t("about.vision.desc")}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-slate-200 dark:border-[#1e3a5f]/20" />
+        {/* Mandate & Functions Section */}
+        <div className="rounded-xl bg-white border border-slate-200 p-6 md:p-8 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30 relative overflow-hidden">
+          {/* Subtle BAFE Seal Watermark */}
+          <div className="absolute -right-8 -bottom-8 w-64 h-64 opacity-[0.03] dark:opacity-[0.05] pointer-events-none">
+            <Image
+              src="/bafe-logo.png"
+              alt=""
+              fill
+              sizes="256px"
+              className="object-contain"
+            />
+          </div>
+
+          <div className="relative z-10 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="relative w-14 h-14 flex-shrink-0">
+                <Image
+                  src="/bafe-logo.png"
+                  alt="BAFE Seal"
+                  fill
+                  sizes="56px"
+                  className="object-contain"
+                />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 tracking-wide uppercase">
+                  {t("about.mandate.legalBasis")}
+                </p>
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                  {t("about.mandate.title")}
+                </h2>
+              </div>
+            </div>
+
+            <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 leading-relaxed max-w-4xl">
+              {t("about.mandate.desc")}
+            </p>
+
+            {functionsList.length > 0 && (
+              <div className="pt-6 border-t border-slate-200 dark:border-[#1e3a5f]/30">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-6">
+                  {t("about.mandate.functionsTitle")}
+                </h3>
+                <ol className="divide-y divide-slate-100 dark:divide-[#1e3a5f]/20">
+                  {functionsList.map((fn, idx) => (
+                    <li key={idx} className="py-4 first:pt-0 last:pb-0 flex gap-4 sm:gap-5 items-start">
+                      <span className="font-mono text-sm font-semibold text-blue-700 dark:text-blue-400 pt-0.5 select-none flex-shrink-0">
+                        {String(idx + 1).padStart(2, "0")}.
+                      </span>
+                      <div className="space-y-1">
+                        <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+                          {fn.title}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                          {fn.desc}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reference Publications Section Header */}
+        <div className="pt-2">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+            Official Publications & Reference Guidelines
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+            Access statutory frameworks, network plans, and implementation guidebooks issued by DA-BAFE.
+          </p>
+        </div>
 
         {/* Bluecopy Book Section */}
         <BluecopyBook />
 
-        {/* Divider */}
-        <div className="border-t border-slate-200 dark:border-[#1e3a5f]/20" />
-
         {/* Administrative Order No. 4 Section */}
         <AdministrativeOrderBook />
 
-        {/* Divider */}
-        <div className="border-t border-slate-200 dark:border-[#1e3a5f]/20" />
+        {/* LGU Guidebook Section */}
+        <LguGuidebook />
 
         {/* CTA Section */}
-        <div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30">
+        <div className="rounded-xl bg-white border border-slate-200 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30">
           <div>
             <h3 className="text-xl font-semibold mb-1 text-slate-900 dark:text-white">Ready to report?</h3>
             <p className="text-sm text-slate-600 dark:text-slate-300">Join other citizens in monitoring infrastructure in your area.</p>
@@ -107,13 +167,13 @@ export default function AboutPage() {
           <div className="flex gap-3">
             <Link
               href="/report-issue"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 transition-colors shadow-sm animate-pulse hover:animate-none"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 transition-colors shadow-sm"
             >
               Start Reporting
             </Link>
             <Link
               href="/projects"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition-colors dark:border-[#1e3a5f]/40 dark:text-slate-300 dark:hover:bg-[#13233c]/50"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition-colors dark:border-[#1e3a5f]/40 dark:text-slate-300 dark:hover:bg-[#13233c]/50"
             >
               View Projects
             </Link>

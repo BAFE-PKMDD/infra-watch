@@ -1,6 +1,7 @@
 "use client";
 
 import type { AdminFeedbackItem } from "@/actions/query/feedback.query";
+import { parseIssueTypeValue } from "@/lib/abemis/issue-type-map";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -44,6 +45,7 @@ import {
   MessageSquare,
   Search,
   Star,
+  ThumbsDown,
   ThumbsUp,
   Trash2,
   Video,
@@ -56,6 +58,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type FilterStatus = "all" | "pending" | "approved" | "rejected";
+type FilterSentiment = "all" | "positive" | "negative";
 
 type FeedbackStats = {
   total: number;
@@ -63,6 +66,8 @@ type FeedbackStats = {
   approved: number;
   rejected: number;
   averageRating: number;
+  positiveSentiment: number;
+  negativeSentiment: number;
 };
 
 type FeedbackListResponse = {
@@ -97,6 +102,17 @@ const statusFilters: Array<{ value: FilterStatus; label: string }> = [
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
 ];
+
+const sentimentFilters: Array<{ value: FilterSentiment; label: string }> = [
+  { value: "all", label: "Any sentiment" },
+  { value: "positive", label: "Positive" },
+  { value: "negative", label: "Negative" },
+];
+
+const sentimentLabels: Record<string, string> = {
+  positive: "Positive",
+  negative: "Negative",
+};
 
 const categoryLabels: Record<string, string> = {
   quality: "Project Quality",
@@ -154,6 +170,7 @@ function projectHref(feedback: AdminFeedbackItem) {
 
 export function FeedbackManagementView({ initialData }: FeedbackManagementViewProps) {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
+  const [sentimentFilter, setSentimentFilter] = useState<FilterSentiment>("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -179,7 +196,7 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
     return () => window.clearTimeout(timeout);
   }, [search]);
 
-  const shouldUseInitialData = statusFilter === "all" && page === 1 && !debouncedSearch;
+  const shouldUseInitialData = statusFilter === "all" && sentimentFilter === "all" && page === 1 && !debouncedSearch;
 
   const { data: statsData } = useQuery<FeedbackStatsResponse>({
     queryKey: ["admin-feedback-stats"],
@@ -192,7 +209,7 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
   });
 
   const { data: feedbackData, isLoading } = useQuery<FeedbackListResponse>({
-    queryKey: ["admin-feedback", statusFilter, page, debouncedSearch],
+    queryKey: ["admin-feedback", statusFilter, sentimentFilter, page, debouncedSearch],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(page),
@@ -200,6 +217,7 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
       });
 
       if (statusFilter !== "all") params.set("status", statusFilter);
+      if (sentimentFilter !== "all") params.set("sentiment", sentimentFilter);
       if (debouncedSearch) params.set("search", debouncedSearch);
 
       const response = await fetch(`/api/admin/feedback?${params.toString()}`);
@@ -299,11 +317,13 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-3 md:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Metric label="Total" value={stats.total.toLocaleString()} icon={<MessageSquare className="size-4" />} />
         <Metric label="Pending" value={stats.pending.toLocaleString()} icon={<Clock className="size-4" />} tone="amber" />
         <Metric label="Approved" value={stats.approved.toLocaleString()} icon={<CheckCircle2 className="size-4" />} tone="green" />
         <Metric label="Avg. Rating" value={stats.averageRating.toFixed(1)} icon={<Star className="size-4" />} tone="blue" />
+        <Metric label="Positive" value={stats.positiveSentiment.toLocaleString()} icon={<ThumbsUp className="size-4" />} tone="green" />
+        <Metric label="Negative" value={stats.negativeSentiment.toLocaleString()} icon={<ThumbsDown className="size-4" />} tone="red" />
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
@@ -333,6 +353,25 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
               </Button>
             ))}
           </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
+          {sentimentFilters.map((filter) => (
+            <Button
+              key={filter.value}
+              type="button"
+              size="sm"
+              variant={sentimentFilter === filter.value ? "default" : "outline"}
+              onClick={() => {
+                setSentimentFilter(filter.value);
+                setPage(1);
+              }}
+            >
+              {filter.value === "positive" && <ThumbsUp className="size-3.5" />}
+              {filter.value === "negative" && <ThumbsDown className="size-3.5" />}
+              {filter.label}
+            </Button>
+          ))}
         </div>
       </section>
 
@@ -486,13 +525,14 @@ function Metric({
   label: string;
   value: string;
   icon: ReactNode;
-  tone?: "slate" | "amber" | "green" | "blue";
+  tone?: "slate" | "amber" | "green" | "blue" | "red";
 }) {
   const toneClass = {
     slate: "text-primary bg-primary/10",
     amber: "text-amber-600 bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300",
     green: "text-emerald-600 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300",
     blue: "text-sky-600 bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300",
+    red: "text-red-600 bg-red-100 dark:bg-red-950/40 dark:text-red-300",
   }[tone];
 
   return (
@@ -549,6 +589,7 @@ function FeedbackRow({
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400">
                 <span>{categoryLabels[feedback.category] || feedback.category}</span>
+                {feedback.sentiment ? <SentimentBadge value={feedback.sentiment} /> : null}
                 {feedback.rating ? <Rating value={feedback.rating} /> : null}
                 {feedback.media.length > 0 && (
                   <span className="inline-flex items-center gap-1">
@@ -590,6 +631,26 @@ function FeedbackRow({
       </div>
     </div>
   );
+}
+
+function SentimentBadge({ value }: { value: string }) {
+  if (value === "positive") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <ThumbsUp className="size-3" />
+        {sentimentLabels[value] || value}
+      </span>
+    );
+  }
+  if (value === "negative") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+        <ThumbsDown className="size-3" />
+        {sentimentLabels[value] || value}
+      </span>
+    );
+  }
+  return null;
 }
 
 function Rating({ value }: { value: number }) {
@@ -644,6 +705,7 @@ function FeedbackDetailSheet({
             <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               {categoryLabels[feedback.category] || feedback.category}
             </span>
+            {feedback.sentiment && <SentimentBadge value={feedback.sentiment} />}
             {feedback.isAnonymous && (
               <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                 Posted anonymously
@@ -674,6 +736,21 @@ function FeedbackDetailSheet({
           <DetailBlock title="Feedback">
             <p className="whitespace-pre-wrap text-sm leading-6 text-slate-800 dark:text-slate-100">{feedback.comment}</p>
           </DetailBlock>
+
+          {feedback.issueType && (
+            <DetailBlock title="Issue Type">
+              <div className="flex flex-wrap gap-1.5">
+                {parseIssueTypeValue(feedback.issueType).map((label) => (
+                  <span
+                    key={label}
+                    className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </DetailBlock>
+          )}
 
           {feedback.media.length > 0 && (
             <DetailBlock title={`Attachments (${feedback.media.length})`}>

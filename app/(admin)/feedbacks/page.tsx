@@ -33,6 +33,8 @@ export default async function FeedbacksPage() {
               approved: 0,
               rejected: 0,
               averageRating: 0,
+              positiveSentiment: 0,
+              negativeSentiment: 0,
             },
           pagination: feedbackResult.success
             ? feedbackResult.pagination

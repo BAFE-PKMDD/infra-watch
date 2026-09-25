@@ -13,9 +13,12 @@ interface IssueTypePickerProps {
   value: string;
   farmOperation: string;
   onChange: (value: string) => void;
+  /** Whether to show the required-field marker. Defaults to true for e-report; pass
+   * false where the picker is an optional add-on, e.g. within feedback. */
+  required?: boolean;
 }
 
-export function IssueTypePicker({ value, farmOperation, onChange }: IssueTypePickerProps) {
+export function IssueTypePicker({ value, farmOperation, onChange, required = true }: IssueTypePickerProps) {
   const selected = parseIssueTypeValue(value);
   const { recommended, more } = splitIssueTypesByFarmOperation(farmOperation);
 
@@ -33,7 +36,9 @@ export function IssueTypePicker({ value, farmOperation, onChange }: IssueTypePic
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-        Issue Type <span className="text-red-500 dark:text-red-400">*</span>
+        Issue Type {required
+          ? <span className="text-red-500 dark:text-red-400">*</span>
+          : <span className="font-normal text-slate-400 dark:text-slate-500">(Optional)</span>}
       </Label>
       <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
         Select all that apply &middot; {farmOperation ? `Common for ${farmOperation}` : "Common issue types"}

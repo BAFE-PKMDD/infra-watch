@@ -138,6 +138,10 @@ export const feedback = pgTable(
     rating: integer("rating"),
     comment: text("comment"),
     category: text("category"),
+    sentiment: text("sentiment"), // 'positive' | 'negative', citizen-provided, optional
+    // " | "-joined issue type labels from the same picker e-report uses, only ever
+    // collected when category is "concerns" - see lib/abemis/issue-type-map.ts.
+    issueType: text("issue_type"),
     media: jsonb("media").$type<FeedbackMedia[]>().default([]),
     isAnonymous: boolean("is_anonymous").notNull().default(false),
     helpfulCount: integer("helpful_count").notNull().default(0),
@@ -161,6 +165,7 @@ export const feedback = pgTable(
   (table) => ({
     projectIdIdx: index("feedback_project_id_idx").on(table.projectId),
     statusIdx: index("feedback_status_idx").on(table.status),
+    sentimentIdx: index("feedback_sentiment_idx").on(table.sentiment),
   }),
 );
 

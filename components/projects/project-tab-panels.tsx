@@ -83,6 +83,7 @@ export function ProjectTabPanels({ activeTab, project, onShowOnMap }: ProjectTab
           >
             <ProjectFeedback
               projectId={project.id}
+              farmOperation={project.farmOperation}
               highlightFeedbackId={highlightFeedbackId}
               highlightCommentId={highlightCommentId}
             />

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { motion, useInView, useReducedMotion } from "framer-motion";
+import React from "react";
+import { motion } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight, ClipboardCheck, Droplets, Search, Send, ShieldCheck, Tractor } from "lucide-react";
+import { ArrowRight, Droplets, Tractor } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import Link from "next/link";
@@ -11,9 +11,13 @@ import { cn } from "@/lib/utils";
 import type { InfraAnalyticsResult } from "@/actions/query/analytics.query";
 import { PublicPortfolioStatistics } from "@/components/public/public-portfolio-statistics";
 import { CitizenFeedbackSpotlight } from "@/components/public/citizen-feedback-spotlight";
+import { PhilippinesRegionsMap } from "@/components/public/philippines-regions-map";
 import { LiveVideoPopup } from "@/components/landing/live-video-popup";
+import { HowItWorksScroll } from "@/components/landing/how-it-works-scroll";
+import { ReportingChannelsHowItWorks } from "@/components/landing/reporting-channels-how-it-works";
 import type { PublicLiveVideo } from "@/types/live-video.types";
 import type { FeedbackActivityItem } from "@/types/activity-feed.types";
+import type { GeoFeatureCollection } from "@/lib/geojson-to-svg-path";
 
 const STATS_REVEAL_DELAY = 2.2;
 
@@ -21,70 +25,13 @@ export function LandingPageClient({
   initialAnalytics,
   liveVideo = null,
   feedbackHighlights = [],
+  provincesMap = null,
 }: {
   initialAnalytics: InfraAnalyticsResult;
   liveVideo?: PublicLiveVideo | null;
   feedbackHighlights?: FeedbackActivityItem[];
+  provincesMap?: GeoFeatureCollection | null;
 }) {
-  const reduceMotion = useReducedMotion();
-  const howItWorksRef = useRef<HTMLElement>(null);
-  const isHowItWorksInView = useInView(howItWorksRef, { amount: 0.2 });
-  const [tractorStep, setTractorStep] = useState(0);
-  const [litStep, setLitStep] = useState<number | null>(0);
-  const [tractorVisible, setTractorVisible] = useState(true);
-  const [isResetting, setIsResetting] = useState(false);
-
-  useEffect(() => {
-    if (reduceMotion || !isHowItWorksInView) return;
-
-    let isMounted = true;
-    let timeoutId: ReturnType<typeof setTimeout>;
-
-    const sequence = [
-      // 0: Parked at Step 0 (Step 0 lit) -> start driving to Step 1
-      { delay: 1800, action: () => { setLitStep(null); setTractorStep(1); } },
-      // 1: Arrive at Step 1 after 1400ms drive -> Step 1 lights up
-      { delay: 1400, action: () => { setLitStep(1); } },
-      // 2: Parked at Step 1 (Step 1 lit) -> start driving to Step 2
-      { delay: 1800, action: () => { setLitStep(null); setTractorStep(2); } },
-      // 3: Arrive at Step 2 after 1400ms drive -> Step 2 lights up
-      { delay: 1400, action: () => { setLitStep(2); } },
-      // 4: Parked at Step 2 (Step 2 lit) -> start driving to Step 3
-      { delay: 1800, action: () => { setLitStep(null); setTractorStep(3); } },
-      // 5: Arrive at Step 3 after 1400ms drive -> Step 3 lights up
-      { delay: 1400, action: () => { setLitStep(3); } },
-      // 6: Parked at Step 3 (Step 3 lit) -> fade out tractor and dim Step 3
-      { delay: 2000, action: () => { setLitStep(null); setTractorVisible(false); } },
-      // 7: Completely invisible -> instant snap back to start (0ms duration)
-      { delay: 350, action: () => { setIsResetting(true); setTractorStep(0); } },
-      // 8: Restore forward animation and fade in at Step 0
-      { delay: 100, action: () => { setIsResetting(false); setTractorVisible(true); setLitStep(0); } },
-    ];
-
-    let stepIndex = 0;
-
-    const runNext = () => {
-      const current = sequence[stepIndex];
-      timeoutId = setTimeout(() => {
-        if (!isMounted) return;
-        current.action();
-        stepIndex = (stepIndex + 1) % sequence.length;
-        runNext();
-      }, current.delay);
-    };
-
-    setTractorStep(0);
-    setLitStep(0);
-    setTractorVisible(true);
-    setIsResetting(false);
-    runNext();
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timeoutId);
-    };
-  }, [reduceMotion, isHowItWorksInView]);
-
   const programs = [
     {
       code: "AMEFSS",
@@ -109,34 +56,6 @@ export function LandingPageClient({
       medallion: "bg-indigo-50 text-primary dark:bg-indigo-950/60 dark:text-indigo-300",
       chip: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/60 dark:bg-indigo-950/50 dark:text-indigo-300",
       btn: "w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold h-10 rounded-lg flex items-center justify-center",
-    },
-  ];
-
-  const steps = [
-    {
-      num: "01",
-      icon: Search,
-      title: "Explore Database",
-      desc: "Browse agricultural and irrigation infrastructure projects. Filter by sub-program, budget, region, and status.",
-    },
-    {
-      num: "02",
-      icon: ClipboardCheck,
-      title: "Inspect Site Details",
-      desc: "Review coordinates, physical vs. financial progress, and the official program of works.",
-    },
-    {
-      num: "03",
-      icon: Send,
-      title: "Report or Give Feedback",
-      desc: "Rate a project and upload geotagged photos on the Citizen Feed, file a detailed Online E-Report, or send an SMS Grievance if you're offline.",
-      methods: ["Citizen Feed", "Online E-Report", "SMS Grievance"],
-    },
-    {
-      num: "04",
-      icon: ShieldCheck,
-      title: "Resolve Reported Issues",
-      desc: "Government moderators investigate citizen feedback and coordinate actions to resolve problems.",
     },
   ];
 
@@ -505,6 +424,16 @@ export function LandingPageClient({
         </div>
       </section>
 
+      {/* Regional Overview */}
+      {provincesMap && initialAnalytics.status === "ready" && (
+        <section className="relative mx-auto max-w-7xl px-4 py-16 md:py-24">
+          <PhilippinesRegionsMap
+            provinces={provincesMap}
+            regionalStats={initialAnalytics.data.regionalStats}
+          />
+        </section>
+      )}
+
       {/* Program Coverage Section */}
       <section className="relative mx-auto max-w-7xl px-4 py-16 md:py-28">
         <motion.div
@@ -578,110 +507,9 @@ export function LandingPageClient({
         </div>
       </section>
 
-      {/* How it works */}
-      <section ref={howItWorksRef} className="relative mx-auto max-w-6xl px-4 py-16 md:py-28">
-        <motion.div
-          className="mx-auto mb-12 max-w-xl text-center md:mb-16"
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.3 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">How It Works</h2>
-          <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            INFRA Watch connects citizens, site monitors, and government administrators in a closed feedback loop.
-          </p>
-        </motion.div>
+      <HowItWorksScroll />
 
-        <div className="relative">
-          <div className="absolute left-[12.5%] right-[12.5%] top-7 hidden lg:block">
-            <motion.div
-              aria-hidden
-              className="origin-left border-t-2 border-dashed border-slate-300 dark:border-slate-700"
-              initial={{ scaleX: 0 }}
-              whileInView={{ scaleX: 1 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-            />
-            {!reduceMotion && (
-              <motion.div
-                aria-hidden
-                className="pointer-events-none absolute -top-[20px] -translate-x-1/2 text-primary drop-shadow-[0_2px_4px_rgba(79,70,229,0.35)] dark:text-indigo-400 dark:drop-shadow-[0_2px_4px_rgba(129,140,248,0.4)]"
-                initial={{ left: "0%", opacity: 1 }}
-                animate={{
-                  left: `${(tractorStep / 3) * 100}%`,
-                  opacity: tractorVisible ? 1 : 0,
-                }}
-                transition={{
-                  left: { duration: isResetting ? 0 : 1.4, ease: [0.25, 1, 0.5, 1] },
-                  opacity: { duration: 0.3 },
-                }}
-              >
-                <motion.div
-                  animate={{ y: [0, -1.5, 0] }}
-                  transition={{ duration: 0.35, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  <Tractor className="h-6 w-6" />
-                </motion.div>
-              </motion.div>
-            )}
-          </div>
-          <div className="grid gap-10 sm:grid-cols-2 md:gap-x-6 lg:grid-cols-4">
-            {steps.map((step, index) => {
-              const isLit = litStep === index;
-              return (
-                <motion.div
-                  key={step.num}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.4 }}
-                  transition={{ duration: 0.55, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
-                  className="group relative flex flex-col items-center text-center"
-                >
-                  <motion.div
-                    className={cn(
-                      "relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border-2 shadow-sm transition-colors duration-300 group-hover:border-primary group-hover:bg-primary group-hover:text-white group-hover:shadow-lg",
-                      isLit
-                        ? "border-primary bg-primary text-white shadow-md shadow-primary/25 dark:border-indigo-400 dark:bg-indigo-600 dark:text-white dark:shadow-indigo-500/30"
-                        : "border-slate-200 bg-slate-50 text-primary dark:border-slate-700 dark:bg-slate-950 dark:text-indigo-300 dark:group-hover:border-primary dark:group-hover:bg-primary dark:group-hover:text-white"
-                    )}
-                    initial={{ scale: 0.7, rotate: -8, opacity: 0 }}
-                    whileInView={{ scale: 1, rotate: 0, opacity: 1 }}
-                    viewport={{ once: true, amount: 0.4 }}
-                    transition={{ duration: 0.5, delay: index * 0.12 + 0.2, type: "spring", stiffness: 200, damping: 14 }}
-                    whileHover={{ y: -4, rotate: -4 }}
-                  >
-                    <step.icon className="h-6 w-6" aria-hidden />
-                    <motion.span
-                      className="absolute -right-2.5 -top-2.5 rounded-full bg-slate-900 px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider text-white shadow-md dark:bg-amber-400 dark:text-slate-900"
-                      initial={{ scale: 0, opacity: 0 }}
-                      whileInView={{ scale: 1, opacity: 1 }}
-                      viewport={{ once: true, amount: 0.4 }}
-                      transition={{ duration: 0.4, delay: index * 0.12 + 0.5, type: "spring", stiffness: 300, damping: 12 }}
-                    >
-                      {step.num}
-                    </motion.span>
-                  </motion.div>
-                  <h3 className="mt-5 font-bold text-base text-slate-900 dark:text-white">{step.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{step.desc}</p>
-                  {"methods" in step && step.methods && (
-                    <ul className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
-                      {step.methods.map((method) => (
-                        <li
-                          key={method}
-                          className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                        >
-                          {method}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <ReportingChannelsHowItWorks />
 
       <CitizenFeedbackSpotlight items={feedbackHighlights} />
 

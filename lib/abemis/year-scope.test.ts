@@ -28,21 +28,25 @@ test("rejects missing or non-numeric funding years", () => {
   }
 });
 
-test("excludes proposal-stage projects funded through 2024", () => {
-  for (const yearFunded of ["2021", "2022", "2023", "2024"]) {
-    assert.equal(
-      getAbemisSyncExclusionReason({ year_funded: yearFunded, stage: " Proposal ", status: "For Review" }),
-      "proposal-through-2024",
-    );
+test("excludes proposal and pre-implementation stages funded through 2024", () => {
+  for (const stage of ["Proposal", "Pre-implementation"]) {
+    for (const yearFunded of ["2021", "2022", "2023", "2024"]) {
+      assert.equal(
+        getAbemisSyncExclusionReason({ year_funded: yearFunded, stage, status: "For Review" }),
+        "proposal-or-pre-implementation-through-2024",
+      );
+    }
   }
 });
 
-test("includes proposal-stage projects funded from 2025 onward", () => {
-  for (const yearFunded of ["2025", "2026"]) {
-    assert.equal(
-      getAbemisSyncExclusionReason({ year_funded: yearFunded, stage: "proposal", status: "For Validation" }),
-      null,
-    );
+test("includes proposal and pre-implementation stages funded from 2025 onward", () => {
+  for (const stage of ["Proposal", "Pre-implementation"]) {
+    for (const yearFunded of ["2025", "2026"]) {
+      assert.equal(
+        getAbemisSyncExclusionReason({ year_funded: yearFunded, stage, status: "For Validation" }),
+        null,
+      );
+    }
   }
 });
 
@@ -65,7 +69,7 @@ test("excludes invalid or unclassified project stages", () => {
 });
 
 test("keeps recognized non-proposal stages in the documented year scope", () => {
-  for (const stage of ["Inventory", "Pre-implementation", "Procurement", "Implementation", "Completed"]) {
+  for (const stage of ["Inventory", "Procurement", "Implementation", "Completed"]) {
     assert.equal(
       getAbemisSyncExclusionReason({ year_funded: "2024", stage, status: "For Review" }),
       null,
@@ -82,7 +86,7 @@ test("database project scope applies the same lifecycle exclusions as synchroniz
   assert.deepEqual(query.params, [
     "2021", "2022", "2023", "2024", "2025", "2026",
     "", "0", "invalid", "unclassified",
-    "proposal", "2021", "2022", "2023", "2024",
+    "proposal", "pre-implementation", "2021", "2022", "2023", "2024",
     "%cancel%", "%archiv%",
   ]);
 });

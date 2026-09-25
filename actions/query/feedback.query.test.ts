@@ -8,3 +8,10 @@ test("feedback administration fails closed for an unassigned moderator", () => {
   assert.match(feedbackQuerySource, /if \(!hasAssignedModeratorScope\(user\)\)/);
   assert.match(feedbackQuerySource, /status\?: number \}\)\.status = 403/);
 });
+
+test("sentiment filter only ever admits the two known values", () => {
+  assert.match(
+    feedbackQuerySource,
+    /value === "positive" \|\| value === "negative" \? value : null/,
+  );
+});

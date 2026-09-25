@@ -72,6 +72,36 @@ test("denies issue evidence to an authenticated user who does not own or manage 
   assert.equal(loadCalls, 0);
 });
 
+test("public feedback/feedback-comment/live-video previews load without any session", async () => {
+  let sessionChecks = 0;
+  for (const path of [
+    "feedback/1730000000000-0123456789abcdef0123456789abcdef.jpg",
+    "feedback-comment/1730000000000-0123456789abcdef0123456789abcdef.png",
+    "live-videos/1730000000000-0123456789abcdef0123456789abcdef.mp4",
+  ]) {
+    const response = await createUploadPreviewGetHandler(dependencies({
+      getSessionUser: async () => {
+        sessionChecks += 1;
+        return null;
+      },
+      loadMedia: async () => Buffer.from("public-media"),
+    }))(request(path));
+
+    assert.equal(response.status, 200, path);
+    assert.equal(await response.text(), "public-media");
+  }
+  assert.equal(sessionChecks, 0, "a public preview must never require a session lookup");
+});
+
+test("public previews are cacheable, unlike private ones", async () => {
+  const response = await createUploadPreviewGetHandler(dependencies({
+    getSessionUser: async () => null,
+    loadMedia: async () => Buffer.from("public-media"),
+  }))(request("feedback/1730000000000-0123456789abcdef0123456789abcdef.jpg"));
+
+  assert.equal(response.headers.get("cache-control"), "public, max-age=3600");
+});
+
 test("rejects malformed or unsupported preview paths before storage access", async () => {
   let loadCalls = 0;
   for (const path of [

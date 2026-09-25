@@ -1,4 +1,4 @@
-import { and, eq, ilike, inArray, not, notInArray, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
+import { and, ilike, inArray, not, notInArray, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { projects } from "@/lib/db/schema";
 
 // INFRA Watch's ABEMIS feed is scoped to fiscal years 2021-2026 (docs/00-overview.md).
@@ -21,7 +21,7 @@ export function isYearFundedInSyncScope(yearFunded: string | null | undefined): 
 
 export type AbemisSyncExclusionReason =
   | "outside-year-scope"
-  | "proposal-through-2024"
+  | "proposal-or-pre-implementation-through-2024"
   | "cancelled-or-archived"
   | "invalid-or-unclassified-stage";
 
@@ -52,8 +52,8 @@ export function getAbemisSyncExclusionReason(
     return "invalid-or-unclassified-stage";
   }
 
-  if (stage === "proposal" && Number.parseInt(project.year_funded!, 10) <= 2024) {
-    return "proposal-through-2024";
+  if (["proposal", "pre-implementation"].includes(stage) && Number.parseInt(project.year_funded!, 10) <= 2024) {
+    return "proposal-or-pre-implementation-through-2024";
   }
 
   return null;
@@ -67,7 +67,7 @@ export function projectYearScopeCondition(column: AnyColumn = projects.yearFunde
     inArray(column, ABEMIS_SYNC_YEARS),
     notInArray(normalizedStage, ["", "0", "invalid", "unclassified"]),
     not(and(
-      eq(normalizedStage, "proposal"),
+      inArray(normalizedStage, ["proposal", "pre-implementation"]),
       inArray(column, ["2021", "2022", "2023", "2024"]),
     )!),
     not(or(

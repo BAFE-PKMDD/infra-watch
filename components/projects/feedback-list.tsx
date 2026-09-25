@@ -32,6 +32,8 @@ interface FeedbackItem {
   rating?: number | null;
   comment: string;
   category: string;
+  sentiment?: string | null;
+  issueType?: string | null;
   isAnonymous: boolean;
   helpfulCount: number;
   unhelpfulCount: number;

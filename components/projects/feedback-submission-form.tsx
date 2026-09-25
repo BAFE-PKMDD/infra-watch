@@ -1,20 +1,33 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { Star, Loader2, X, Video as VideoIcon } from "lucide-react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  AlertTriangle,
+  BarChart3,
+  Check,
+  ClipboardCheck,
+  HardHat,
+  Loader2,
+  MessageCircle,
+  MessageSquare,
+  Pencil,
+  ShieldCheck,
+  Smile,
+  Star,
+  Tag,
+  ThumbsDown,
+  ThumbsUp,
+  Video as VideoIcon,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import Image from "next/image";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Field,
   FieldLabel,
@@ -27,16 +40,22 @@ import { getFileUrl } from "@/lib/minio-url";
 import { getUploadErrorTitle } from "@/lib/upload-errors";
 import { toast } from "sonner";
 import { useTranslation } from "@/i18n";
-import type { FeedbackCategory, FeedbackMedia } from "@/types/feedback.types";
+import type { FeedbackCategory, FeedbackMedia, FeedbackSentiment } from "@/types/feedback.types";
 import {
   GeoEvidenceUpload,
   type GeoEvidenceReadyItem,
 } from "@/components/shared/geo-evidence-upload";
 import { SubmissionSurveyModal } from "@/components/shared/submission-survey-modal";
 import { useSubmissionSurveyGate } from "@/hooks/use-submission-survey-gate";
+import { IssueTypePicker } from "@/components/report-issue/issue-type-picker";
+import { parseIssueTypeValue } from "@/lib/abemis/issue-type-map";
 
 interface FeedbackSubmissionFormProps {
   projectId: string;
+  /** The project's Farm Operation category (e.g. "Irrigation System"), used only to
+   * promote the most relevant issue types to the top of the picker. Optional - an
+   * empty value just falls back to the common, infrastructure-agnostic issue types. */
+  farmOperation?: string | null;
   onSuccess?: (result?: { data?: { id?: string } }) => void;
   onBusyChange?: (busy: boolean) => void;
 
@@ -46,36 +65,89 @@ interface FeedbackSubmissionFormProps {
     rating?: number | null;
     comment: string;
     category: FeedbackCategory;
+    sentiment?: FeedbackSentiment | null;
+    issueType?: string | null;
     isAnonymous: boolean;
     media?: FeedbackMedia[];
   };
 }
 
-const categories: { value: FeedbackCategory; label: string }[] = [
-  { value: "quality", label: "Project Quality" },
-  { value: "progress", label: "Project Progress" },
-  { value: "concerns", label: "Concerns & Issues" },
-  { value: "general", label: "General Feedback" },
+type StepId = "sentiment" | "category" | "details" | "consent" | "review";
+
+type StepDefinition = {
+  id: StepId;
+  label: string;
+  icon: LucideIcon;
+};
+
+const steps: StepDefinition[] = [
+  { id: "sentiment", label: "Experience", icon: Smile },
+  { id: "category", label: "Category", icon: Tag },
+  { id: "details", label: "Details", icon: MessageSquare },
+  { id: "consent", label: "Consent", icon: ShieldCheck },
+  { id: "review", label: "Review", icon: ClipboardCheck },
 ];
+
+const stepVariants = {
+  enter: (direction: number) => ({ x: direction > 0 ? 80 : -80, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction > 0 ? -80 : 80, opacity: 0 }),
+};
+
+// A viewer who prefers reduced motion still gets a state change, just without the slide.
+const reducedStepVariants = {
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
+  exit: { opacity: 0 },
+};
+
+const categoryOptions: Array<{ value: FeedbackCategory; label: string; icon: LucideIcon; description: string }> = [
+  { value: "quality", label: "Project Quality", icon: HardHat, description: "Materials, workmanship, and construction standards" },
+  { value: "progress", label: "Project Progress", icon: BarChart3, description: "Timeline, completion status, and pacing" },
+  { value: "concerns", label: "Concerns & Issues", icon: AlertTriangle, description: "A problem, delay, or something that needs attention" },
+  { value: "general", label: "General Feedback", icon: MessageCircle, description: "Anything else about this project" },
+];
+
+// Sentiment never hides or blocks a category - it only decides which cards lead,
+// the same way the e-report issue picker promotes types by farm operation.
+function getCategoryOrder(sentiment: FeedbackSentiment | null): FeedbackCategory[] {
+  if (sentiment === "negative") return ["concerns", "quality", "progress", "general"];
+  if (sentiment === "positive") return ["quality", "progress", "general", "concerns"];
+  return ["quality", "progress", "concerns", "general"];
+}
+
+function getRecommendedCategories(sentiment: FeedbackSentiment | null): Set<FeedbackCategory> {
+  if (sentiment === "negative") return new Set<FeedbackCategory>(["concerns"]);
+  if (sentiment === "positive") return new Set<FeedbackCategory>(["quality", "progress"]);
+  return new Set<FeedbackCategory>();
+}
 
 interface FeedbackFormData {
   rating?: number;
   comment: string;
   category: FeedbackCategory;
+  sentiment?: FeedbackSentiment | null;
+  issueType?: string | null;
   isAnonymous: boolean;
   media?: FeedbackMedia[];
 }
 
 export function FeedbackSubmissionForm({
   projectId,
+  farmOperation,
   onSuccess,
   onBusyChange,
   editMode = false,
   initialData,
 }: FeedbackSubmissionFormProps) {
+  const [currentStep, setCurrentStep] = useState<StepId>(editMode ? "review" : "sentiment");
+  const [direction, setDirection] = useState(1);
+  const prefersReducedMotion = useReducedMotion();
   const [rating, setRating] = useState<number>(initialData?.rating || 0);
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [category, setCategory] = useState<FeedbackCategory>(initialData?.category || "general");
+  const [sentiment, setSentiment] = useState<FeedbackSentiment | null>(initialData?.sentiment ?? null);
+  const [issueType, setIssueType] = useState<string>(initialData?.issueType ?? "");
   const [comment, setComment] = useState(initialData?.comment || "");
   const [isAnonymous, setIsAnonymous] = useState(initialData?.isAnonymous || false);
   const [media, setMedia] = useState<FeedbackMedia[]>(initialData?.media || []);
@@ -86,12 +158,19 @@ export function FeedbackSubmissionForm({
   const [agreeToTerms, setAgreeToTerms] = useState(editMode); // Auto-agree in edit mode
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showPreSubmitSurvey, setShowPreSubmitSurvey] = useState(false);
-  const [isReviewing, setIsReviewing] = useState(false);
   const commitRef = useRef(false);
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   // Editing existing feedback never re-asks the survey - it's not a first submission.
   const { needsSurvey } = useSubmissionSurveyGate(!editMode);
+
+  const orderedCategories = useMemo(() => {
+    const order = getCategoryOrder(sentiment);
+    return order
+      .map((value) => categoryOptions.find((option) => option.value === value))
+      .filter((option): option is NonNullable<typeof option> => Boolean(option));
+  }, [sentiment]);
+  const recommendedCategories = useMemo(() => getRecommendedCategories(sentiment), [sentiment]);
 
   // File upload mutation
   const uploadMutation = useMutation({
@@ -133,6 +212,8 @@ export function FeedbackSubmissionForm({
           rating: data.rating || null,
           comment: data.comment.trim(),
           category: data.category,
+          sentiment: data.sentiment || null,
+          issueType: data.issueType || null,
           isAnonymous: data.isAnonymous,
           media: data.media || [],
         }),
@@ -168,16 +249,19 @@ export function FeedbackSubmissionForm({
       }
 
       // Reset form
+      setCurrentStep("sentiment");
+      setDirection(1);
       setRating(0);
       setComment("");
       setCategory("general");
+      setSentiment(null);
+      setIssueType("");
       setIsAnonymous(false);
       setMedia([]);
       setPendingEvidence([]);
       setEvidenceInputKey((key) => key + 1);
       setAgreeToTerms(false);
       setValidationErrors({});
-      setIsReviewing(false);
 
       // Call success callback
       if (onSuccess) {
@@ -185,8 +269,8 @@ export function FeedbackSubmissionForm({
       }
     },
     onError: (error: Error) => {
-      // Send them back to the editable form so the error is visible next to the fields.
-      setIsReviewing(false);
+      // Send them back to the review step so the error is visible next to the confirm button.
+      setCurrentStep("review");
       setValidationErrors({ submit: error.message });
     },
   });
@@ -203,38 +287,35 @@ export function FeedbackSubmissionForm({
     setMedia((current) => current.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (commitRef.current) return;
+  const goToStep = useCallback((step: StepId, dir = 1) => {
+    setDirection(dir);
+    setCurrentStep(step);
+  }, []);
 
-    // Clear previous errors
-    setValidationErrors({});
-
-    // Validation
+  const validateDetailsStep = () => {
     const errors: Record<string, string> = {};
 
     if (!comment.trim()) {
       errors.comment = "Please provide your feedback";
     }
-
-    if (!agreeToTerms) {
-      errors.agreement = "You must agree to the Terms of Service and Privacy Policy";
-    }
-
     if (isProcessingMedia) {
       errors.media = "Please wait while the location metadata is being processed.";
     }
-
     if (media.length + pendingEvidence.length > 5) {
       errors.media = "Maximum 5 media files allowed.";
     }
 
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
-      return;
-    }
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
-    setIsReviewing(true);
+  const validateConsentStep = () => {
+    if (!agreeToTerms) {
+      setValidationErrors({ agreement: "You must agree to the Terms of Service and Privacy Policy" });
+      return false;
+    }
+    setValidationErrors({});
+    return true;
   };
 
   const handleConfirmSubmit = async () => {
@@ -294,6 +375,8 @@ export function FeedbackSubmissionForm({
           rating: rating || undefined,
           comment,
           category,
+          sentiment,
+          issueType: category === "concerns" ? issueType : null,
           isAnonymous,
           media: uploadedMedia,
         });
@@ -312,348 +395,637 @@ export function FeedbackSubmissionForm({
   const formBusy = isSubmitting || isUploading || showPreSubmitSurvey;
   const characterCount = comment.length;
   const maxCharacters = 1000;
+  const currentStepIndex = steps.findIndex((step) => step.id === currentStep);
 
   return (
     <>
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {!isReviewing && (
-      <>
-      {/* Category */}
-      <Field>
-        <FieldLabel htmlFor="category">Category *</FieldLabel>
-        <Select
-          value={category}
-          disabled={formBusy}
-          onValueChange={(value) => setCategory(value as FeedbackCategory)}
+      <StepProgress steps={steps} currentStepIndex={currentStepIndex} />
+
+      <AnimatePresence mode="wait" custom={direction}>
+        <motion.div
+          key={currentStep}
+          custom={direction}
+          variants={prefersReducedMotion ? reducedStepVariants : stepVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: prefersReducedMotion ? 0.15 : 0.25, ease: "easeInOut" }}
         >
-          <SelectTrigger id="category" className="h-11">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((cat) => (
-              <SelectItem key={cat.value} value={cat.value}>
-                {cat.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-
-      {/* Comment */}
-      <Field>
-        <div className="flex items-center justify-between mb-2">
-          <FieldLabel htmlFor="comment">Your Feedback *</FieldLabel>
-          <span className={cn(
-            "text-xs transition-colors",
-            characterCount > maxCharacters
-              ? "text-red-500 dark:text-red-400 font-medium"
-              : "text-slate-400 dark:text-slate-500"
-          )}>
-            {characterCount}/{maxCharacters}
-          </span>
-        </div>
-        <Textarea
-          id="comment"
-          value={comment}
-          onChange={(e) => {
-            setComment(e.target.value);
-            if (validationErrors.comment) {
-              setValidationErrors((current) => {
-                const next = { ...current };
-                delete next.comment;
-                return next;
-              });
-            }
-          }}
-          placeholder="Share your thoughts about this project..."
-          rows={5}
-          maxLength={maxCharacters}
-          className="resize-none"
-          disabled={formBusy}
-        />
-        <FieldError errors={validationErrors.comment} />
-      </Field>
-
-      {/* Media Upload */}
-      <Field>
-        <div className="mb-2 flex items-end justify-between gap-3">
-          <div>
-            <FieldLabel>Evidence attachments (Optional)</FieldLabel>
-            <FieldDescription className="mt-1">
-              Upload existing media or capture a new geotagged photo or GeoVideo.
-            </FieldDescription>
-          </div>
-          <span className="shrink-0 text-[11px] font-bold tabular-nums text-slate-500">
-            {media.length + pendingEvidence.length}/5
-          </span>
-        </div>
-
-        {media.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
-            {media.map((item, index) => (
-              <div key={index} className="relative group">
-                <div className="relative w-full aspect-square border-2 border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-800 hover:border-green-500 dark:hover:border-green-500 transition-colors">
-                  {item.type === 'image' ? (
-                    <Image
-                      src={getFileUrl(item.url)}
-                      alt=""
-                      width={200}
-                      height={200}
-                      className="w-full h-full object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="relative w-full h-full">
-                      <video
-                        src={getFileUrl(item.url)}
-                        className="w-full h-full object-cover"
-                        preload="metadata"
-                        controls
-                        muted
-                      />
-                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30">
-                        <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
-                          <VideoIcon className="w-6 h-6 text-slate-700" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+          {currentStep === "sentiment" && (
+            <div className="space-y-5">
+              <StepHeader title="How was your experience?" body="This helps route your feedback correctly. You can skip this." />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <SentimentCard
+                  icon={ThumbsUp}
+                  label="Positive"
+                  description="Things are going well"
+                  tone="positive"
+                  isSelected={sentiment === "positive"}
+                  disabled={formBusy}
+                  onClick={() => setSentiment((current) => (current === "positive" ? null : "positive"))}
+                />
+                <SentimentCard
+                  icon={ThumbsDown}
+                  label="Negative"
+                  description="Something needs attention"
+                  tone="negative"
+                  isSelected={sentiment === "negative"}
+                  disabled={formBusy}
+                  onClick={() => setSentiment((current) => (current === "negative" ? null : "negative"))}
+                />
+              </div>
+              <div className="flex items-center justify-between pt-2">
                 <button
                   type="button"
-                  onClick={() => removeMedia(index)}
+                  onClick={() => {
+                    setSentiment(null);
+                    goToStep("category");
+                  }}
                   disabled={formBusy}
-                  className="absolute -top-2 -right-2 flex size-8 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Remove media"
+                  className="text-sm font-medium text-slate-500 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:text-slate-200"
                 >
-                  <X className="w-4 h-4" />
+                  Prefer not to say
                 </button>
+                <Button type="button" onClick={() => goToStep("category")} disabled={formBusy}>
+                  Next
+                </Button>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
 
-        <GeoEvidenceUpload
-          key={evidenceInputKey}
-          compact
-          initialItems={pendingEvidence}
-          maxFiles={Math.max(5 - media.length, 0)}
-          disabled={formBusy}
-          onEvidenceReady={handleEvidenceReady}
-          onProcessingChange={handleEvidenceProcessingChange}
-        />
-        {uploadMutation.isPending ? (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300" aria-live="polite">
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            Uploading evidence securely&hellip;
-          </div>
-        ) : null}
-        <FieldError errors={validationErrors.media} />
-      </Field>
+          {currentStep === "category" && (
+            <div className="space-y-5">
+              <StepHeader title="What's this about?" body="Choose the category that best fits your feedback." />
+              <div role="radiogroup" aria-label="Category" className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {orderedCategories.map((option) => (
+                  <CategoryCard
+                    key={option.value}
+                    option={option}
+                    isSelected={category === option.value}
+                    isRecommended={recommendedCategories.has(option.value)}
+                    disabled={formBusy}
+                    onSelect={() => setCategory(option.value)}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <Button type="button" variant="ghost" onClick={() => goToStep("sentiment", -1)} disabled={formBusy}>
+                  Back
+                </Button>
+                <Button type="button" onClick={() => goToStep("details")} disabled={formBusy}>
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
 
-      {/* Rating */}
-      <Field>
-        <FieldLabel>Rating (Optional)</FieldLabel>
-        <div className="flex items-center gap-2">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              type="button"
-              onClick={() => setRating(star === rating ? 0 : star)}
-              onMouseEnter={() => setHoverRating(star)}
-              onMouseLeave={() => setHoverRating(0)}
-              disabled={formBusy}
-              className="rounded transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
-            >
-              <Star
-                className={cn(
-                  "w-8 h-8 transition-colors",
-                  star <= (hoverRating || rating)
-                    ? "fill-yellow-400 text-yellow-400"
-                    : "text-slate-300 dark:text-slate-600 hover:text-slate-400"
+          {currentStep === "details" && (
+            <div className="space-y-6">
+              <StepHeader title="Tell us more" body="Share the details, add evidence, and rate your experience if you'd like." />
+
+              {/* Comment */}
+              <Field>
+                <div className="flex items-center justify-between mb-2">
+                  <FieldLabel htmlFor="comment">Your Feedback *</FieldLabel>
+                  <span className={cn(
+                    "text-xs transition-colors",
+                    characterCount > maxCharacters
+                      ? "text-red-500 dark:text-red-400 font-medium"
+                      : "text-slate-400 dark:text-slate-500"
+                  )}>
+                    {characterCount}/{maxCharacters}
+                  </span>
+                </div>
+                <Textarea
+                  id="comment"
+                  value={comment}
+                  onChange={(e) => {
+                    setComment(e.target.value);
+                    if (validationErrors.comment) {
+                      setValidationErrors((current) => {
+                        const next = { ...current };
+                        delete next.comment;
+                        return next;
+                      });
+                    }
+                  }}
+                  placeholder="Share your thoughts about this project..."
+                  rows={5}
+                  maxLength={maxCharacters}
+                  className="resize-none"
+                  disabled={formBusy}
+                  autoFocus
+                />
+                <FieldError errors={validationErrors.comment} />
+              </Field>
+
+              {/* Issue Type - only relevant once "Concerns & Issues" is the category */}
+              {category === "concerns" && (
+                <IssueTypePicker
+                  value={issueType}
+                  farmOperation={farmOperation || ""}
+                  onChange={setIssueType}
+                  required={false}
+                />
+              )}
+
+              {/* Media Upload */}
+              <Field>
+                <div className="mb-2 flex items-end justify-between gap-3">
+                  <div>
+                    <FieldLabel>Evidence attachments (Optional)</FieldLabel>
+                    <FieldDescription className="mt-1">
+                      Upload existing media or capture a new geotagged photo or GeoVideo.
+                    </FieldDescription>
+                  </div>
+                  <span className="shrink-0 text-[11px] font-bold tabular-nums text-slate-500">
+                    {media.length + pendingEvidence.length}/5
+                  </span>
+                </div>
+
+                {media.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
+                    {media.map((item, index) => (
+                      <div key={index} className="relative group">
+                        <div className="relative w-full aspect-square border-2 border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-800 hover:border-green-500 dark:hover:border-green-500 transition-colors">
+                          {item.type === 'image' ? (
+                            <Image
+                              src={getFileUrl(item.url)}
+                              alt=""
+                              width={200}
+                              height={200}
+                              className="w-full h-full object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="relative w-full h-full">
+                              <video
+                                src={getFileUrl(item.url)}
+                                className="w-full h-full object-cover"
+                                preload="metadata"
+                                controls
+                                muted
+                              />
+                              <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30">
+                                <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
+                                  <VideoIcon className="w-6 h-6 text-slate-700" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeMedia(index)}
+                          disabled={formBusy}
+                          className="absolute -top-2 -right-2 flex size-8 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label="Remove media"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
+
+                <GeoEvidenceUpload
+                  key={evidenceInputKey}
+                  compact
+                  initialItems={pendingEvidence}
+                  maxFiles={Math.max(5 - media.length, 0)}
+                  disabled={formBusy}
+                  onEvidenceReady={handleEvidenceReady}
+                  onProcessingChange={handleEvidenceProcessingChange}
+                />
+                {uploadMutation.isPending ? (
+                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300" aria-live="polite">
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    Uploading evidence securely&hellip;
+                  </div>
+                ) : null}
+                <FieldError errors={validationErrors.media} />
+              </Field>
+
+              {/* Rating */}
+              <Field>
+                <FieldLabel>Rating (Optional)</FieldLabel>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star === rating ? 0 : star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      disabled={formBusy}
+                      className="rounded transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                    >
+                      <Star
+                        className={cn(
+                          "w-8 h-8 transition-colors",
+                          star <= (hoverRating || rating)
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-slate-300 dark:text-slate-600 hover:text-slate-400"
+                        )}
+                      />
+                    </button>
+                  ))}
+                  {rating > 0 && (
+                    <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">
+                      {rating} star{rating > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              </Field>
+
+              <div className="flex items-center justify-between pt-2">
+                <Button type="button" variant="ghost" onClick={() => goToStep("category", -1)} disabled={formBusy}>
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  disabled={formBusy}
+                  onClick={() => {
+                    if (validateDetailsStep()) goToStep("consent");
+                  }}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === "consent" && (
+            <div className="space-y-5">
+              <StepHeader title="Consent" body="Confirm how you'd like to submit this feedback." />
+
+              {/* Agreement Checkbox */}
+              <Field>
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="agreement"
+                    checked={agreeToTerms}
+                    disabled={formBusy}
+                    onCheckedChange={(checked) => {
+                      setAgreeToTerms(checked as boolean);
+                      if (checked && validationErrors.agreement) {
+                        setValidationErrors((current) => {
+                          const next = { ...current };
+                          delete next.agreement;
+                          return next;
+                        });
+                      }
+                    }}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <FieldLabel
+                      htmlFor="agreement"
+                      className="cursor-pointer font-normal text-sm"
+                    >
+                      {t("reportIssue.form.fields.agreeToTermsPrefix")}
+                      <Link
+                        href="/terms-of-service"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline hover:no-underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {t("footer.terms")}
+                      </Link>
+                      {t("reportIssue.form.fields.andConnector")}
+                      <Link
+                        href="/data-privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline hover:no-underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {t("footer.privacy")}
+                      </Link>
+                      {" "}when submitting this feedback
+                    </FieldLabel>
+                  </div>
+                </div>
+                <FieldError errors={validationErrors.agreement} />
+              </Field>
+
+              {/* Anonymous Checkbox */}
+              <Field>
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="anonymous"
+                    checked={isAnonymous}
+                    disabled={formBusy}
+                    onCheckedChange={(checked) => setIsAnonymous(checked as boolean)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <FieldLabel
+                      htmlFor="anonymous"
+                      className="cursor-pointer font-normal text-sm"
+                    >
+                      Submit as Anonymous
+                    </FieldLabel>
+                    <FieldDescription className="mt-1">
+                      Your identity will be hidden from other users
+                    </FieldDescription>
+                  </div>
+                </div>
+              </Field>
+
+              <div className="flex items-center justify-between pt-2">
+                <Button type="button" variant="ghost" onClick={() => goToStep("details", -1)} disabled={formBusy}>
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  disabled={formBusy}
+                  onClick={() => {
+                    if (validateConsentStep()) goToStep("review");
+                  }}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === "review" && (
+            <div className="space-y-4">
+              <StepHeader title="Review your feedback" body="Check everything below, then confirm to submit." />
+
+              <ReviewSection title="Your experience" onEdit={() => goToStep("sentiment", -1)}>
+                <ReviewRow
+                  label="Sentiment"
+                  value={sentiment === "positive" ? "Positive" : sentiment === "negative" ? "Negative" : "Not specified"}
+                />
+                <ReviewRow
+                  label="Category"
+                  value={categoryOptions.find((option) => option.value === category)?.label || category}
+                />
+              </ReviewSection>
+
+              <ReviewSection title="Feedback" onEdit={() => goToStep("details", -1)}>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Your Feedback</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{comment}</p>
+                </div>
+                {category === "concerns" && (
+                  <ReviewRow
+                    label="Issue Type"
+                    value={parseIssueTypeValue(issueType).join(", ") || "Not specified"}
+                  />
+                )}
+                <ReviewRow label="Rating" value={rating > 0 ? `${rating} star${rating > 1 ? "s" : ""}` : "Not rated"} />
+                <ReviewRow
+                  label="Attachments"
+                  value={
+                    media.length + pendingEvidence.length === 0
+                      ? "None"
+                      : `${media.length + pendingEvidence.length} file${media.length + pendingEvidence.length > 1 ? "s" : ""}`
+                  }
+                />
+              </ReviewSection>
+
+              <ReviewSection title="Consent" onEdit={() => goToStep("consent", -1)}>
+                <ReviewRow label="Submitting as" value={isAnonymous ? "Anonymous" : "Your account"} />
+              </ReviewSection>
+
+              {validationErrors.submit && (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <X className="w-3 h-3 text-red-600 dark:text-red-400" />
+                  </div>
+                  <p className="text-sm text-red-600 dark:text-red-400 flex-1">{validationErrors.submit}</p>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                <Button type="button" variant="ghost" onClick={() => goToStep("consent", -1)} disabled={formBusy}>
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmSubmit}
+                  disabled={formBusy}
+                  className="h-11 flex-1 text-base font-medium"
+                  size="lg"
+                >
+                  {formBusy ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Saving Feedback...
+                    </>
+                  ) : (
+                    "Confirm & Submit"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <SubmissionSurveyModal
+        isOpen={showPreSubmitSurvey}
+        onClose={() => setShowPreSubmitSurvey(false)}
+        onComplete={() => {
+          setShowPreSubmitSurvey(false);
+          performSubmit();
+        }}
+        sourceType="feedback"
+        sourceId={null}
+      />
+    </>
+  );
+}
+
+function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; currentStepIndex: number }) {
+  const prefersReducedMotion = useReducedMotion();
+  const lineDuration = prefersReducedMotion ? 0 : 0.4;
+  const nodeDuration = prefersReducedMotion ? 0 : 0.25;
+  const dotDuration = prefersReducedMotion ? 0 : 0.3;
+
+  return (
+    <nav aria-label="Feedback progress" className="mb-6 w-full">
+      <ol className="relative hidden items-center justify-between sm:flex">
+        <div className="absolute left-0 right-0 top-5 h-0.5 bg-slate-200 dark:bg-slate-700" />
+        <motion.div
+          className="absolute left-0 top-5 h-0.5 bg-emerald-500"
+          initial={false}
+          animate={{ width: steps.length > 1 ? `${(currentStepIndex / (steps.length - 1)) * 100}%` : "0%" }}
+          transition={{ duration: lineDuration, ease: "easeInOut" }}
+        />
+
+        {steps.map((step, index) => {
+          const isCompleted = index < currentStepIndex;
+          const isCurrent = index === currentStepIndex;
+          const StepIcon = step.icon;
+
+          return (
+            <li
+              key={step.id}
+              aria-current={isCurrent ? "step" : undefined}
+              className="relative z-10 flex flex-col items-center gap-2"
+            >
+              <motion.div
+                initial={false}
+                animate={{
+                  scale: isCurrent ? 1.1 : 1,
+                  backgroundColor: isCompleted || isCurrent ? "rgb(5 150 105)" : "rgb(241 245 249)",
+                }}
+                transition={{ duration: nodeDuration }}
+                className={`flex size-10 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-950 ${isCompleted || isCurrent ? "text-white" : "bg-slate-100 text-slate-500"}`}
+              >
+                {isCompleted ? <Check className="size-4" aria-hidden="true" /> : <StepIcon className="size-4" aria-hidden="true" />}
+              </motion.div>
+              <span className={`max-w-20 text-center text-xs font-medium leading-tight ${isCurrent ? "text-emerald-600 dark:text-emerald-400" : isCompleted ? "text-slate-700 dark:text-slate-300" : "text-slate-500"}`}>
+                {step.label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="flex flex-col items-center gap-2 sm:hidden" role="status" aria-live="polite">
+        <div className="flex items-center gap-2" aria-hidden="true">
+          {steps.map((step, index) => {
+            const isCompleted = index < currentStepIndex;
+            const isCurrent = index === currentStepIndex;
+            return (
+              <motion.div
+                key={step.id}
+                initial={false}
+                animate={{
+                  width: isCurrent ? 24 : 8,
+                  backgroundColor: isCompleted || isCurrent ? "rgb(5 150 105)" : "rgb(203 213 225)",
+                }}
+                transition={{ duration: dotDuration }}
+                className="h-2 rounded-full"
               />
-            </button>
-          ))}
-          {rating > 0 && (
-            <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">
-              {rating} star{rating > 1 ? 's' : ''}
+            );
+          })}
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{steps[currentStepIndex]?.label} ({currentStepIndex + 1}/{steps.length})</p>
+      </div>
+    </nav>
+  );
+}
+
+function StepHeader({ title, body }: { title: string; body: string }) {
+  return (
+    <div>
+      <h3 className="text-base font-bold text-slate-900 dark:text-white">{title}</h3>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{body}</p>
+    </div>
+  );
+}
+
+function SentimentCard({
+  icon: Icon,
+  label,
+  description,
+  tone,
+  isSelected,
+  disabled,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  description: string;
+  tone: "positive" | "negative";
+  isSelected: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const selectedClass = tone === "positive"
+    ? "border-emerald-500 bg-emerald-50 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300"
+    : "border-red-500 bg-red-50 text-red-800 dark:border-red-500 dark:bg-red-950/40 dark:text-red-300";
+
+  return (
+    <button
+      type="button"
+      aria-pressed={isSelected}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "flex items-start gap-3 rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-950",
+        isSelected
+          ? selectedClass
+          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-600",
+      )}
+    >
+      <Icon className="size-5 shrink-0" aria-hidden="true" />
+      <div>
+        <p className="text-sm font-bold">{label}</p>
+        <p className="mt-0.5 text-xs font-medium opacity-80">{description}</p>
+      </div>
+    </button>
+  );
+}
+
+function CategoryCard({
+  option,
+  isSelected,
+  isRecommended,
+  disabled,
+  onSelect,
+}: {
+  option: { value: FeedbackCategory; label: string; icon: LucideIcon; description: string };
+  isSelected: boolean;
+  isRecommended: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+}) {
+  const Icon = option.icon;
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={isSelected}
+      disabled={disabled}
+      onClick={onSelect}
+      className={cn(
+        "relative flex items-start gap-3 rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-950",
+        isSelected
+          ? "border-emerald-600 bg-emerald-50 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300"
+          : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-emerald-700",
+      )}
+    >
+      <Icon className="size-4.5 shrink-0" aria-hidden="true" />
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-sm font-bold">{option.label}</span>
+          {isRecommended && (
+            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+              Suggested
             </span>
           )}
         </div>
-      </Field>
+        <p className="mt-0.5 text-xs font-medium opacity-80">{option.description}</p>
+      </div>
+    </button>
+  );
+}
 
-      {/* Divider */}
-      <div className="border-t border-slate-200 dark:border-slate-700" />
-
-      {/* Agreement Checkbox */}
-      <Field>
-        <div className="flex items-start gap-3">
-          <Checkbox
-            id="agreement"
-            checked={agreeToTerms}
-            disabled={formBusy}
-            onCheckedChange={(checked) => {
-              setAgreeToTerms(checked as boolean);
-              if (checked && validationErrors.agreement) {
-                setValidationErrors((current) => {
-                  const next = { ...current };
-                  delete next.agreement;
-                  return next;
-                });
-              }
-            }}
-            className="mt-0.5"
-          />
-          <div className="flex-1">
-            <FieldLabel
-              htmlFor="agreement"
-              className="cursor-pointer font-normal text-sm"
-            >
-              {t("reportIssue.form.fields.agreeToTermsPrefix")}
-              <Link
-                href="/terms-of-service"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline hover:no-underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {t("footer.terms")}
-              </Link>
-              {t("reportIssue.form.fields.andConnector")}
-              <Link
-                href="/data-privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline hover:no-underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {t("footer.privacy")}
-              </Link>
-              {" "}when submitting this feedback
-            </FieldLabel>
-          </div>
-        </div>
-        <FieldError errors={validationErrors.agreement} />
-      </Field>
-
-      {/* Anonymous Checkbox */}
-      <Field>
-        <div className="flex items-start gap-3">
-          <Checkbox
-            id="anonymous"
-            checked={isAnonymous}
-            disabled={formBusy}
-            onCheckedChange={(checked) => setIsAnonymous(checked as boolean)}
-            className="mt-0.5"
-          />
-          <div className="flex-1">
-            <FieldLabel
-              htmlFor="anonymous"
-              className="cursor-pointer font-normal text-sm"
-            >
-              Submit as Anonymous
-            </FieldLabel>
-            <FieldDescription className="mt-1">
-              Your identity will be hidden from other users
-            </FieldDescription>
-          </div>
-        </div>
-      </Field>
-      </>
-      )}
-
-      {isReviewing && (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Review your feedback</h3>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Check everything below, then confirm to submit.</p>
-          </div>
-
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
-            <ReviewRow label="Category" value={categories.find((cat) => cat.value === category)?.label || category} />
-            <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Your Feedback</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{comment}</p>
-            </div>
-            <ReviewRow label="Rating" value={rating > 0 ? `${rating} star${rating > 1 ? "s" : ""}` : "Not rated"} />
-            <ReviewRow
-              label="Attachments"
-              value={
-                media.length + pendingEvidence.length === 0
-                  ? "None"
-                  : `${media.length + pendingEvidence.length} file${media.length + pendingEvidence.length > 1 ? "s" : ""}`
-              }
-            />
-            <ReviewRow label="Submitting as" value={isAnonymous ? "Anonymous" : "Your account"} />
-          </div>
-
-          <div className="flex items-center justify-between gap-3">
-            <Button type="button" variant="outline" onClick={() => setIsReviewing(false)} disabled={formBusy}>
-              Edit
-            </Button>
-            <Button
-              type="button"
-              onClick={handleConfirmSubmit}
-              disabled={formBusy}
-              className="h-11 flex-1 text-base font-medium"
-              size="lg"
-            >
-              {formBusy ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Saving Feedback...
-                </>
-              ) : (
-                "Confirm & Submit"
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* General Error */}
-      {validationErrors.submit && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
-          <div className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <X className="w-3 h-3 text-red-600 dark:text-red-400" />
-          </div>
-          <p className="text-sm text-red-600 dark:text-red-400 flex-1">{validationErrors.submit}</p>
-        </div>
-      )}
-
-      {/* Submit Button */}
-      {!isReviewing && (
-        <Button
-          type="submit"
-          disabled={formBusy || !comment.trim() || !agreeToTerms || characterCount > maxCharacters}
-          className="w-full h-11 text-base font-medium"
-          size="lg"
+function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () => void; children: ReactNode }) {
+  return (
+    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{title}</h4>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
         >
-          {formBusy ? (
-            <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Saving Feedback...
-            </>
-          ) : (
-            "Review Feedback"
-          )}
-        </Button>
-      )}
-    </form>
-
-    <SubmissionSurveyModal
-      isOpen={showPreSubmitSurvey}
-      onClose={() => setShowPreSubmitSurvey(false)}
-      onComplete={() => {
-        setShowPreSubmitSurvey(false);
-        performSubmit();
-      }}
-      sourceType="feedback"
-      sourceId={null}
-    />
-    </>
+          <Pencil className="size-3.5" aria-hidden="true" />
+          Edit
+        </button>
+      </div>
+      <div className="space-y-2">{children}</div>
+    </div>
   );
 }
 

@@ -27,7 +27,7 @@ type SyncExclusionCounts = Record<SyncExclusionReason, number>;
 function createSyncExclusionCounts(): SyncExclusionCounts {
   return {
     "outside-year-scope": 0,
-    "proposal-through-2024": 0,
+    "proposal-or-pre-implementation-through-2024": 0,
     "cancelled-or-archived": 0,
     "invalid-or-unclassified-stage": 0,
     "fmr-owned": 0,

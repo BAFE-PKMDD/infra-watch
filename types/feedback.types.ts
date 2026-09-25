@@ -5,6 +5,7 @@
 import type { GeoTrackPoint } from "@/types/geo-evidence.types";
 
 export type FeedbackCategory = "quality" | "progress" | "concerns" | "general";
+export type FeedbackSentiment = "positive" | "negative";
 
 export interface FeedbackMedia {
   type: 'image' | 'video';
@@ -31,6 +32,8 @@ export interface Feedback {
   rating?: number | null; // 1-5 stars
   comment: string;
   category: FeedbackCategory;
+  sentiment?: FeedbackSentiment | null;
+  issueType?: string | null; // " | "-joined issue type labels, only set when category is "concerns"
   media?: FeedbackMedia[]; // Images/videos
   isAnonymous: boolean;
 
@@ -62,6 +65,8 @@ export interface FeedbackSubmission {
   rating?: number;
   comment: string;
   category: FeedbackCategory;
+  sentiment?: FeedbackSentiment;
+  issueType?: string;
   isAnonymous: boolean;
   media?: FeedbackMedia[];
 }
@@ -69,6 +74,7 @@ export interface FeedbackSubmission {
 export interface FeedbackFilters {
   category?: FeedbackCategory;
   rating?: number;
+  sentiment?: FeedbackSentiment;
   sortBy?: "newest" | "oldest" | "highest-rated" | "most-helpful";
 }
 
