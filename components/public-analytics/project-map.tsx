@@ -8,7 +8,9 @@ import L from "leaflet";
 import "leaflet.markercluster";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, Popup, useMap } from "react-leaflet";
+
+import { EvidenceBasemapLayer } from "@/components/shared/evidence-basemap";
 
 import type { MapPoint } from "@/lib/public-analytics/aggregate";
 import { PUBLIC_STAGES, type PublicStageKey } from "@/lib/public-analytics/rules";
@@ -131,19 +133,12 @@ function PinCard({ id }: { id: string }) {
   );
 }
 
-export default function ProjectMap({ points, flyTo, dark }: { points: MapPoint[]; flyTo: FlyTarget; dark: boolean }) {
+export default function ProjectMap({ points, flyTo }: { points: MapPoint[]; flyTo: FlyTarget }) {
   const [selected, setSelected] = useState<{ id: string; lat: number; lng: number } | null>(null);
-  const tileUrl = dark
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
   return (
     <MapContainer center={PHILIPPINES_CENTER} zoom={5} minZoom={5} scrollWheelZoom={false} className="h-full w-full" aria-label={t.map.mapLabel}>
-      <TileLayer
-        key={tileUrl}
-        url={tileUrl}
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-      />
+      <EvidenceBasemapLayer basemapId="satellite" />
       <Pins points={points} onSelect={(id, lat, lng) => setSelected({ id, lat, lng })} />
       <FlyTo target={flyTo} />
       {selected ? (

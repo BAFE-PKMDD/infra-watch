@@ -22,21 +22,7 @@ type Place = { label: string; kind: "province" | "municipality" | "barangay"; pr
 
 const ZOOM_FOR_KIND = { province: 9, municipality: 12, barangay: 14 } as const;
 
-function useDarkMode() {
-  const [dark, setDark] = useState(false);
-  useEffect(() => {
-    const root = document.documentElement;
-    const read = () => setDark(root.classList.contains("dark"));
-    read();
-    const observer = new MutationObserver(read);
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
-  return dark;
-}
-
 export function MapSection({ query, unmapped }: { query: string; unmapped: number }) {
-  const dark = useDarkMode();
   const [points, setPoints] = useState<MapPoint[] | null>(null);
   const [search, setSearch] = useState("");
   const [places, setPlaces] = useState<Place[] | null>(null);
@@ -118,7 +104,7 @@ export function MapSection({ query, unmapped }: { query: string; unmapped: numbe
       </div>
 
       <div className="pa-map relative isolate z-0 mt-4 h-[420px] overflow-hidden rounded-md border border-pa-hair sm:h-[520px]">
-        {points ? <ProjectMap points={points} flyTo={flyTo} dark={dark} /> : <div className="h-full w-full bg-pa-surface-2" />}
+        {points ? <ProjectMap points={points} flyTo={flyTo} /> : <div className="h-full w-full bg-pa-surface-2" />}
       </div>
 
       <div className="mt-3">
