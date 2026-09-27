@@ -4,31 +4,35 @@
  * on :root, because --accent and --muted already mean something else in globals.css and
  * the app header, navigation and footer keep the app-wide theme.
  *
+ * The palette matches the admin dashboard (/dashboard): slate neutrals from its
+ * bg-slate-50 page, white cards and slate-200 borders, plus the blue, heat and severity
+ * scales from app/analytics-theme.css (.analytics-scope). Keep the two in step.
+ *
  * Dark mode follows the app's own .dark class on <html>. The header sets it from the
  * visitor's saved choice, falling back to prefers-color-scheme, so a separate media query
  * here would override visitors who picked light mode on a dark-mode device.
  */
 
 .public-analytics {
-  --page: #f2f5f1;
-  --surface: #fbfcfa;
-  --surface-2: #edf1ec;
-  --ink: #121a15;
-  --ink-2: #465049;
-  --muted: #6a756d;
-  --hair: #dde3dc;
-  --axis: #c2cac3;
+  --page: #f8fafc; /* slate-50 */
+  --surface: #ffffff;
+  --surface-2: #f1f5f9; /* slate-100 */
+  --ink: #020617; /* slate-950 */
+  --ink-2: #475569; /* slate-600 */
+  --muted: #64748b; /* slate-500 */
+  --hair: #e2e8f0; /* slate-200 */
+  --axis: #cbd5e1; /* slate-300 */
   --accent: #1d6a48;
   --accent-soft: #dfeee5;
   --series: #2a78d6;
   --series-soft: #b7d3f6;
-  --context: #b3bbb4;
+  --context: #94a3b8; /* slate-400 */
 
   --stage-bidding: #86b6ef;
   --stage-construction: #2a78d6;
   --stage-turnover: #1c5cab;
   --stage-handed-over: #104281;
-  --stage-on-hold: #b3bbb4;
+  --stage-on-hold: #94a3b8;
 
   /* Sequential blue scale for magnitude, lowest to highest. */
   --seq-1: #86b6ef;
@@ -37,7 +41,7 @@
   --seq-4: #1c5cab;
   --seq-5: #104281;
 
-  /* Heat scale end points (surface to deepest blue). */
+  /* Heat scale end points. */
   --heat-lo: #fbfcfa;
   --heat-hi: #104281;
 
@@ -55,32 +59,35 @@
 }
 
 .dark .public-analytics {
-  --page: #0d120f;
-  --surface: #151b17;
-  --surface-2: #1c241f;
-  --ink: #eef2ee;
-  --ink-2: #b9c3bb;
-  --muted: #8d998f;
-  --hair: #26302a;
-  --axis: #38443c;
+  --page: #020617; /* slate-950 */
+  --surface: #0f172a; /* slate-900 */
+  --surface-2: #1e293b; /* slate-800 */
+  --ink: #f1f5f9; /* slate-100 */
+  --ink-2: #cbd5e1; /* slate-300 */
+  --muted: #94a3b8; /* slate-400 */
+  --hair: #1e293b; /* slate-800 */
+  --axis: #334155; /* slate-700 */
   --accent: #62c091;
   --accent-soft: #1c3226;
   --series: #3987e5;
   --series-soft: #1f3f66;
-  --context: #4a554d;
+  --context: #475569; /* slate-600 */
   --stage-bidding: #184f95;
   --stage-construction: #3987e5;
   --stage-turnover: #6da7ec;
   --stage-handed-over: #9ec5f4;
-  --stage-on-hold: #4a554d;
-  /* Same scale reversed so higher values stay the higher-contrast end on a dark page. */
-  --seq-1: #104281;
-  --seq-2: #1c5cab;
-  --seq-3: #2a78d6;
-  --seq-4: #5598e7;
-  --seq-5: #86b6ef;
-  --heat-lo: #151b17;
+  --stage-on-hold: #475569;
+  --seq-1: #184f95;
+  --seq-2: #256abf;
+  --seq-3: #3987e5;
+  --seq-4: #6da7ec;
+  --seq-5: #9ec5f4;
+  --heat-lo: #0f172a;
   --heat-hi: #86b6ef;
+  --good: #22c55e;
+  --warn: #fbbf24;
+  --serious: #f08a5d;
+  --crit: #ef4444;
   color-scheme: dark;
 }
 
