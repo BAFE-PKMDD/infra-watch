@@ -28,3 +28,10 @@ test("SMS navigation stays hidden when the development-only workspace is unavail
   assert.match(desktopSource, /process\.env\.NODE_ENV !== "production"/);
   assert.match(mobileSource, /process\.env\.NODE_ENV !== "production"/);
 });
+
+test("contact messages inbox is reachable from desktop and mobile navigation", () => {
+  for (const source of [desktopSource, mobileSource]) {
+    assert.match(source, /href:\s*"\/contact-messages"/);
+    assert.match(source, /resource:\s*"contact_messages"/);
+  }
+});
