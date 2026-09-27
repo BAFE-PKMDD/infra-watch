@@ -4,6 +4,7 @@ type VideoAdmin = { id: string; role?: string | null; region?: string | null };
 type VideoRequest = { createdBy: string; region: string | null; approvalStatus: string };
 
 export function canReviewLiveVideos(user: Pick<VideoAdmin, "role" | "region">) {
+  if (user.role === "admin" && !user.region?.trim()) return true;
   return (user.role === "admin" || user.role === "regional_admin") && normalizeVideoRegion(user.region) === "NCR";
 }
 

@@ -474,7 +474,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
                             {getRegionLabel(user.region)}
                           </button>
                         ) : (
-                          <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+                          <span className="text-xs text-slate-600 dark:text-slate-400">Not applicable</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -491,7 +491,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
                             {getAgencyLabel(user.assignedAgency)}
                           </button>
                         ) : (
-                          <span className="text-xs text-slate-400 dark:text-slate-500">â€”</span>
+                          <span className="text-xs text-slate-600 dark:text-slate-400">Not applicable</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

@@ -90,17 +90,23 @@ try {
   const regionalForm = renderToStaticMarkup(createElement(LiveVideoForm, { userRegion: "R8", canReview: false }));
   assert.match(regionalForm, /Submit for NCR approval/);
   assert.match(regionalForm, /NCR approval is required before publication/);
+  assert.doesNotMatch(regionalForm, /id="(?:isActive|isFeatured|isLive|video-region)"/);
+  assert.match(regionalForm, /Assigned region:/);
   assert.doesNotMatch(regionalForm, /bg-amber|border-amber/);
   const ncrForm = renderToStaticMarkup(createElement(LiveVideoForm, { userRegion: "NCR", canReview: true }));
   assert.doesNotMatch(ncrForm, /NCR approval is required|Submit this video for NCR approval|request is pending approval/);
   assert.match(ncrForm, /Create Video/);
-  assert.equal((regionalForm.match(/role="switch"[^>]*disabled=""/g) ?? []).length, 3);
+  assert.doesNotMatch(regionalForm, /role="switch"/);
+  assert.equal((ncrForm.match(/role="switch"/g) ?? []).length, 3);
   const regionalTable = renderToStaticMarkup(createElement(LiveVideoTable, { videos: [current], canReview: false }));
   assert.match(regionalTable, /Pending NCR approval/);
   assert.doesNotMatch(regionalTable, />Approve<|>Reject</);
   const reviewTable = renderToStaticMarkup(createElement(LiveVideoTable, { videos: [current], canReview: true }));
   assert.match(reviewTable, />Approve</);
   assert.match(reviewTable, />Reject</);
+  user = { id: "central-admin", role: "admin", region: null };
+  assert.equal((await actions.reviewLiveVideo("video", "approved")).success, true);
+  assert.equal(current.reviewedBy, "central-admin");
   console.log("Approval action checks passed: request, permissions, approval, publication, rejection, resubmission.");
 } finally {
   console.error = originalError;

@@ -192,14 +192,18 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
         <Card className="w-full overflow-hidden border-slate-200/60 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <CardContent className="p-0">
             <div className="p-6 md:p-8 space-y-8">
-              <div className="space-y-2">
+              {canChooseRegion ? <div className="space-y-2">
                 <label htmlFor="video-region" className="block text-sm font-medium">Region (required)</label>
                 <select id="video-region" required disabled={!canChooseRegion || loading} value={region} onChange={(event) => setRegion(event.target.value)} className="min-h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus-visible:outline-2 focus-visible:outline-primary dark:border-slate-700 dark:bg-slate-900" aria-describedby="video-region-help">
                   <option value="" disabled>Select region</option>
                   {PHILIPPINE_REGIONS.map((item) => <option key={item.code} value={item.code}>{item.displayName}</option>)}
                 </select>
                 <p id="video-region-help" className="text-sm text-slate-600 dark:text-slate-300">{canChooseRegion ? "Select the region covered by this video." : "This video uses your assigned region."}</p>
-              </div>
+              </div> : (
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  Assigned region: {PHILIPPINE_REGIONS.find((item) => item.code === region)?.displayName ?? "Unavailable"}
+                </p>
+              )}
               <div className="w-full">
                 {/* Video Type Tabs */}
                 <div className="grid w-full grid-cols-3 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
@@ -394,7 +398,7 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
                       )}
 
                       {/* Live Toggle */}
-                      <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-800/50 dark:bg-red-900/10">
+                      {canPublish && <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-800/50 dark:bg-red-900/10">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
                             <Radio className="h-4 w-4 text-red-500 animate-pulse" />
@@ -416,7 +420,7 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
                           }}
                           className="data-[state=checked]:bg-red-600"
                         />
-                      </div>
+                      </div>}
                     </div>
                   ) : (
                     <div className="space-y-6">
@@ -473,9 +477,9 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
                   </h3>
                 </div>
 
-                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                <div className={cn("grid grid-cols-1 gap-8", canPublish && "md:grid-cols-2")}>
                   {/* Visibility */}
-                  <div className="space-y-4">
+                  {canPublish && <div className="space-y-4">
                     <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
                       <div className="space-y-0.5">
                         <label htmlFor="isActive" className="cursor-pointer text-sm font-medium text-slate-900 dark:text-white">
@@ -514,7 +518,7 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
                         className="data-[state=checked]:bg-yellow-600"
                       />
                     </div>
-                  </div>
+                  </div>}
 
                   {/* Order & Schedule */}
                   <div className="space-y-4">
@@ -549,22 +553,18 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
                           className="h-9 border-slate-200 bg-slate-50/50 text-sm dark:border-slate-800 dark:bg-slate-900/50"
                         />
                       </div>
-                      <div>
+                      {videoType !== "recorded" && <div>
                         <label htmlFor="expiresAt" className="mb-1 block text-[10px] font-medium text-slate-500 dark:text-slate-400">
                           Expiry Date
                         </label>
                         <Input
                           id="expiresAt"
                           type="date"
-                          value={videoType === "recorded" ? "" : expiresAt}
-                          disabled={videoType === "recorded"}
+                          value={expiresAt}
                           onChange={(e) => setExpiresAt(e.target.value)}
                           className="h-9 border-slate-200 bg-slate-50/50 text-sm dark:border-slate-800 dark:bg-slate-900/50"
                         />
-                        {videoType === "recorded" && (
-                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Recorded videos do not expire. Use Active to control visibility.</p>
-                        )}
-                      </div>
+                      </div>}
                     </div>
                   </div>
                 </div>

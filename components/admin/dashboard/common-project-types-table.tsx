@@ -47,12 +47,12 @@ export function CommonProjectTypesTable({ data }: { data: ManagerialDashboardDat
             <table className="w-full min-w-[820px] border-collapse text-left text-sm">
               <thead>
                 <tr>
-                  <th scope="col" className="bg-slate-50/80 px-3 py-2.5 text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Project type</th>
-                  <th scope="col" className="bg-slate-50/80 px-3 py-2.5 text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Category</th>
-                  <th scope="col" className="bg-slate-50/80 px-3 py-2.5 text-right text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Projects</th>
-                  <th scope="col" className="bg-slate-50/80 px-3 py-2.5 text-right text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Total budget</th>
-                  <th scope="col" className="bg-slate-50/80 px-3 py-2.5 text-right text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Typical cost</th>
-                  <th scope="col" className="bg-slate-50/80 px-3 py-2.5 text-right text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Usual price range</th>
+                  <th scope="col" className="bg-slate-50/80 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Project type</th>
+                  <th scope="col" className="bg-slate-50/80 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Category</th>
+                  <th scope="col" className="bg-slate-50/80 px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Count</th>
+                  <th scope="col" className="bg-slate-50/80 px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Total budget</th>
+                  <th scope="col" className="bg-slate-50/80 px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Typical cost</th>
+                  <th scope="col" className="bg-slate-50/80 px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-950 dark:text-slate-400">Price range</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -60,10 +60,10 @@ export function CommonProjectTypesTable({ data }: { data: ManagerialDashboardDat
                   <tr key={row.projectType} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                     <td className="px-3 py-2.5 font-medium text-slate-800 dark:text-slate-100">{row.projectType}</td>
                     <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.category ?? "Unclassified"}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-200">{row.total.toLocaleString("en-PH")}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-200">{formatDashboardCurrency(row.allocatedBudget)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-200">{formatCost(row.medianBudget)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-200">
+                    <td className="px-2 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-200">{row.total.toLocaleString("en-PH")}</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-200">{formatDashboardCurrency(row.allocatedBudget)}</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-200">{formatCost(row.medianBudget)}</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-200">
                       {row.p25Budget === null || row.p75Budget === null ? "Unavailable" : `${formatCost(row.p25Budget)} – ${formatCost(row.p75Budget)}`}
                     </td>
                   </tr>
