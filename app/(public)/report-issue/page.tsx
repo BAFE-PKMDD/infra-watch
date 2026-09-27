@@ -220,7 +220,7 @@ export default function IssuesPage() {
                 <SelectTrigger className="h-10 w-full border-slate-200 bg-white text-slate-900 sm:w-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                   <div className="flex items-center gap-2">
                     <Filter className="size-3.5 text-slate-400" />
-                    <SelectValue />
+                    <SelectValue>{(value: string) => t(`eReport.status.${value}`)}</SelectValue>
                   </div>
                 </SelectTrigger>
                 <SelectContent>

@@ -158,7 +158,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
             </Link>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 lg:hidden">
+          <div className="flex items-center gap-2 sm:gap-3 xl:hidden">
             {mounted && user && <NotificationBell />}
             <LanguageToggle />
             <button
@@ -184,7 +184,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
             </button>
           </div>
 
-          <nav className="hidden lg:flex items-center gap-3">
+          <nav className="hidden xl:flex items-center gap-3">
             <div className="flex items-center gap-4 lg:gap-8">
               {translatedNavItems
                 .filter(item => (!item.requiresAuth || user || resolvedActiveItem === item.key) && !item.isSecondary)
@@ -351,7 +351,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
               ) : (
                 <Link
                   href="/sign-in"
-                  className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/95 transition-colors shadow-sm"
+                  className="whitespace-nowrap px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/95 transition-colors shadow-sm"
                 >
                   {displayActionLabel}
                 </Link>
@@ -381,7 +381,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
 
         {/* Mobile menu panel */}
         {mobileOpen && (
-          <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 pt-4 pb-6 space-y-4">
+          <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 pt-4 pb-6 space-y-4">
             <div className="flex flex-col space-y-3">
               {translatedNavItems
                 .filter(item => !item.requiresAuth || user || resolvedActiveItem === item.key)
