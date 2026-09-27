@@ -13,4 +13,4 @@ export type PublicLiveVideo = Pick<
   | "expiresAt"
   | "createdAt"
   | "updatedAt"
->;
+> & { videoPath?: LiveVideo["videoPath"]; thumbnailPath?: LiveVideo["thumbnailPath"]; region?: LiveVideo["region"] };

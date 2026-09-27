@@ -1,9 +1,11 @@
 import { Radio } from "lucide-react";
 
 import { getVideoEmbedUrl } from "@/lib/video-utils";
+import { getFullUrl } from "@/lib/minio-url";
 import type { PublicLiveVideo } from "@/types/live-video.types";
 
 export function LiveBroadcastPlayer({ video }: { video: PublicLiveVideo }) {
+  const recordedUrl = video.videoType === "recorded" ? getFullUrl(video.videoPath) : null;
   const externalType = video.videoType === "facebook_live" || video.videoType === "youtube"
     ? video.videoType
     : null;
@@ -14,7 +16,9 @@ export function LiveBroadcastPlayer({ video }: { video: PublicLiveVideo }) {
   return (
     <section className="overflow-hidden border-y border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 sm:rounded-2xl sm:border">
       <div className="relative aspect-video bg-slate-950">
-        {embedUrl ? (
+        {recordedUrl ? (
+          <video key={video.id} src={recordedUrl} controls playsInline preload="metadata" aria-label={video.title} className="h-full w-full" />
+        ) : embedUrl ? (
           <iframe
             {...({ credentialless: "" } as Record<string, string>)}
             src={embedUrl}
@@ -32,7 +36,7 @@ export function LiveBroadcastPlayer({ video }: { video: PublicLiveVideo }) {
             <p className="max-w-md text-sm text-slate-400">The saved video link cannot be embedded.</p>
           </div>
         )}
-        {video.isLive && (
+        {video.isLive && externalType && (
           <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2 rounded-full bg-red-600 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg">
             <span className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-white opacity-70" />

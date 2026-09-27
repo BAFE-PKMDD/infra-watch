@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { LiveVideoForm } from "@/components/admin/live-videos/live-video-form";
 import { requireAdminOrRegionalAdmin } from "@/lib/session";
+import { canReviewLiveVideos } from "@/lib/live-video-approval";
 
 export const metadata: Metadata = {
   title: "Add Video | INFRA Watch Admin",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NewLiveVideoPage() {
-  await requireAdminOrRegionalAdmin();
+  const user = await requireAdminOrRegionalAdmin();
 
   return (
     <AdminPageWrapper
@@ -23,7 +24,7 @@ export default async function NewLiveVideoPage() {
       title="Add Video"
       description="Add a Facebook or YouTube video or broadcast notice"
     >
-      <LiveVideoForm />
+      <LiveVideoForm userRegion={user.region} canReview={canReviewLiveVideos(user)} />
     </AdminPageWrapper>
   );
 }

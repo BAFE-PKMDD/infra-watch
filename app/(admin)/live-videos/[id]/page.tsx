@@ -5,6 +5,7 @@ import { getLiveVideoById } from "@/actions/query/live-videos.query";
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { LiveVideoForm } from "@/components/admin/live-videos/live-video-form";
 import { requireAdminOrRegionalAdmin } from "@/lib/session";
+import { canReviewLiveVideos } from "@/lib/live-video-approval";
 
 export const metadata: Metadata = {
   title: "Edit Video | INFRA Watch Admin",
@@ -16,7 +17,7 @@ export default async function EditLiveVideoPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdminOrRegionalAdmin();
+  const user = await requireAdminOrRegionalAdmin();
   const { id } = await params;
 
   const video = await getLiveVideoById(id);
@@ -35,7 +36,7 @@ export default async function EditLiveVideoPage({
       title="Edit Video"
       description="Update live video broadcast details"
     >
-      <LiveVideoForm initialData={video} />
+      <LiveVideoForm initialData={video} userRegion={user.region} canReview={canReviewLiveVideos(user)} />
     </AdminPageWrapper>
   );
 }

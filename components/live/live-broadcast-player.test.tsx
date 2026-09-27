@@ -43,7 +43,7 @@ test("renders a safe unavailable state when a stored URL is invalid", () => {
   assert.match(html, /Broadcast unavailable/);
 });
 
-test("fails closed for recorded or unknown player types", () => {
+test("fails closed for recordings without files or unknown player types", () => {
   for (const videoType of ["recorded", "unexpected"] as const) {
     const html = renderToStaticMarkup(createElement(LiveBroadcastPlayer, {
       video: { ...video, videoType } as unknown as PublicLiveVideo,
@@ -51,6 +51,16 @@ test("fails closed for recorded or unknown player types", () => {
     assert.doesNotMatch(html, /<iframe/);
     assert.match(html, /Broadcast unavailable/);
   }
+});
+
+test("plays uploaded recordings without a live badge even with a stale live flag", () => {
+  const html = renderToStaticMarkup(createElement(LiveBroadcastPlayer, {
+    video: { ...video, videoType: "recorded", videoPath: "videos/replay.mp4" },
+  }));
+  assert.match(html, /<video/);
+  assert.match(html, /videos\/replay\.mp4/);
+  assert.match(html, /controls=""/);
+  assert.doesNotMatch(html, /LIVE NOW|<iframe/);
 });
 
 test("renders a privacy-enhanced YouTube broadcast", () => {

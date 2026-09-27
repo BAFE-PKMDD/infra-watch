@@ -4,11 +4,42 @@ import test from "node:test";
 import {
   formatLiveVideoDateInput,
   parseLiveVideoDateInput,
+  validateLiveVideoActivation,
   validateLiveVideoSchedule,
   validateLiveVideoState,
 } from "./live-video-input";
 
 const now = new Date("2026-09-12T01:00:00.000Z");
+
+test("rejects activation of expired external broadcasts with instructions to fix the expiry", () => {
+  for (const expiresAt of [new Date("2026-09-11T15:59:59.999Z"), now]) {
+    assert.throws(
+      () => validateLiveVideoActivation({ isActive: true, expiresAt, videoType: "youtube" }, now),
+      /extend or clear its expiry date/,
+    );
+  }
+});
+
+test("allows activation after clearing or extending expiry and allows deactivation", () => {
+  for (const expiresAt of [null, new Date("2026-09-12T15:59:59.999Z")]) {
+    assert.doesNotThrow(() => validateLiveVideoActivation({ isActive: true, expiresAt, videoType: "facebook_live" }, now));
+  }
+  assert.doesNotThrow(() => validateLiveVideoActivation({
+    isActive: false,
+    videoType: "youtube",
+    expiresAt: new Date("2026-09-11T15:59:59.999Z"),
+  }, now));
+});
+
+test("allows recorded videos to activate despite legacy expiry dates", () => {
+  for (const expiresAt of [new Date("2026-09-11T15:59:59.999Z"), now, null]) {
+    assert.doesNotThrow(() => validateLiveVideoActivation({
+      isActive: true,
+      videoType: "recorded",
+      expiresAt,
+    }, now));
+  }
+});
 
 test("allows a current live broadcast inside its publication window", () => {
   assert.doesNotThrow(() => validateLiveVideoSchedule({

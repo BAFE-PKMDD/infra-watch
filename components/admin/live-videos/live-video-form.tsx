@@ -36,14 +36,21 @@ import {
   uploadLiveVideoAsset,
 } from "@/lib/live-video-upload";
 import { getVideoEmbedUrl } from "@/lib/video-utils";
+import { canSelectVideoRegion, normalizeVideoRegion } from "@/lib/live-video-region";
+import { PHILIPPINE_REGIONS } from "@/lib/philippines-regions";
 
 interface LiveVideoFormProps {
   initialData?: LiveVideo | null;
+  userRegion?: string | null;
+  canReview?: boolean;
 }
 
-export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
+export function LiveVideoForm({ initialData, userRegion, canReview = false }: LiveVideoFormProps) {
   const router = useRouter();
   const isEditing = !!initialData;
+  const canPublish = canReview && (!initialData || initialData.approvalStatus === "approved");
+  const canChooseRegion = canSelectVideoRegion(userRegion);
+  const [region, setRegion] = useState(normalizeVideoRegion(canChooseRegion ? initialData?.region : userRegion) ?? "");
 
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
@@ -127,6 +134,11 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
       return;
     }
 
+    if (!region) {
+      toast.error("Please select a region for this video.");
+      return;
+    }
+
     if (videoType !== "recorded" && !embedUrl) {
       toast.error(`Please enter a valid HTTPS ${videoType === "youtube" ? "YouTube" : "Facebook"} video URL`);
       return;
@@ -141,17 +153,18 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
 
     const payload = {
       title: title.trim(),
+      region,
       description: description.trim() || null,
       videoType,
       facebookVideoUrl: videoType !== "recorded" ? facebookVideoUrl.trim() : null,
       videoPath: videoType === "recorded" ? videoPath : null,
       thumbnailPath: thumbnailPath || null,
-      isActive,
-      isFeatured,
-      isLive: videoType !== "recorded" ? isLive : false,
+      isActive: canPublish && isActive,
+      isFeatured: canPublish && isFeatured,
+      isLive: canPublish && videoType !== "recorded" ? isLive : false,
       displayOrder,
       publishedAt: parseLiveVideoDateInput(publishedAt, "start"),
-      expiresAt: parseLiveVideoDateInput(expiresAt, "end"),
+      expiresAt: videoType === "recorded" ? null : parseLiveVideoDateInput(expiresAt, "end"),
     };
 
     let result;
@@ -164,7 +177,7 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
     setLoading(false);
 
     if (result.success) {
-      toast.success(isEditing ? "Video updated successfully" : "Video created successfully");
+      toast.success(canReview ? (isEditing ? "Video updated successfully" : "Video created successfully") : "Video request submitted for NCR approval");
       router.push("/live-videos");
       router.refresh();
     } else {
@@ -174,10 +187,19 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
 
   return (
     <div className="w-full space-y-6">
+      {!canReview && normalizeVideoRegion(userRegion) && <p className="text-sm text-slate-600 dark:text-slate-300">NCR approval is required before publication.</p>}
       <form onSubmit={handleSubmit} className="w-full space-y-6">
         <Card className="w-full overflow-hidden border-slate-200/60 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <CardContent className="p-0">
             <div className="p-6 md:p-8 space-y-8">
+              <div className="space-y-2">
+                <label htmlFor="video-region" className="block text-sm font-medium">Region (required)</label>
+                <select id="video-region" required disabled={!canChooseRegion || loading} value={region} onChange={(event) => setRegion(event.target.value)} className="min-h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus-visible:outline-2 focus-visible:outline-primary dark:border-slate-700 dark:bg-slate-900" aria-describedby="video-region-help">
+                  <option value="" disabled>Select region</option>
+                  {PHILIPPINE_REGIONS.map((item) => <option key={item.code} value={item.code}>{item.displayName}</option>)}
+                </select>
+                <p id="video-region-help" className="text-sm text-slate-600 dark:text-slate-300">{canChooseRegion ? "Select the region covered by this video." : "This video uses your assigned region."}</p>
+              </div>
               <div className="w-full">
                 {/* Video Type Tabs */}
                 <div className="grid w-full grid-cols-3 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
@@ -385,6 +407,7 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
                           </p>
                         </div>
                         <Switch
+                          disabled={!canPublish}
                           id="isLive"
                           checked={isLive}
                           onCheckedChange={(checked: boolean) => {
@@ -463,6 +486,7 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
                         </p>
                       </div>
                       <Switch
+                        disabled={!canPublish}
                         id="isActive"
                         checked={isActive}
                         onCheckedChange={(checked: boolean) => {
@@ -483,6 +507,7 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
                         </p>
                       </div>
                       <Switch
+                        disabled={!canPublish}
                         id="isFeatured"
                         checked={isFeatured}
                         onCheckedChange={(checked: boolean) => setIsFeatured(checked)}
@@ -531,10 +556,14 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
                         <Input
                           id="expiresAt"
                           type="date"
-                          value={expiresAt}
+                          value={videoType === "recorded" ? "" : expiresAt}
+                          disabled={videoType === "recorded"}
                           onChange={(e) => setExpiresAt(e.target.value)}
                           className="h-9 border-slate-200 bg-slate-50/50 text-sm dark:border-slate-800 dark:bg-slate-900/50"
                         />
+                        {videoType === "recorded" && (
+                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Recorded videos do not expire. Use Active to control visibility.</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -550,7 +579,7 @@ export function LiveVideoForm({ initialData }: LiveVideoFormProps) {
                 className="gap-2 bg-emerald-600 px-8 py-6 text-base font-bold shadow-lg shadow-emerald-600/10 hover:bg-emerald-700"
               >
                 <Save className="h-5 w-5" />
-                {loading ? "Saving..." : isEditing ? "Update Video" : "Create Video"}
+                {loading ? "Saving..." : !canReview ? "Submit for NCR approval" : isEditing ? "Update Video" : "Create Video"}
               </Button>
               <Link href="/live-videos">
                 <Button type="button" variant="ghost" className="px-6 py-6 font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800">

@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/lib/db";
 import { liveVideos, type LiveVideo } from "@/lib/db/schema";
-import { validateLiveVideoSchedule, validateLiveVideoState } from "@/lib/live-video-input";
+import { validateLiveVideoActivation, validateLiveVideoSchedule, validateLiveVideoState } from "@/lib/live-video-input";
 import { requireAdminOrRegionalAdmin } from "@/lib/session";
 import { normalizeExternalVideoUrl } from "@/lib/video-utils";
+import { resolveVideoRegion } from "@/lib/live-video-region";
+import { assertVideoApproved, assertVideoRequestAccess, assertVideoReviewer, canReviewLiveVideos } from "@/lib/live-video-approval";
 
 type LiveVideoType = "facebook_live" | "youtube" | "recorded";
 
@@ -42,6 +44,7 @@ function revalidateLiveVideoPaths() {
 
 export async function createLiveVideo(data: {
   title: string;
+  region?: string | null;
   description?: string | null;
   videoType: LiveVideoType;
   facebookVideoUrl?: string | null;
@@ -57,9 +60,12 @@ export async function createLiveVideo(data: {
 }): Promise<{ success: boolean; data?: LiveVideo; error?: string }> {
   try {
     const user = await requireAdminOrRegionalAdmin();
+    const region = resolveVideoRegion(user.region, data.region);
+    const reviewer = canReviewLiveVideos(user);
     const source = normalizeSource(data);
-    const isActive = data.isActive ?? false;
-    const shouldBeLive = data.isLive ?? false;
+    const isActive = reviewer && (data.isActive ?? false);
+    const shouldBeLive = reviewer && (data.isLive ?? false);
+    validateLiveVideoActivation({ isActive, expiresAt: data.expiresAt ?? null, videoType: data.videoType });
     validateLiveVideoState({ isActive, isLive: shouldBeLive, videoType: data.videoType });
     validateLiveVideoSchedule({
       isLive: shouldBeLive,
@@ -75,7 +81,7 @@ export async function createLiveVideo(data: {
           .where(eq(liveVideos.isLive, true));
       }
 
-      if (data.isFeatured) {
+      if (reviewer && data.isFeatured) {
         await tx
           .update(liveVideos)
           .set({ isFeatured: false, updatedAt: new Date() })
@@ -86,6 +92,10 @@ export async function createLiveVideo(data: {
         .insert(liveVideos)
         .values({
           title: data.title,
+          region,
+          approvalStatus: reviewer ? "approved" : "pending",
+          reviewedBy: reviewer ? user.id : null,
+          reviewedAt: reviewer ? new Date() : null,
           description: data.description,
           videoType: data.videoType,
           facebookVideoUrl: source.facebookVideoUrl,
@@ -93,11 +103,11 @@ export async function createLiveVideo(data: {
           thumbnailPath: data.thumbnailPath,
           duration: data.duration,
           isActive,
-          isFeatured: data.isFeatured ?? false,
+          isFeatured: reviewer && (data.isFeatured ?? false),
           isLive: shouldBeLive,
           displayOrder: data.displayOrder ?? 0,
           publishedAt: data.publishedAt,
-          expiresAt: data.expiresAt,
+          expiresAt: data.videoType === "recorded" ? null : data.expiresAt,
           createdBy: user.id,
         })
         .returning();
@@ -116,6 +126,7 @@ export async function updateLiveVideo(
   id: string,
   data: {
     title?: string;
+    region?: string | null;
     description?: string | null;
     videoType?: LiveVideoType;
     facebookVideoUrl?: string | null;
@@ -131,7 +142,7 @@ export async function updateLiveVideo(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireAdminOrRegionalAdmin();
+    const user = await requireAdminOrRegionalAdmin();
 
     await db.transaction(async (tx) => {
       const [current] = await tx
@@ -142,18 +153,23 @@ export async function updateLiveVideo(
         .for("update");
       if (!current) throw new Error("Video not found");
 
+      assertVideoRequestAccess(user, current);
+      const reviewer = canReviewLiveVideos(user);
+      const region = resolveVideoRegion(user.region, data.region === undefined ? current.region : data.region);
       const nextVideoType = (data.videoType ?? current.videoType) as LiveVideoType;
       const source = normalizeSource({
         videoType: nextVideoType,
         facebookVideoUrl: data.facebookVideoUrl === undefined ? current.facebookVideoUrl : data.facebookVideoUrl,
         videoPath: data.videoPath === undefined ? current.videoPath : data.videoPath,
       });
-      const nextIsActive = data.isActive ?? current.isActive;
-      const nextIsLive = data.isLive ?? current.isLive;
-      const nextIsFeatured = data.isFeatured ?? current.isFeatured;
+      const nextIsActive = reviewer && (data.isActive ?? current.isActive);
+      const nextIsLive = reviewer && (data.isLive ?? current.isLive);
+      const nextIsFeatured = reviewer && (data.isFeatured ?? current.isFeatured);
+      if (nextIsActive || nextIsLive || nextIsFeatured) assertVideoApproved(current);
       const nextPublishedAt = data.publishedAt === undefined ? current.publishedAt : data.publishedAt;
-      const nextExpiresAt = data.expiresAt === undefined ? current.expiresAt : data.expiresAt;
+      const nextExpiresAt = nextVideoType === "recorded" ? null : data.expiresAt === undefined ? current.expiresAt : data.expiresAt;
 
+      validateLiveVideoActivation({ isActive: nextIsActive, expiresAt: nextExpiresAt, videoType: nextVideoType });
       validateLiveVideoState({
         isActive: nextIsActive,
         isLive: nextIsLive,
@@ -183,6 +199,10 @@ export async function updateLiveVideo(
         .update(liveVideos)
         .set({
           title: data.title ?? current.title,
+          region,
+          approvalStatus: reviewer ? current.approvalStatus : "pending",
+          reviewedBy: reviewer ? current.reviewedBy : null,
+          reviewedAt: reviewer ? current.reviewedAt : null,
           description: data.description === undefined ? current.description : data.description,
           videoType: nextVideoType,
           facebookVideoUrl: source.facebookVideoUrl,
@@ -210,7 +230,7 @@ export async function updateLiveVideo(
 
 export async function deleteLiveVideo(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireAdminOrRegionalAdmin();
+    const user = await requireAdminOrRegionalAdmin();
 
     const [video] = await db.select().from(liveVideos).where(eq(liveVideos.id, id)).limit(1);
 
@@ -218,6 +238,7 @@ export async function deleteLiveVideo(id: string): Promise<{ success: boolean; e
       return { success: false, error: "Video not found" };
     }
 
+    assertVideoRequestAccess(user, video);
     await db.delete(liveVideos).where(eq(liveVideos.id, id));
     revalidateLiveVideoPaths();
     return { success: true };
@@ -229,11 +250,12 @@ export async function deleteLiveVideo(id: string): Promise<{ success: boolean; e
 
 export async function toggleLiveVideoActive(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireAdminOrRegionalAdmin();
+    const user = await requireAdminOrRegionalAdmin();
+    assertVideoReviewer(user);
 
     await db.transaction(async (tx) => {
       const [current] = await tx
-        .select({ isActive: liveVideos.isActive })
+        .select({ isActive: liveVideos.isActive, expiresAt: liveVideos.expiresAt, videoType: liveVideos.videoType, approvalStatus: liveVideos.approvalStatus })
         .from(liveVideos)
         .where(eq(liveVideos.id, id))
         .limit(1)
@@ -242,11 +264,13 @@ export async function toggleLiveVideoActive(id: string): Promise<{ success: bool
       if (!current) throw new Error("Video not found");
 
       const newStatus = !current.isActive;
+      if (newStatus) assertVideoApproved(current);
+      validateLiveVideoActivation({ isActive: newStatus, expiresAt: current.expiresAt, videoType: current.videoType });
       await tx
         .update(liveVideos)
         .set({
           isActive: newStatus,
-          isLive: newStatus ? undefined : false,
+          isLive: newStatus && current.videoType !== "recorded" ? undefined : false,
           updatedAt: new Date(),
         })
         .where(eq(liveVideos.id, id));
@@ -262,12 +286,14 @@ export async function toggleLiveVideoActive(id: string): Promise<{ success: bool
 
 export async function toggleLiveVideoLive(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireAdminOrRegionalAdmin();
+    const user = await requireAdminOrRegionalAdmin();
+    assertVideoReviewer(user);
 
     await db.transaction(async (tx) => {
       const [current] = await tx
         .select({
           isLive: liveVideos.isLive,
+          approvalStatus: liveVideos.approvalStatus,
           isActive: liveVideos.isActive,
           videoType: liveVideos.videoType,
           facebookVideoUrl: liveVideos.facebookVideoUrl,
@@ -284,6 +310,7 @@ export async function toggleLiveVideoLive(id: string): Promise<{ success: boolea
 
       const newStatus = !current.isLive;
       if (newStatus) {
+        assertVideoApproved(current);
         const videoType = current.videoType as LiveVideoType;
         normalizeSource({
           videoType,
@@ -318,5 +345,24 @@ export async function toggleLiveVideoLive(id: string): Promise<{ success: boolea
   } catch (error) {
     console.error("Failed to toggle video live status:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to toggle video live status" };
+  }
+}
+
+export async function reviewLiveVideo(id: string, decision: "approved" | "rejected"): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await requireAdminOrRegionalAdmin();
+    assertVideoReviewer(user);
+    if (decision !== "approved" && decision !== "rejected") throw new Error("Invalid review decision.");
+    await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(liveVideos).where(eq(liveVideos.id, id)).limit(1).for("update");
+      if (!current) throw new Error("Video not found");
+      if (current.approvalStatus !== "pending") throw new Error("This request has already been reviewed. Refresh the page.");
+      if (decision === "approved") normalizeSource({ videoType: current.videoType as LiveVideoType, facebookVideoUrl: current.facebookVideoUrl, videoPath: current.videoPath });
+      await tx.update(liveVideos).set({ approvalStatus: decision, reviewedBy: user.id, reviewedAt: new Date(), isActive: false, isLive: false, isFeatured: false, updatedAt: new Date() }).where(eq(liveVideos.id, id));
+    });
+    revalidateLiveVideoPaths();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to review video request" };
   }
 }

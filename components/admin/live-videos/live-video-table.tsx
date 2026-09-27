@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Pencil, Plus, Radio, Search, Star, Trash2, Video } from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteLiveVideo, toggleLiveVideoActive, toggleLiveVideoLive } from "@/actions/mutation/live-videos.mutation";
+import { deleteLiveVideo, reviewLiveVideo, toggleLiveVideoActive, toggleLiveVideoLive } from "@/actions/mutation/live-videos.mutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,10 +41,16 @@ import type { LiveVideo } from "@/lib/db/schema";
 
 interface LiveVideoTableProps {
   videos: LiveVideo[];
+  canReview?: boolean;
 }
 
-export function LiveVideoTable({ videos }: LiveVideoTableProps) {
+export function LiveVideoTable({ videos, canReview = false }: LiveVideoTableProps) {
   const [items, setItems] = useState(videos);
+  const [previousVideos, setPreviousVideos] = useState(videos);
+  if (videos !== previousVideos) {
+    setPreviousVideos(videos);
+    setItems(videos);
+  }
   const [loading, setLoading] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -58,7 +64,9 @@ export function LiveVideoTable({ videos }: LiveVideoTableProps) {
         statusFilter === "all" ||
         (statusFilter === "active" && item.isActive) ||
         (statusFilter === "inactive" && !item.isActive) ||
-        (statusFilter === "live" && item.isLive);
+        (statusFilter === "live" && item.isLive) ||
+        (statusFilter === "pending" && item.approvalStatus === "pending") ||
+        (statusFilter === "rejected" && item.approvalStatus === "rejected");
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [items, search, typeFilter, statusFilter]);
@@ -131,6 +139,23 @@ export function LiveVideoTable({ videos }: LiveVideoTableProps) {
     setLoading(null);
   };
 
+  const handleReview = async (id: string, decision: "approved" | "rejected") => {
+    setLoading(id);
+    try {
+      const result = await reviewLiveVideo(id, decision);
+      if (!result.success) {
+        toast.error(result.error || "Failed to review request");
+        return;
+      }
+      setItems((current) => current.map((video) => video.id === id ? { ...video, approvalStatus: decision, isActive: false, isLive: false, isFeatured: false } : video));
+      toast.success(decision === "approved" ? "Request approved. Activate the video when ready to publish." : "Request rejected");
+    } catch {
+      toast.error("Failed to review request. Please try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const renderEmptyState = () => (
     <Card className="flex flex-col items-center justify-center border-dashed bg-white p-12 text-center dark:bg-slate-900">
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
@@ -147,6 +172,7 @@ export function LiveVideoTable({ videos }: LiveVideoTableProps) {
 
   return (
     <div className="w-full space-y-6">
+      <p className="text-sm text-slate-600 dark:text-slate-300">{canReview ? `${items.filter((video) => video.approvalStatus === "pending").length} requests pending review. Approve a request before activating or marking it live.` : "Your video requests require NCR approval before publication. Edit rejected requests to submit them again."}</p>
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-1 flex-wrap items-center gap-3">
           <div className="relative min-w-[200px] flex-1 max-w-sm">
@@ -177,6 +203,8 @@ export function LiveVideoTable({ videos }: LiveVideoTableProps) {
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="pending">Pending approval</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
               <SelectItem value="live">🔴 Live</SelectItem>
             </SelectContent>
           </Select>
@@ -184,7 +212,7 @@ export function LiveVideoTable({ videos }: LiveVideoTableProps) {
         <Link href="/live-videos/new">
           <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/10 font-semibold px-4">
             <Plus className="h-4 w-4" />
-            Add Video
+            {canReview ? "Add Video" : "Request Video"}
           </Button>
         </Link>
       </div>
@@ -216,7 +244,7 @@ export function LiveVideoTable({ videos }: LiveVideoTableProps) {
                         {video.isFeatured && (
                           <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" />
                         )}
-                        <span>{video.title}</span>
+                        <span>{video.title}{video.region && <span className="block text-xs text-slate-500">{video.region}</span>}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -249,7 +277,7 @@ export function LiveVideoTable({ videos }: LiveVideoTableProps) {
                               : "border-0 bg-slate-100 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400"
                           }
                         >
-                          {video.isActive ? "Active" : "Inactive"}
+                          {video.approvalStatus === "pending" ? "Pending NCR approval" : video.approvalStatus === "rejected" ? "Rejected" : video.isActive ? "Active" : "Approved · Inactive"}
                         </Badge>
                       </div>
                     </TableCell>
@@ -258,7 +286,7 @@ export function LiveVideoTable({ videos }: LiveVideoTableProps) {
                         <Switch
                           checked={video.isLive}
                           onCheckedChange={() => handleToggleLive(video.id)}
-                          disabled={loading === video.id || !video.isActive}
+                          disabled={loading !== null || !canReview || video.approvalStatus !== "approved" || !video.isActive}
                           className="data-[state=checked]:bg-red-600"
                         />
                       ) : (
@@ -269,12 +297,16 @@ export function LiveVideoTable({ videos }: LiveVideoTableProps) {
                       <Switch
                         checked={video.isActive}
                         onCheckedChange={() => handleToggleActive(video.id)}
-                        disabled={loading === video.id}
+                        disabled={loading !== null || !canReview || video.approvalStatus !== "approved"}
                         className="data-[state=checked]:bg-emerald-600"
                       />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {canReview && video.approvalStatus === "pending" && <>
+                          <Button className="min-h-11" disabled={loading !== null} onClick={() => handleReview(video.id, "approved")}>Approve</Button>
+                          <Button variant="outline" className="min-h-11" disabled={loading !== null} onClick={() => handleReview(video.id, "rejected")}>Reject</Button>
+                        </>}
                         <Link href={`/live-videos/${video.id}`}>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20">
                             <Pencil className="h-3.5 w-3.5" />

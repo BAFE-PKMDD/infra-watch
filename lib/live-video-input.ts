@@ -48,6 +48,15 @@ export function validateLiveVideoState(state: LiveVideoState) {
   }
 }
 
+export function validateLiveVideoActivation(
+  state: { isActive: boolean; expiresAt: Date | null; videoType: string },
+  now = new Date(),
+) {
+  if (state.videoType !== "recorded" && state.isActive && state.expiresAt && state.expiresAt <= now) {
+    throw new Error("This video has expired. Edit the video and extend or clear its expiry date before activating it.");
+  }
+}
+
 export function validateLiveVideoSchedule(
   schedule: LiveVideoSchedule,
   now = new Date(),

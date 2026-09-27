@@ -8,6 +8,7 @@ import { LiveVideoTable } from "@/components/admin/live-videos/live-video-table"
 import { StatCard } from "@/components/admin/shared/stat-card";
 import { TableSkeleton } from "@/components/admin/shared/table-skeleton";
 import { requireAdminOrRegionalAdmin } from "@/lib/session";
+import { canReviewLiveVideos } from "@/lib/live-video-approval";
 
 export const metadata: Metadata = {
   title: "Live Videos | INFRA Watch Admin",
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LiveVideosPage() {
-  await requireAdminOrRegionalAdmin();
+  const user = await requireAdminOrRegionalAdmin();
 
   const [videos, stats] = await Promise.all([
     getAllLiveVideos(),
@@ -59,7 +60,7 @@ export default async function LiveVideosPage() {
 
         {/* Table */}
         <Suspense fallback={<TableSkeleton columnCount={6} />}>
-          <LiveVideoTable videos={videos} />
+          <LiveVideoTable videos={videos} canReview={canReviewLiveVideos(user)} />
         </Suspense>
       </div>
     </AdminPageWrapper>
