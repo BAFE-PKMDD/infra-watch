@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "./analytics-theme.css";
+@import "./public-analytics-theme.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -47,6 +48,20 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Public analytics tokens, defined on .public-analytics (app/public-analytics-theme.css). */
+  --color-pa-page: var(--page);
+  --color-pa-surface: var(--surface);
+  --color-pa-surface-2: var(--surface-2);
+  --color-pa-ink: var(--ink);
+  --color-pa-ink-2: var(--ink-2);
+  --color-pa-muted: var(--muted);
+  --color-pa-hair: var(--hair);
+  --color-pa-axis: var(--axis);
+  --color-pa-accent: var(--accent);
+  --color-pa-accent-soft: var(--accent-soft);
+  --color-pa-series: var(--series);
+  --color-pa-series-soft: var(--series-soft);
+  --color-pa-context: var(--context);
 }
 
 :root {
