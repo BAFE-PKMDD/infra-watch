@@ -3,8 +3,9 @@ import Link from "next/link";
 
 import { publicAnalyticsFontClassName } from "@/components/public-analytics/fonts";
 import { PublicProjectPage } from "@/components/public-analytics/project/public-project-page";
+import { getServerLanguage } from "@/i18n/server";
 import { getPublicProjectDetail } from "@/lib/public-analytics/service";
-import { publicAnalyticsStrings as S } from "@/lib/public-analytics/strings";
+import { getPublicAnalyticsStrings } from "@/lib/public-analytics/strings";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -14,20 +15,20 @@ type Props = {
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const [{ id }, language] = await Promise.all([params, getServerLanguage()]);
   const project = await getPublicProjectDetail(id).catch(() => null);
-  return { title: project ? `${project.name} | InfraWatch` : `${S.en.project.notFound} | InfraWatch` };
+  return { title: project ? `${project.name} | InfraWatch` : `${getPublicAnalyticsStrings(language).project.notFound} | InfraWatch` };
 }
 
 export default async function ProjectDetailsPage({ params, searchParams }: Props) {
-  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const [{ id }, query, language] = await Promise.all([params, searchParams, getServerLanguage()]);
   const project = await getPublicProjectDetail(id);
-  const t = S.en;
+  const t = getPublicAnalyticsStrings(language);
 
   return (
     <div className={`public-analytics ${publicAnalyticsFontClassName} min-h-screen`}>
       {project ? (
-        <PublicProjectPage project={project} highlightFeedbackId={first(query.feedbackId)} highlightCommentId={first(query.commentId)} />
+        <PublicProjectPage project={project} t={t} highlightFeedbackId={first(query.feedbackId)} highlightCommentId={first(query.commentId)} />
       ) : (
         <div className="mx-auto max-w-3xl px-4 py-20 text-center">
           <h1 className="pa-heading mb-4 text-2xl font-semibold text-pa-ink">{t.project.notFound}</h1>

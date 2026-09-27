@@ -4,10 +4,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
 import { FACILITY_CATEGORIES } from "@/lib/public-analytics/rules";
-import { publicAnalyticsStrings as S } from "@/lib/public-analytics/strings";
 import type { PublicFilters } from "@/lib/public-analytics/aggregate";
 
-const t = S.en;
+import { usePublicAnalyticsStrings } from "./use-strings";
 
 type Options = { regions: string[]; provinces: string[]; municipalities: string[]; years: number[] };
 
@@ -17,6 +16,7 @@ type Field = (typeof FIELD_ORDER)[number];
 const CLEARS: Partial<Record<Field, Field[]>> = { region: ["province", "municipality"], province: ["municipality"] };
 
 export function FiltersBar({ filters, options }: { filters: PublicFilters; options: Options }) {
+  const t = usePublicAnalyticsStrings();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

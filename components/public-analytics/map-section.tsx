@@ -4,14 +4,13 @@ import dynamic from "next/dynamic";
 import { useEffect, useId, useState } from "react";
 
 import type { MapPoint } from "@/lib/public-analytics/aggregate";
-import { publicAnalyticsStrings as S, format, formatCount } from "@/lib/public-analytics/strings";
+import { format, formatCount } from "@/lib/public-analytics/strings";
 
 import { Section } from "./chart-card";
 import type { FlyTarget } from "./project-map";
 import { StageSwatch } from "./stage-bar";
 import { STAGE_DISPLAY_ORDER } from "./stage-colors";
-
-const t = S.en;
+import { usePublicAnalyticsStrings } from "./use-strings";
 
 const ProjectMap = dynamic(() => import("./project-map"), {
   ssr: false,
@@ -23,6 +22,7 @@ type Place = { label: string; kind: "province" | "municipality" | "barangay"; pr
 const ZOOM_FOR_KIND = { province: 9, municipality: 12, barangay: 14 } as const;
 
 export function MapSection({ query, unmapped }: { query: string; unmapped: number }) {
+  const t = usePublicAnalyticsStrings();
   const [points, setPoints] = useState<MapPoint[] | null>(null);
   const [search, setSearch] = useState("");
   const [places, setPlaces] = useState<Place[] | null>(null);

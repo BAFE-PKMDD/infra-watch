@@ -3,21 +3,26 @@ import type { ReactNode } from "react";
 
 import { publicAnalyticsFontClassName } from "@/components/public-analytics/fonts";
 import { PublicAnalyticsView } from "@/components/public-analytics/public-analytics-view";
+import { getServerLanguage } from "@/i18n/server";
 import { parseFilters } from "@/lib/public-analytics/aggregate";
 import { getPublicProjectSnapshot } from "@/lib/public-analytics/service";
-import { publicAnalyticsStrings as S } from "@/lib/public-analytics/strings";
+import { getPublicAnalyticsStrings } from "@/lib/public-analytics/strings";
 import { buildDashboard } from "@/lib/public-analytics/views";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Farm infrastructure built with public funds | InfraWatch",
-  description: "What BAFE has built for farmers and fishers, how much it cost, and whether it is finished.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = getPublicAnalyticsStrings(await getServerLanguage());
+  return {
+    title: `${t.page.title} | InfraWatch`,
+    description: t.page.metaDescription,
+  };
+}
 
 export default async function InfraAnalyticsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const filters = parseFilters(await searchParams);
-  const t = S.en;
+  const [params, language] = await Promise.all([searchParams, getServerLanguage()]);
+  const filters = parseFilters(params);
+  const t = getPublicAnalyticsStrings(language);
 
   let dashboard: ReturnType<typeof buildDashboard> | null = null;
   let state: "ready" | "empty" | "unavailable" = "ready";
@@ -31,7 +36,7 @@ export default async function InfraAnalyticsPage({ searchParams }: { searchParam
   }
 
   const content: ReactNode = dashboard
-    ? <PublicAnalyticsView dashboard={dashboard} />
+    ? <PublicAnalyticsView dashboard={dashboard} t={t} />
     : state === "empty"
       ? <p role="status" className="mx-auto max-w-3xl px-4 py-16 text-center text-base text-pa-ink-2">{t.page.noData}</p>
       : <p role="alert" className="mx-auto max-w-3xl px-4 py-16 text-center text-base text-pa-ink-2">{t.page.unavailable}</p>;

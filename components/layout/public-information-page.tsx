@@ -1,17 +1,31 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import type { Language } from "@/i18n/translations";
+
+// Only the shared chrome is translated. Pages pass their own eyebrow, title and body; the
+// legal pages (Terms, Privacy Notice, Data Deletion) keep English text until a reviewed
+// translation exists.
+const CHROME: Record<Language, { home: string; contact: string }> = {
+  en: { home: "Return home", contact: "Contact InfraWatch" },
+  tl: { home: "Bumalik sa Home", contact: "Kontakin ang InfraWatch" },
+};
+
 export function PublicInformationPage({
   eyebrow,
   title,
   description,
+  language = "en",
   children,
 }: {
   eyebrow: string;
   title: string;
   description: string;
+  /** Visitor's language for the chrome, from getServerLanguage(). Defaults to English. */
+  language?: Language;
   children: ReactNode;
 }) {
+  const chrome = CHROME[language] ?? CHROME.en;
   return (
     <main className="bg-slate-50 py-12 sm:py-16">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
@@ -26,10 +40,10 @@ export function PublicInformationPage({
           </div>
           <footer className="flex flex-wrap gap-3 border-t border-slate-200 bg-slate-50 px-6 py-5 sm:px-10">
             <Link href="/" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-100">
-              Return home
+              {chrome.home}
             </Link>
             <Link href="/contact" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800">
-              Contact InfraWatch
+              {chrome.contact}
             </Link>
           </footer>
         </div>

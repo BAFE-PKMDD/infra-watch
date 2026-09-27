@@ -3,19 +3,20 @@
 import { useState } from "react";
 
 import type { PublicPhoto } from "@/lib/public-analytics/rules";
-import { publicAnalyticsStrings as S, format } from "@/lib/public-analytics/strings";
+import { format } from "@/lib/public-analytics/strings";
 import { cn } from "@/lib/utils";
 
-const t = S.en;
+import { usePublicAnalyticsStrings } from "../use-strings";
 
 export function PhotoGallery({ photos, projectName }: { photos: PublicPhoto[]; projectName: string }) {
+  const t = usePublicAnalyticsStrings();
   const [index, setIndex] = useState(0);
   if (photos.length === 0) {
     return <p className="rounded-md border border-pa-hair bg-pa-surface-2 p-6 text-base text-pa-ink-2">{t.project.noPhotos}</p>;
   }
   const current = photos[Math.min(index, photos.length - 1)];
   const alt = (photo: PublicPhoto, position: number) =>
-    `${format(t.map.photoAlt, { name: projectName })} (${t.project.photoCategory[photo.category]}, ${position} of ${photos.length})`;
+    `${format(t.map.photoAlt, { name: projectName })} (${format(t.project.photoPosition, { category: t.project.photoCategory[photo.category], position, total: photos.length })})`;
 
   return (
     <div>

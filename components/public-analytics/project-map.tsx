@@ -14,11 +14,10 @@ import { EvidenceBasemapLayer } from "@/components/shared/evidence-basemap";
 
 import type { MapPoint } from "@/lib/public-analytics/aggregate";
 import { PUBLIC_STAGES, type PublicStageKey } from "@/lib/public-analytics/rules";
-import { publicAnalyticsStrings as S, format, formatPesos } from "@/lib/public-analytics/strings";
+import { format, formatPesos } from "@/lib/public-analytics/strings";
 
 import { STAGE_COLOR } from "./stage-colors";
-
-const t = S.en;
+import { usePublicAnalyticsStrings } from "./use-strings";
 
 const PHILIPPINES_CENTER: [number, number] = [12.3, 122.5];
 
@@ -53,6 +52,7 @@ function pinIcon(stage: PublicStageKey) {
 }
 
 function Pins({ points, onSelect }: { points: MapPoint[]; onSelect: (id: string, lat: number, lng: number) => void }) {
+  const t = usePublicAnalyticsStrings();
   const map = useMap();
   const onSelectRef = useRef(onSelect);
   useEffect(() => {
@@ -78,7 +78,7 @@ function Pins({ points, onSelect }: { points: MapPoint[]; onSelect: (id: string,
     return () => {
       map.removeLayer(group);
     };
-  }, [map, points]);
+  }, [map, points, t]);
 
   return null;
 }
@@ -92,6 +92,7 @@ function FlyTo({ target }: { target: FlyTarget }) {
 }
 
 function PinCard({ id }: { id: string }) {
+  const t = usePublicAnalyticsStrings();
   const [state, setState] = useState<{ status: "loading" } | { status: "error" } | { status: "ready"; data: PinDetail }>({ status: "loading" });
 
   useEffect(() => {
@@ -134,6 +135,7 @@ function PinCard({ id }: { id: string }) {
 }
 
 export default function ProjectMap({ points, flyTo }: { points: MapPoint[]; flyTo: FlyTarget }) {
+  const t = usePublicAnalyticsStrings();
   const [selected, setSelected] = useState<{ id: string; lat: number; lng: number } | null>(null);
 
   return (
