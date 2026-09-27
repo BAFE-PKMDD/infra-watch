@@ -42,14 +42,15 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50">
         <QueryProvider>
           <AuthProvider>
-            <NotificationProvider>
-              <LanguageProvider>
+            <LanguageProvider>
+              {/* Outside NotificationProvider so its toasts can use the visitor's language. */}
+              <NotificationProvider>
               <LanguageDialog />
               {children}
               <CookieConsentBanner />
               <Toaster />
-              </LanguageProvider>
-            </NotificationProvider>
+              </NotificationProvider>
+            </LanguageProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

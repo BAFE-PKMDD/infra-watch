@@ -408,6 +408,13 @@ export const site = {
       enableFollow: "Enable follow pin",
       followPin: "Follow pin",
     },
+    geoVideoPlayer: {
+      preparingMap: "Preparing route map…",
+      defaultName: "GeoVideo evidence",
+      description: "Video playback paired with its recorded route.",
+      proportionalTiming: "Proportional route timing",
+      waitingForMetadata: "Waiting for video metadata",
+    },
     aiContent: {
       value: "Value",
       preparingChart: "Preparing chart…",
@@ -823,6 +830,13 @@ export const site = {
       disableFollow: "I-off ang pagsunod sa pin",
       enableFollow: "I-on ang pagsunod sa pin",
       followPin: "Sundan ang pin",
+    },
+    geoVideoPlayer: {
+      preparingMap: "Inihahanda ang route map…",
+      defaultName: "GeoVideo na ebidensya",
+      description: "Video na kasabay ng rutang na-record nito.",
+      proportionalTiming: "Proportional na timing ng ruta",
+      waitingForMetadata: "Hinihintay ang metadata ng video",
     },
     aiContent: {
       value: "Halaga",

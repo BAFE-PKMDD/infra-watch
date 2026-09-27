@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationQueryKey } from "@/lib/notification-query-key";
 import { useAuth } from "@/providers/auth-provider";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 
 interface Notification {
   id: string;
@@ -33,6 +34,7 @@ const NotificationContext = createContext<NotificationContextValue | undefined>(
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const { user } = useAuth(); // Use auth context instead of useSession
+  const { t } = useTranslation();
 
   // Only fetch if user is logged in
   const isLoggedIn = !!user;
@@ -158,10 +160,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         await persistRead({ id: notificationId });
       } catch {
         await queryClient.invalidateQueries({ queryKey: notificationKey });
-        toast.error("Could not update the notification. Please try again.");
+        toast.error(t("account.notifications.updateOneFailed"));
       }
     },
-    [notificationKey, persistRead, queryClient],
+    [notificationKey, persistRead, queryClient, t],
   );
 
   const markAllAsRead = useCallback(async () => {
@@ -176,9 +178,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       await persistRead({ all: true });
     } catch {
       await queryClient.invalidateQueries({ queryKey: notificationKey });
-      toast.error("Could not update notifications. Please try again.");
+      toast.error(t("account.notifications.updateAllFailed"));
     }
-  }, [notificationKey, persistRead, queryClient]);
+  }, [notificationKey, persistRead, queryClient, t]);
 
   const value: NotificationContextValue = {
     notifications: notificationsData || [],
