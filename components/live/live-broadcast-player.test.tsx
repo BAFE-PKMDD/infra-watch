@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createElement } from "react";
+import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 import { LiveBroadcastPlayer } from "./live-broadcast-player";
+import { LanguageProvider } from "@/providers/language-provider";
 import type { PublicLiveVideo } from "@/types/live-video.types";
+
+// LiveBroadcastPlayer reads its labels through useTranslation(), so render inside the
+// app's LanguageProvider (which needs an app router); the language defaults to English.
+const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {} } as unknown as AppRouterInstance;
+const render = (element: ReactElement) => renderToStaticMarkup(
+  createElement(AppRouterContext.Provider, { value: router }, createElement(LanguageProvider, null, element)),
+);
 
 const video = {
   id: "4f12f3db-5e66-44dd-a7f3-89ea3af58fd1",
@@ -22,7 +31,7 @@ const video = {
 };
 
 test("renders an embedded Facebook broadcast with a clear live status", () => {
-  const html = renderToStaticMarkup(createElement(LiveBroadcastPlayer, { video }));
+  const html = render(createElement(LiveBroadcastPlayer, { video }));
 
   assert.match(html, /LIVE NOW/);
   assert.match(html, /INFRA Watch field update/);
@@ -33,7 +42,7 @@ test("renders an embedded Facebook broadcast with a clear live status", () => {
 });
 
 test("renders a safe unavailable state when a stored URL is invalid", () => {
-  const html = renderToStaticMarkup(
+  const html = render(
     createElement(LiveBroadcastPlayer, {
       video: { ...video, facebookVideoUrl: "https://example.com/not-facebook" },
     }),
@@ -45,7 +54,7 @@ test("renders a safe unavailable state when a stored URL is invalid", () => {
 
 test("fails closed for recordings without files or unknown player types", () => {
   for (const videoType of ["recorded", "unexpected"] as const) {
-    const html = renderToStaticMarkup(createElement(LiveBroadcastPlayer, {
+    const html = render(createElement(LiveBroadcastPlayer, {
       video: { ...video, videoType } as unknown as PublicLiveVideo,
     }));
     assert.doesNotMatch(html, /<iframe/);
@@ -54,7 +63,7 @@ test("fails closed for recordings without files or unknown player types", () => 
 });
 
 test("plays uploaded recordings without a live badge even with a stale live flag", () => {
-  const html = renderToStaticMarkup(createElement(LiveBroadcastPlayer, {
+  const html = render(createElement(LiveBroadcastPlayer, {
     video: { ...video, videoType: "recorded", videoPath: "videos/replay.mp4" },
   }));
   assert.match(html, /<video/);
@@ -64,7 +73,7 @@ test("plays uploaded recordings without a live badge even with a stale live flag
 });
 
 test("renders a privacy-enhanced YouTube broadcast", () => {
-  const html = renderToStaticMarkup(createElement(LiveBroadcastPlayer, {
+  const html = render(createElement(LiveBroadcastPlayer, {
     video: {
       ...video,
       videoType: "youtube",

@@ -1,10 +1,12 @@
 import { Radio } from "lucide-react";
 
+import { useTranslation } from "@/i18n";
 import { getVideoEmbedUrl } from "@/lib/video-utils";
 import { getFullUrl } from "@/lib/minio-url";
 import type { PublicLiveVideo } from "@/types/live-video.types";
 
 export function LiveBroadcastPlayer({ video }: { video: PublicLiveVideo }) {
+  const { t } = useTranslation();
   const recordedUrl = video.videoType === "recorded" ? getFullUrl(video.videoPath) : null;
   const externalType = video.videoType === "facebook_live" || video.videoType === "youtube"
     ? video.videoType
@@ -32,8 +34,8 @@ export function LiveBroadcastPlayer({ video }: { video: PublicLiveVideo }) {
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white">
             <Radio className="size-10 text-slate-400" aria-hidden />
-            <p className="font-bold">Broadcast unavailable</p>
-            <p className="max-w-md text-sm text-slate-400">The saved video link cannot be embedded.</p>
+            <p className="font-bold">{t("site.live.player.unavailableTitle")}</p>
+            <p className="max-w-md text-sm text-slate-400">{t("site.live.player.unavailableDesc")}</p>
           </div>
         )}
         {video.isLive && externalType && (
@@ -42,7 +44,7 @@ export function LiveBroadcastPlayer({ video }: { video: PublicLiveVideo }) {
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-white opacity-70" />
               <span className="relative inline-flex size-2 rounded-full bg-white" />
             </span>
-            LIVE NOW
+            {t("site.live.player.liveNow")}
           </div>
         )}
       </div>
