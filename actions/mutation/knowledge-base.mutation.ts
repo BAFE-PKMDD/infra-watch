@@ -34,6 +34,7 @@ async function requireKbPermission(action: KbAction) {
 export async function addFaqEntry(data: {
   question: string;
   answer: string;
+  visibility?: "public" | "admin_only";
 }): Promise<ActionResult> {
   try {
     const user = await requireKbPermission("create");
@@ -41,6 +42,8 @@ export async function addFaqEntry(data: {
     if (!data.question.trim() || !data.answer.trim()) {
       return { success: false, error: "Question and answer are required.", status: 400 };
     }
+
+    const visibility = data.visibility === "admin_only" ? "admin_only" : "public";
 
     const faqText = `Q: ${data.question.trim()}\nA: ${data.answer.trim()}`;
     const chunks = chunkText(faqText);
@@ -53,6 +56,7 @@ export async function addFaqEntry(data: {
         fileType: "FAQ Entry",
         chunkCount: chunks.length,
         status: "indexing",
+        visibility,
         faqQuestion: data.question.trim(),
         faqAnswer: data.answer.trim(),
         contentPreview: `Q: ${data.question.trim()}`.slice(0, 200),
@@ -231,6 +235,51 @@ export async function restoreKbDocument(documentId: string): Promise<ActionResul
   } catch (error) {
     console.error("[KB Document] Restore failed:", error);
     return { success: false, error: "Failed to restore document." };
+  }
+}
+
+export async function setKbDocumentVisibility(
+  documentId: string,
+  visibility: "public" | "admin_only",
+): Promise<ActionResult> {
+  try {
+    const user = await requireKbPermission("update");
+
+    if (visibility !== "public" && visibility !== "admin_only") {
+      return { success: false, error: "Invalid visibility value.", status: 400 };
+    }
+
+    const [existing] = await db
+      .select()
+      .from(kbDocuments)
+      .where(eq(kbDocuments.id, documentId))
+      .limit(1);
+
+    if (!existing) return { success: false, error: "Document not found", status: 404 };
+    if (existing.visibility === visibility) {
+      return { success: true, message: "Visibility unchanged." };
+    }
+
+    await db
+      .update(kbDocuments)
+      .set({ visibility })
+      .where(eq(kbDocuments.id, documentId));
+
+    revalidatePath("/knowledge-base");
+    await logAudit({
+      tableName: "kb_documents",
+      recordId: existing.id,
+      action: "UPDATE",
+      oldValues: { visibility: existing.visibility },
+      newValues: { visibility },
+      notes: "Knowledge base document visibility changed",
+      context: await getAuditContextFromServerAction(user),
+    });
+
+    return { success: true, message: "Visibility updated successfully." };
+  } catch (error) {
+    console.error("[KB Document] Visibility update failed:", error);
+    return { success: false, error: "Failed to update visibility." };
   }
 }
 

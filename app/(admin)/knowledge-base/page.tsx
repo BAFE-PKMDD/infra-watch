@@ -25,7 +25,7 @@ import {
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { Button } from "@/components/ui/button";
-import { addFaqEntry, archiveKbDocument, deleteKbDocument, reindexDocument, restoreKbDocument } from "@/actions/mutation/knowledge-base.mutation";
+import { addFaqEntry, archiveKbDocument, deleteKbDocument, reindexDocument, restoreKbDocument, setKbDocumentVisibility } from "@/actions/mutation/knowledge-base.mutation";
 import { getKbCategories, getKbDocuments, getKbStats, getKbDocumentWithChunks } from "@/actions/query/knowledge-base.query";
 import { processKnowledgeBaseDocument } from "@/lib/knowledge-base-processing-client";
 
@@ -115,6 +115,7 @@ export default function KnowledgeBasePage() {
   // Form states
   const [newFaqQuestion, setNewFaqQuestion] = useState("");
   const [newFaqAnswer, setNewFaqAnswer] = useState("");
+  const [newFaqVisibility, setNewFaqVisibility] = useState<"public" | "admin_only">("public");
   const [faqSubmitting, setFaqSubmitting] = useState(false);
 
   const [uploadTitle, setUploadTitle] = useState("");
@@ -125,6 +126,7 @@ export default function KnowledgeBasePage() {
 
   const [changingArchiveId, setChangingArchiveId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [changingVisibilityId, setChangingVisibilityId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -186,10 +188,12 @@ export default function KnowledgeBasePage() {
       const result = await addFaqEntry({
         question: newFaqQuestion.trim(),
         answer: newFaqAnswer.trim(),
+        visibility: newFaqVisibility,
       });
       if (result.success) {
         setNewFaqQuestion("");
         setNewFaqAnswer("");
+        setNewFaqVisibility("public");
         setFaqModalOpen(false);
         await fetchData();
       } else {
@@ -279,6 +283,22 @@ export default function KnowledgeBasePage() {
       alert(error instanceof Error ? error.message : "Failed to delete document");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleVisibilityChange = async (id: string, visibility: "public" | "admin_only") => {
+    setChangingVisibilityId(id);
+    try {
+      const result = await setKbDocumentVisibility(id, visibility);
+      if (result.success) {
+        await fetchData();
+      } else {
+        alert(result.error || "Failed to update visibility");
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to update visibility");
+    } finally {
+      setChangingVisibilityId(null);
     }
   };
 
@@ -487,11 +507,22 @@ export default function KnowledgeBasePage() {
                       <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                         {doc.category}
                       </span>
-                      {doc.visibility === "admin_only" && (
-                        <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-extrabold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
-                          Admin only
-                        </span>
-                      )}
+                      <select
+                        value={doc.visibility}
+                        disabled={changingVisibilityId === doc.id}
+                        onChange={(e) =>
+                          handleVisibilityChange(doc.id, e.target.value === "admin_only" ? "admin_only" : "public")
+                        }
+                        aria-label={`Visibility for ${doc.title}`}
+                        className={`h-6 rounded-md border-0 px-1.5 text-[11px] font-extrabold outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 ${
+                          doc.visibility === "admin_only"
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+                            : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        }`}
+                      >
+                        <option value="public">Public</option>
+                        <option value="admin_only">Admin only</option>
+                      </select>
                       <StatusBadge status={doc.status} />
                     </div>
 
@@ -597,11 +628,11 @@ export default function KnowledgeBasePage() {
       {/* Upload Document Modal */}
       {uploadModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 dark:border dark:border-slate-800">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 dark:border dark:border-slate-800">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <Upload className="size-5 text-primary" />
-                <h3 className="text-base font-bold text-slate-950 dark:text-white">Upload Reference Document</h3>
+                <h3 className="text-base font-bold text-slate-950 dark:text-white">Upload Document</h3>
               </div>
               <button onClick={() => setUploadModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="size-5" />
@@ -611,7 +642,7 @@ export default function KnowledgeBasePage() {
             <form onSubmit={handleUploadSubmit} className="mt-4 space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Document Title
+                  Title
                 </label>
                 <input
                   type="text"
@@ -635,18 +666,17 @@ export default function KnowledgeBasePage() {
                     maxLength={80}
                     value={uploadCategory}
                     onChange={(e) => setUploadCategory(e.target.value)}
-                    placeholder="Type or select a category"
+                    placeholder="Select or create"
                     className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-primary dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                   />
                   <datalist id="knowledge-base-categories">
                     {categories.map((category) => <option key={category} value={category} />)}
                   </datalist>
-                  <p className="mt-1 text-[11px] text-slate-400">Choose an existing category or enter a new one.</p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Select File (.pdf, .txt, .md)
+                    File (.pdf, .txt, .md)
                   </label>
                   <input
                     type="file"
@@ -660,37 +690,33 @@ export default function KnowledgeBasePage() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Visibility to ARIA
+                  Visibility
                 </label>
                 <select
                   value={uploadVisibility}
                   onChange={(e) => setUploadVisibility(e.target.value === "admin_only" ? "admin_only" : "public")}
                   className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-primary dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                 >
-                  <option value="public">Public - searchable from the citizen and admin surfaces</option>
-                  <option value="admin_only">Admin only - searchable from the admin surface only</option>
+                  <option value="public">Public</option>
+                  <option value="admin_only">Admin only</option>
                 </select>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  This is enforced when ARIA searches the knowledge base, not just a display label.
-                </p>
               </div>
 
-              <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-800 dark:bg-slate-950/50">
-                <FileUp className="mx-auto size-8 text-slate-400" />
-                <p className="mt-2 text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {uploadFile ? uploadFile.name : "Select a reference PDF or text manual"}
-                </p>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  Document text will be extracted, split into vector chunks, and embedded via Ollama nomic-embed-text.
-                </p>
-              </div>
+              {uploadFile && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/50">
+                  <div className="flex items-center gap-2">
+                    <FileUp className="size-4 text-slate-400 shrink-0" />
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{uploadFile.name}</p>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setUploadModalOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" className="bg-primary text-white" disabled={uploadSubmitting}>
-                  {uploadSubmitting ? "Processing..." : "Start Vector Indexing"}
+                  {uploadSubmitting ? "Uploading..." : "Upload"}
                 </Button>
               </div>
             </form>
@@ -739,6 +765,23 @@ export default function KnowledgeBasePage() {
                   placeholder="Provide the exact, detailed explanation that ANIA should use when users ask about this topic..."
                   className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-3 text-sm font-medium text-slate-900 outline-none focus:border-primary dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Visibility to ARIA
+                </label>
+                <select
+                  value={newFaqVisibility}
+                  onChange={(e) => setNewFaqVisibility(e.target.value === "admin_only" ? "admin_only" : "public")}
+                  className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-primary dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                >
+                  <option value="public">Public - searchable from the citizen and admin surfaces</option>
+                  <option value="admin_only">Admin only - searchable from the admin surface only</option>
+                </select>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  This is enforced when ARIA searches the knowledge base, not just a display label.
+                </p>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
