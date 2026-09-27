@@ -3,7 +3,6 @@ import type { Article } from "./article.types";
 
 export type ViewMode = "table" | "grid" | "maps" | "list";
 export type PhotoViewMode = "grid" | "maps";
-export type ProjectTabKey = "overview" | "articles" | "updates" | "feedback" | "photos" | "videos" | "documents" | "pow" | "procurement";
 
 export interface LocationFilters {
   region: string;

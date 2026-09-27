@@ -1,0 +1,118 @@
+/*
+ * Scoped tokens for the public ABEMIS analytics page (/infra-analytics) and the public
+ * project page (/projects/[id]). They are defined on the .public-analytics wrapper, not
+ * on :root, because --accent and --muted already mean something else in globals.css and
+ * the app header, navigation and footer keep the app-wide theme.
+ *
+ * Dark mode follows the app's own .dark class on <html>. The header sets it from the
+ * visitor's saved choice, falling back to prefers-color-scheme, so a separate media query
+ * here would override visitors who picked light mode on a dark-mode device.
+ */
+
+.public-analytics {
+  --page: #f2f5f1;
+  --surface: #fbfcfa;
+  --surface-2: #edf1ec;
+  --ink: #121a15;
+  --ink-2: #465049;
+  --muted: #6a756d;
+  --hair: #dde3dc;
+  --axis: #c2cac3;
+  --accent: #1d6a48;
+  --accent-soft: #dfeee5;
+  --series: #2a78d6;
+  --series-soft: #b7d3f6;
+  --context: #b3bbb4;
+
+  --stage-bidding: #86b6ef;
+  --stage-construction: #2a78d6;
+  --stage-turnover: #1c5cab;
+  --stage-handed-over: #104281;
+  --stage-on-hold: #b3bbb4;
+
+  --heat-hi: #104281;
+
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  color-scheme: light;
+}
+
+.dark .public-analytics {
+  --page: #0d120f;
+  --surface: #151b17;
+  --surface-2: #1c241f;
+  --ink: #eef2ee;
+  --ink-2: #b9c3bb;
+  --muted: #8d998f;
+  --hair: #26302a;
+  --axis: #38443c;
+  --accent: #62c091;
+  --accent-soft: #1c3226;
+  --series: #3987e5;
+  --series-soft: #1f3f66;
+  --context: #4a554d;
+  --stage-bidding: #184f95;
+  --stage-construction: #3987e5;
+  --stage-turnover: #6da7ec;
+  --stage-handed-over: #9ec5f4;
+  --stage-on-hold: #4a554d;
+  --heat-hi: #86b6ef;
+  color-scheme: dark;
+}
+
+.public-analytics .pa-heading {
+  font-family: var(--font-plex-condensed), var(--font-plex-sans), ui-sans-serif, sans-serif;
+}
+
+.public-analytics .pa-mono {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+.public-analytics :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Muted basemap so the stage-colored pins are the only strong color. */
+.public-analytics .pa-map .leaflet-container {
+  background: var(--surface-2);
+  font-family: inherit;
+}
+
+.public-analytics .pa-map .leaflet-tile-pane {
+  filter: saturate(0.35);
+}
+
+.public-analytics .pa-pin {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--axis);
+}
+
+.public-analytics .pa-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--surface);
+  border: 2px solid var(--ink-2);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.public-analytics .leaflet-popup-content-wrapper,
+.public-analytics .leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--hair);
+  box-shadow: none;
+}
+
+.public-analytics .leaflet-popup-content {
+  margin: 12px;
+  width: 240px !important;
+}
