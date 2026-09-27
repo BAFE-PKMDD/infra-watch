@@ -1,0 +1,52 @@
+/*
+ * Scoped color tokens for the Infrastructure Monitoring and Data Quality analytics
+ * surfaces only. These are intentionally NOT on :root — the rest of the admin app
+ * (sidebar, header, other tabs) keeps the Indigo/Orange tokens in globals.css.
+ * See docs/06-ui-ux-design.md section 2 for the approved-exception note.
+ */
+
+.analytics-scope {
+  --a-page: #f2f5f1;
+  --a-surface: #fbfcfa;
+  --a-surface-2: #edf1ec;
+  --a-hair: #dde3dc;
+  --a-accent: #1d6a48;
+  --a-accent-soft: #dfeee5;
+
+  --a-s1: #86b6ef;
+  --a-s2: #5598e7;
+  --a-s3: #2a78d6;
+  --a-s4: #1c5cab;
+  --a-s5: #104281;
+
+  --a-heat-lo: #fbfcfa;
+  --a-heat-hi: #104281;
+
+  --a-good: #0ca30c;
+  --a-warn: #fab219;
+  --a-serious: #ec835a;
+  --a-crit: #d03b3b;
+}
+
+.dark .analytics-scope {
+  --a-page: #0d120f;
+  --a-surface: #151b17;
+  --a-surface-2: #1c241f;
+  --a-hair: #26302a;
+  --a-accent: #62c091;
+  --a-accent-soft: #1c3226;
+
+  --a-s1: #184f95;
+  --a-s2: #256abf;
+  --a-s3: #3987e5;
+  --a-s4: #6da7ec;
+  --a-s5: #9ec5f4;
+
+  --a-heat-lo: #151b17;
+  --a-heat-hi: #86b6ef;
+
+  --a-good: #22c55e;
+  --a-warn: #fbbf24;
+  --a-serious: #f08a5d;
+  --a-crit: #ef4444;
+}

@@ -190,6 +190,27 @@
       "when": 1790321526528,
       "tag": "0026_fuzzy_makkari",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790516326349,
+      "tag": "0027_live_video_region",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790517015937,
+      "tag": "0028_live_video_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790517727778,
+      "tag": "0029_issue_type_field",
+      "breakpoints": true
     }
   ]
 }

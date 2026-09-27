@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./analytics-theme.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -132,4 +133,25 @@
     font-family: var(--font-outfit), 'Outfit', sans-serif;
     letter-spacing: -0.01em;
   }
+}
+
+.evidence-pin-icon,
+.evidence-cluster-icon,
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.evidence-cluster-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 12px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
 }

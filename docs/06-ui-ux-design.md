@@ -27,6 +27,8 @@ The live application uses the following product direction:
 
 Use semantic application tokens such as `primary`, `accent`, `destructive`, `muted`, and chart tokens where possible. Do not introduce a one-off brand color when an existing token communicates the same role.
 
+**Approved scoped exception:** the Infrastructure Monitoring dashboard and Data Quality pages (`app/(admin)/dashboard`, `app/(admin)/data-quality`) additionally use a `--a-*` sequential/magnitude and heat-scale palette, defined in `app/analytics-theme.css` under an `.analytics-scope` class rather than on `:root`. This does not replace the semantic status colors above (red/amber/green/slate keep their meaning); it only adds tokens for volume and heat encodings those charts need that the existing tokens don't cover. It applies to these two routes only and is not a precedent for other pages.
+
 Color must not be the only state indicator. Every status needs visible text, an icon, a pattern, or another non-color cue.
 
 ## 3. Typography
