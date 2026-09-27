@@ -2,15 +2,22 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { SmsGrievanceGuide } from "@/components/report-issue/sms-grievance-guide";
+import { getServerLanguage, getServerTranslator } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "SMS Grievance Guide | INFRA Watch",
-  description: "Prototype instructions for submitting an infrastructure grievance by SMS.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslator();
+  return {
+    title: t("eReport.smsPage.metaTitle"),
+    description: t("eReport.smsPage.metaDescription"),
+  };
+}
 
-export default function SmsGrievancePage() {
+export default async function SmsGrievancePage() {
   if (process.env.NODE_ENV === "production") notFound();
-  return <SmsGrievanceGuide />;
+  // The guide keeps its own English/Filipino switch; it starts in the site language, and the
+  // key remounts it when the header switch changes that language.
+  const language = await getServerLanguage();
+  return <SmsGrievanceGuide key={language} initialLanguage={language} />;
 }

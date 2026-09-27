@@ -1,14 +1,44 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 import {
+  ISSUE_TYPES,
   formatIssueTypeValue,
   getCategoryDisplayName,
   parseIssueTypeValue,
   splitIssueTypes,
   type IssueTypeOption,
+  type ReportCategory,
 } from "@/lib/abemis/issue-type-map";
+
+export type Translate = (path: string, variables?: Record<string, string | number>) => string;
+
+const REPORT_CATEGORIES: ReportCategory[] = ["quality", "progress", "general", "concerns"];
+
+/**
+ * Display text for one issue type. The English label stays the stored value (see
+ * issue-type-map.ts); only what the visitor reads follows the EN/TL switch. A label that is
+ * not in the catalog (older free-text data) is shown as stored.
+ */
+export function issueTypeText(label: string, t: Translate): string {
+  const type = ISSUE_TYPES.find((option) => option.label === label);
+  return type ? t(`eReport.issueTypes.${type.id}`) : label;
+}
+
+/** Display text for a stored issue-type value, which may hold several labels joined by " | ". */
+export function issueTypeValueText(value: string, t: Translate, separator = " | "): string {
+  const labels = parseIssueTypeValue(value);
+  return labels.length > 0 ? labels.map((label) => issueTypeText(label, t)).join(separator) : value;
+}
+
+/** Display text for a report category stored either as its id ("quality") or its English name. */
+export function categoryText(value: string | null | undefined, t: Translate): string {
+  if (!value) return "";
+  const id = REPORT_CATEGORIES.find((category) => category === value || getCategoryDisplayName(category) === value);
+  return id ? t(`eReport.categories.${id}.label`) : value;
+}
 
 interface IssueTypePickerProps {
   value: string;
@@ -28,6 +58,7 @@ export function IssueTypePicker({
   required = true,
 }: IssueTypePickerProps) {
   const selected = parseIssueTypeValue(value);
+  const { t } = useTranslation();
   const { recommended, more } = splitIssueTypes({ category, farmOperation });
 
   const toggle = (label: string) => {
@@ -41,27 +72,27 @@ export function IssueTypePicker({
     (label) => !recommended.some((type) => type.label === label),
   );
 
-  const categoryLabel = getCategoryDisplayName(category);
+  const categoryLabel = categoryText(category, t);
   const eyebrow = categoryLabel
-    ? `Common for ${categoryLabel}`
+    ? t("eReport.picker.commonFor", { name: categoryLabel })
     : farmOperation
-      ? `Common for ${farmOperation}`
-      : "Common issue types";
+      ? t("eReport.picker.commonFor", { name: farmOperation })
+      : t("eReport.picker.commonTypes");
 
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-        Issue Type {required
+        {t("eReport.picker.label")} {required
           ? <span className="text-red-500 dark:text-red-400">*</span>
-          : <span className="font-normal text-slate-400 dark:text-slate-500">(Optional)</span>}
+          : <span className="font-normal text-slate-400 dark:text-slate-500">{t("eReport.picker.optional")}</span>}
       </Label>
       <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-        Select all that apply &middot; {eyebrow}
+        {t("eReport.picker.selectAll")} &middot; {eyebrow}
       </p>
 
       <div
         role="group"
-        aria-label="Issue type"
+        aria-label={t("eReport.picker.groupLabel")}
         data-testid="recommended-issue-types"
         className="grid grid-cols-2 gap-2 sm:grid-cols-3"
       >
@@ -69,6 +100,7 @@ export function IssueTypePicker({
           <IssueTypeCard
             key={type.id}
             type={type}
+            text={issueTypeText(type.label, t)}
             isSelected={selected.includes(type.label)}
             onToggle={() => toggle(type.label)}
           />
@@ -77,7 +109,10 @@ export function IssueTypePicker({
 
       {selected.length > 0 && (
         <p className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-          {selected.length} selected: {selected.join(", ")}
+          {t("eReport.picker.selectedSummary", {
+            count: selected.length,
+            labels: selected.map((label) => issueTypeText(label, t)).join(", "),
+          })}
         </p>
       )}
 
@@ -87,13 +122,14 @@ export function IssueTypePicker({
             <span className="inline-block transition-transform group-open:rotate-90" aria-hidden="true">
               &rsaquo;
             </span>
-            Browse all issue types
+            {t("eReport.picker.browseAll")}
           </summary>
           <div data-testid="more-issue-types" className="mt-2 flex flex-wrap gap-2">
             {more.map((type) => (
               <IssueTypeChip
                 key={type.id}
                 type={type}
+                text={issueTypeText(type.label, t)}
                 isSelected={selected.includes(type.label)}
                 onToggle={() => toggle(type.label)}
               />
@@ -107,10 +143,12 @@ export function IssueTypePicker({
 
 function IssueTypeCard({
   type,
+  text,
   isSelected,
   onToggle,
 }: {
   type: IssueTypeOption;
+  text: string;
   isSelected: boolean;
   onToggle: () => void;
 }) {
@@ -128,17 +166,19 @@ function IssueTypeCard({
       )}
     >
       <Icon className="size-4 shrink-0" aria-hidden="true" />
-      <span>{type.label}</span>
+      <span>{text}</span>
     </button>
   );
 }
 
 function IssueTypeChip({
   type,
+  text,
   isSelected,
   onToggle,
 }: {
   type: IssueTypeOption;
+  text: string;
   isSelected: boolean;
   onToggle: () => void;
 }) {
@@ -156,7 +196,7 @@ function IssueTypeChip({
       )}
     >
       <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-      <span>{type.label}</span>
+      <span>{text}</span>
     </button>
   );
 }
