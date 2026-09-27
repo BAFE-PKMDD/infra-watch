@@ -1,3 +1,4 @@
+import { account } from "./sections/account";
 import { community } from "./sections/community";
 import { directory } from "./sections/directory";
 import { eReport } from "./sections/eReport";
@@ -413,6 +414,7 @@ export const translations = {
     eReport: eReport.en,
     community: community.en,
     site: site.en,
+    account: account.en,
   },
   tl: {
     nav: {
@@ -820,6 +822,7 @@ export const translations = {
     eReport: eReport.tl,
     community: community.tl,
     site: site.tl,
+    account: account.tl,
   },
 } as const;
 
