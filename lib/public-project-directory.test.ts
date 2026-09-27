@@ -17,6 +17,8 @@ const completeState: PublicProjectDirectoryState = {
   barangay: "133901001",
   status: "completed",
   year: "2026",
+  farmOperation: "Irrigation System",
+  projectType: "Solar Powered Irrigation System",
   sort: "budget-desc",
   view: "grid",
 };
@@ -37,6 +39,8 @@ test("rejects invalid directory enums without discarding independently valid fil
     barangay: "all",
     status: "completed",
     year: "all",
+    farmOperation: "all",
+    projectType: "all",
     sort: "newest",
     view: "map",
   });

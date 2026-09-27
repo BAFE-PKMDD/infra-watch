@@ -9,16 +9,15 @@ import {
   List,
   Map as MapIcon,
   Download,
-
   ChevronDown,
   MapPin,
   X,
-  Loader2,
   Briefcase,
   Image as ImageIcon,
   Maximize2,
   Minimize2,
 } from "lucide-react";
+import MatrixOrb from "@/components/ui/matrix-orb";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +37,11 @@ import {
   serializePublicProjectDirectoryState,
   type PublicProjectSort,
 } from "@/lib/public-project-directory";
+import {
+  FARM_OPERATIONS,
+  getAllProjectTypes,
+  getProjectTypesForFarmOperation,
+} from "@/lib/abemis/project-type-map";
 import { safePublicSourceMediaUrl } from "@/lib/public-source-media";
 import { sendCitizenEngagementEvent } from "@/lib/analytics/citizen-event-client";
 
@@ -94,7 +98,7 @@ function getGeotagPhotos(metadata: unknown): GeotagPhoto[] {
 
 const GISMapCanvas = dynamic(() => import("@/components/map/gis-map-canvas"), {
   ssr: false,
-  loading: () => <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-slate-50 dark:bg-slate-900"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>
+  loading: () => <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-slate-50 dark:bg-slate-900"><MatrixOrb state="thinking" size={100} dots={9} hideLabel /></div>
 });
 export default function ProjectsCatalog() {
   const router = useRouter();
@@ -111,6 +115,8 @@ export default function ProjectsCatalog() {
   const [selectedBarangay, setSelectedBarangay] = useState(initialState.barangay);
   const [selectedYear, setSelectedYear] = useState(initialState.year);
   const [selectedStatus, setSelectedStatus] = useState(initialState.status);
+  const [selectedFarmOperation, setSelectedFarmOperation] = useState(initialState.farmOperation || "all");
+  const [selectedProjectType, setSelectedProjectType] = useState(initialState.projectType || "all");
   const [sort, setSort] = useState<PublicProjectSort>(initialState.sort);
   const [viewMode, setViewMode] = useState(initialState.view);
   const { theme } = useTheme();
@@ -120,6 +126,23 @@ export default function ProjectsCatalog() {
   const mapPanelRef = React.useRef<HTMLDivElement>(null);
   const trackedSearchStatesRef = React.useRef(new Set<string>());
   const mapViewTrackedRef = React.useRef(false);
+
+  const availableProjectTypes = React.useMemo(() => {
+    if (selectedFarmOperation !== "all") {
+      return getProjectTypesForFarmOperation(selectedFarmOperation);
+    }
+    return getAllProjectTypes();
+  }, [selectedFarmOperation]);
+
+  const handleFarmOperationChange = (newFarmOp: string) => {
+    setSelectedFarmOperation(newFarmOp);
+    if (newFarmOp !== "all") {
+      const allowed = getProjectTypesForFarmOperation(newFarmOp);
+      if (selectedProjectType !== "all" && !allowed.includes(selectedProjectType)) {
+        setSelectedProjectType("all");
+      }
+    }
+  };
 
   const { ref, inView } = useInView();
 
@@ -160,7 +183,7 @@ export default function ProjectsCatalog() {
     hasNextPage,
     isFetchingNextPage
   } = useInfiniteQuery({
-    queryKey: ["public-projects", 4, searchQuery, activeProgram, selectedRegion, selectedProvince, selectedMunicipality, selectedBarangay, selectedStatus, selectedYear, sort],
+    queryKey: ["public-projects", 5, searchQuery, activeProgram, selectedRegion, selectedProvince, selectedMunicipality, selectedBarangay, selectedStatus, selectedYear, selectedFarmOperation, selectedProjectType, sort],
     queryFn: ({ pageParam = 1 }) => getPublicProjects({
       searchQuery,
       program: activeProgram,
@@ -170,6 +193,8 @@ export default function ProjectsCatalog() {
       barangay: selectedBarangay,
       status: selectedStatus,
       year: selectedYear,
+      farmOperation: selectedFarmOperation,
+      projectType: selectedProjectType,
       sort,
       pageParam
     }),
@@ -183,7 +208,7 @@ export default function ProjectsCatalog() {
     isError: isMapError,
     refetch: refetchMap,
   } = useQuery({
-    queryKey: ["public-map-projects", 3, searchQuery, activeProgram, selectedRegion, selectedProvince, selectedMunicipality, selectedBarangay, selectedStatus, selectedYear],
+    queryKey: ["public-map-projects", 4, searchQuery, activeProgram, selectedRegion, selectedProvince, selectedMunicipality, selectedBarangay, selectedStatus, selectedYear, selectedFarmOperation, selectedProjectType],
     queryFn: () => getPublicMapPins({
       searchQuery,
       program: activeProgram,
@@ -192,7 +217,9 @@ export default function ProjectsCatalog() {
       municipality: selectedMunicipality,
       barangay: selectedBarangay,
       status: selectedStatus,
-      year: selectedYear
+      year: selectedYear,
+      farmOperation: selectedFarmOperation,
+      projectType: selectedProjectType,
     }),
     enabled: viewMode === "map",
     staleTime: 5 * 60 * 1000,
@@ -217,9 +244,11 @@ export default function ProjectsCatalog() {
     barangay: selectedBarangay,
     status: selectedStatus,
     year: selectedYear,
+    farmOperation: selectedFarmOperation,
+    projectType: selectedProjectType,
     sort,
     view: viewMode,
-  }), [searchQuery, activeProgram, selectedRegion, selectedProvince, selectedMunicipality, selectedBarangay, selectedStatus, selectedYear, sort, viewMode]);
+  }), [searchQuery, activeProgram, selectedRegion, selectedProvince, selectedMunicipality, selectedBarangay, selectedStatus, selectedYear, selectedFarmOperation, selectedProjectType, sort, viewMode]);
   const directoryQueryString = directoryParams.toString();
   const directoryReturnHref = directoryQueryString ? `${pathname}?${directoryQueryString}` : pathname;
   const projectHref = (projectId: string, tab?: string) => {
@@ -235,7 +264,9 @@ export default function ProjectsCatalog() {
     || selectedMunicipality !== "all"
     || selectedBarangay !== "all"
     || selectedStatus !== "all"
-    || selectedYear !== "all";
+    || selectedYear !== "all"
+    || selectedFarmOperation !== "all"
+    || selectedProjectType !== "all";
   const searchIntentKey = [
     searchQuery.trim(),
     activeProgram,
@@ -245,6 +276,8 @@ export default function ProjectsCatalog() {
     selectedBarangay,
     selectedStatus,
     selectedYear,
+    selectedFarmOperation,
+    selectedProjectType,
   ].join("|");
 
   React.useEffect(() => {
@@ -304,6 +337,8 @@ export default function ProjectsCatalog() {
       setSelectedBarangay(next.barangay);
       setSelectedStatus(next.status);
       setSelectedYear(next.year);
+      setSelectedFarmOperation(next.farmOperation);
+      setSelectedProjectType(next.projectType);
       setSort(next.sort);
       setViewMode(next.view);
     };
@@ -389,6 +424,8 @@ export default function ProjectsCatalog() {
     setSelectedBarangay("all");
     setSelectedYear("all");
     setSelectedStatus("all");
+    setSelectedFarmOperation("all");
+    setSelectedProjectType("all");
     setMapProjectType("all");
     setSelectedPin(null);
     setSort("newest");
@@ -547,7 +584,7 @@ export default function ProjectsCatalog() {
             <div className="flex items-center justify-between gap-3">
               <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <Filter className="h-3.5 w-3.5" />
-                Filter by program &amp; location
+                Filter by program, location &amp; type
               </p>
               {directoryQueryString && (
                 <Button variant="outline" size="sm" onClick={resetFilters}>Reset filters and view</Button>
@@ -572,8 +609,8 @@ export default function ProjectsCatalog() {
               ))}
             </div>
 
-            {/* Location / Status / Year Selects */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            {/* Location / Classification / Status / Year Selects */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <select
                 aria-label="Region"
                 value={selectedRegion}
@@ -647,6 +684,36 @@ export default function ProjectsCatalog() {
               </select>
 
               <select
+                aria-label="Farm operation"
+                value={selectedFarmOperation}
+                onChange={(e) => handleFarmOperationChange(e.target.value)}
+                className="w-full min-w-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
+              >
+                <option value="all">All Farm Operations</option>
+                {FARM_OPERATIONS.map((op) => (
+                  <option key={op} value={op}>
+                    {op}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                aria-label="Project type"
+                value={selectedProjectType}
+                onChange={(e) => setSelectedProjectType(e.target.value)}
+                className="w-full min-w-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
+              >
+                <option value="all">All Project Types</option>
+                {availableProjectTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+
+              <select
                 aria-label="Project status"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value as typeof selectedStatus)}
@@ -689,10 +756,14 @@ export default function ProjectsCatalog() {
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full py-20 flex flex-col items-center justify-center"
+            className="w-full py-16 flex flex-col items-center justify-center"
           >
-            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-            <p className="text-slate-500 font-medium">Fetching synchronized projects...</p>
+            <MatrixOrb
+              state="thinking"
+              size={120}
+              dots={9}
+              hideLabel
+            />
           </motion.div>
         )}
 
@@ -825,7 +896,7 @@ export default function ProjectsCatalog() {
 
             {hasNextPage && (
               <div ref={ref} className="w-full py-8 flex justify-center mt-4">
-                {isFetchingNextPage && <Loader2 className="w-8 h-8 text-primary animate-spin" />}
+                {isFetchingNextPage && <MatrixOrb state="thinking" size={56} dots={7} hideLabel />}
               </div>
             )}
           </>
@@ -954,7 +1025,7 @@ export default function ProjectsCatalog() {
 
             {hasNextPage && (
               <div ref={ref} className="w-full py-8 flex justify-center mt-4">
-                {isFetchingNextPage && <Loader2 className="w-8 h-8 text-primary animate-spin" />}
+                {isFetchingNextPage && <MatrixOrb state="thinking" size={56} dots={7} hideLabel />}
               </div>
             )}
           </>
@@ -1054,8 +1125,12 @@ export default function ProjectsCatalog() {
               )}
               {isLoadingMapPins ? (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">
-                  <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-                  <p className="text-slate-500 font-medium">Loading Map Pins...</p>
+                  <MatrixOrb
+                    state="thinking"
+                    size={100}
+                    dots={9}
+                    hideLabel
+                  />
                 </div>
               ) : (
                 <GISMapCanvas
@@ -1082,7 +1157,7 @@ export default function ProjectsCatalog() {
                 >
                   {(() => {
                     if (isLoadingMapProjectDetails) {
-                      return <div className="flex h-full items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+                      return <div className="flex h-full items-center justify-center"><MatrixOrb state="thinking" size={64} dots={7} hideLabel /></div>;
                     }
                     const projectDetails = selectedMapProjectDetails;
                     if (!projectDetails) return <p className="p-5 text-sm text-slate-500">Project details are unavailable.</p>;

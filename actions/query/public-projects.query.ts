@@ -32,6 +32,8 @@ export type PublicProjectFilters = {
   barangay?: string;
   status?: string;
   year?: string;
+  farmOperation?: string;
+  projectType?: string;
   pageParam?: number;
   sort?: PublicProjectSort;
 };
@@ -46,6 +48,8 @@ export async function getPublicProjects({
   barangay,
   status,
   year,
+  farmOperation,
+  projectType,
   pageParam = 1,
   sort = "newest",
 }: PublicProjectFilters) {
@@ -87,6 +91,14 @@ export async function getPublicProjects({
 
     if (year && year !== "all") {
       conditions.push(eq(projects.yearFunded, year));
+    }
+
+    if (farmOperation && farmOperation !== "all") {
+      conditions.push(ilike(projects.farmOperation, farmOperation));
+    }
+
+    if (projectType && projectType !== "all") {
+      conditions.push(ilike(projects.projectType, projectType));
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -141,7 +153,9 @@ export async function getPublicMapPins({
   municipality,
   barangay,
   status,
-  year
+  year,
+  farmOperation,
+  projectType,
 }: PublicProjectFilters) {
   try {
     const conditions = [projectYearScopeCondition()];
@@ -177,6 +191,14 @@ export async function getPublicMapPins({
 
     if (year && year !== "all") {
       conditions.push(eq(projects.yearFunded, year));
+    }
+
+    if (farmOperation && farmOperation !== "all") {
+      conditions.push(ilike(projects.farmOperation, farmOperation));
+    }
+
+    if (projectType && projectType !== "all") {
+      conditions.push(ilike(projects.projectType, projectType));
     }
 
     conditions.push(

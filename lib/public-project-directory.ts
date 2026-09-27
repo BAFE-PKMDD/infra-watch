@@ -17,6 +17,8 @@ export interface PublicProjectDirectoryState {
   barangay: string;
   status: PublicProjectStatus;
   year: string;
+  farmOperation: string;
+  projectType: string;
   sort: PublicProjectSort;
   view: PublicProjectView;
 }
@@ -30,6 +32,8 @@ const defaults: PublicProjectDirectoryState = {
   barangay: "all",
   status: "all",
   year: "all",
+  farmOperation: "all",
+  projectType: "all",
   sort: "newest",
   view: "list",
 };
@@ -53,6 +57,8 @@ export function parsePublicProjectDirectoryState(params: URLSearchParams): Publi
     barangay: boundedValue(params.get("barangay")),
     status: enumValue(params.get("status"), PUBLIC_PROJECT_STATUSES, defaults.status),
     year: /^\d{4}$/.test(params.get("year") ?? "") ? params.get("year")! : defaults.year,
+    farmOperation: boundedValue(params.get("farmOperation")),
+    projectType: boundedValue(params.get("projectType") || params.get("type")),
     sort: enumValue(params.get("sort"), PUBLIC_PROJECT_SORTS, defaults.sort),
     view: enumValue(params.get("view"), PUBLIC_PROJECT_VIEWS, defaults.view),
   };
@@ -68,6 +74,8 @@ export function serializePublicProjectDirectoryState(state: PublicProjectDirecto
   if (state.barangay !== defaults.barangay) params.set("barangay", state.barangay);
   if (state.status !== defaults.status) params.set("status", state.status);
   if (state.year !== defaults.year) params.set("year", state.year);
+  if (state.farmOperation !== defaults.farmOperation) params.set("farmOperation", state.farmOperation);
+  if (state.projectType !== defaults.projectType) params.set("projectType", state.projectType);
   if (state.sort !== defaults.sort) params.set("sort", state.sort);
   if (state.view !== defaults.view) params.set("view", state.view);
   return params;
