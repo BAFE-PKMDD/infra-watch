@@ -7,19 +7,18 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/layout/app-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "@/i18n";
 import { updateMyPhoneNumber } from "@/actions/mutation/profile.mutation";
 
-const ROLE_LABELS: Record<string, string> = {
-  citizen: "Citizen",
-  moderator: "Moderator",
-  admin: "Administrator",
-};
+// Roles with a label under account.profile.roles; any other role is shown as stored.
+const LABELED_ROLES = ["citizen", "moderator", "admin"];
 
 export function MyProfileClient({
   user,
 }: {
   user: { name: string; email: string; role: string; phoneNumber: string | null };
 }) {
+  const { t } = useTranslation();
   const [phoneInput, setPhoneInput] = useState(user.phoneNumber ?? "");
   const [savedPhoneNumber, setSavedPhoneNumber] = useState(user.phoneNumber);
   const [isPending, startTransition] = useTransition();
@@ -32,9 +31,9 @@ export function MyProfileClient({
         const result = await updateMyPhoneNumber(phoneInput.trim() || null);
         setSavedPhoneNumber(result.phoneNumber);
         setPhoneInput(result.phoneNumber ?? "");
-        toast.success(result.phoneNumber ? "Phone number saved" : "Phone number cleared");
+        toast.success(result.phoneNumber ? t("account.profile.toasts.saved") : t("account.profile.toasts.cleared"));
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to save phone number");
+        toast.error(error instanceof Error ? error.message : t("account.profile.toasts.saveFailed"));
       }
     });
   }
@@ -45,9 +44,9 @@ export function MyProfileClient({
     <>
       <AppHeader />
       <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">My profile</h1>
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{t("account.profile.title")}</h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Manage your account contact details.
+          {t("account.profile.subtitle")}
         </p>
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
@@ -60,12 +59,12 @@ export function MyProfileClient({
               <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
             </div>
             <span className="ml-auto shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              {ROLE_LABELS[user.role] ?? user.role}
+              {LABELED_ROLES.includes(user.role) ? t(`account.profile.roles.${user.role}`) : user.role}
             </span>
           </div>
 
           <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
-            Mobile number
+            {t("account.profile.mobileLabel")}
           </label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
@@ -80,13 +79,11 @@ export function MyProfileClient({
               />
             </div>
             <Button onClick={handleSave} disabled={isPending || !isDirty} className="min-h-11 sm:w-28">
-              {isPending ? "Saving…" : "Save"}
+              {isPending ? t("account.profile.saving") : t("account.profile.save")}
             </Button>
           </div>
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-            {showsSmsNote
-              ? "Used to send you SMS alerts for pending feedback and issue follow-ups. Leave blank to opt out of SMS."
-              : "Format: 09171234567 or +639171234567."}
+            {showsSmsNote ? t("account.profile.smsNote") : t("account.profile.formatNote")}
           </p>
         </div>
       </main>

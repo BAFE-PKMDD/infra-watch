@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "My Issues | INFRA Watch",
-  description: "Track and manage your reported issues on INFRA Watch.",
-};
+import { getServerTranslator } from "@/i18n/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslator();
+  return {
+    title: t("account.issues.metaTitle"),
+    description: t("account.issues.metaDescription"),
+  };
+}
 
 export default function IssuesLayout({
   children,

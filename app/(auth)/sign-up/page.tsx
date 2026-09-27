@@ -14,11 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signUp } from "@/lib/auth-client";
 import { OTPVerificationForm } from "@/components/auth/otp-verification-form";
+import { useTranslation } from "@/i18n";
 
 type Step = "form" | "otp";
 
 export default function SignUpPage() {
-
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,27 +29,28 @@ export default function SignUpPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
+  // Field errors hold a dictionary key, so a shown message follows the EN/TL switch.
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!name || name.trim().length < 2) {
-      newErrors.name = "Name must be at least 2 characters";
+      newErrors.name = "account.signUp.errors.nameMin";
     }
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = "account.signUp.errors.emailInvalid";
     }
     if (!password || password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = "account.auth.passwordMin";
     } else {
       if (!/[A-Z]/.test(password)) {
-        newErrors.password = "Password must contain at least one uppercase letter";
+        newErrors.password = "account.signUp.errors.passwordUppercase";
       } else if (!/[a-z]/.test(password)) {
-        newErrors.password = "Password must contain at least one lowercase letter";
+        newErrors.password = "account.signUp.errors.passwordLowercase";
       } else if (!/[0-9]/.test(password)) {
-        newErrors.password = "Password must contain at least one number";
+        newErrors.password = "account.signUp.errors.passwordNumber";
       }
     }
     if (password !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = "account.auth.passwordMismatch";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -73,13 +75,13 @@ export default function SignUpPage() {
       });
 
       if (signUpResult.error) {
-        setServerError(signUpResult.error.message || "Registration failed. Please try again.");
+        setServerError(signUpResult.error.message || t("account.signUp.errors.registrationFailed"));
         return;
       }
 
       setStep("otp");
     } catch {
-      setServerError("An unexpected error occurred. Please try again.");
+      setServerError(t("account.auth.unexpectedErrorRetry"));
     } finally {
       setIsSubmitting(false);
     }
@@ -87,7 +89,7 @@ export default function SignUpPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary/5 to-slate-50 dark:from-slate-950 dark:via-primary/5 dark:to-slate-950 flex flex-col justify-between">
-      <AppHeader activeItem="home" actionLabel="Sign In" />
+      <AppHeader activeItem="home" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col items-center justify-center flex-1 w-full">
         <motion.div
@@ -108,17 +110,17 @@ export default function SignUpPage() {
                 >
                   <CardHeader className="space-y-2 text-center">
                     <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                      Create your account
+                      {t("account.signUp.title")}
                     </CardTitle>
                     <p className="text-sm text-slate-600 dark:text-slate-300 pb-3">
-                      Join INFRA Watch to monitor projects and submit feedback.
+                      {t("account.signUp.subtitle")}
                     </p>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                       {/* Name */}
                       <div className="space-y-1">
-                        <Label htmlFor="name" className="font-semibold text-xs text-slate-700 dark:text-slate-300">Full name</Label>
+                        <Label htmlFor="name" className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t("account.signUp.nameLabel")}</Label>
                         <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary dark:border-slate-700 dark:bg-slate-800 transition-shadow">
                           <User className="w-4 h-4 text-slate-400" />
                           <Input
@@ -137,14 +139,14 @@ export default function SignUpPage() {
                         </div>
                         {errors.name && (
                           <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-0.5">
-                            {errors.name}
+                            {t(errors.name)}
                           </p>
                         )}
                       </div>
 
                       {/* Email */}
                       <div className="space-y-1">
-                        <Label htmlFor="email" className="font-semibold text-xs text-slate-700 dark:text-slate-300">Email Address</Label>
+                        <Label htmlFor="email" className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t("account.auth.emailLabel")}</Label>
                         <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary dark:border-slate-700 dark:bg-slate-800 transition-shadow">
                           <Mail className="w-4 h-4 text-slate-400" />
                           <Input
@@ -163,14 +165,14 @@ export default function SignUpPage() {
                         </div>
                         {errors.email && (
                           <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-0.5">
-                            {errors.email}
+                            {t(errors.email)}
                           </p>
                         )}
                       </div>
 
                       {/* Password */}
                       <div className="space-y-1">
-                        <Label htmlFor="password" className="font-semibold text-xs text-slate-700 dark:text-slate-300">Password</Label>
+                        <Label htmlFor="password" className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t("account.auth.passwordLabel")}</Label>
                         <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary dark:border-slate-700 dark:bg-slate-800 transition-shadow">
                           <Lock className="w-4 h-4 text-slate-400" />
                           <Input
@@ -189,14 +191,14 @@ export default function SignUpPage() {
                         </div>
                         {errors.password && (
                           <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-0.5">
-                            {errors.password}
+                            {t(errors.password)}
                           </p>
                         )}
                       </div>
 
                       {/* Confirm Password */}
                       <div className="space-y-1">
-                        <Label htmlFor="confirmPassword" className="font-semibold text-xs text-slate-700 dark:text-slate-300">Confirm password</Label>
+                        <Label htmlFor="confirmPassword" className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t("account.signUp.confirmPasswordLabel")}</Label>
                         <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary dark:border-slate-700 dark:bg-slate-800 transition-shadow">
                           <Lock className="w-4 h-4 text-slate-400" />
                           <Input
@@ -215,7 +217,7 @@ export default function SignUpPage() {
                         </div>
                         {errors.confirmPassword && (
                           <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-0.5">
-                            {errors.confirmPassword}
+                            {t(errors.confirmPassword)}
                           </p>
                         )}
                       </div>
@@ -236,12 +238,12 @@ export default function SignUpPage() {
 
                       {/* Sign In Link */}
                       <div className="text-sm text-slate-500 dark:text-slate-300">
-                        Already have an account?{" "}
+                        {t("account.signUp.haveAccount")}{" "}
                         <Link
                           href="/sign-in"
                           className="text-primary hover:underline font-bold"
                         >
-                          Sign in
+                          {t("account.signUp.signInLink")}
                         </Link>
                       </div>
 
@@ -254,10 +256,10 @@ export default function SignUpPage() {
                         {isSubmitting ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Creating account...
+                            {t("account.signUp.creating")}
                           </>
                         ) : (
-                          "Create account"
+                          t("account.signUp.submit")
                         )}
                       </Button>
                     </form>
@@ -273,7 +275,7 @@ export default function SignUpPage() {
                 >
                   <CardHeader className="space-y-2 text-center">
                     <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                      Check your email
+                      {t("account.auth.checkEmail")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

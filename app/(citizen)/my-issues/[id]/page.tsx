@@ -20,11 +20,13 @@ import { useParams, useRouter } from "next/navigation";
 
 import { AppFooter } from "@/components/layout/app-footer";
 import { AppHeader } from "@/components/layout/app-header";
+import { categoryText, issueTypeValueText } from "@/components/report-issue/issue-type-picker";
 import { EvidenceLocationMap } from "@/components/shared/evidence-location-map";
 import { GeoVideoPlayer } from "@/components/shared/geo-video-player";
 import { IssueEvidenceGallery } from "@/components/shared/issue-evidence-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/i18n";
 import { useAuth } from "@/providers/auth-provider";
 import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
 
@@ -77,35 +79,35 @@ interface IssueDetail {
   responses: IssueResponse[];
 }
 
+// Status labels are read as t("eReport.status.<status>").
 const STATUS_CONFIG: Record<
   IssueStatus,
   {
-    label: string;
     color: string;
     icon: LucideIcon;
   }
 > = {
   pending: {
-    label: "Pending Review",
     color: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300",
     icon: Clock,
   },
   reviewing: {
-    label: "Under Review",
     color: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300",
     icon: AlertCircle,
   },
   resolved: {
-    label: "Resolved",
     color: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300",
     icon: CheckCircle2,
   },
   closed: {
-    label: "Closed",
     color: "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300",
     icon: XCircle,
   },
 };
+
+function isIssueStatus(status: string): status is IssueStatus {
+  return Object.hasOwn(STATUS_CONFIG, status);
+}
 
 function normalizeIssueStatus(status: string): IssueStatus {
   if (status === "reviewing" || status === "resolved" || status === "closed" || status === "pending") {
@@ -124,6 +126,7 @@ function IssueStateMessage({
   title: string;
   message: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <AppHeader activeItem="home" />
@@ -133,7 +136,7 @@ function IssueStateMessage({
           <h2 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">{title}</h2>
           <p className="mb-6 text-slate-600 dark:text-slate-300">{message}</p>
           <Link href="/my-issues">
-            <Button>Back to My Issues</Button>
+            <Button>{t("account.issueDetail.backToList")}</Button>
           </Link>
         </div>
       </div>
@@ -158,6 +161,7 @@ function LoadingSkeleton() {
 
 export default function MyIssueDetailPage() {
   const { user, isLoading: sessionLoading } = useAuth();
+  const { t, language } = useTranslation();
   const params = useParams();
   const router = useRouter();
   const issueId = params.id as string;
@@ -188,8 +192,8 @@ export default function MyIssueDetailPage() {
   if (!issue) {
     return (
       <IssueStateMessage
-        title="Issue Not Found"
-        message="The issue does not exist or you do not have permission to view it."
+        title={t("account.issueDetail.notFoundTitle")}
+        message={t("account.issueDetail.notFoundBody")}
       />
     );
   }
@@ -206,7 +210,7 @@ export default function MyIssueDetailPage() {
         <Link href="/my-issues">
           <Button variant="ghost" size="sm" className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to My Issues
+            {t("account.issueDetail.backToList")}
           </Button>
         </Link>
 
@@ -220,14 +224,14 @@ export default function MyIssueDetailPage() {
               <div className="mb-3 flex flex-wrap items-center gap-3">
                 <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium ${status.color}`}>
                   <StatusIcon className="h-4 w-4" />
-                  {status.label}
+                  {t(`eReport.status.${issueStatus}`)}
                 </span>
                 {issue.category && (
                   <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                    Category: {issue.category}
+                    {t("eReport.detail.categoryBadge", { category: categoryText(issue.category, t) })}
                   </Badge>
                 )}
-                <Badge variant="outline">{issue.issueType}</Badge>
+                <Badge variant="outline">{issueTypeValueText(issue.issueType, t)}</Badge>
                 {issue.ticketNumber && <Badge variant="outline">{issue.ticketNumber}</Badge>}
               </div>
               <h1 className="mb-4 text-2xl font-bold text-slate-900 dark:text-white">
@@ -236,7 +240,7 @@ export default function MyIssueDetailPage() {
               <div className="grid grid-cols-1 gap-4 text-sm text-slate-600 dark:text-slate-300 md:grid-cols-2">
                 {issue.farmOperation && (
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-700 dark:text-slate-200">Farm Operation:</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{t("eReport.detail.fields.farmOperation")}:</span>
                     <span>{issue.farmOperation}</span>
                   </div>
                 )}
@@ -250,15 +254,15 @@ export default function MyIssueDetailPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  <span>Reported {format(new Date(issue.createdAt), "MMM d, yyyy")}</span>
+                  <span>{t("account.issues.reported", { date: format(new Date(issue.createdAt), "MMM d, yyyy") })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  <span>Noticed on {format(new Date(issue.dateNoticed || issue.createdAt), "MMM d, yyyy")}</span>
+                  <span>{t("account.issueDetail.noticedOn", { date: format(new Date(issue.dateNoticed || issue.createdAt), "MMM d, yyyy") })}</span>
                 </div>
                 {issue.project && (
                   <div>
-                    <strong>Related Project:</strong> {issue.project.name}
+                    <strong>{t("eReport.detail.relatedProject")}:</strong> {issue.project.name}
                   </div>
                 )}
               </div>
@@ -266,7 +270,7 @@ export default function MyIssueDetailPage() {
           </div>
 
           <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-700">
-            <h3 className="mb-3 font-semibold text-slate-900 dark:text-white">Evidence media</h3>
+            <h3 className="mb-3 font-semibold text-slate-900 dark:text-white">{t("account.issueDetail.evidenceMedia")}</h3>
             <IssueEvidenceGallery evidence={issue.evidence} photoUrls={issue.photoUrls} videoUrls={issue.videoUrls} />
           </div>
         </motion.div>
@@ -279,7 +283,7 @@ export default function MyIssueDetailPage() {
               geoVideoUrl={issue.geoVideoUrl}
             />
             {issue.geoVideoTrack?.length && issue.geoVideoUrl ? (
-              <GeoVideoPlayer url={issue.geoVideoUrl} track={issue.geoVideoTrack} name="Your reported GeoVideo" />
+              <GeoVideoPlayer url={issue.geoVideoUrl} track={issue.geoVideoTrack} name={t("account.issueDetail.geoVideoName")} />
             ) : null}
           </div>
         ) : null}
@@ -292,13 +296,13 @@ export default function MyIssueDetailPage() {
         >
           <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-white">
             <MessageSquare className="h-5 w-5" />
-            Official Responses ({issue.responses.length})
+            {t("account.issueDetail.responsesTitle", { count: issue.responses.length })}
           </h2>
 
           {issue.responses.length === 0 ? (
             <div className="py-8 text-center text-slate-500 dark:text-slate-400">
               <Clock className="mx-auto mb-3 h-12 w-12 text-slate-300 dark:text-slate-600" />
-              <p>No official responses yet. You will be notified when there is an update.</p>
+              <p>{t("account.issueDetail.noResponses")}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -317,12 +321,21 @@ export default function MyIssueDetailPage() {
                         </Badge>
                       </div>
                       <div className="text-sm text-slate-500 dark:text-slate-400">
-                        {format(new Date(response.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                        {t("account.issueDetail.respondedAt", {
+                          date: format(new Date(response.createdAt), "MMM d, yyyy"),
+                          time: format(new Date(response.createdAt), "h:mm a"),
+                        })}
                       </div>
                     </div>
                     {response.statusChange && (
                       <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                        Status: {response.statusChange}
+                        {t("account.issueDetail.statusChange", {
+                          // English keeps the stored value as before; Tagalog shows the status label.
+                          status:
+                            language === "tl" && isIssueStatus(response.statusChange)
+                              ? t(`eReport.status.${response.statusChange}`)
+                              : response.statusChange,
+                        })}
                       </Badge>
                     )}
                   </div>

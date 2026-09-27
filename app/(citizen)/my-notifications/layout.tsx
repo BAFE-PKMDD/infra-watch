@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "My Notifications | INFRA Watch",
-  description: "View and manage your INFRA Watch notifications.",
-};
+import { getServerTranslator } from "@/i18n/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslator();
+  return {
+    title: t("account.notifications.metaTitle"),
+    description: t("account.notifications.metaDescription"),
+  };
+}
 
 export default function NotificationsLayout({
   children,
