@@ -11,6 +11,7 @@ export function DataDeletionView({ language }: { language: Language }) {
   return (
     <PublicInformationPage
       language={language}
+      englishOnly
       eyebrow="Privacy request"
       title="Request Data Deletion"
       description="You may request review and deletion of eligible personal information associated with your InfraWatch account or submission."

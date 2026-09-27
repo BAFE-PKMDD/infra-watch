@@ -6,9 +6,13 @@ import type { Language } from "@/i18n/translations";
 // Only the shared chrome is translated. Pages pass their own eyebrow, title and body; the
 // legal pages (Terms, Privacy Notice, Data Deletion) keep English text until a reviewed
 // translation exists.
-const CHROME: Record<Language, { home: string; contact: string }> = {
-  en: { home: "Return home", contact: "Contact InfraWatch" },
-  tl: { home: "Bumalik sa Home", contact: "Kontakin ang InfraWatch" },
+const CHROME: Record<Language, { home: string; contact: string; englishOnly: string | null }> = {
+  en: { home: "Return home", contact: "Contact InfraWatch", englishOnly: null },
+  tl: {
+    home: "Bumalik sa Home",
+    contact: "Kontakin ang InfraWatch",
+    englishOnly: "Nasa English muna ang page na ito habang wala pang na-review na Tagalog na bersyon.",
+  },
 };
 
 export function PublicInformationPage({
@@ -16,6 +20,7 @@ export function PublicInformationPage({
   title,
   description,
   language = "en",
+  englishOnly = false,
   children,
 }: {
   eyebrow: string;
@@ -23,6 +28,8 @@ export function PublicInformationPage({
   description: string;
   /** Visitor's language for the chrome, from getServerLanguage(). Defaults to English. */
   language?: Language;
+  /** The body has no reviewed translation yet; non-English visitors see a notice saying so. */
+  englishOnly?: boolean;
   children: ReactNode;
 }) {
   const chrome = CHROME[language] ?? CHROME.en;
@@ -35,7 +42,12 @@ export function PublicInformationPage({
             <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">{title}</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">{description}</p>
           </header>
-          <div className="prose prose-slate max-w-none px-6 py-8 prose-headings:font-black prose-a:text-blue-700 sm:px-10 sm:py-10">
+          {englishOnly && chrome.englishOnly ? (
+            <p lang={language} className="border-b border-slate-200 bg-slate-100 px-6 py-3 text-sm font-medium text-slate-700 sm:px-10">
+              {chrome.englishOnly}
+            </p>
+          ) : null}
+          <div lang={englishOnly ? "en" : undefined} className="prose prose-slate max-w-none px-6 py-8 prose-headings:font-black prose-a:text-blue-700 sm:px-10 sm:py-10">
             {children}
           </div>
           <footer className="flex flex-wrap gap-3 border-t border-slate-200 bg-slate-50 px-6 py-5 sm:px-10">

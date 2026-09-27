@@ -9,6 +9,7 @@ export function DataPrivacyView({ language }: { language: Language }) {
   return (
     <PublicInformationPage
       language={language}
+      englishOnly
       eyebrow="Privacy"
       title="Privacy Notice"
       description="InfraWatch handles personal information only for platform operation, public participation, moderation, security, and authorized administration."

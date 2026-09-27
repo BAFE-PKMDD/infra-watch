@@ -69,5 +69,7 @@ test("legal pages show Tagalog chrome but keep the legal text in English", () =>
     assert.match(html, /Bumalik sa Home/);
     assert.match(html, /Kontakin ang InfraWatch/);
     assert.doesNotMatch(html, /Return home/);
+    assert.match(html, /Nasa English muna ang page na ito/);
+    assert.doesNotMatch(renderToStaticMarkup(<View language="en" />), /Nasa English muna/);
   }
 });

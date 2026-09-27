@@ -9,6 +9,7 @@ export function TermsOfServiceView({ language }: { language: Language }) {
   return (
     <PublicInformationPage
       language={language}
+      englishOnly
       eyebrow="Public information"
       title="Terms of Service"
       description="These terms describe responsible use of InfraWatch and its public participation features."
