@@ -203,12 +203,24 @@ export function useVoiceAssistant({
 
   const createMainThreadSpeechEngine = useCallback((): SpeechSynthesisEngine => {
     const voice = config.kokoroVoice as "af_heart";
+    // Kokoro's ONNX session is not safe for concurrent generate() calls; two
+    // overlapping runs can corrupt each other's tensors (e.g. an "invalid
+    // data location" error on input_ids). The worker path already serializes
+    // requests via its own queue, so this fallback needs the same guarantee.
+    let queue: Promise<unknown> = Promise.resolve();
     return {
       preload: () => loadKokoro().then(() => undefined),
-      generate: async (text) => {
-        const tts = await loadKokoro();
-        const audio = await tts.generate(text, { voice });
-        return audio.toBlob();
+      generate: (text) => {
+        const result = queue.then(async () => {
+          const tts = await loadKokoro();
+          const audio = await tts.generate(text, { voice });
+          return audio.toBlob();
+        });
+        queue = result.then(
+          () => undefined,
+          () => undefined,
+        );
+        return result;
       },
       isAlive: () => true,
       dispose: () => undefined,
@@ -437,10 +449,12 @@ export function useVoiceAssistant({
           })
           .catch((error) => {
             if (operationRef.current !== operation) return;
-            toast.error("ANIA could not play the retry prompt.", {
-              description: readableError(error),
-            });
-            dispatch({ type: "RESET" });
+            // The retry prompt is a courtesy cue, not the command itself —
+            // a synthesis hiccup here shouldn't drop the whole session back
+            // to passive wake-word listening. Keep the conversation going.
+            console.warn("ANIA could not play the retry prompt:", readableError(error));
+            dispatch({ type: "RETRY_LISTENING" });
+            setTimeout(() => startRecordingRef.current?.(1), 0);
           });
         return;
       }

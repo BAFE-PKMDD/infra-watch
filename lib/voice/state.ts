@@ -64,7 +64,12 @@ export function reduceVoiceState(
     },
     transcribing: { TRANSCRIPTION_READY: "thinking" },
     thinking: { RESPONSE_READY: "preparing_speech" },
-    preparing_speech: { SPEECH_STARTED: "speaking" },
+    preparing_speech: {
+      SPEECH_STARTED: "speaking",
+      // The retry prompt failed to play (e.g. a TTS synthesis error); skip
+      // straight to listening instead of getting stuck on "preparing speech".
+      RETRY_LISTENING: "recording",
+    },
     speaking: {
       SPEECH_ENDED: "listening_for_wake_word",
       RETRY_LISTENING: "recording",
