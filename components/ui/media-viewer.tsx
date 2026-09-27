@@ -8,6 +8,7 @@ import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
 import { isTrustedImagePreviewUrl } from "@/lib/image-preview-policy";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 
 export interface MediaItem {
   type: 'image' | 'video';
@@ -26,6 +27,7 @@ const getClientMountSnapshot = () => true;
 const getServerMountSnapshot = () => false;
 
 export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaViewerProps) {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isDownloading, setIsDownloading] = useState(false);
   const mounted = useSyncExternalStore(
@@ -105,10 +107,10 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
       a.click();
       document.body.removeChild(a);
 
-      toast.success("Download started");
+      toast.success(t("site.mediaViewer.downloadStarted"));
     } catch (error) {
       console.error("Download failed:", error);
-      toast.error("Failed to download media");
+      toast.error(t("site.mediaViewer.downloadFailed"));
     } finally {
       setIsDownloading(false);
     }
@@ -126,24 +128,24 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Evidence Media',
-          text: 'Check out this evidence media from INFRA Watch',
+          title: t("site.mediaViewer.shareTitle"),
+          text: t("site.mediaViewer.shareText"),
           url: fullUrl,
         });
       } catch (error) {
         if ((error as Error).name !== 'AbortError') {
           console.error("Sharing failed:", error);
-          toast.error("Failed to share");
+          toast.error(t("site.mediaViewer.shareFailed"));
         }
       }
     } else {
       // Fallback: Copy to clipboard
       try {
         await navigator.clipboard.writeText(fullUrl);
-        toast.success("Link copied to clipboard");
+        toast.success(t("site.mediaViewer.linkCopied"));
       } catch (error) {
         console.error("Copy failed:", error);
-        toast.error("Failed to copy link");
+        toast.error(t("site.mediaViewer.copyFailed"));
       }
     }
   };
@@ -168,8 +170,8 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
             <button
               onClick={handleShare}
               className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer outline-none focus:ring-2 focus:ring-white/50"
-              aria-label="Share"
-              title="Share"
+              aria-label={t("site.mediaViewer.share")}
+              title={t("site.mediaViewer.share")}
             >
               <Share2 className="w-5 h-5" />
             </button>
@@ -177,8 +179,8 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
               onClick={handleDownload}
               disabled={isDownloading}
               className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-50"
-              aria-label="Download"
-              title="Download"
+              aria-label={t("site.mediaViewer.download")}
+              title={t("site.mediaViewer.download")}
             >
               <Download className={`w-5 h-5 ${isDownloading ? 'animate-bounce' : ''}`} />
             </button>
@@ -188,8 +190,8 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
                 onClose();
               }}
               className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer outline-none focus:ring-2 focus:ring-white/50"
-              aria-label="Close"
-              title="Close"
+              aria-label={t("site.mediaViewer.close")}
+              title={t("site.mediaViewer.close")}
             >
               <X className="w-6 h-6" />
             </button>
@@ -211,7 +213,7 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
                   goToPrevious();
                 }}
                 className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 p-3 md:p-4 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-[10001] cursor-pointer outline-none focus:ring-2 focus:ring-white/50"
-                aria-label="Previous media"
+                aria-label={t("site.mediaViewer.previous")}
               >
                 <ChevronLeft className="w-8 h-8 md:w-10 md:h-10" />
               </button>
@@ -221,7 +223,7 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
                   goToNext();
                 }}
                 className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 p-3 md:p-4 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-[10001] cursor-pointer outline-none focus:ring-2 focus:ring-white/50"
-                aria-label="Next media"
+                aria-label={t("site.mediaViewer.next")}
               >
                 <ChevronRight className="w-8 h-8 md:w-10 md:h-10" />
               </button>
@@ -242,7 +244,7 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
               <div className="relative w-full h-full shadow-2xl">
                 <Image
                   src={fullUrl!}
-                  alt={`Media ${currentIndex + 1}`}
+                  alt={t("site.mediaViewer.mediaAlt", { number: currentIndex + 1 })}
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-contain"
@@ -252,8 +254,8 @@ export function MediaViewer({ media, initialIndex = 0, open, onClose }: MediaVie
               </div>
             ) : currentMedia && currentMedia.type === 'image' ? (
               <div className="max-w-md rounded-xl border border-white/20 bg-black/60 p-6 text-center text-white">
-                <p className="font-semibold">Preview unavailable for this legacy origin</p>
-                <p className="mt-2 text-sm text-white/70">The attachment host is not approved for inline image loading.</p>
+                <p className="font-semibold">{t("site.mediaViewer.previewUnavailable")}</p>
+                <p className="mt-2 text-sm text-white/70">{t("site.mediaViewer.hostNotApproved")}</p>
               </div>
             ) : currentMedia && currentMedia.type === 'video' ? (
               <div className="w-full h-full flex items-center justify-center">

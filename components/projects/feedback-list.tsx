@@ -25,6 +25,8 @@ import type { FeedbackFeedComment, FeedbackMedia } from "@/types/feedback.types"
 import { useAuth } from "@/providers/auth-provider";
 import { useNotifications } from "@/providers/notification-provider";
 import { getFeedbackTargetPage } from "@/lib/ui-lifecycle";
+import { categoryText } from "@/components/report-issue/issue-type-picker";
+import { useTranslation } from "@/i18n";
 
 interface FeedbackItem {
   id: string;
@@ -55,13 +57,6 @@ interface FeedbackListProps {
   highlightCommentId?: string;
 }
 
-const categoryLabels: Record<string, string> = {
-  quality: "Project Quality",
-  progress: "Project Progress",
-  concerns: "Concerns & Issues",
-  general: "General Feedback",
-};
-
 const categoryColors: Record<string, string> = {
   quality: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
   progress: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
@@ -86,6 +81,7 @@ export function FeedbackList({
   highlightCommentId,
 }: FeedbackListProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { notifications } = useNotifications();
   const currentUserId = user?.id;
   const [viewingMediaIndex, setViewingMediaIndex] = useState<number | null>(null);
@@ -333,10 +329,10 @@ export function FeedbackList({
           <User className="w-8 h-8 text-slate-400" />
         </div>
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-          No Feedback Yet
+          {t("site.feedbackList.emptyTitle")}
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Be the first to share your thoughts!
+          {t("site.feedbackList.emptyBody")}
         </p>
       </div>
     );
@@ -361,12 +357,12 @@ export function FeedbackList({
             {sortOrder === "asc" ? (
               <>
                 <ArrowUp className="w-3.5 h-3.5 mr-1.5" />
-                Oldest First
+                {t("site.comments.oldestFirst")}
               </>
             ) : (
               <>
                 <ArrowDown className="w-3.5 h-3.5 mr-1.5" />
-                Newest First
+                {t("site.comments.newestFirst")}
               </>
             )}
           </Button>
@@ -375,9 +371,10 @@ export function FeedbackList({
 
       <div className="space-y-3">
         {currentFeedbacks.map((feedback) => {
-          const displayName = feedback.isAnonymous ? "Anonymous User" : (feedback.user?.name || "Citizen");
+          const displayName = feedback.isAnonymous ? t("site.feedbackList.anonymousUser") : (feedback.user?.name || "Citizen");
           const userImage = !feedback.isAnonymous ? feedback.user?.image : null;
           const isOwnFeedback = currentUserId && feedback.userId === currentUserId;
+          const commentCount = comments[feedback.id]?.length ?? feedback.commentCount ?? 0;
 
           return (
             <div
@@ -424,7 +421,7 @@ export function FeedbackList({
                     className={`px-2 py-0.5 rounded-full text-xs font-medium ${categoryColors[feedback.category] || categoryColors.general
                       }`}
                   >
-                    {categoryLabels[feedback.category] || feedback.category}
+                    {categoryText(feedback.category, t)}
                   </span>
 
                   {/* Edit/Delete Menu - Only show for own feedback */}
@@ -440,7 +437,7 @@ export function FeedbackList({
                         }
                       >
                         <MoreVertical className="h-3.5 w-3.5" />
-                        <span className="sr-only">Open menu</span>
+                        <span className="sr-only">{t("site.feedbackList.openMenu")}</span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
@@ -448,14 +445,14 @@ export function FeedbackList({
                           className="cursor-pointer"
                         >
                           <Pencil className="mr-2 h-4 w-4" />
-                          Edit
+                          {t("site.comments.edit")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => onDelete?.(feedback.id)}
                           className="cursor-pointer text-red-600 dark:text-red-400"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          {t("site.comments.delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -493,7 +490,7 @@ export function FeedbackList({
                       ? "text-green-600 dark:text-green-400"
                       : "text-slate-500 hover:text-green-600 dark:text-slate-400 dark:hover:text-green-400"
                       }`}
-                    aria-label="Mark as helpful"
+                    aria-label={t("site.feedbackList.markHelpful")}
                   >
                     <ThumbsUp
                       className={`w-3.5 h-3.5 ${userVotes[feedback.id] === "helpful" ? "fill-current" : ""
@@ -516,7 +513,7 @@ export function FeedbackList({
                       ? "text-red-600 dark:text-red-400"
                       : "text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
                       }`}
-                    aria-label="Mark as unhelpful"
+                    aria-label={t("site.feedbackList.markUnhelpful")}
                   >
                     <ThumbsDown
                       className={`w-3.5 h-3.5 ${userVotes[feedback.id] === "unhelpful" ? "fill-current" : ""
@@ -540,7 +537,7 @@ export function FeedbackList({
                     className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-green-600 dark:hover:text-green-400 transition-colors mb-2"
                   >
                     <ImageIcon className="w-3.5 h-3.5" />
-                    <span>{feedback.media.length} Attachment{feedback.media.length > 1 ? 's' : ''}</span>
+                    <span>{t(feedback.media.length > 1 ? "site.feedbackList.attachments.other" : "site.feedbackList.attachments.one", { count: feedback.media.length })}</span>
                     {!collapsedMedia.has(feedback.id) ? (
                       <ChevronUp className="w-3.5 h-3.5" />
                     ) : (
@@ -565,7 +562,7 @@ export function FeedbackList({
                             {item.type === 'image' && mediaUrl ? (
                               <Image
                                 src={mediaUrl}
-                                alt={item.caption || `Attachment ${index + 1}`}
+                                alt={item.caption || t("site.comments.attachmentAlt", { number: index + 1 })}
                                 fill
                                 className="object-cover"
                                 sizes="(max-width: 640px) 50vw, 33vw"
@@ -603,7 +600,7 @@ export function FeedbackList({
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   <span>
-                    {comments[feedback.id]?.length ?? feedback.commentCount ?? 0} Comment{(comments[feedback.id]?.length ?? feedback.commentCount ?? 0) !== 1 ? 's' : ''}
+                    {t(commentCount !== 1 ? "site.feedbackList.comments.other" : "site.feedbackList.comments.one", { count: commentCount })}
                   </span>
                   {expandedComments.has(feedback.id) ? (
                     <ChevronUp className="w-3.5 h-3.5" />
@@ -645,7 +642,7 @@ export function FeedbackList({
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
             className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            aria-label="Previous page"
+            aria-label={t("site.feedbackList.previousPage")}
           >
             <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </button>
@@ -696,7 +693,7 @@ export function FeedbackList({
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
             className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            aria-label="Next page"
+            aria-label={t("site.feedbackList.nextPage")}
           >
             <ChevronRight className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </button>

@@ -2,14 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import DataDeletionPage from "./data-deletion/page";
-import DataPrivacyPage from "./data-privacy/page";
+import { DataDeletionView } from "./data-deletion/data-deletion-view";
+import { DataPrivacyView } from "./data-privacy/data-privacy-view";
 import { FaqView } from "./faq/faq-view";
-import TermsOfServicePage from "./terms-of-service/page";
+import { TermsOfServiceView } from "./terms-of-service/terms-of-service-view";
 import { FAQ_ENTRIES, FAQ_ENTRIES_TL } from "@/lib/faq-content";
 
-// The FAQ route itself reads the language cookie (server-only), so tests render its view.
+// The routes themselves read the language cookie (server-only), so tests render their views.
 const FaqPage = () => <FaqView language="en" />;
+const TermsOfServicePage = () => <TermsOfServiceView language="en" />;
+const DataPrivacyPage = () => <DataPrivacyView language="en" />;
+const DataDeletionPage = () => <DataDeletionView language="en" />;
 
 const pages = [
   { name: "FAQ", component: FaqPage, expected: "Frequently Asked Questions" },
@@ -53,4 +56,18 @@ test("Tagalog FAQ page renders the Tagalog heading, chrome and every question", 
   assert.match(html, /Bumalik sa Home/);
   assert.equal((html.match(/<details/g) ?? []).length, FAQ_ENTRIES_TL.length);
   assert.match(html, /<summary[^>]*><h2[^>]*>Ano ang InfraWatch\?<\/h2>/);
+});
+
+test("legal pages show Tagalog chrome but keep the legal text in English", () => {
+  for (const [View, heading] of [
+    [TermsOfServiceView, "Terms of Service"],
+    [DataPrivacyView, "Privacy Notice"],
+    [DataDeletionView, "Request Data Deletion"],
+  ] as const) {
+    const html = renderToStaticMarkup(<View language="tl" />);
+    assert.match(html, new RegExp(heading));
+    assert.match(html, /Bumalik sa Home/);
+    assert.match(html, /Kontakin ang InfraWatch/);
+    assert.doesNotMatch(html, /Return home/);
+  }
 });

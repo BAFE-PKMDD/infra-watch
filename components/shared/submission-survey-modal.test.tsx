@@ -1,7 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { renderToStaticMarkup } from "react-dom/server";
-import { SubmissionSurveyForm } from "./submission-survey-modal";
+import type { ReactElement } from "react";
+import { renderToStaticMarkup as renderMarkup } from "react-dom/server";
+import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+
+import {
+  GENDER_OPTIONS,
+  REFERRAL_OPTIONS,
+  RESPONDENT_TYPE_OPTIONS,
+  SubmissionSurveyForm,
+} from "./submission-survey-modal";
+import { site } from "@/i18n/sections/site";
+import { LanguageProvider } from "@/providers/language-provider";
+
+const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {} } as unknown as AppRouterInstance;
+
+// The survey reads its copy through useTranslation, so render it inside the language
+// provider the site wraps pages in (English until a visitor picks Tagalog).
+function renderToStaticMarkup(element: ReactElement) {
+  return renderMarkup(
+    <AppRouterContext.Provider value={router}>
+      <LanguageProvider>{element}</LanguageProvider>
+    </AppRouterContext.Provider>,
+  );
+}
 
 test("SubmissionSurveyForm renders all 5 required fields and options", () => {
   const html = renderToStaticMarkup(
@@ -55,4 +77,18 @@ test("SubmissionSurveyForm frames the question as happening before submission, f
   assert.match(ereportHtml, /Before You Submit/i);
   assert.match(ereportHtml, /send your e-report/i);
   assert.doesNotMatch(ereportHtml, /Submitted/);
+});
+
+test("the survey's English display text matches the exported option labels", () => {
+  const survey = site.en.survey;
+  for (const option of RESPONDENT_TYPE_OPTIONS) {
+    assert.equal(survey.respondentTypes[option.value], option.label);
+  }
+  assert.deepEqual(Object.values(survey.genders), GENDER_OPTIONS.map((option) => option.label));
+  for (const option of REFERRAL_OPTIONS) {
+    const referral = survey.referrals[option.value as keyof typeof survey.referrals];
+    assert.ok(referral, `display text for ${option.value}`);
+    assert.equal(referral.label, option.label);
+    assert.equal(referral.sublabel, option.sublabel);
+  }
 });

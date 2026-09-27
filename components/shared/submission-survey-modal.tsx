@@ -11,6 +11,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 export function FacebookIcon({ className }: { className?: string }) {
@@ -129,6 +130,14 @@ export const REFERRAL_OPTIONS: {
   },
 ];
 
+// Translation keys for the stored gender values in GENDER_OPTIONS.
+const GENDER_KEYS: Record<string, string> = {
+  Female: "female",
+  Male: "male",
+  Other: "other",
+  "Prefer not to say": "preferNotToSay",
+};
+
 export function SubmissionSurveyForm({
   sourceType,
   sourceId,
@@ -137,6 +146,7 @@ export function SubmissionSurveyForm({
   onSkip,
   submitSurveyFn,
 }: SubmissionSurveyFormProps) {
+  const { t } = useTranslation();
   const [respondentType, setRespondentType] = useState<RespondentTypeOption | "">("");
   const [name, setName] = useState(defaultName);
   const [age, setAge] = useState("");
@@ -166,7 +176,7 @@ export function SubmissionSurveyForm({
     });
     const data = await response.json().catch(() => null);
     if (!response.ok || !data?.success) {
-      throw new Error(data?.error || "Failed to submit survey");
+      throw new Error(data?.error || t("site.survey.requestFailed"));
     }
   };
 
@@ -193,17 +203,17 @@ export function SubmissionSurveyForm({
 
     // Validation
     if (!respondentType) {
-      setError("Please let us know who's answering.");
+      setError(t("site.survey.respondentRequired"));
       return;
     }
     if (!referralSource) {
-      setError("Please let us know how you found out about us.");
+      setError(t("site.survey.referralRequired"));
       return;
     }
 
     const parsedAge = age.trim() ? Number(age.trim()) : null;
     if (parsedAge !== null && (isNaN(parsedAge) || parsedAge < 1 || parsedAge > 120)) {
-      setError("Please enter a valid age between 1 and 120.");
+      setError(t("site.survey.invalidAge"));
       return;
     }
 
@@ -220,11 +230,11 @@ export function SubmissionSurveyForm({
         referralSource,
       });
 
-      toast.success("Thank you for helping us improve InfraWatch!");
+      toast.success(t("site.survey.thanks"));
       resetState();
       onSuccess?.();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to submit survey.";
+      const message = err instanceof Error ? err.message : t("site.survey.submitFailed");
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -238,13 +248,13 @@ export function SubmissionSurveyForm({
       <div className="text-left space-y-1.5 pb-1 border-b border-border/60">
         <div className="flex items-center gap-2 text-primary font-medium text-xs tracking-wider uppercase">
           <Sparkles className="size-3.5 text-primary" />
-          <span>Before You Submit</span>
+          <span>{t("site.survey.eyebrow")}</span>
         </div>
         <h2 className="text-xl font-bold tracking-tight text-foreground">
-          Help Us Serve You Better
+          {t("site.survey.title")}
         </h2>
         <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-          Help BAFE understand who uses InfraWatch by answering a few quick questions, then we&apos;ll send your {isEreport ? "e-report" : "feedback"}. We only ask once.
+          {t(isEreport ? "site.survey.introEReport" : "site.survey.introFeedback")}
         </p>
       </div>
 
@@ -259,7 +269,7 @@ export function SubmissionSurveyForm({
         {/* 1. Respondent type */}
         <div className="space-y-2">
           <Label className="text-xs font-semibold text-foreground block">
-            1. You are a: <span className="text-primary font-bold">*</span>
+            {t("site.survey.respondentQuestion")} <span className="text-primary font-bold">*</span>
           </Label>
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {RESPONDENT_TYPE_OPTIONS.map((option) => (
@@ -275,7 +285,7 @@ export function SubmissionSurveyForm({
                     : "border-input bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                 )}
               >
-                {option.label}
+                {t(`site.survey.respondentTypes.${option.value}`)}
               </button>
             ))}
           </div>
@@ -285,7 +295,7 @@ export function SubmissionSurveyForm({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="survey-name" className="text-xs font-semibold text-foreground">
-              2. Name <span className="font-normal text-muted-foreground">(optional)</span>
+              {t("site.survey.nameQuestion")} <span className="font-normal text-muted-foreground">{t("site.survey.optional")}</span>
             </Label>
           </div>
           <Input
@@ -293,7 +303,7 @@ export function SubmissionSurveyForm({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Juan dela Cruz (leave blank for anonymous)"
+            placeholder={t("site.survey.namePlaceholder")}
             className="h-9 text-sm"
             disabled={isSubmitting}
           />
@@ -304,7 +314,7 @@ export function SubmissionSurveyForm({
           {/* 3. Age */}
           <div className="space-y-1.5">
             <Label htmlFor="survey-age" className="text-xs font-semibold text-foreground">
-              3. Age
+              {t("site.survey.ageQuestion")}
             </Label>
             <Input
               id="survey-age"
@@ -313,7 +323,7 @@ export function SubmissionSurveyForm({
               max="120"
               value={age}
               onChange={(e) => setAge(e.target.value)}
-              placeholder="e.g. 28"
+              placeholder={t("site.survey.agePlaceholder")}
               className="h-9 text-sm"
               disabled={isSubmitting}
             />
@@ -322,7 +332,7 @@ export function SubmissionSurveyForm({
           {/* 4. Gender */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground">
-              4. Gender
+              {t("site.survey.genderQuestion")}
             </Label>
             <div className="grid grid-cols-2 gap-1.5">
               {GENDER_OPTIONS.map((option) => (
@@ -338,7 +348,7 @@ export function SubmissionSurveyForm({
                       : "border-input bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                   )}
                 >
-                  {option.label}
+                  {GENDER_KEYS[option.value] ? t(`site.survey.genders.${GENDER_KEYS[option.value]}`) : option.label}
                 </button>
               ))}
             </div>
@@ -348,7 +358,7 @@ export function SubmissionSurveyForm({
         {/* 5. How did you find out about us? */}
         <div className="space-y-2 pt-1">
           <Label className="text-xs font-semibold text-foreground block">
-            5. How did you find out about us? <span className="text-primary font-bold">*</span>
+            {t("site.survey.referralQuestion")} <span className="text-primary font-bold">*</span>
           </Label>
           <div className="grid grid-cols-1 gap-2">
             {REFERRAL_OPTIONS.map((option) => {
@@ -380,10 +390,10 @@ export function SubmissionSurveyForm({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-foreground">
-                        {option.label}
+                        {t(`site.survey.referrals.${option.value}.label`)}
                       </div>
                       <div className="text-[11px] text-muted-foreground line-clamp-1">
-                        {option.sublabel}
+                        {t(`site.survey.referrals.${option.value}.sublabel`)}
                       </div>
                     </div>
                   </div>
@@ -413,7 +423,7 @@ export function SubmissionSurveyForm({
             disabled={isSubmitting}
             className="text-muted-foreground hover:text-foreground text-xs cursor-pointer"
           >
-            Skip
+            {t("site.survey.skip")}
           </Button>
           <Button
             type="submit"
@@ -424,10 +434,10 @@ export function SubmissionSurveyForm({
             {isSubmitting ? (
               <>
                 <Loader2 className="size-3.5 animate-spin mr-1.5" />
-                Submitting...
+                {t("site.survey.submitting")}
               </>
             ) : (
-              "Submit Survey"
+              t("site.survey.submit")
             )}
           </Button>
         </div>

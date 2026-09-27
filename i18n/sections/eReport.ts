@@ -295,15 +295,6 @@ export const eReport = {
         title: "E-Report submitted",
         message: "Your issue report was submitted for review.",
       },
-      uploadErrors: {
-        storageTitle: "Storage temporarily unavailable",
-        inappropriateTitle: "Inappropriate image blocked",
-        invalidFileTitle: "Invalid file blocked",
-        blockedTitle: "Upload blocked",
-        storageMessage: "File storage is temporarily unavailable. Please try uploading again later.",
-        inappropriateMessage: "This image was blocked because it may contain nude or inappropriate content.",
-        invalidFileMessage: "This file was blocked because its type, extension, or file signature is not allowed.",
-      },
     },
     smsPage: {
       metaTitle: "SMS Grievance Guide | INFRA Watch",
@@ -639,15 +630,6 @@ export const eReport = {
       notification: {
         title: "Na-submit ang E-Report",
         message: "Na-submit na ang report mo para ma-review.",
-      },
-      uploadErrors: {
-        storageTitle: "Hindi muna available ang storage",
-        inappropriateTitle: "Na-block ang hindi angkop na image",
-        invalidFileTitle: "Na-block ang invalid na file",
-        blockedTitle: "Na-block ang upload",
-        storageMessage: "Hindi muna available ang file storage. Subukan ulit mag-upload mamaya.",
-        inappropriateMessage: "Na-block ang image na ito kasi baka may hubad o hindi angkop na laman.",
-        invalidFileMessage: "Na-block ang file na ito kasi hindi pinapayagan ang type, extension, o file signature nito.",
       },
     },
     smsPage: {

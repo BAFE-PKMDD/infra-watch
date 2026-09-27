@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import Image from "next/image";
 import { getFeedbackVoters } from "@/actions/query/feedback-votes.query";
 import { getFullUrl } from "@/lib/minio-url";
+import { useTranslation } from "@/i18n";
 
 interface Voter {
   userId: string;
@@ -25,6 +26,7 @@ export function FeedbackVotersModal({ feedbackId, isOpen, onClose }: FeedbackVot
   const [helpfulVoters, setHelpfulVoters] = useState<Voter[]>([]);
   const [unhelpfulVoters, setUnhelpfulVoters] = useState<Voter[]>([]);
   const [activeTab, setActiveTab] = useState<"helpful" | "unhelpful">("helpful");
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (isOpen && feedbackId) {
@@ -78,12 +80,12 @@ export function FeedbackVotersModal({ feedbackId, isOpen, onClose }: FeedbackVot
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Voters
+                {t("site.voters.title")}
               </h3>
               <button
                 onClick={onClose}
                 className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                aria-label="Close"
+                aria-label={t("site.dialog.close")}
               >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
@@ -99,7 +101,7 @@ export function FeedbackVotersModal({ feedbackId, isOpen, onClose }: FeedbackVot
                   }`}
               >
                 <ThumbsUp className="w-4 h-4" />
-                <span>Helpful ({helpfulVoters.length})</span>
+                <span>{t("site.voters.helpful", { count: helpfulVoters.length })}</span>
               </button>
               <button
                 onClick={() => setActiveTab("unhelpful")}
@@ -109,7 +111,7 @@ export function FeedbackVotersModal({ feedbackId, isOpen, onClose }: FeedbackVot
                   }`}
               >
                 <ThumbsDown className="w-4 h-4" />
-                <span>Unhelpful ({unhelpfulVoters.length})</span>
+                <span>{t("site.voters.unhelpful", { count: unhelpfulVoters.length })}</span>
               </button>
             </div>
 
@@ -129,7 +131,7 @@ export function FeedbackVotersModal({ feedbackId, isOpen, onClose }: FeedbackVot
                     )}
                   </div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    No {activeTab} votes yet
+                    {activeTab === "helpful" ? t("site.voters.noHelpful") : t("site.voters.noUnhelpful")}
                   </p>
                 </div>
               ) : (
@@ -144,7 +146,7 @@ export function FeedbackVotersModal({ feedbackId, isOpen, onClose }: FeedbackVot
                         {voter.image && getFullUrl(voter.image) ? (
                           <Image
                             src={getFullUrl(voter.image)!}
-                            alt={voter.name || "User"}
+                            alt={voter.name || t("site.voters.userAlt")}
                             width={40}
                             height={40}
                             className="w-full h-full object-cover"
@@ -157,7 +159,7 @@ export function FeedbackVotersModal({ feedbackId, isOpen, onClose }: FeedbackVot
                       {/* Name */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                          {voter.name || "Anonymous User"}
+                          {voter.name || t("site.feedbackList.anonymousUser")}
                         </p>
                       </div>
                     </div>

@@ -5,17 +5,24 @@ import dynamic from "next/dynamic";
 import { Camera, MapPin, Route, Video } from "lucide-react";
 
 import type { EvidenceMapPoint, EvidenceMapTrack } from "@/components/shared/leaflet-evidence-map";
+import { useTranslation } from "@/i18n";
+import { translate } from "@/i18n/translate";
 import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
+
+function EvidenceMapLoading() {
+  const { t } = useTranslation();
+  return (
+    <div className="grid h-80 w-full place-items-center bg-slate-100 text-sm font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+      {t("site.evidence.loadingMap")}
+    </div>
+  );
+}
 
 const LeafletEvidenceMap = dynamic(
   () => import("@/components/shared/leaflet-evidence-map"),
   {
     ssr: false,
-    loading: () => (
-      <div className="grid h-80 w-full place-items-center bg-slate-100 text-sm font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-400">
-        Loading evidence map&hellip;
-      </div>
-    ),
+    loading: () => <EvidenceMapLoading />,
   },
 );
 
@@ -58,6 +65,7 @@ export function EvidenceLocationMap({
   scrollTargetPrefix = "evidence",
   onEvidenceSelect,
 }: EvidenceLocationMapProps) {
+  const { t, language } = useTranslation();
   const { points, tracks, pointIndex } = useMemo(() => {
     const nextPoints: EvidenceMapPoint[] = [];
     const nextIndex = new Map<string, number>();
@@ -68,7 +76,7 @@ export function EvidenceLocationMap({
       nextIndex.set(id, index);
       nextPoints.push({
         id,
-        label: item.name || `${item.type === "video" ? "Video" : "Photo"} evidence ${index + 1}`,
+        label: item.name || translate(language, item.type === "video" ? "site.evidence.videoEvidence" : "site.evidence.photoEvidence", { number: index + 1 }),
         type: item.type === "video" ? "video" : "image",
         lat: item.lat as number,
         lon: item.lon as number,
@@ -78,11 +86,11 @@ export function EvidenceLocationMap({
 
     const trackPoints = validTrack(geoVideoTrack);
     const nextTracks: EvidenceMapTrack[] = trackPoints.length > 0
-      ? [{ id: "geo-video-track", label: "GeoVideo route", points: trackPoints }]
+      ? [{ id: "geo-video-track", label: translate(language, "site.evidence.geoVideoRoute"), points: trackPoints }]
       : [];
 
     return { points: nextPoints, tracks: nextTracks, pointIndex: nextIndex };
-  }, [evidence, geoVideoTrack]);
+  }, [evidence, geoVideoTrack, language]);
 
   if (points.length === 0 && tracks.length === 0) return null;
 
@@ -107,18 +115,20 @@ export function EvidenceLocationMap({
             <span className="grid size-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <MapPin className="size-4" />
             </span>
-            Evidence locations
+            {t("site.evidence.locationsTitle")}
           </h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Select a pin to jump to its evidence file.</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("site.evidence.locationsHint")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-300">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
             <Camera className="size-3" />
-            {points.filter((point) => point.type === "image").length} photo pins
+            {t("site.evidence.photoPins", { count: points.filter((point) => point.type === "image").length })}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:text-amber-300">
             {tracks.length > 0 ? <Route className="size-3" /> : <Video className="size-3" />}
-            {tracks.length > 0 ? `${tracks[0].points.length} route points` : `${points.filter((point) => point.type === "video").length} video pins`}
+            {tracks.length > 0
+              ? t("site.evidence.routePoints", { count: tracks[0].points.length })
+              : t("site.evidence.videoPins", { count: points.filter((point) => point.type === "video").length })}
           </span>
         </div>
       </div>
@@ -130,7 +140,7 @@ export function EvidenceLocationMap({
       />
       {geoVideoUrl && tracks.length > 0 ? (
         <div className="border-t border-slate-200 bg-amber-50/70 px-4 py-2 text-[11px] font-semibold text-amber-800 dark:border-slate-800 dark:bg-amber-500/5 dark:text-amber-200">
-          The amber line is the route attached to the GeoVideo evidence.
+          {t("site.evidence.routeNote")}
         </div>
       ) : null}
     </section>

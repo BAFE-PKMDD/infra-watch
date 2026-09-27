@@ -17,6 +17,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { useTranslation } from "@/i18n";
 import { ChartSpec, parseChartSpec } from "@/lib/chat-visuals";
 import { getProjectHref, isProjectHref } from "@/lib/chat-links";
 import { type ChatActionItem, parseActionSpec } from "@/lib/chat-actions";
@@ -68,6 +69,7 @@ function formatChartValue(value: number, chart: ChartSpec) {
 }
 
 function ChartCard({ chart }: { chart: ChartSpec }) {
+  const { t } = useTranslation();
   const chartHeight = Math.max(220, Math.min(360, chart.data.length * 34));
   const accessibleSummary = `${chart.title}. ${chart.data
     .map((item) => `${item.label}: ${formatChartValue(item.value, chart)}`)
@@ -80,7 +82,7 @@ function ChartCard({ chart }: { chart: ChartSpec }) {
 
     return [
       formatChartValue(Number(numericValue ?? 0), chart),
-      chart.valueLabel ?? "Value",
+      chart.valueLabel ?? t("site.aiContent.value"),
     ];
   };
 
@@ -179,6 +181,7 @@ function ChartCard({ chart }: { chart: ChartSpec }) {
 }
 
 function PendingChart() {
+  const { t } = useTranslation();
   return (
     <div
       className="my-3 space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900"
@@ -194,14 +197,15 @@ function PendingChart() {
           />
         ))}
       </div>
-      <p className="text-xs text-slate-500 dark:text-slate-400">Preparing chart…</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{t("site.aiContent.preparingChart")}</p>
     </div>
   );
 }
 
 function ActionButtons({ actions }: { actions: ChatActionItem[] }) {
+  const { t } = useTranslation();
   return (
-    <div className="my-3 flex flex-wrap gap-2" role="group" aria-label="Suggested next steps">
+    <div className="my-3 flex flex-wrap gap-2" role="group" aria-label={t("site.aiContent.suggestedSteps")}>
       {actions.map((action) => (
         <Link
           key={action.key}
@@ -223,6 +227,9 @@ export function AiMessageContent({
   content: string;
   isStreaming?: boolean;
 }) {
+  // Only the interface labels around the answer follow the language switch; the generated
+  // answer itself is rendered exactly as ARIA wrote it.
+  const { t } = useTranslation();
   return (
     <div className="min-w-0 text-[13px] leading-5 text-slate-800 dark:text-slate-100">
       <ReactMarkdown
@@ -291,7 +298,7 @@ export function AiMessageContent({
               <Link
                 href={href}
                 className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900 dark:text-blue-300"
-                title="Open project overview"
+                title={t("site.aiContent.openProject")}
               >
                 {children}
                 <ArrowUpRight className="ml-0.5 inline h-3 w-3" aria-hidden="true" />
@@ -299,7 +306,7 @@ export function AiMessageContent({
             ) : (
               <span
                 className="font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 dark:text-slate-300"
-                title="External link omitted"
+                title={t("site.aiContent.externalLinkOmitted")}
               >
                 {children}
               </span>
@@ -309,11 +316,11 @@ export function AiMessageContent({
             <div
               className="my-3 max-w-full overflow-x-auto rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:border-slate-700"
               role="region"
-              aria-label="Scrollable project results table"
+              aria-label={t("site.aiContent.tableRegion")}
               tabIndex={0}
             >
               <p className="sticky left-0 border-b border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[10px] text-slate-500 sm:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-                Swipe horizontally to view all columns.
+                {t("site.aiContent.swipeHint")}
               </p>
               <table className="w-full min-w-[680px] border-collapse text-left text-xs">
                 {children}

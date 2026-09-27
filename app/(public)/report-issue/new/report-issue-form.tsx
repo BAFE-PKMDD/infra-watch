@@ -59,12 +59,7 @@ import type { IssueEvidenceItem } from "@/types/geo-evidence.types";
 import { dispatchClientNotification } from "@/lib/client-notifications";
 import { useAuth } from "@/providers/auth-provider";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
-import {
-  INAPPROPRIATE_IMAGE_UPLOAD_MESSAGE,
-  MALICIOUS_FILE_UPLOAD_MESSAGE,
-  STORAGE_UNAVAILABLE_UPLOAD_MESSAGE,
-  getUploadErrorTitle,
-} from "@/lib/upload-errors";
+import { getUploadErrorText } from "@/lib/upload-errors";
 import { safePublicSourceMediaUrl } from "@/lib/public-source-media";
 import { buildReportIssuePath, projectPreviewToSelectedProject } from "@/lib/report-issue-project-link";
 import {
@@ -76,7 +71,7 @@ import {
 } from "@/actions/query/get-location-options";
 import { FARM_OPERATIONS, getProjectTypesForFarmOperation } from "@/lib/abemis/project-type-map";
 import { parseIssueTypeValue } from "@/lib/abemis/issue-type-map";
-import { IssueTypePicker, issueTypeText, type Translate } from "@/components/report-issue/issue-type-picker";
+import { IssueTypePicker, issueTypeText } from "@/components/report-issue/issue-type-picker";
 import { useSubmissionSurveyGate } from "@/hooks/use-submission-survey-gate";
 import { useTranslation } from "@/i18n";
 
@@ -150,27 +145,6 @@ const stepsNoProject: StepDefinition[] = [
 ];
 
 const MATCH_PAGE_SIZE = 5;
-
-// Upload errors arrive in English from lib/upload-errors.ts; show the known ones in the
-// visitor's language and anything else (server details) as sent.
-function uploadErrorToast(message: string, t: Translate) {
-  const titleKeys: Record<string, string> = {
-    "Storage temporarily unavailable": "storageTitle",
-    "Inappropriate image blocked": "inappropriateTitle",
-    "Invalid file blocked": "invalidFileTitle",
-    "Upload blocked": "blockedTitle",
-  };
-  const messageKeys: Record<string, string> = {
-    [STORAGE_UNAVAILABLE_UPLOAD_MESSAGE]: "storageMessage",
-    [INAPPROPRIATE_IMAGE_UPLOAD_MESSAGE]: "inappropriateMessage",
-    [MALICIOUS_FILE_UPLOAD_MESSAGE]: "invalidFileMessage",
-  };
-  const title = getUploadErrorTitle(message);
-  return {
-    title: titleKeys[title] ? t(`eReport.form.uploadErrors.${titleKeys[title]}`) : title,
-    description: messageKeys[message] ? t(`eReport.form.uploadErrors.${messageKeys[message]}`) : message,
-  };
-}
 
 const stepVariants = {
   enter: (direction: number) => ({ x: direction > 0 ? 80 : -80, opacity: 0 }),
@@ -574,7 +548,7 @@ export default function ReportIssuePage() {
     } catch (error) {
 
       const message = error instanceof Error ? error.message : t("eReport.form.toasts.submitFailed");
-      const { title, description } = uploadErrorToast(message, t);
+      const { title, description } = getUploadErrorText(message, t);
       toast.error(title, { description, duration: 6500 });
     } finally {
       setIsSubmitting(false);

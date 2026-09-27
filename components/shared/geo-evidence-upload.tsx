@@ -37,6 +37,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useGeolocation, type GeoPosition } from "@/hooks/use-geolocation";
+import { useTranslation } from "@/i18n";
+import { translate } from "@/i18n/translate";
 import {
   geoEvidencePairingKey,
   GPS_INFO_ACCEPT,
@@ -74,6 +76,43 @@ export type GeoEvidenceReadyItem = {
   track?: GeoTrackPoint[];
 };
 
+type Translate = (path: string, variables?: Record<string, string | number>) => string;
+
+// Warnings are kept as codes and turned into text when shown, so they follow the EN/TL
+// switch. `detail` and `message` are parser errors, shown as sent.
+type EvidenceWarning =
+  | { code: "noEmbeddedGps" | "cameraNotGeotagged" | "noGpsRoute" | "gpsUnreadable" }
+  | { code: "daRouteUnreadable"; detail?: string }
+  | { code: "message"; message: string };
+
+function evidenceWarningText(warning: EvidenceWarning, t: Translate): string {
+  switch (warning.code) {
+    case "message":
+      return warning.message;
+    case "daRouteUnreadable":
+      return t("site.geoEvidence.warnings.daRouteUnreadable", {
+        detail: warning.detail ?? t("site.geoEvidence.warnings.noCoordinates"),
+      });
+    default:
+      return t(`site.geoEvidence.warnings.${warning.code}`);
+  }
+}
+
+// useGeolocation reports these English messages; show them in the visitor's language and
+// anything else as sent.
+const GEOLOCATION_MESSAGE_KEYS = new Map<string, string>([
+  ["Location permission was denied.", "permissionDenied"],
+  ["Location information is unavailable.", "unavailable"],
+  ["Location request timed out.", "timeout"],
+  ["Geolocation is not supported by this browser.", "unsupported"],
+  ["Unable to determine your location.", "unknown"],
+]);
+
+export function geolocationMessageText(message: string, t: Translate): string {
+  const key = GEOLOCATION_MESSAGE_KEYS.get(message);
+  return key ? t(`site.geolocation.${key}`) : message;
+}
+
 type InternalEvidenceItem = GeoEvidenceReadyItem & {
   id: string;
   preview: string;
@@ -81,7 +120,7 @@ type InternalEvidenceItem = GeoEvidenceReadyItem & {
   source: "upload" | "camera";
   locationSource?: "embedded" | "da-sidecar" | "browser" | "manual";
   sidecarName?: string;
-  warning?: string;
+  warning?: EvidenceWarning;
 };
 
 type ParsedSidecar = {
@@ -98,7 +137,7 @@ function attachDaSidecar(item: InternalEvidenceItem, sidecar: ParsedSidecar): In
       status: "ready",
       warning: typeof item.lat === "number" && typeof item.lon === "number"
         ? item.warning
-        : `DA GPS route could not be read: ${sidecar.error ?? "No coordinates were found."}`,
+        : { code: "daRouteUnreadable", detail: sidecar.error },
     };
   }
 
@@ -123,15 +162,6 @@ function getAccuracyLevel(accuracy: number): AccuracyLevel {
   if (accuracy <= 30) return "good";
   if (accuracy <= 100) return "fair";
   return "poor";
-}
-
-function getAccuracyLabel(level: AccuracyLevel): string {
-  switch (level) {
-    case "excellent": return "Excellent";
-    case "good": return "Good";
-    case "fair": return "Fair";
-    case "poor": return "Poor";
-  }
 }
 
 function getAccuracyColor(level: AccuracyLevel) {
@@ -234,6 +264,12 @@ export function GeoEvidenceUpload({
   disabled = false,
   compact = false,
 }: GeoEvidenceUploadProps) {
+  const { language } = useTranslation();
+  // Stable per language, so the callbacks below that raise toasts keep their identity.
+  const t = useCallback<Translate>(
+    (path, variables) => translate(language, path, variables),
+    [language],
+  );
   const inputId = useId();
   const cameraGpsStatusId = `${inputId}-camera-gps-status`;
   const [items, setItems] = useState<InternalEvidenceItem[]>(() => initialItems.map((item) => ({
@@ -247,7 +283,7 @@ export function GeoEvidenceUpload({
       : undefined,
     warning: typeof item.lat === "number" && typeof item.lon === "number"
       ? undefined
-      : "No embedded GPS was found.",
+      : { code: "noEmbeddedGps" },
   })));
   const [cameraMode, setCameraMode] = useState<CameraMode | null>(null);
   const [cameraStarting, setCameraStarting] = useState(false);
@@ -433,9 +469,7 @@ export function GeoEvidenceUpload({
           : undefined,
         warning: position || (track && track.length > 0)
           ? undefined
-          : source === "camera"
-            ? "Not geotagged. This camera capture will not have an Evidence Map pin."
-            : "No embedded GPS was found.",
+          : { code: source === "camera" ? "cameraNotGeotagged" : "noEmbeddedGps" },
       }];
     });
   }, [maxFiles]);
@@ -446,7 +480,7 @@ export function GeoEvidenceUpload({
     const availableSlots = Math.max(maxFiles - items.length, 0);
     const mediaFiles = mediaCandidates.slice(0, availableSlots);
     if (mediaFiles.length < mediaCandidates.length) {
-      toast.error(`You can attach up to ${maxFiles} evidence files.`);
+      toast.error(t("site.geoEvidence.toasts.maxFiles", { max: maxFiles }));
     }
 
     if (sidecarFiles.length > 0) setSidecarProcessing(true);
@@ -463,8 +497,8 @@ export function GeoEvidenceUpload({
               result: await extractGPSFromInfoFile(file),
             };
           } catch (error) {
-            const message = error instanceof Error ? error.message : "The GPS route could not be read.";
-            toast.error(`Could not read “${file.name}”: ${message}`);
+            const message = error instanceof Error ? error.message : t("site.geoEvidence.toasts.routeUnreadable");
+            toast.error(t("site.geoEvidence.toasts.couldNotRead", { name: file.name, detail: message }));
             return {
               key: geoEvidencePairingKey(file.name),
               fileName: file.name,
@@ -481,7 +515,7 @@ export function GeoEvidenceUpload({
         if (sidecarsByKey.has(sidecar.key)) {
           duplicateSidecarKeys.add(sidecar.key);
           sidecarsByKey.delete(sidecar.key);
-          toast.error(`More than one DA GPS .info file matches “${sidecar.fileName}”. Keep only one route file.`);
+          toast.error(t("site.geoEvidence.toasts.duplicateSidecar", { name: sidecar.fileName }));
           return;
         }
         sidecarsByKey.set(sidecar.key, sidecar);
@@ -497,13 +531,13 @@ export function GeoEvidenceUpload({
       mediaFiles.forEach((file) => {
         const type = uploadKindFromType(file.type);
         if (!type || !isAllowedClientUploadType(file.type)) {
-          toast.error(`“${file.name}” is not a supported photo or video.`);
+          toast.error(t("site.geoEvidence.toasts.unsupportedFile", { name: file.name }));
           return;
         }
 
         const sizeLimit = type === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
         if (file.size > sizeLimit) {
-          toast.error(`“${file.name}” exceeds the ${type === "video" ? "100 MB" : "5 MB"} limit.`);
+          toast.error(t("site.geoEvidence.toasts.tooLarge", { name: file.name, limit: type === "video" ? "100 MB" : "5 MB" }));
           return;
         }
 
@@ -544,10 +578,10 @@ export function GeoEvidenceUpload({
         const matchCount = matchingVideoCounts.get(key) ?? 0;
         if (matchCount === 0) {
           sidecarsByKey.delete(key);
-          toast.error(`No matching video was found for “${sidecar.fileName}”. Select the MP4 and its DA GPS .info file.`);
+          toast.error(t("site.geoEvidence.toasts.noMatchingVideo", { name: sidecar.fileName }));
         } else if (matchCount > 1) {
           sidecarsByKey.delete(key);
-          toast.error(`“${sidecar.fileName}” matches more than one MP4. Keep only one matching video.`);
+          toast.error(t("site.geoEvidence.toasts.multipleVideos", { name: sidecar.fileName }));
         }
       });
 
@@ -583,7 +617,7 @@ export function GeoEvidenceUpload({
               lat: result.lat,
               lon: result.lon,
               locationSource: result.hasGeoData ? "embedded" : undefined,
-              warning: result.hasGeoData ? undefined : "No embedded GPS was found.",
+              warning: result.hasGeoData ? undefined : { code: "noEmbeddedGps" },
             } : item));
           } else {
             const { extractGPSFromVideoFile } = await import("@/lib/geo-video-parser");
@@ -602,8 +636,8 @@ export function GeoEvidenceUpload({
                 warning: result.hasGeoData
                   ? undefined
                   : sidecar?.error
-                    ? `DA GPS route could not be read: ${sidecar.error}`
-                    : "No GPS route was found. For a DA GeoCamera video, add its matching GPS .info file.",
+                    ? { code: "daRouteUnreadable", detail: sidecar.error }
+                    : { code: "noGpsRoute" },
               };
             }));
           }
@@ -613,7 +647,7 @@ export function GeoEvidenceUpload({
             return {
               ...item,
               status: "ready",
-              warning: error instanceof Error ? error.message : "GPS metadata could not be read.",
+              warning: error instanceof Error ? { code: "message", message: error.message } : { code: "gpsUnreadable" },
             };
           }));
         }
@@ -621,7 +655,7 @@ export function GeoEvidenceUpload({
     } finally {
       if (sidecarFiles.length > 0) setSidecarProcessing(false);
     }
-  }, [items, maxFiles]);
+  }, [items, maxFiles, t]);
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -655,9 +689,11 @@ export function GeoEvidenceUpload({
         locationSource: "browser",
         warning: undefined,
       } : item));
-      toast.success("Current location attached");
+      toast.success(t("site.geoEvidence.toasts.locationAttached"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not capture your location.");
+      toast.error(error instanceof Error
+        ? geolocationMessageText(error.message, t)
+        : t("site.geoEvidence.toasts.locationFailed"));
     } finally {
       setLocatingItemId(null);
     }
@@ -665,11 +701,11 @@ export function GeoEvidenceUpload({
 
   const openCamera = async (mode: CameraMode) => {
     if (items.length >= maxFiles) {
-      toast.error(`You can attach up to ${maxFiles} evidence files.`);
+      toast.error(t("site.geoEvidence.toasts.maxFiles", { max: maxFiles }));
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-      toast.error("Camera access is not supported in this browser.");
+      toast.error(t("site.geoEvidence.toasts.cameraUnsupported"));
       return;
     }
 
@@ -705,16 +741,16 @@ export function GeoEvidenceUpload({
       streamRef.current = stream;
       setCameraStarting(false);
       if (withoutAudio) {
-        toast.info("Microphone unavailable", {
-          description: "The GeoVideo will be recorded without audio.",
+        toast.info(t("site.geoEvidence.toasts.micUnavailable"), {
+          description: t("site.geoEvidence.toasts.micUnavailableDesc"),
         });
       }
     } catch (error) {
       if (cameraSessionRef.current !== session) return;
       stopCamera();
       const message = error instanceof DOMException && error.name === "NotAllowedError"
-        ? "Camera permission was denied."
-        : "The camera could not be started.";
+        ? t("site.geoEvidence.toasts.cameraDenied")
+        : t("site.geoEvidence.toasts.cameraFailed");
       toast.error(message);
     }
   };
@@ -722,14 +758,16 @@ export function GeoEvidenceUpload({
   const capturePhoto = async (withoutLocation = false) => {
     if (captureBusyRef.current) return;
     if (!withoutLocation && !cameraPositionRef.current) {
-      toast.error("A location fix is required for a geotagged photo.", {
-        description: cameraLocationError || "Wait for GPS or choose Retry location.",
+      toast.error(t("site.geoEvidence.toasts.photoNeedsLocation"), {
+        description: cameraLocationError
+          ? geolocationMessageText(cameraLocationError, t)
+          : t("site.geoEvidence.toasts.waitForGps"),
       });
       return;
     }
     const video = videoPreviewRef.current;
     if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
-      toast.error("The camera is not ready yet.");
+      toast.error(t("site.geoEvidence.toasts.cameraNotReady"));
       return;
     }
 
@@ -744,7 +782,7 @@ export function GeoEvidenceUpload({
     if (!context) {
       captureBusyRef.current = false;
       setCaptureBusy(false);
-      toast.error("Photo capture is unavailable in this browser.");
+      toast.error(t("site.geoEvidence.toasts.photoUnsupported"));
       return;
     }
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -757,13 +795,13 @@ export function GeoEvidenceUpload({
     if (!blob) {
       captureBusyRef.current = false;
       setCaptureBusy(false);
-      toast.error("The photo could not be captured.");
+      toast.error(t("site.geoEvidence.toasts.photoFailed"));
       return;
     }
     if (blob.size > MAX_IMAGE_BYTES) {
       captureBusyRef.current = false;
       setCaptureBusy(false);
-      toast.error("The captured photo exceeds the 5 MB limit. Try a lower camera resolution.");
+      toast.error(t("site.geoEvidence.toasts.photoTooLarge"));
       return;
     }
     if (cameraSessionRef.current !== session) return;
@@ -777,13 +815,15 @@ export function GeoEvidenceUpload({
     if (captureBusyRef.current || (recorderRef.current && recorderRef.current.state !== "inactive")) return;
     const initialPosition = cameraPositionRef.current;
     if (!withoutLocation && !initialPosition) {
-      toast.error("A location fix is required before starting a GeoVideo.", {
-        description: cameraLocationError || "Wait for GPS or choose Retry location.",
+      toast.error(t("site.geoEvidence.toasts.videoNeedsLocation"), {
+        description: cameraLocationError
+          ? geolocationMessageText(cameraLocationError, t)
+          : t("site.geoEvidence.toasts.waitForGps"),
       });
       return;
     }
     if (!stream || typeof MediaRecorder === "undefined") {
-      toast.error("Video recording is not supported in this browser.");
+      toast.error(t("site.geoEvidence.toasts.recordingUnsupported"));
       return;
     }
 
@@ -809,15 +849,15 @@ export function GeoEvidenceUpload({
         // last buffered chunk MediaRecorder flushes on stop().
         if (!autoStoppingRef.current && recordedBytesRef.current >= MAX_VIDEO_BYTES * 0.9) {
           autoStoppingRef.current = true;
-          toast.info("Recording stopped automatically", {
-            description: "The clip reached the 100 MB size limit.",
+          toast.info(t("site.geoEvidence.toasts.autoStopped"), {
+            description: t("site.geoEvidence.toasts.autoStoppedDesc"),
           });
           void stopRecordingRef.current?.();
         }
       };
       recorder.onerror = () => {
         if (cameraSessionRef.current !== session) return;
-        toast.error("The video recorder stopped because of a camera or encoder error.");
+        toast.error(t("site.geoEvidence.toasts.recorderError"));
         stopCamera();
       };
       recorderRef.current = recorder;
@@ -856,7 +896,7 @@ export function GeoEvidenceUpload({
       recordingTimerRef.current = window.setInterval(() => setRecordingSeconds((seconds) => seconds + 1), 1000);
     } catch {
       stopCamera();
-      toast.error("This browser could not start a compatible video recording.");
+      toast.error(t("site.geoEvidence.toasts.recordingStartFailed"));
     }
   };
 
@@ -884,7 +924,7 @@ export function GeoEvidenceUpload({
       await finished;
     } catch {
       if (cameraSessionRef.current === session) {
-        toast.error("The video recording could not be finalized.");
+        toast.error(t("site.geoEvidence.toasts.finalizeFailed"));
         stopCamera();
       }
       return;
@@ -894,7 +934,7 @@ export function GeoEvidenceUpload({
     const mimeType = recorder.mimeType || "video/webm";
     const blob = new Blob(chunksRef.current, { type: mimeType });
     if (blob.size > MAX_VIDEO_BYTES) {
-      toast.error("The recorded video exceeds the 100 MB limit. Please record a shorter clip.");
+      toast.error(t("site.geoEvidence.toasts.videoTooLarge"));
       stopCamera();
       return;
     }
@@ -913,10 +953,10 @@ export function GeoEvidenceUpload({
       }
       addReadyFile(file, "video", "camera", null, track.length > 0 ? track : undefined);
     } else {
-      toast.error("The camera did not produce a playable video. Please try recording again.");
+      toast.error(t("site.geoEvidence.toasts.noPlayableVideo"));
     }
     stopCamera();
-  }, [addReadyFile, stopCamera, stopLocationWatch]);
+  }, [addReadyFile, stopCamera, stopLocationWatch, t]);
 
   useEffect(() => {
     stopRecordingRef.current = stopRecording;
@@ -957,7 +997,7 @@ export function GeoEvidenceUpload({
       if (typeof item.lat === "number" && typeof item.lon === "number") {
         points.push({
           id: item.id,
-          label: item.file.name || `Evidence ${index + 1}`,
+          label: item.file.name || t("site.geoEvidence.evidenceLabel", { number: index + 1 }),
           type: item.type,
           lat: item.lat,
           lon: item.lon,
@@ -969,7 +1009,7 @@ export function GeoEvidenceUpload({
       }
     });
     return { points, tracks };
-  }, [items]);
+  }, [items, t]);
 
   const hasLocations = mapData.points.length > 0 || mapData.tracks.length > 0;
   const hasDaSidecar = items.some((item) => item.locationSource === "da-sidecar");
@@ -983,7 +1023,7 @@ export function GeoEvidenceUpload({
   const cameraLocationApproximate = cameraLocationReady && cameraPosition.accuracy > 100;
   const cameraLocationDenied = cameraLocationError?.toLowerCase().includes("permission") ?? false;
   const requestCameraClose = () => {
-    if (isRecording && !window.confirm("Discard the current GeoVideo recording?")) return;
+    if (isRecording && !window.confirm(t("site.geoEvidence.discardRecording"))) return;
     stopCamera();
   };
 
@@ -1002,7 +1042,7 @@ export function GeoEvidenceUpload({
             <span className={cn("grid place-items-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:-translate-y-0.5", compact ? "size-9" : "size-10")}>
               <FileUp className="size-5" />
             </span>
-            <span className={cn("font-extrabold text-slate-900 dark:text-white", compact ? "text-xs" : "text-sm")}>Upload files</span>
+            <span className={cn("font-extrabold text-slate-900 dark:text-white", compact ? "text-xs" : "text-sm")}>{t("site.geoEvidence.uploadFiles")}</span>
             <input
               id={inputId}
               type="file"
@@ -1026,7 +1066,7 @@ export function GeoEvidenceUpload({
             <span className={cn("grid place-items-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:-translate-y-0.5", compact ? "size-9" : "size-10")}>
               <Camera className="size-5" />
             </span>
-            <span className={cn("font-extrabold text-slate-900 dark:text-white", compact ? "text-xs" : "text-sm")}>Take photo</span>
+            <span className={cn("font-extrabold text-slate-900 dark:text-white", compact ? "text-xs" : "text-sm")}>{t("site.geoEvidence.takePhoto")}</span>
           </button>
 
           <button
@@ -1041,7 +1081,7 @@ export function GeoEvidenceUpload({
             <span className={cn("grid place-items-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:-translate-y-0.5", compact ? "size-9" : "size-10")}>
               <Video className="size-5" />
             </span>
-            <span className={cn("font-extrabold text-slate-900 dark:text-white", compact ? "text-xs" : "text-sm")}>Record video</span>
+            <span className={cn("font-extrabold text-slate-900 dark:text-white", compact ? "text-xs" : "text-sm")}>{t("site.geoEvidence.recordVideo")}</span>
           </button>
         </div>
         {(sidecarProcessing || !compact) && (
@@ -1051,11 +1091,11 @@ export function GeoEvidenceUpload({
           )}>
             {sidecarProcessing && (
               <span className="inline-flex items-center gap-1.5 font-semibold">
-                <Loader2 className="size-3.5 animate-spin" /> Reading DA GeoCamera route&hellip;
+                <Loader2 className="size-3.5 animate-spin" /> {t("site.geoEvidence.readingRoute")}
               </span>
             )}
             {!compact && (
-              <span className="font-bold tabular-nums">Maximum {maxFiles} files ({items.length}/{maxFiles})</span>
+              <span className="font-bold tabular-nums">{t("site.geoEvidence.maxFiles", { max: maxFiles, count: items.length })}</span>
             )}
           </div>
         )}
@@ -1076,14 +1116,14 @@ export function GeoEvidenceUpload({
                   {item.locationSource === "da-sidecar"
                     ? <MapPin className="size-3" />
                     : item.source === "camera" ? <Camera className="size-3" /> : <Images className="size-3" />}
-                  {item.locationSource === "da-sidecar" ? "DA GPS" : item.source}
+                  {item.locationSource === "da-sidecar" ? "DA GPS" : t(`site.geoEvidence.source.${item.source}`)}
                 </div>
                 <button
                   type="button"
                   onClick={() => removeItem(item.id)}
                   disabled={disabled}
                   className="absolute right-2 top-2 grid size-11 place-items-center rounded-full bg-slate-950/80 text-white backdrop-blur transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label={`Remove ${item.file.name}`}
+                  aria-label={t("site.geoEvidence.remove", { name: item.file.name })}
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -1091,11 +1131,11 @@ export function GeoEvidenceUpload({
               <div className="space-y-2.5 p-3">
                 <div className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate text-xs font-extrabold text-slate-900 dark:text-white">{item.file.name}</span>
-                  <span className="text-xs font-bold uppercase text-slate-500">{item.type}</span>
+                  <span className="text-xs font-bold uppercase text-slate-500">{t(`site.geoEvidence.kind.${item.type}`)}</span>
                 </div>
                 {item.status === "extracting" ? (
                   <div className="flex items-center gap-2 rounded-lg bg-sky-500/10 px-2.5 py-2 text-xs font-bold text-sky-700 dark:text-sky-300">
-                    <Loader2 className="size-3.5 animate-spin" /> Reading location metadata&hellip;
+                    <Loader2 className="size-3.5 animate-spin" /> {t("site.geoEvidence.readingLocation")}
                   </div>
                 ) : typeof item.lat === "number" && typeof item.lon === "number" ? (
                   <div className={cn(
@@ -1110,24 +1150,26 @@ export function GeoEvidenceUpload({
                     <span>
                       <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         {item.locationSource === "da-sidecar"
-                          ? "DA GeoCamera route"
-                          : typeof item.accuracy === "number" && item.accuracy > 100 ? "Approximate location" : "GPS attached"}
+                          ? t("site.geoEvidence.daRoute")
+                          : typeof item.accuracy === "number" && item.accuracy > 100
+                            ? t("site.geoEvidence.approximate")
+                            : t("site.geoEvidence.gpsAttached")}
                         {typeof item.accuracy === "number" ? (() => {
                           const level = getAccuracyLevel(item.accuracy);
                           const color = getAccuracyColor(level);
                           return (
                             <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-px text-xs font-extrabold uppercase tracking-wide ring-1", color.pill)}>
                               <AccuracySignalBars level={level} />
-                              {getAccuracyLabel(level)}
+                              {t(`site.geoEvidence.accuracy.${level}`)}
                             </span>
                           );
                         })() : null}
                       </span>
                       {item.lat.toFixed(6)}, {item.lon.toFixed(6)}
                       {typeof item.accuracy === "number" ? ` · ±${Math.round(item.accuracy)} m` : ""}
-                      {item.track && item.track.length > 1 ? ` · ${item.track.length} route points` : ""}
+                      {item.track && item.track.length > 1 ? ` · ${t("site.geoEvidence.routePoints", { count: item.track.length })}` : ""}
                       {typeof item.accuracy === "number" && item.accuracy > 100 ? (
-                        <span className="mt-1 block">Drag the pin below to correct it.</span>
+                        <span className="mt-1 block">{t("site.geoEvidence.dragBelow")}</span>
                       ) : null}
                     </span>
                   </div>
@@ -1135,7 +1177,7 @@ export function GeoEvidenceUpload({
                   <div className="space-y-2">
                     <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-2.5 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
                       <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-                      <span>{item.warning || "No GPS coordinates are attached."}</span>
+                      <span>{(item.warning && evidenceWarningText(item.warning, t)) || t("site.geoEvidence.warnings.noGpsAttached")}</span>
                     </div>
                     <Button
                       type="button"
@@ -1146,7 +1188,7 @@ export function GeoEvidenceUpload({
                       onClick={() => void locateItem(item.id)}
                     >
                       {locatingItemId === item.id ? <Loader2 className="size-3.5 animate-spin" /> : <LocateFixed className="size-3.5" />}
-                      Use current location
+                      {t("site.geoEvidence.useCurrentLocation")}
                     </Button>
                   </div>
                 )}
@@ -1160,10 +1202,10 @@ export function GeoEvidenceUpload({
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
             <div>
-              <p className="flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-white"><MapPin className="size-4 text-emerald-500" /> Location preview</p>
-              <p className="mt-0.5 text-xs text-slate-500">Drag a pin to correct an approximate device location.</p>
+              <p className="flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-white"><MapPin className="size-4 text-emerald-500" /> {t("site.geoEvidence.locationPreview")}</p>
+              <p className="mt-0.5 text-xs text-slate-500">{t("site.geoEvidence.dragPinHint")}</p>
             </div>
-            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-extrabold uppercase text-emerald-700 dark:text-emerald-300">{hasDaSidecar ? "DA + device GPS" : "Device metadata"}</span>
+            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-extrabold uppercase text-emerald-700 dark:text-emerald-300">{hasDaSidecar ? t("site.geoEvidence.daAndDeviceGps") : t("site.geoEvidence.deviceMetadata")}</span>
           </div>
           <LeafletEvidenceMap
             points={mapData.points}
@@ -1187,19 +1229,19 @@ export function GeoEvidenceUpload({
                 <div>
                   <DialogTitle className="flex items-center gap-2 text-sm font-extrabold text-white">
                     {cameraMode === "photo" ? <Camera className="size-4 text-sky-300" aria-hidden="true" /> : <Video className="size-4 text-amber-300" aria-hidden="true" />}
-                    {cameraMode === "photo" ? "Geotagged photo capture" : "GeoVideo recorder"}
+                    {cameraMode === "photo" ? t("site.geoEvidence.camera.photoTitle") : t("site.geoEvidence.camera.videoTitle")}
                   </DialogTitle>
                   <DialogDescription className="mt-0.5 text-xs text-slate-400">
                     {cameraMode === "photo"
-                      ? "The photo uses the verified device location shown below."
-                      : "The route starts from the verified location shown below."}
+                      ? t("site.geoEvidence.camera.photoDescription")
+                      : t("site.geoEvidence.camera.videoDescription")}
                   </DialogDescription>
                 </div>
                 <button
                   type="button"
                   onClick={requestCameraClose}
                   className="grid size-11 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                  aria-label="Close camera"
+                  aria-label={t("site.geoEvidence.camera.close")}
                 >
                   <X className="size-4" aria-hidden="true" />
                 </button>
@@ -1210,17 +1252,17 @@ export function GeoEvidenceUpload({
                   <div className="absolute inset-0 grid place-items-center bg-slate-950 text-white" aria-live="polite">
                     <div className="text-center">
                       <Loader2 className="mx-auto mb-3 size-7 animate-spin text-emerald-400" />
-                      <p className="text-sm font-bold">Waiting for camera permission&hellip;</p>
+                      <p className="text-sm font-bold">{t("site.geoEvidence.camera.waitingPermission")}</p>
                     </div>
                   </div>
                 ) : null}
                 {isRecording ? (
                   <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2 rounded-full bg-red-500 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg">
-                      <Radio className="size-3.5 animate-pulse" aria-hidden="true" /> REC {recordingSeconds}s
+                      <Radio className="size-3.5 animate-pulse" aria-hidden="true" /> {t("site.geoEvidence.camera.recording", { seconds: recordingSeconds })}
                     </span>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-950/85 px-3 py-1.5 text-xs font-bold text-emerald-300 shadow-lg backdrop-blur">
-                      <Crosshair className="size-3.5" aria-hidden="true" /> {recordingPointCount} GPS point{recordingPointCount === 1 ? "" : "s"}
+                      <Crosshair className="size-3.5" aria-hidden="true" /> {t(recordingPointCount === 1 ? "site.geoEvidence.camera.gpsPoints.one" : "site.geoEvidence.camera.gpsPoints.other", { count: recordingPointCount })}
                     </span>
                   </div>
                 ) : null}
@@ -1244,14 +1286,14 @@ export function GeoEvidenceUpload({
                   <div>
                     {cameraLocationStatus === "locating" ? (
                       <>
-                        <p className="font-extrabold">Finding a precise location&hellip;</p>
-                        <p className="mt-0.5 text-white/70">This can take up to 15 seconds.</p>
+                        <p className="font-extrabold">{t("site.geoEvidence.camera.findingLocation")}</p>
+                        <p className="mt-0.5 text-white/70">{t("site.geoEvidence.camera.mayTake")}</p>
                       </>
                     ) : cameraLocationReady ? (
                       <>
                         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-extrabold">
                           <span>
-                            {cameraLocationApproximate ? "Approximate location" : "Location ready"}
+                            {cameraLocationApproximate ? t("site.geoEvidence.approximate") : t("site.geoEvidence.camera.locationReady")}
                             {" "}&middot; &plusmn;{Math.round(cameraPosition.accuracy)} m
                           </span>
                           {(() => {
@@ -1260,28 +1302,32 @@ export function GeoEvidenceUpload({
                             return (
                               <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide ring-1", color.pill)}>
                                 <AccuracySignalBars level={level} />
-                                {getAccuracyLabel(level)}
+                                {t(`site.geoEvidence.accuracy.${level}`)}
                               </span>
                             );
                           })()}
                         </p>
                         <p className="mt-0.5 text-white/70">
                           {cameraLocationApproximate
-                            ? "Accuracy is too low for precise geotagging. You can drag the pin to correct it after capture."
-                            : "The coordinates will be attached to this evidence."}
+                            ? t("site.geoEvidence.camera.lowAccuracy")
+                            : t("site.geoEvidence.camera.coordinatesAttached")}
                         </p>
                       </>
                     ) : cameraLocationStatus === "error" ? (
                       <>
-                        <p className="font-extrabold">{cameraLocationError || "Location could not be determined."}</p>
+                        <p className="font-extrabold">
+                          {cameraLocationError
+                            ? geolocationMessageText(cameraLocationError, t)
+                            : t("site.geoEvidence.camera.locationUnknown")}
+                        </p>
                         <p className="mt-0.5 text-white/70">
                           {cameraLocationDenied
-                            ? "Allow Location in browser Site settings, reload the page, then retry."
-                            : "Check Windows or device Location Services, then retry."}
+                            ? t("site.geoEvidence.camera.allowLocation")
+                            : t("site.geoEvidence.camera.checkLocationServices")}
                         </p>
                       </>
                     ) : (
-                      <p className="font-extrabold">Location has not been requested.</p>
+                      <p className="font-extrabold">{t("site.geoEvidence.camera.notRequested")}</p>
                     )}
                   </div>
                 </div>
@@ -1293,7 +1339,7 @@ export function GeoEvidenceUpload({
                     onClick={() => void requestCameraLocation(cameraSessionRef.current)}
                     className="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white"
                   >
-                    <LocateFixed className="size-3.5" aria-hidden="true" /> Retry location
+                    <LocateFixed className="size-3.5" aria-hidden="true" /> {t("site.geoEvidence.camera.retryLocation")}
                   </Button>
                 ) : null}
               </div>
@@ -1312,12 +1358,12 @@ export function GeoEvidenceUpload({
                         ? <Loader2 className="size-4 animate-spin" />
                         : <Camera className="size-4" />}
                       {captureBusy
-                        ? "Saving photo…"
+                        ? t("site.geoEvidence.camera.savingPhoto")
                         : cameraLocationStatus === "locating"
-                          ? "Finding GPS…"
+                          ? t("site.geoEvidence.camera.findingGps")
                           : cameraLocationStatus === "error"
-                            ? "Location required"
-                            : "Take geotagged photo"}
+                            ? t("site.geoEvidence.camera.locationRequired")
+                            : t("site.geoEvidence.camera.takeGeotaggedPhoto")}
                     </Button>
                     {cameraLocationStatus === "error" ? (
                       <Button
@@ -1328,14 +1374,14 @@ export function GeoEvidenceUpload({
                         onClick={() => void capturePhoto(true)}
                         className="min-h-11 rounded-full border-white/25 bg-white/5 px-6 text-white hover:bg-white/15 hover:text-white"
                       >
-                        <Camera className="size-4" aria-hidden="true" /> Take without location
+                        <Camera className="size-4" aria-hidden="true" /> {t("site.geoEvidence.camera.takeWithoutLocation")}
                       </Button>
                     ) : null}
                   </>
                 ) : isRecording ? (
                   <Button type="button" size="lg" disabled={captureBusy} onClick={() => void stopRecording()} className="min-h-11 rounded-full bg-red-500 px-7 text-white hover:bg-red-400">
                     {captureBusy ? <Loader2 className="size-4 animate-spin" /> : <CircleStop className="size-4" />}
-                    {captureBusy ? "Finalizing…" : "Stop recording"}
+                    {captureBusy ? t("site.geoEvidence.camera.finalizing") : t("site.geoEvidence.camera.stopRecording")}
                   </Button>
                 ) : (
                   <>
@@ -1350,7 +1396,7 @@ export function GeoEvidenceUpload({
                       {cameraLocationStatus === "locating"
                         ? <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                         : <Radio className="size-4" aria-hidden="true" />}
-                      {cameraLocationStatus === "locating" ? "Finding GPS…" : "Start GeoVideo recording"}
+                      {cameraLocationStatus === "locating" ? t("site.geoEvidence.camera.findingGps") : t("site.geoEvidence.camera.startRecording")}
                     </Button>
                     {cameraLocationStatus === "error" ? (
                       <Button
@@ -1361,7 +1407,7 @@ export function GeoEvidenceUpload({
                         onClick={() => startRecording(true)}
                         className="min-h-11 rounded-full border-white/25 bg-white/5 px-6 text-white hover:bg-white/15 hover:text-white"
                       >
-                        <Radio className="size-4" aria-hidden="true" /> Record without location
+                        <Radio className="size-4" aria-hidden="true" /> {t("site.geoEvidence.camera.recordWithoutLocation")}
                       </Button>
                     ) : null}
                   </>

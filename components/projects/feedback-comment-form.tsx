@@ -7,10 +7,11 @@ import { useAuth } from "@/providers/auth-provider";
 import Image from "next/image";
 import { toast } from "sonner";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
-import { getUploadErrorTitle } from "@/lib/upload-errors";
+import { getUploadErrorText } from "@/lib/upload-errors";
 import { isAllowedClientUploadType } from "@/lib/upload-policy";
 import { getAnonymousUser } from "@/lib/anonymous-identifier";
 import { AnonymousIcon } from "@/components/shared/anonymous-avatar";
+import { useTranslation } from "@/i18n";
 
 interface FeedbackCommentFormProps {
   feedbackId: string;
@@ -41,6 +42,7 @@ export function FeedbackCommentForm({
   autoFocus = false,
 }: FeedbackCommentFormProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [comment, setComment] = useState("");
   const [media, setMedia] = useState<Array<{ type: "image" | "video"; url: string; caption?: string }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,7 +62,10 @@ export function FeedbackCommentForm({
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
         if (!isAllowedClientUploadType(file.type) || !file.type.startsWith(`${type}/`)) {
-          throw new Error(`"${file.name}" is not an allowed ${type} file.`);
+          throw new Error(t("site.comments.notAllowedFile", {
+            name: file.name,
+            type: t(`site.comments.fileKind.${type}`),
+          }));
         }
 
         const formData = new FormData();
@@ -73,7 +78,7 @@ export function FeedbackCommentForm({
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => null);
-          throw new Error(errorData?.error || "Failed to upload file");
+          throw new Error(errorData?.error || t("site.comments.uploadFailed"));
         }
 
         const data = await response.json();
@@ -90,9 +95,10 @@ export function FeedbackCommentForm({
       const message =
         error instanceof Error
           ? error.message
-          : "Upload blocked. Please choose a valid image or video.";
-      toast.error(getUploadErrorTitle(message), {
-        description: message,
+          : t("site.comments.uploadBlocked");
+      const { title, description } = getUploadErrorText(message, t);
+      toast.error(title, {
+        description,
         duration: 6500,
       });
     } finally {
@@ -117,7 +123,7 @@ export function FeedbackCommentForm({
     e.preventDefault();
 
     if (!user) {
-      toast.error("Please log in to comment");
+      toast.error(t("site.comments.signInToComment"));
       return;
     }
 
@@ -141,7 +147,7 @@ export function FeedbackCommentForm({
       });
 
       if (!result.success) {
-        toast.error("Comment blocked", {
+        toast.error(t("site.comments.blocked"), {
           description: result.message,
           duration: 6500,
         });
@@ -157,7 +163,7 @@ export function FeedbackCommentForm({
       onCommentAdded?.();
     } catch (error) {
       console.error("Error posting comment:", error);
-      toast.error("Failed to post comment. Please try again.");
+      toast.error(t("site.comments.postFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -167,7 +173,7 @@ export function FeedbackCommentForm({
     return (
       <div className="bg-[#f0f2f5] dark:bg-[#242526] rounded-xl p-3 text-center border border-slate-200/80 dark:border-slate-800">
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Please log in to join the conversation
+          {t("site.comments.signInToJoin")}
         </p>
       </div>
     );
@@ -193,7 +199,7 @@ export function FeedbackCommentForm({
         {user.image && getFullUrl(user.image) ? (
           <Image
             src={getFullUrl(user.image)!}
-            alt={user.name || "You"}
+            alt={user.name || t("site.comments.you")}
             width={avatarSize}
             height={avatarSize}
             className="w-full h-full object-cover rounded-full"
@@ -205,7 +211,7 @@ export function FeedbackCommentForm({
             className={`${isReply ? "w-3.5 h-3.5" : "w-4 h-4"} text-white drop-shadow-xs`}
           />
         ) : (
-          <span>{getInitials(user.name || "You")}</span>
+          <span>{getInitials(user.name || t("site.comments.you"))}</span>
         )}
       </div>
 
@@ -215,7 +221,7 @@ export function FeedbackCommentForm({
         {isReply && replyToName && (
           <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">
             <span>
-              Replying to <span className="text-[#1877F2] dark:text-[#2d88ff] font-semibold">@{replyToName}</span>
+              {t("site.comments.replyingTo")} <span className="text-[#1877F2] dark:text-[#2d88ff] font-semibold">@{replyToName}</span>
             </span>
             {onCancelReply && (
               <button
@@ -223,7 +229,7 @@ export function FeedbackCommentForm({
                 onClick={onCancelReply}
                 className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
               >
-                Cancel
+                {t("site.comments.cancel")}
               </button>
             )}
           </div>
@@ -237,7 +243,7 @@ export function FeedbackCommentForm({
             onChange={handleTextChange}
             placeholder={
               placeholder ||
-              (isReply ? `Write a reply...` : "Write a public comment...")
+              (isReply ? t("site.comments.writeReply") : t("site.comments.writeComment"))
             }
             rows={1}
             className="w-full bg-transparent border-0 text-xs sm:text-[13px] text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 resize-none focus:outline-none leading-relaxed min-h-[22px] max-h-[120px]"
@@ -265,7 +271,7 @@ export function FeedbackCommentForm({
                     {item.type === "image" && mediaUrl ? (
                       <Image
                         src={mediaUrl}
-                        alt={`Attachment ${index + 1}`}
+                        alt={t("site.comments.attachmentAlt", { number: index + 1 })}
                         fill
                         sizes="100px"
                         className="object-cover"
@@ -282,7 +288,7 @@ export function FeedbackCommentForm({
                       type="button"
                       onClick={() => removeMedia(index)}
                       className="absolute top-1 right-1 p-0.5 rounded-full bg-black/70 text-white hover:bg-black transition-colors cursor-pointer"
-                      aria-label="Remove media"
+                      aria-label={t("site.comments.removeMedia")}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -298,7 +304,7 @@ export function FeedbackCommentForm({
               {/* Image Upload */}
               <label
                 className="cursor-pointer p-1.5 rounded-full hover:bg-slate-200/70 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-400 hover:text-[#1877F2] dark:hover:text-[#2d88ff] transition-colors"
-                title="Attach photo"
+                title={t("site.comments.attachPhoto")}
               >
                 <ImageIcon className="w-4 h-4" />
                 <input
@@ -314,7 +320,7 @@ export function FeedbackCommentForm({
               {/* Video Upload */}
               <label
                 className="cursor-pointer p-1.5 rounded-full hover:bg-slate-200/70 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-400 hover:text-[#1877F2] dark:hover:text-[#2d88ff] transition-colors"
-                title="Attach video"
+                title={t("site.comments.attachVideo")}
               >
                 <Video className="w-4 h-4" />
                 <input
@@ -329,7 +335,7 @@ export function FeedbackCommentForm({
 
               {uploadingFiles && (
                 <span className="text-[10px] text-slate-400 animate-pulse ml-1">
-                  Uploading...
+                  {t("site.comments.uploading")}
                 </span>
               )}
             </div>
@@ -342,14 +348,14 @@ export function FeedbackCommentForm({
                   onClick={onCancelReply}
                   className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-2 py-1 rounded cursor-pointer"
                 >
-                  Cancel
+                  {t("site.comments.cancel")}
                 </button>
               )}
               <button
                 type="submit"
                 disabled={isSubmitting || uploadingFiles || (!comment.trim() && media.length === 0)}
                 className="w-7 h-7 rounded-full bg-[#1877F2] hover:bg-[#166fe5] text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-xs active:scale-95 cursor-pointer"
-                title="Post comment"
+                title={t("site.comments.post")}
               >
                 {isSubmitting ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />

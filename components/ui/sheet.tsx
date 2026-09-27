@@ -5,6 +5,7 @@ import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useTranslation } from "@/i18n"
 import { XIcon } from "lucide-react"
 
 function Sheet({ ...props }: SheetPrimitive.Root.Props) {
@@ -13,6 +14,13 @@ function Sheet({ ...props }: SheetPrimitive.Root.Props) {
 
 function SheetTrigger({ ...props }: SheetPrimitive.Trigger.Props) {
   return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />
+}
+
+// Screen-reader name for the corner close button. Rendered only while the sheet is open,
+// so closed sheets do not need the language provider.
+function SheetCloseLabel() {
+  const { t } = useTranslation()
+  return <span className="sr-only">{t("site.dialog.close")}</span>
 }
 
 function SheetClose({ ...props }: SheetPrimitive.Close.Props) {
@@ -72,7 +80,7 @@ function SheetContent({
           >
             <XIcon
             />
-            <span className="sr-only">Close</span>
+            <SheetCloseLabel />
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Popup>
