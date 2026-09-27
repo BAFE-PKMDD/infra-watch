@@ -98,7 +98,7 @@
   outline-offset: 2px;
 }
 
-/* Muted basemap so the stage-colored pins are the only strong color. */
+/* Esri World Imagery, desaturated so the stage-colored pins stay the strongest color. */
 .public-analytics .pa-map .leaflet-container {
   background: var(--surface-2);
   font-family: inherit;
@@ -112,8 +112,9 @@
   width: 14px;
   height: 14px;
   border-radius: 9999px;
-  border: 2px solid var(--surface);
-  box-shadow: 0 0 0 1px var(--axis);
+  /* A light ring in both themes: the imagery underneath is dark whatever the page theme. */
+  border: 2px solid #fbfcfa;
+  box-shadow: 0 0 0 1px rgb(18 26 21 / 0.6);
 }
 
 .public-analytics .pa-cluster {
