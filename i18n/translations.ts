@@ -1,4 +1,9 @@
 import pkg from "../package.json";
+import { community } from "./sections/community";
+import { directory } from "./sections/directory";
+import { eReport } from "./sections/eReport";
+import { landing } from "./sections/landing";
+import { site } from "./sections/site";
 
 export type Language = "en" | "tl";
 
@@ -829,6 +834,11 @@ export const translations = {
         desc: "Learn more about the Philippine government, its structure, how government works and the people behind it.",
       },
     },
+    landing: landing.en,
+    directory: directory.en,
+    eReport: eReport.en,
+    community: community.en,
+    site: site.en,
   },
   tl: {
     nav: {
@@ -1646,6 +1656,11 @@ export const translations = {
         desc: "Alamin ang higit pa tungkol sa gobyerno ng Pilipinas, ang istraktura nito, kung paano gumagana ang gobyerno at ang mga tao sa likod nito.",
       },
     },
+    landing: landing.tl,
+    directory: directory.tl,
+    eReport: eReport.tl,
+    community: community.tl,
+    site: site.tl,
   },
 } as const;
 
