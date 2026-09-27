@@ -80,12 +80,12 @@ type StepDefinition = {
   icon: LucideIcon;
 };
 
-const steps: StepDefinition[] = [
-  { id: "sentiment", label: "Experience", icon: Smile },
-  { id: "category", label: "Category", icon: Tag },
-  { id: "details", label: "Details", icon: MessageSquare },
-  { id: "consent", label: "Consent", icon: ShieldCheck },
-  { id: "review", label: "Review", icon: ClipboardCheck },
+const steps: Array<Omit<StepDefinition, "label">> = [
+  { id: "sentiment", icon: Smile },
+  { id: "category", icon: Tag },
+  { id: "details", icon: MessageSquare },
+  { id: "consent", icon: ShieldCheck },
+  { id: "review", icon: ClipboardCheck },
 ];
 
 const stepVariants = {
@@ -101,11 +101,14 @@ const reducedStepVariants = {
   exit: { opacity: 0 },
 };
 
-const categoryOptions: Array<{ value: FeedbackCategory; label: string; icon: LucideIcon; description: string }> = [
-  { value: "quality", label: "Project Quality", icon: HardHat, description: "Materials, workmanship, and construction standards" },
-  { value: "progress", label: "Project Progress", icon: BarChart3, description: "Timeline, completion status, and pacing" },
-  { value: "concerns", label: "Concerns & Issues", icon: AlertTriangle, description: "A problem, delay, or something that needs attention" },
-  { value: "general", label: "General Feedback", icon: MessageCircle, description: "Anything else about this project" },
+type CategoryOption = { value: FeedbackCategory; label: string; icon: LucideIcon; description: string };
+
+// Labels and descriptions live under projectDetail.feedbackForm.categories.<value>.
+const categoryOptions: Array<Pick<CategoryOption, "value" | "icon">> = [
+  { value: "quality", icon: HardHat },
+  { value: "progress", icon: BarChart3 },
+  { value: "concerns", icon: AlertTriangle },
+  { value: "general", icon: MessageCircle },
 ];
 
 // Sentiment never hides or blocks a category - it only decides which cards lead,
@@ -164,12 +167,16 @@ export function FeedbackSubmissionForm({
   // Editing existing feedback never re-asks the survey - it's not a first submission.
   const { needsSurvey } = useSubmissionSurveyGate(!editMode);
 
-  const orderedCategories = useMemo(() => {
-    const order = getCategoryOrder(sentiment);
-    return order
-      .map((value) => categoryOptions.find((option) => option.value === value))
-      .filter((option): option is NonNullable<typeof option> => Boolean(option));
-  }, [sentiment]);
+  const localizedSteps: StepDefinition[] = steps.map((step) => ({ ...step, label: t(`projectDetail.feedbackForm.steps.${step.id}`) }));
+  const categoryLabel = (value: FeedbackCategory) => t(`projectDetail.feedbackForm.categories.${value}.label`);
+  const orderedCategories: CategoryOption[] = getCategoryOrder(sentiment)
+    .map((value) => categoryOptions.find((option) => option.value === value))
+    .filter((option): option is NonNullable<typeof option> => Boolean(option))
+    .map((option) => ({
+      ...option,
+      label: categoryLabel(option.value),
+      description: t(`projectDetail.feedbackForm.categories.${option.value}.description`),
+    }));
   const recommendedCategories = useMemo(() => getRecommendedCategories(sentiment), [sentiment]);
 
   // File upload mutation
@@ -186,9 +193,9 @@ export function FeedbackSubmissionForm({
 
       const result = await response.json().catch(() => null) as { error?: string; path?: string } | null;
       if (!response.ok) {
-        throw new Error(result?.error || `Upload failed (${response.status})`);
+        throw new Error(result?.error || t("projectDetail.feedbackForm.errors.uploadFailed", { status: response.status }));
       }
-      if (!result?.path) throw new Error("The upload completed without a file path.");
+      if (!result?.path) throw new Error(t("projectDetail.feedbackForm.errors.uploadNoPath"));
 
       return result as { path: string };
     },
@@ -221,7 +228,7 @@ export function FeedbackSubmissionForm({
 
       const result = await response.json().catch(() => null) as { error?: string; data?: { id?: string } } | null;
       if (!response.ok) {
-        throw new Error(result?.error || `Failed to ${editMode ? 'update' : 'submit'} feedback`);
+        throw new Error(result?.error || t(editMode ? "projectDetail.feedbackForm.errors.updateFailed" : "projectDetail.feedbackForm.errors.submitFailed"));
       }
 
       return result;
@@ -232,15 +239,15 @@ export function FeedbackSubmissionForm({
 
       // Show success message with approval notice
       if (editMode) {
-        toast.success("Feedback updated successfully!");
+        toast.success(t("projectDetail.feedbackForm.toast.updated"));
       } else {
-        toast.success("Feedback submitted for review", {
-          description: "Your feedback and attachments were saved and will appear once approved.",
+        toast.success(t("projectDetail.feedbackForm.toast.submitted"), {
+          description: t("projectDetail.feedbackForm.toast.submittedDesc"),
         });
         dispatchClientNotification({
           type: "feedback_submitted",
-          title: "Feedback submitted",
-          message: "Your feedback was submitted for moderator review.",
+          title: t("projectDetail.feedbackForm.notification.title"),
+          message: t("projectDetail.feedbackForm.notification.message"),
           metadata: {
             feedbackId: result?.data?.id,
             projectId,
@@ -296,13 +303,13 @@ export function FeedbackSubmissionForm({
     const errors: Record<string, string> = {};
 
     if (!comment.trim()) {
-      errors.comment = "Please provide your feedback";
+      errors.comment = t("projectDetail.feedbackForm.errors.commentRequired");
     }
     if (isProcessingMedia) {
-      errors.media = "Please wait while the location metadata is being processed.";
+      errors.media = t("projectDetail.feedbackForm.errors.mediaProcessing");
     }
     if (media.length + pendingEvidence.length > 5) {
-      errors.media = "Maximum 5 media files allowed.";
+      errors.media = t("projectDetail.feedbackForm.errors.mediaMax", { max: 5 });
     }
 
     setValidationErrors(errors);
@@ -311,7 +318,7 @@ export function FeedbackSubmissionForm({
 
   const validateConsentStep = () => {
     if (!agreeToTerms) {
-      setValidationErrors({ agreement: "You must agree to the Terms of Service and Privacy Policy" });
+      setValidationErrors({ agreement: t("projectDetail.feedbackForm.errors.agreementRequired") });
       return false;
     }
     setValidationErrors({});
@@ -350,7 +357,7 @@ export function FeedbackSubmissionForm({
         } catch (error) {
           const message = error instanceof Error
             ? error.message
-            : "Upload blocked. Please choose a valid image or video.";
+            : t("projectDetail.feedbackForm.errors.uploadBlocked");
           setMedia(uploadedMedia);
           setPendingEvidence(pendingEvidence.slice(index));
           setEvidenceInputKey((key) => key + 1);
@@ -396,10 +403,12 @@ export function FeedbackSubmissionForm({
   const characterCount = comment.length;
   const maxCharacters = 1000;
   const currentStepIndex = steps.findIndex((step) => step.id === currentStep);
+  const attachmentCount = media.length + pendingEvidence.length;
+  const starsText = (count: number) => t(count === 1 ? "projectDetail.feedbackForm.rating.starsOne" : "projectDetail.feedbackForm.rating.starsMany", { count });
 
   return (
     <>
-      <StepProgress steps={steps} currentStepIndex={currentStepIndex} />
+      <StepProgress steps={localizedSteps} currentStepIndex={currentStepIndex} label={t("projectDetail.feedbackForm.progressLabel")} />
 
       <AnimatePresence mode="wait" custom={direction}>
         <motion.div
@@ -413,12 +422,12 @@ export function FeedbackSubmissionForm({
         >
           {currentStep === "sentiment" && (
             <div className="space-y-5">
-              <StepHeader title="How was your experience?" body="This helps route your feedback correctly. You can skip this." />
+              <StepHeader title={t("projectDetail.feedbackForm.sentiment.title")} body={t("projectDetail.feedbackForm.sentiment.body")} />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <SentimentCard
                   icon={ThumbsUp}
-                  label="Positive"
-                  description="Things are going well"
+                  label={t("projectDetail.feedbackForm.sentiment.positive")}
+                  description={t("projectDetail.feedbackForm.sentiment.positiveDesc")}
                   tone="positive"
                   isSelected={sentiment === "positive"}
                   disabled={formBusy}
@@ -426,8 +435,8 @@ export function FeedbackSubmissionForm({
                 />
                 <SentimentCard
                   icon={ThumbsDown}
-                  label="Negative"
-                  description="Something needs attention"
+                  label={t("projectDetail.feedbackForm.sentiment.negative")}
+                  description={t("projectDetail.feedbackForm.sentiment.negativeDesc")}
                   tone="negative"
                   isSelected={sentiment === "negative"}
                   disabled={formBusy}
@@ -444,10 +453,10 @@ export function FeedbackSubmissionForm({
                   disabled={formBusy}
                   className="text-sm font-medium text-slate-500 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:text-slate-200"
                 >
-                  Prefer not to say
+                  {t("projectDetail.feedbackForm.sentiment.skip")}
                 </button>
                 <Button type="button" onClick={() => goToStep("category")} disabled={formBusy}>
-                  Next
+                  {t("projectDetail.feedbackForm.next")}
                 </Button>
               </div>
             </div>
@@ -455,14 +464,15 @@ export function FeedbackSubmissionForm({
 
           {currentStep === "category" && (
             <div className="space-y-5">
-              <StepHeader title="What's this about?" body="Choose the category that best fits your feedback." />
-              <div role="radiogroup" aria-label="Category" className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <StepHeader title={t("projectDetail.feedbackForm.category.title")} body={t("projectDetail.feedbackForm.category.body")} />
+              <div role="radiogroup" aria-label={t("projectDetail.feedbackForm.steps.category")} className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {orderedCategories.map((option) => (
                   <CategoryCard
                     key={option.value}
                     option={option}
                     isSelected={category === option.value}
                     isRecommended={recommendedCategories.has(option.value)}
+                    recommendedLabel={t("projectDetail.feedbackForm.category.recommended")}
                     disabled={formBusy}
                     onSelect={() => setCategory(option.value)}
                   />
@@ -470,10 +480,10 @@ export function FeedbackSubmissionForm({
               </div>
               <div className="flex items-center justify-between pt-2">
                 <Button type="button" variant="ghost" onClick={() => goToStep("sentiment", -1)} disabled={formBusy}>
-                  Back
+                  {t("projectDetail.feedbackForm.back")}
                 </Button>
                 <Button type="button" onClick={() => goToStep("details")} disabled={formBusy}>
-                  Next
+                  {t("projectDetail.feedbackForm.next")}
                 </Button>
               </div>
             </div>
@@ -481,12 +491,12 @@ export function FeedbackSubmissionForm({
 
           {currentStep === "details" && (
             <div className="space-y-6">
-              <StepHeader title="Tell us more" body="Share the details, add evidence, and rate your experience if you'd like." />
+              <StepHeader title={t("projectDetail.feedbackForm.details.title")} body={t("projectDetail.feedbackForm.details.body")} />
 
               {/* Comment */}
               <Field>
                 <div className="flex items-center justify-between mb-2">
-                  <FieldLabel htmlFor="comment">Your Feedback *</FieldLabel>
+                  <FieldLabel htmlFor="comment">{t("projectDetail.feedbackForm.details.commentLabel")} *</FieldLabel>
                   <span className={cn(
                     "text-xs transition-colors",
                     characterCount > maxCharacters
@@ -509,7 +519,7 @@ export function FeedbackSubmissionForm({
                       });
                     }
                   }}
-                  placeholder="Share your thoughts about this project..."
+                  placeholder={t("projectDetail.feedbackForm.details.commentPlaceholder")}
                   rows={5}
                   maxLength={maxCharacters}
                   className="resize-none"
@@ -533,13 +543,13 @@ export function FeedbackSubmissionForm({
               <Field>
                 <div className="mb-2 flex items-end justify-between gap-3">
                   <div>
-                    <FieldLabel>Evidence attachments (Optional)</FieldLabel>
+                    <FieldLabel>{t("projectDetail.feedbackForm.details.evidenceLabel")}</FieldLabel>
                     <FieldDescription className="mt-1">
-                      Upload existing media or capture a new geotagged photo or GeoVideo.
+                      {t("projectDetail.feedbackForm.details.evidenceHint")}
                     </FieldDescription>
                   </div>
                   <span className="shrink-0 text-[11px] font-bold tabular-nums text-slate-500">
-                    {media.length + pendingEvidence.length}/5
+                    {attachmentCount}/5
                   </span>
                 </div>
 
@@ -579,7 +589,7 @@ export function FeedbackSubmissionForm({
                           onClick={() => removeMedia(index)}
                           disabled={formBusy}
                           className="absolute -top-2 -right-2 flex size-8 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          aria-label="Remove media"
+                          aria-label={t("projectDetail.feedbackForm.details.removeMedia")}
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -600,7 +610,7 @@ export function FeedbackSubmissionForm({
                 {uploadMutation.isPending ? (
                   <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300" aria-live="polite">
                     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                    Uploading evidence securely&hellip;
+                    {t("projectDetail.feedbackForm.details.uploading")}
                   </div>
                 ) : null}
                 <FieldError errors={validationErrors.media} />
@@ -608,7 +618,7 @@ export function FeedbackSubmissionForm({
 
               {/* Rating */}
               <Field>
-                <FieldLabel>Rating (Optional)</FieldLabel>
+                <FieldLabel>{t("projectDetail.feedbackForm.rating.label")}</FieldLabel>
                 <div className="flex items-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
@@ -619,7 +629,7 @@ export function FeedbackSubmissionForm({
                       onMouseLeave={() => setHoverRating(0)}
                       disabled={formBusy}
                       className="rounded transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                      aria-label={t(star === 1 ? "projectDetail.feedbackForm.rating.rateOne" : "projectDetail.feedbackForm.rating.rateMany", { count: star })}
                     >
                       <Star
                         className={cn(
@@ -633,7 +643,7 @@ export function FeedbackSubmissionForm({
                   ))}
                   {rating > 0 && (
                     <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">
-                      {rating} star{rating > 1 ? 's' : ''}
+                      {starsText(rating)}
                     </span>
                   )}
                 </div>
@@ -641,7 +651,7 @@ export function FeedbackSubmissionForm({
 
               <div className="flex items-center justify-between pt-2">
                 <Button type="button" variant="ghost" onClick={() => goToStep("category", -1)} disabled={formBusy}>
-                  Back
+                  {t("projectDetail.feedbackForm.back")}
                 </Button>
                 <Button
                   type="button"
@@ -650,7 +660,7 @@ export function FeedbackSubmissionForm({
                     if (validateDetailsStep()) goToStep("consent");
                   }}
                 >
-                  Next
+                  {t("projectDetail.feedbackForm.next")}
                 </Button>
               </div>
             </div>
@@ -658,7 +668,7 @@ export function FeedbackSubmissionForm({
 
           {currentStep === "consent" && (
             <div className="space-y-5">
-              <StepHeader title="Consent" body="Confirm how you'd like to submit this feedback." />
+              <StepHeader title={t("projectDetail.feedbackForm.steps.consent")} body={t("projectDetail.feedbackForm.consent.body")} />
 
               {/* Agreement Checkbox */}
               <Field>
@@ -684,7 +694,7 @@ export function FeedbackSubmissionForm({
                       htmlFor="agreement"
                       className="cursor-pointer font-normal text-sm"
                     >
-                      {t("reportIssue.form.fields.agreeToTermsPrefix")}
+                      {t("projectDetail.feedbackForm.consent.agreePrefix")}
                       <Link
                         href="/terms-of-service"
                         target="_blank"
@@ -694,7 +704,7 @@ export function FeedbackSubmissionForm({
                       >
                         {t("footer.terms")}
                       </Link>
-                      {t("reportIssue.form.fields.andConnector")}
+                      {t("projectDetail.feedbackForm.consent.agreeAnd")}
                       <Link
                         href="/data-privacy"
                         target="_blank"
@@ -704,7 +714,7 @@ export function FeedbackSubmissionForm({
                       >
                         {t("footer.privacy")}
                       </Link>
-                      {" "}when submitting this feedback
+                      {t("projectDetail.feedbackForm.consent.agreeSuffix")}
                     </FieldLabel>
                   </div>
                 </div>
@@ -726,10 +736,10 @@ export function FeedbackSubmissionForm({
                       htmlFor="anonymous"
                       className="cursor-pointer font-normal text-sm"
                     >
-                      Submit as Anonymous
+                      {t("projectDetail.feedbackForm.consent.anonymousLabel")}
                     </FieldLabel>
                     <FieldDescription className="mt-1">
-                      Your identity will be hidden from other users
+                      {t("projectDetail.feedbackForm.consent.anonymousHint")}
                     </FieldDescription>
                   </div>
                 </div>
@@ -737,7 +747,7 @@ export function FeedbackSubmissionForm({
 
               <div className="flex items-center justify-between pt-2">
                 <Button type="button" variant="ghost" onClick={() => goToStep("details", -1)} disabled={formBusy}>
-                  Back
+                  {t("projectDetail.feedbackForm.back")}
                 </Button>
                 <Button
                   type="button"
@@ -746,7 +756,7 @@ export function FeedbackSubmissionForm({
                     if (validateConsentStep()) goToStep("review");
                   }}
                 >
-                  Next
+                  {t("projectDetail.feedbackForm.next")}
                 </Button>
               </div>
             </div>
@@ -754,43 +764,43 @@ export function FeedbackSubmissionForm({
 
           {currentStep === "review" && (
             <div className="space-y-4">
-              <StepHeader title="Review your feedback" body="Check everything below, then confirm to submit." />
+              <StepHeader title={t("projectDetail.feedbackForm.review.title")} body={t("projectDetail.feedbackForm.review.body")} />
 
-              <ReviewSection title="Your experience" onEdit={() => goToStep("sentiment", -1)}>
+              <ReviewSection title={t("projectDetail.feedbackForm.review.experience")} editLabel={t("projectDetail.feedbackForm.review.edit")} onEdit={() => goToStep("sentiment", -1)}>
                 <ReviewRow
-                  label="Sentiment"
-                  value={sentiment === "positive" ? "Positive" : sentiment === "negative" ? "Negative" : "Not specified"}
+                  label={t("projectDetail.feedbackForm.review.sentiment")}
+                  value={sentiment === "positive" ? t("projectDetail.feedbackForm.sentiment.positive") : sentiment === "negative" ? t("projectDetail.feedbackForm.sentiment.negative") : t("projectDetail.feedbackForm.review.notSpecified")}
                 />
                 <ReviewRow
-                  label="Category"
-                  value={categoryOptions.find((option) => option.value === category)?.label || category}
+                  label={t("projectDetail.feedbackForm.steps.category")}
+                  value={categoryLabel(category)}
                 />
               </ReviewSection>
 
-              <ReviewSection title="Feedback" onEdit={() => goToStep("details", -1)}>
+              <ReviewSection title={t("projectDetail.feedbackForm.review.feedback")} editLabel={t("projectDetail.feedbackForm.review.edit")} onEdit={() => goToStep("details", -1)}>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Your Feedback</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t("projectDetail.feedbackForm.details.commentLabel")}</p>
                   <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{comment}</p>
                 </div>
                 {category === "concerns" && (
                   <ReviewRow
-                    label="Issue Type"
-                    value={parseIssueTypeValue(issueType).join(", ") || "Not specified"}
+                    label={t("projectDetail.feedbackForm.review.issueType")}
+                    value={parseIssueTypeValue(issueType).join(", ") || t("projectDetail.feedbackForm.review.notSpecified")}
                   />
                 )}
-                <ReviewRow label="Rating" value={rating > 0 ? `${rating} star${rating > 1 ? "s" : ""}` : "Not rated"} />
+                <ReviewRow label={t("projectDetail.feedbackForm.review.rating")} value={rating > 0 ? starsText(rating) : t("projectDetail.feedbackForm.review.notRated")} />
                 <ReviewRow
-                  label="Attachments"
+                  label={t("projectDetail.feedbackForm.review.attachments")}
                   value={
-                    media.length + pendingEvidence.length === 0
-                      ? "None"
-                      : `${media.length + pendingEvidence.length} file${media.length + pendingEvidence.length > 1 ? "s" : ""}`
+                    attachmentCount === 0
+                      ? t("projectDetail.feedbackForm.review.noAttachments")
+                      : t(attachmentCount === 1 ? "projectDetail.feedbackForm.review.filesOne" : "projectDetail.feedbackForm.review.filesMany", { count: attachmentCount })
                   }
                 />
               </ReviewSection>
 
-              <ReviewSection title="Consent" onEdit={() => goToStep("consent", -1)}>
-                <ReviewRow label="Submitting as" value={isAnonymous ? "Anonymous" : "Your account"} />
+              <ReviewSection title={t("projectDetail.feedbackForm.steps.consent")} editLabel={t("projectDetail.feedbackForm.review.edit")} onEdit={() => goToStep("consent", -1)}>
+                <ReviewRow label={t("projectDetail.feedbackForm.review.submittingAs")} value={isAnonymous ? t("projectDetail.feedbackForm.review.anonymous") : t("projectDetail.feedbackForm.review.yourAccount")} />
               </ReviewSection>
 
               {validationErrors.submit && (
@@ -804,7 +814,7 @@ export function FeedbackSubmissionForm({
 
               <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
                 <Button type="button" variant="ghost" onClick={() => goToStep("consent", -1)} disabled={formBusy}>
-                  Back
+                  {t("projectDetail.feedbackForm.back")}
                 </Button>
                 <Button
                   type="button"
@@ -816,10 +826,10 @@ export function FeedbackSubmissionForm({
                   {formBusy ? (
                     <>
                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Saving Feedback...
+                      {t("projectDetail.feedbackForm.review.saving")}
                     </>
                   ) : (
-                    "Confirm & Submit"
+                    t("projectDetail.feedbackForm.review.submit")
                   )}
                 </Button>
               </div>
@@ -842,14 +852,14 @@ export function FeedbackSubmissionForm({
   );
 }
 
-function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; currentStepIndex: number }) {
+function StepProgress({ steps, currentStepIndex, label }: { steps: StepDefinition[]; currentStepIndex: number; label: string }) {
   const prefersReducedMotion = useReducedMotion();
   const lineDuration = prefersReducedMotion ? 0 : 0.4;
   const nodeDuration = prefersReducedMotion ? 0 : 0.25;
   const dotDuration = prefersReducedMotion ? 0 : 0.3;
 
   return (
-    <nav aria-label="Feedback progress" className="mb-6 w-full">
+    <nav aria-label={label} className="mb-6 w-full">
       <ol className="relative hidden items-center justify-between sm:flex">
         <div className="absolute left-0 right-0 top-5 h-0.5 bg-slate-200 dark:bg-slate-700" />
         <motion.div
@@ -970,12 +980,14 @@ function CategoryCard({
   option,
   isSelected,
   isRecommended,
+  recommendedLabel,
   disabled,
   onSelect,
 }: {
-  option: { value: FeedbackCategory; label: string; icon: LucideIcon; description: string };
+  option: CategoryOption;
   isSelected: boolean;
   isRecommended: boolean;
+  recommendedLabel: string;
   disabled?: boolean;
   onSelect: () => void;
 }) {
@@ -1000,7 +1012,7 @@ function CategoryCard({
           <span className="text-sm font-bold">{option.label}</span>
           {isRecommended && (
             <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-              Suggested
+              {recommendedLabel}
             </span>
           )}
         </div>
@@ -1010,7 +1022,7 @@ function CategoryCard({
   );
 }
 
-function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () => void; children: ReactNode }) {
+function ReviewSection({ title, editLabel, onEdit, children }: { title: string; editLabel: string; onEdit: () => void; children: ReactNode }) {
   return (
     <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
       <div className="flex items-center justify-between">
@@ -1021,7 +1033,7 @@ function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () 
           className="flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
         >
           <Pencil className="size-3.5" aria-hidden="true" />
-          Edit
+          {editLabel}
         </button>
       </div>
       <div className="space-y-2">{children}</div>

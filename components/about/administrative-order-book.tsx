@@ -3,9 +3,11 @@
 import { ArrowRight, BookOpen, Download } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/i18n";
 
 export function AdministrativeOrderBook() {
   const pdfUrl = "/Administrative-Order-No.-4-Series-of-2026.pdf";
+  const { t } = useTranslation();
 
   return (
     <div className="w-full flex flex-col md:flex-row items-center gap-8 md:gap-12 p-6 md:p-8 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 relative overflow-hidden group">
@@ -14,7 +16,7 @@ export function AdministrativeOrderBook() {
       <div className="absolute inset-0 left-1/2 opacity-25 dark:opacity-10 pointer-events-none">
         <Image
           src="/ao4-bg.jpg"
-          alt="FMR Project Groundbreaking"
+          alt={t("about.publications.ao4.backgroundAlt")}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover pointer-events-none"
@@ -28,7 +30,7 @@ export function AdministrativeOrderBook() {
           href={pdfUrl}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Open Administrative Order No. 4 in a new tab"
+          aria-label={t("about.publications.openInNewTab", { title: "Administrative Order No. 4" })}
           className="block relative w-[180px] h-[260px] md:w-[220px] md:h-[320px] transform-style-3d rotate-y-[-25deg] rotate-x-[10deg] group-hover:rotate-y-[-15deg] group-hover:rotate-x-[5deg] transition-all duration-500 ease-out shadow-2xl focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none rounded-r-md rounded-l-sm"
           style={{ transformStyle: 'preserve-3d' }}
         >
@@ -49,7 +51,7 @@ export function AdministrativeOrderBook() {
               <div className="relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0">
                 <Image
                   src="/bafe-logo.png"
-                  alt="BAFE Seal"
+                  alt={t("about.sealAlt")}
                   fill
                   sizes="80px"
                   className="object-contain opacity-80"
@@ -94,10 +96,12 @@ export function AdministrativeOrderBook() {
       {/* Text Content */}
       <div className="flex-1 text-center md:text-left relative z-10">
         <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">
-          FMR Implementation Guidelines
+          {t("about.publications.ao4.title")}
         </h2>
         <p className="text-slate-600 dark:text-slate-300 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
-          The official <strong>General Guidelines on the Implementation of the Department of Agriculture&apos;s Farm-to-Market Road Projects</strong> for FY 2026 and onwards. This document outlines procedures, requirements, and standards for all FMR project stakeholders.
+          {t("about.publications.ao4.descBefore")}
+          <strong>{t("about.publications.ao4.descStrong")}</strong>
+          {t("about.publications.ao4.descAfter")}
         </p>
 
         <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
@@ -107,7 +111,7 @@ export function AdministrativeOrderBook() {
           >
             <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
               <BookOpen className="w-4 h-4" />
-              <span>Read Guidelines</span>
+              <span>{t("about.publications.ao4.read")}</span>
               <ArrowRight className="w-4 h-4 opacity-80" />
             </a>
           </Button>
@@ -119,7 +123,7 @@ export function AdministrativeOrderBook() {
           >
             <a href={pdfUrl} download="AO-No-4-Series-2026-FMR-Guidelines.pdf">
               <Download className="w-4 h-4 mr-2" />
-              Download PDF
+              {t("about.publications.download")}
             </a>
           </Button>
         </div>

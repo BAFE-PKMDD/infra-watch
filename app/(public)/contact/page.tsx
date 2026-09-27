@@ -232,7 +232,7 @@ export default function ContactPage() {
                         <form.Field
                           name="name"
                           validators={{
-                            onChange: ({ value }) => (!value.trim() ? "Name is required" : undefined)
+                            onChange: ({ value }) => (!value.trim() ? t<string>("contact.form.validation.nameRequired") : undefined)
                           }}
                         >
                           {(field) => {
@@ -264,9 +264,9 @@ export default function ContactPage() {
                           name="email"
                           validators={{
                             onChange: ({ value }) => {
-                              if (!value.trim()) return "Email is required";
+                              if (!value.trim()) return t<string>("contact.form.validation.emailRequired");
                               const emailPattern = /^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/;
-                              return emailPattern.test(value) ? undefined : "Enter a valid email address";
+                              return emailPattern.test(value) ? undefined : t<string>("contact.form.validation.emailInvalid");
                             }
                           }}
                         >
@@ -299,7 +299,7 @@ export default function ContactPage() {
                       <form.Field
                         name="subject"
                         validators={{
-                          onChange: ({ value }) => (!value.trim() ? "Subject is required" : undefined)
+                          onChange: ({ value }) => (!value.trim() ? t<string>("contact.form.validation.subjectRequired") : undefined)
                         }}
                       >
                         {(field) => {
@@ -331,8 +331,8 @@ export default function ContactPage() {
                         name="message"
                         validators={{
                           onChange: ({ value }) => {
-                            if (!value.trim()) return "Message is required";
-                            return value.trim().length < 10 ? "Please provide at least 10 characters" : undefined;
+                            if (!value.trim()) return t<string>("contact.form.validation.messageRequired");
+                            return value.trim().length < 10 ? t<string>("contact.form.validation.messageMin") : undefined;
                           }
                         }}
                       >
@@ -420,7 +420,7 @@ export default function ContactPage() {
             </p>
             <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
               <iframe
-                title="BAFE Office Location"
+                title={t("contact.office.mapTitle")}
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3854.494532314407!2d121.0396378!3d14.6419531!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397b700a33f912b%3A0xc13f2e3ebcc6f2fd!2sCyberpod%20Centris%20Two%20-%20Eton%20Centris!5e0!3m2!1sen!2sph!4v1700000000000!5m2!1sen!2sph"
                 width="100%"
                 height="340"
