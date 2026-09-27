@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
+import { useRef, useState, useEffect } from "react";
+import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { ChevronDown, ClipboardCheck, Search, Send, ShieldCheck, Tractor, type LucideIcon } from "lucide-react";
 
 type Step = {
@@ -29,7 +29,7 @@ const STEPS: Step[] = [
     num: "03",
     icon: Send,
     title: "Report or Give Feedback",
-    desc: "Rate a project and upload geotagged photos on the Citizen Feed, file a detailed Online E-Report, or send an SMS Grievance if you're offline.",
+    desc: "Three channels — Citizen Feed, Online E-Report, or SMS Grievance — each built for a different situation. See below to pick the one that fits.",
     methods: ["Citizen Feed", "Online E-Report", "SMS Grievance"],
   },
   {
@@ -50,15 +50,15 @@ export function HowItWorksScroll() {
   const tractorLeft = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
   const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.06], [1, 0]);
 
-  // Boundaries at 0, 0.25, 0.5, 0.75, 1 (one quarter of the pinned scroll per step).
-  // Each panel fades out fully before the next fades in, so two panels are never
-  // both partially visible at once (which read as garbled overlapping text).
-  const step0Opacity = useTransform(scrollYProgress, [0.23, 0.25], [1, 0]);
-  const step1Opacity = useTransform(scrollYProgress, [0.25, 0.27, 0.48, 0.5], [0, 1, 1, 0]);
-  const step2Opacity = useTransform(scrollYProgress, [0.5, 0.52, 0.73, 0.75], [0, 1, 1, 0]);
-  const step3Opacity = useTransform(scrollYProgress, [0.75, 0.77], [0, 1]);
-  const panelOpacities = [step0Opacity, step1Opacity, step2Opacity, step3Opacity];
-  const reportMethodsPointerEvents = useTransform(step2Opacity, (value) => (value > 0.5 ? "auto" : "none"));
+  // Track which step is active based on scroll position.
+  const [activeStep, setActiveStep] = useState(0);
+
+  useEffect(() => {
+    return scrollYProgress.on("change", (v) => {
+      const next = Math.min(STEPS.length - 1, Math.floor(v * STEPS.length));
+      setActiveStep(next);
+    });
+  }, [scrollYProgress]);
 
   // Step badges stay lit once reached instead of fading back out with their panel.
   const dot1Opacity = useTransform(scrollYProgress, [0.23, 0.25], [0.35, 1]);
@@ -69,6 +69,8 @@ export function HowItWorksScroll() {
   if (reduceMotion) {
     return <StaticHowItWorks />;
   }
+
+  const step = STEPS[activeStep];
 
   return (
     <section
@@ -103,27 +105,27 @@ export function HowItWorksScroll() {
             <Tractor className="h-6 w-6" />
           </motion.div>
           <div className="absolute inset-x-0 top-4 flex justify-between">
-            {STEPS.map((step, index) => (
+            {STEPS.map((s, index) => (
               <motion.span
-                key={step.num}
+                key={s.num}
                 aria-hidden
                 style={{ opacity: dotOpacities[index] }}
                 className="rounded-full bg-slate-900 px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider text-white dark:bg-indigo-500"
               >
-                {step.num}
+                {s.num}
               </motion.span>
             ))}
           </div>
         </div>
 
         <div className="relative mt-16 h-72 w-full max-w-xl sm:h-56">
-          {STEPS.map((step, index) => (
+          <AnimatePresence mode="wait">
             <motion.div
-              key={step.num}
-              style={{
-                opacity: panelOpacities[index],
-                pointerEvents: step.methods ? reportMethodsPointerEvents : "none",
-              }}
+              key={activeStep}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
               className="absolute inset-0 flex flex-col items-center justify-center text-center"
             >
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-primary bg-white text-primary shadow-sm dark:border-indigo-400 dark:bg-slate-900 dark:text-indigo-300">
@@ -146,7 +148,7 @@ export function HowItWorksScroll() {
                 </ul>
               )}
             </motion.div>
-          ))}
+          </AnimatePresence>
         </div>
 
         <motion.div

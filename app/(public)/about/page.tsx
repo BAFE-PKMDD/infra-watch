@@ -5,6 +5,7 @@ import { useTranslation } from "@/i18n";
 import Image from "next/image";
 import Link from "next/link";
 import { getBlurDataURL } from "@/lib/image-utils";
+import { ExternalLink } from "lucide-react";
 import { BluecopyBook } from "@/components/about/bluecopy-book";
 import { AdministrativeOrderBook } from "@/components/about/administrative-order-book";
 import { LguGuidebook } from "@/components/about/lgu-guidebook";
@@ -137,6 +138,38 @@ export default function AboutPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Know More About BAFE Banner */}
+        <div className="rounded-xl border border-blue-200/80 bg-gradient-to-r from-blue-50/80 via-white to-blue-50/40 p-5 md:p-6 dark:border-[#1e3a5f]/40 dark:bg-gradient-to-r dark:from-[#0d1526] dark:via-[#13233c]/40 dark:to-[#0d1526] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="relative w-12 h-12 flex-shrink-0">
+              <Image
+                src="/bafe-logo.png"
+                alt="BAFE Seal"
+                fill
+                sizes="48px"
+                className="object-contain"
+              />
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                Do you want to know more about BAFE?
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5">
+                Please check our official website for agency announcements, program updates, and engineering standards.
+              </p>
+            </div>
+          </div>
+          <a
+            href="https://www.bafe.gov.ph"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all transform active:scale-95 whitespace-nowrap self-start sm:self-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+          >
+            <span>Visit BAFE Website</span>
+            <ExternalLink className="w-4 h-4" />
+          </a>
         </div>
 
         {/* Reference Publications Section Header */}

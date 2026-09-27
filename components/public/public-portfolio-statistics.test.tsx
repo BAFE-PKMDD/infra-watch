@@ -27,6 +27,12 @@ const result: InfraAnalyticsResult = {
       completedOrTurnedOver: { count: 18_397, percentage: 71.01, total: 25_907 },
       mappedProjects: { count: 5_000, total: 25_907 },
     },
+    schedulePerformance: {
+      overdueCount: 0,
+      medianDaysOverdue: null,
+      total: 0,
+      unknownScheduleCount: 0,
+    },
     source: {
       name: "ABEMIS infrastructure project feed",
       projectCount: 25_907,

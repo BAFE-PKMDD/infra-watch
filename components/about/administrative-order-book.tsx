@@ -96,9 +96,6 @@ export function AdministrativeOrderBook() {
         <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">
           FMR Implementation Guidelines
         </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-4">
-          Administrative Order No. 4, Series of 2026
-        </p>
         <p className="text-slate-600 dark:text-slate-300 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
           The official <strong>General Guidelines on the Implementation of the Department of Agriculture&apos;s Farm-to-Market Road Projects</strong> for FY 2026 and onwards. This document outlines procedures, requirements, and standards for all FMR project stakeholders.
         </p>

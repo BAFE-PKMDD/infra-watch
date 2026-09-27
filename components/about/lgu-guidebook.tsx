@@ -63,17 +63,10 @@ export function LguGuidebook() {
 
       {/* Text Content */}
       <div className="flex-1 text-center md:text-left relative z-10">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40 mb-3">
-          Version 2.0 (Revised Edition)
-        </span>
 
         <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">
           LGU GUIDEBOOK
         </h2>
-
-        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-4">
-          Creation, Strengthening and Institutionalization of LGU Agricultural and Biosystems Engineering Groups
-        </p>
 
         <p className="text-slate-700 dark:text-slate-300 text-sm md:text-base leading-relaxed mb-6 max-w-xl">
           The official reference manual for Local Government Units (LGUs) issued by the Department of Agriculture through BAFE. This guidebook assists provinces, cities, and municipalities in operationalizing Agricultural and Biosystems Engineering (ABE) offices, managing devolved agricultural and biosystems infrastructure functions, and adhering to national standards in compliance with Republic Act No. 10601.

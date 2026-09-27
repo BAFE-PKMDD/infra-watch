@@ -17,6 +17,9 @@ const analytics = aggregateInfraAnalyticsRows([
     budget: "1000000.00",
     latitude: 14.5995,
     longitude: 120.9842,
+    startDate: null,
+    targetCompletionDate: null,
+    actualCompletionDate: null,
   },
 ]);
 
