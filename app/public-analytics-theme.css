@@ -30,11 +30,27 @@
   --stage-handed-over: #104281;
   --stage-on-hold: #b3bbb4;
 
+  /* Sequential blue scale for magnitude, lowest to highest. */
+  --seq-1: #86b6ef;
+  --seq-2: #5598e7;
+  --seq-3: #2a78d6;
+  --seq-4: #1c5cab;
+  --seq-5: #104281;
+
+  /* Heat scale end points (surface to deepest blue). */
+  --heat-lo: #fbfcfa;
   --heat-hi: #104281;
+
+  /* Severity. Reserved for states that are genuinely good, warning, serious or critical;
+     the public page does not rank or flag projects, so no chart uses these today. */
+  --good: #0ca30c;
+  --warn: #fab219;
+  --serious: #ec835a;
+  --crit: #d03b3b;
 
   background: var(--page);
   color: var(--ink);
-  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-poppins), "Poppins", ui-sans-serif, system-ui, sans-serif;
   color-scheme: light;
 }
 
@@ -57,16 +73,24 @@
   --stage-turnover: #6da7ec;
   --stage-handed-over: #9ec5f4;
   --stage-on-hold: #4a554d;
+  /* Same scale reversed so higher values stay the higher-contrast end on a dark page. */
+  --seq-1: #104281;
+  --seq-2: #1c5cab;
+  --seq-3: #2a78d6;
+  --seq-4: #5598e7;
+  --seq-5: #86b6ef;
+  --heat-lo: #151b17;
   --heat-hi: #86b6ef;
   color-scheme: dark;
 }
 
 .public-analytics .pa-heading {
-  font-family: var(--font-plex-condensed), var(--font-plex-sans), ui-sans-serif, sans-serif;
+  font-family: var(--font-outfit), "Outfit", ui-sans-serif, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 .public-analytics .pa-mono {
-  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 .public-analytics :focus-visible {

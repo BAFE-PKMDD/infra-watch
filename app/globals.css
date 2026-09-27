@@ -62,6 +62,15 @@
   --color-pa-series: var(--series);
   --color-pa-series-soft: var(--series-soft);
   --color-pa-context: var(--context);
+  --color-pa-seq-1: var(--seq-1);
+  --color-pa-seq-2: var(--seq-2);
+  --color-pa-seq-3: var(--seq-3);
+  --color-pa-seq-4: var(--seq-4);
+  --color-pa-seq-5: var(--seq-5);
+  --color-pa-good: var(--good);
+  --color-pa-warn: var(--warn);
+  --color-pa-serious: var(--serious);
+  --color-pa-crit: var(--crit);
 }
 
 :root {
