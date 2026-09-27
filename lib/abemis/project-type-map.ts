@@ -64,3 +64,14 @@ export function getProjectTypesForFarmOperation(farmOperation: string): string[]
   }
   return [...types].sort((a, b) => a.localeCompare(b));
 }
+
+/**
+ * Returns all standardized project types across all farm operations.
+ */
+export function getAllProjectTypes(): string[] {
+  const types = new Set<string>();
+  for (const entry of PROJECT_TYPE_MAP.values()) {
+    types.add(entry.proposedProjectType);
+  }
+  return [...types].sort((a, b) => a.localeCompare(b));
+}

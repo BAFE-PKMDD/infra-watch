@@ -386,6 +386,8 @@ export async function GET(request: NextRequest) {
         ticketNumber: issues.ticketNumber,
         projectId: issues.projectId,
         category: issues.category,
+        issueType: issues.issueType,
+        farmOperation: sql<string | null>`coalesce(${issues.reportedFarmOperation}, ${projects.farmOperation})`,
         status: issues.status,
         publicDescription: issues.publicDescription,
         region: issues.region,
@@ -433,7 +435,10 @@ export async function POST(request: NextRequest) {
 
     if (contentType.includes("application/json")) {
       const body = await request.json();
-      const category = String(body.issueType || body.category || "").trim();
+      const rawCategory = String(body.category || "").trim();
+      const rawIssueType = String(body.issueType || "").trim();
+      const category = rawCategory || rawIssueType;
+      const issueType = rawIssueType || rawCategory;
       const description = String(body.issueDescription || body.description || "").trim();
       const isAnonymous = Boolean(body.isAnonymous);
       const reporterName = String(body.reporterName || "").trim();
@@ -479,6 +484,7 @@ export async function POST(request: NextRequest) {
           reporterEmail: isAnonymous ? null : body.reporterEmail || null,
           isAnonymous,
           category,
+          issueType,
           status: "pending",
           priority: "normal",
           description,

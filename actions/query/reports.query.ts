@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import {
   differenceInMilliseconds,
   eachDayOfInterval,
@@ -10,7 +10,7 @@ import {
 } from "date-fns";
 
 import { db } from "@/lib/db";
-import { feedback, issueResponses, issues } from "@/lib/db/schema";
+import { feedback, issueResponses, issues, projects } from "@/lib/db/schema";
 import { requireAdminOrRegionalAdmin } from "@/lib/session";
 import { SLA_BREACH_HOURS } from "@/lib/sla-thresholds";
 import type {
@@ -127,10 +127,12 @@ export async function getIssueSlaReport(params: { from: Date; to: Date }): Promi
       ticketNumber: issues.ticketNumber,
       status: issues.status,
       category: issues.category,
+      farmOperation: sql<string | null>`coalesce(${issues.reportedFarmOperation}, ${projects.farmOperation})`,
       createdAt: issues.createdAt,
       resolvedAt: issues.resolvedAt,
     })
     .from(issues)
+    .leftJoin(projects, eq(projects.abemisId, issues.projectId))
     .where(and(gte(issues.createdAt, from), lte(issues.createdAt, to)));
 
   const issueIds = rangeIssues.map((issue) => issue.id);
@@ -168,6 +170,7 @@ export async function getIssueSlaReport(params: { from: Date; to: Date }): Promi
       referenceId: issue.ticketNumber,
       status: issue.status,
       category: issue.category,
+      farmOperation: issue.farmOperation ?? null,
       createdAt: issue.createdAt,
       firstResponseAt,
       resolvedAt: issue.resolvedAt,

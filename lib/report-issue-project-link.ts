@@ -4,6 +4,7 @@ type PublicProjectPreview = {
   code?: string;
   province?: string;
   city?: string;
+  farmOperation?: string;
 };
 
 export function buildReportIssuePath(projectId: string) {
@@ -18,5 +19,6 @@ export function projectPreviewToSelectedProject(project: PublicProjectPreview) {
     sourceProjectId: project.code,
     province: project.province,
     municipality: project.city,
+    farmOperation: project.farmOperation,
   };
 }

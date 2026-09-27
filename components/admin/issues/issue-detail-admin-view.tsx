@@ -67,6 +67,9 @@ type AdminIssueDetail = {
   ticketNumber: string;
   projectId: string | null;
   projectName: string | null;
+  category?: string | null;
+  reportedFarmOperation?: string | null;
+  farmOperation?: string | null;
   issueType: string;
   issueDescription: string;
   publicDescription: string | null;
@@ -257,6 +260,11 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                       <Badge variant="outline" className={cn("h-auto rounded-full px-2.5 py-1 text-xs font-bold", statusClass(issue.status))}>
                         {getStatusLabel(issue.status)}
                       </Badge>
+                      {issue.category && (
+                        <Badge variant="outline" className="h-auto rounded-full border-emerald-400/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                          {issue.category}
+                        </Badge>
+                      )}
                       <Badge variant="outline" className="h-auto rounded-full px-2.5 py-1 text-xs font-bold">
                         {issue.issueType}
                       </Badge>
@@ -274,8 +282,9 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                   </p>
                 </div>
 
-                <dl className="mt-5 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-3 dark:border-slate-800">
+                <dl className="mt-5 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800">
                   <QuickFact label="Project" value={issue.projectName || "Not linked to a project"} icon={<Building2 className="size-4" />} />
+                  <QuickFact label="Farm operation" value={issue.farmOperation || issue.reportedFarmOperation || "Not specified"} icon={<Building2 className="size-4" />} />
                   <QuickFact label="General location" value={locationLabel(issue)} icon={<MapPin className="size-4" />} />
                   <QuickFact label="Last updated" value={formatDate(issue.updatedAt, true)} icon={<Clock className="size-4" />} />
                 </dl>
@@ -488,6 +497,8 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
 
                   <Disclosure title="Reporter and case details" summary="Reporter, location, and dates" icon={<User className="size-4" />}>
                     <div className="grid gap-5 sm:grid-cols-2">
+                      <InfoItem label="Category" value={issue.category || "Not provided"} icon={<FileText className="size-4" />} />
+                      <InfoItem label="Farm operation" value={issue.farmOperation || issue.reportedFarmOperation || "Not specified"} icon={<Building2 className="size-4" />} />
                       <InfoItem label="Reporter" value={issue.reporterName || "Not provided"} icon={<User className="size-4" />} />
                       <InfoItem label="Email" value={issue.reporterEmail || "Not provided"} icon={<Mail className="size-4" />} />
                       <InfoItem label="Contact" value={issue.reporterContact || "Not provided"} icon={<Phone className="size-4" />} />

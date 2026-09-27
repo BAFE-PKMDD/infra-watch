@@ -54,6 +54,8 @@ interface IssueDetail {
   barangay: string;
   streetLandmark: string;
   issueType: string;
+  category?: string | null;
+  farmOperation?: string | null;
   issueDescription: string;
   dateNoticed: string;
   status: string;
@@ -220,6 +222,11 @@ export default function MyIssueDetailPage() {
                   <StatusIcon className="h-4 w-4" />
                   {status.label}
                 </span>
+                {issue.category && (
+                  <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    Category: {issue.category}
+                  </Badge>
+                )}
                 <Badge variant="outline">{issue.issueType}</Badge>
                 {issue.ticketNumber && <Badge variant="outline">{issue.ticketNumber}</Badge>}
               </div>
@@ -227,6 +234,12 @@ export default function MyIssueDetailPage() {
                 {issue.issueDescription}
               </h1>
               <div className="grid grid-cols-1 gap-4 text-sm text-slate-600 dark:text-slate-300 md:grid-cols-2">
+                {issue.farmOperation && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">Farm Operation:</span>
+                    <span>{issue.farmOperation}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   <span>

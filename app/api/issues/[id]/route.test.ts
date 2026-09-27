@@ -17,6 +17,8 @@ const issue: IssueDetailRow = {
   reporterEmail: "private@example.com",
   isAnonymous: false,
   category: "delay",
+  issueType: "delay",
+  farmOperation: "Irrigation",
   status: "pending",
   description: "Private issue description",
   publicDescription: null,

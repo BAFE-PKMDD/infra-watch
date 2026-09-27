@@ -15,7 +15,9 @@ export type MyIssueItem = {
   city: string;
   barangay: string;
   streetLandmark: string;
+  category: string;
   issueType: string;
+  farmOperation: string | null;
   issueDescription: string;
   dateNoticed: Date;
   status: "pending" | "reviewing" | "resolved" | "closed";
@@ -47,6 +49,8 @@ export async function getMyIssues(): Promise<{
         ticketNumber: issues.ticketNumber,
         projectId: issues.projectId,
         category: issues.category,
+        issueType: issues.issueType,
+        farmOperation: sql<string | null>`coalesce(${issues.reportedFarmOperation}, ${projects.farmOperation})`,
         status: issues.status,
         description: issues.description,
         region: issues.region,
@@ -103,7 +107,9 @@ export async function getMyIssues(): Promise<{
           city: row.municipality ?? "",
           barangay: row.barangay ?? "",
           streetLandmark: row.landmark ?? "",
-          issueType: row.category,
+          category: row.category,
+          issueType: row.issueType || row.category,
+          farmOperation: row.farmOperation ?? null,
           issueDescription: row.description,
           dateNoticed: row.createdAt,
           status: normalizeIssueStatus(row.status),

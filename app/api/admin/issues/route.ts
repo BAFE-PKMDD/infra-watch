@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, count, desc, eq, ilike, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 
 import { formatAdminIssue, requireIssuePermission, toDbIssueStatus } from "@/lib/admin-issues";
 import { db } from "@/lib/db";
@@ -58,6 +58,9 @@ export async function GET(request: NextRequest) {
           reporterEmail: issues.reporterEmail,
           isAnonymous: issues.isAnonymous,
           category: issues.category,
+          issueType: issues.issueType,
+          reportedFarmOperation: issues.reportedFarmOperation,
+          farmOperation: sql<string | null>`coalesce(${issues.reportedFarmOperation}, ${projects.farmOperation})`,
           status: issues.status,
           priority: issues.priority,
           description: issues.description,

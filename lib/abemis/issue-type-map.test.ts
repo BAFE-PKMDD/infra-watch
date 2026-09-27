@@ -5,7 +5,9 @@ import { FARM_OPERATIONS } from "./project-type-map";
 import {
   ISSUE_TYPES,
   formatIssueTypeValue,
+  getCategoryDisplayName,
   parseIssueTypeValue,
+  splitIssueTypes,
   splitIssueTypesByFarmOperation,
 } from "./issue-type-map";
 
@@ -92,4 +94,51 @@ test("the stored value separator never collides with a comma already inside a la
 test("parseIssueTypeValue ignores blank input and stray whitespace", () => {
   assert.deepEqual(parseIssueTypeValue(""), []);
   assert.deepEqual(parseIssueTypeValue("  Safety Hazard  |  Other  "), ["Safety Hazard", "Other"]);
+});
+
+test("splitIssueTypes by category correctly recommends category-relevant types", () => {
+  const qualitySplit = splitIssueTypes({ category: "quality" });
+  const qualityRecommendedIds = qualitySplit.recommended.map((t) => t.id);
+  assert.ok(qualityRecommendedIds.includes("substandard_materials"));
+  assert.ok(qualityRecommendedIds.includes("poor_workmanship"));
+  assert.ok(!qualityRecommendedIds.includes("slow_pacing"));
+  assert.ok(qualitySplit.more.some((t) => t.id === "slow_pacing"));
+
+  const progressSplit = splitIssueTypes({ category: "progress" });
+  const progressRecommendedIds = progressSplit.recommended.map((t) => t.id);
+  assert.ok(progressRecommendedIds.includes("construction_delay"));
+  assert.ok(progressRecommendedIds.includes("slow_pacing"));
+  assert.ok(!progressRecommendedIds.includes("substandard_materials"));
+  assert.ok(progressSplit.more.some((t) => t.id === "substandard_materials"));
+
+  const generalSplit = splitIssueTypes({ category: "general" });
+  const generalRecommendedIds = generalSplit.recommended.map((t) => t.id);
+  assert.ok(generalRecommendedIds.includes("community_suggestion"));
+  assert.ok(generalRecommendedIds.includes("general_inquiry"));
+
+  const concernsSplit = splitIssueTypes({ category: "concerns" });
+  const concernsRecommendedIds = concernsSplit.recommended.map((t) => t.id);
+  assert.ok(concernsRecommendedIds.includes("safety_hazard"));
+  assert.ok(concernsRecommendedIds.includes("vandalism_theft"));
+});
+
+test("splitIssueTypes combines category and farmOperation recommendations", () => {
+  const roadQuality = splitIssueTypes({
+    category: "quality",
+    farmOperation: "Agricultural Transport and Infrastructure",
+  });
+  const roadQualityIds = roadQuality.recommended.map((t) => t.id);
+  assert.ok(roadQualityIds.includes("road_pavement"));
+  assert.ok(roadQualityIds.includes("substandard_materials"));
+  assert.ok(!roadQualityIds.includes("irrigation_leak"));
+  // Irrigation leak is still in 'more' so citizens can browse all issue types
+  assert.ok(roadQuality.more.some((t) => t.id === "irrigation_leak"));
+});
+
+test("getCategoryDisplayName returns human-readable label", () => {
+  assert.equal(getCategoryDisplayName("quality"), "Project Quality");
+  assert.equal(getCategoryDisplayName("progress"), "Project Progress");
+  assert.equal(getCategoryDisplayName("general"), "General Feedback");
+  assert.equal(getCategoryDisplayName("concerns"), "Concerns & Issues");
+  assert.equal(getCategoryDisplayName(null), "");
 });

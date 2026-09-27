@@ -37,6 +37,7 @@ export interface SlaTableRow {
   referenceId: string; // title, ticket number, or excerpt
   status: string;
   category?: string;
+  farmOperation?: string | null;
   createdAt: Date;
   firstResponseAt?: Date | null;
   resolvedAt?: Date | null;

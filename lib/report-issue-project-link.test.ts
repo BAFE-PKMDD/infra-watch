@@ -14,6 +14,7 @@ test("maps a public project preview into the report form selection contract", ()
     code: "CODE-1",
     province: "Leyte",
     city: "Tacloban",
+    farmOperation: "Production Facility",
   }), {
     id: "AMEFIP-1",
     name: "Solar dryer",
@@ -21,5 +22,6 @@ test("maps a public project preview into the report form selection contract", ()
     sourceProjectId: "CODE-1",
     province: "Leyte",
     municipality: "Tacloban",
+    farmOperation: "Production Facility",
   });
 });

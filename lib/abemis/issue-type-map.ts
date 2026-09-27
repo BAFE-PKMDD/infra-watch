@@ -1,28 +1,43 @@
 import {
   AlertTriangle,
   Bug,
+  Calendar,
+  Clock,
   CloudRain,
+  Compass,
   Construction,
   Droplets,
   FlaskConical,
+  Hammer,
+  HardHat,
+  HelpCircle,
+  Hourglass,
+  Lightbulb,
   Mountain,
+  PauseCircle,
   PowerOff,
   Shapes,
   ShieldAlert,
   Signpost,
   Thermometer,
+  ThumbsUp,
+  Trees,
   Wind,
   Wrench,
-  HelpCircle,
   Zap,
   type LucideIcon,
 } from "lucide-react";
 
+export type ReportCategory = "quality" | "progress" | "general" | "concerns";
+
 /**
  * Issue types a citizen can report against an infrastructure item, informed by the
  * physical-status checklist categories in the DA-APSAM IMMAS operation and maintenance
- * assessment forms (road shoulders/roadway/drainage for FMR, canal/gate/pump for
- * irrigation, roof/structural frame/electrical for storage and processing facilities).
+ * assessment forms as well as category-specific feedback dimensions:
+ * - Project Quality (materials, workmanship, construction standards)
+ * - Project Progress (timeline, completion status, pacing)
+ * - General Feedback (suggestions, community impact, commendation, inquiries)
+ * - Concerns & Issues (safety, damage, theft, urgent operational hazards)
  *
  * `farmOperations` lists which Farm Operation categories (see project-type-map.ts,
  * sourced from infrastructure-categorization.json) this type is recommended for.
@@ -33,14 +48,157 @@ export interface IssueTypeOption {
   label: string;
   icon: LucideIcon;
   farmOperations: string[];
+  categories: ReportCategory[];
 }
 
 export const ISSUE_TYPES: IssueTypeOption[] = [
-  // Common - relevant to any infrastructure item
-  { id: "safety_hazard", label: "Safety Hazard", icon: AlertTriangle, farmOperations: [] },
-  { id: "not_operational", label: "Idle / Not Operational", icon: PowerOff, farmOperations: [] },
-  { id: "vandalism_theft", label: "Vandalism or Theft", icon: ShieldAlert, farmOperations: [] },
-  { id: "other", label: "Other", icon: HelpCircle, farmOperations: [] },
+  // Common across categories or specifically tagged
+  {
+    id: "safety_hazard",
+    label: "Safety Hazard",
+    icon: AlertTriangle,
+    farmOperations: [],
+    categories: ["concerns"],
+  },
+  {
+    id: "not_operational",
+    label: "Idle / Not Operational",
+    icon: PowerOff,
+    farmOperations: [],
+    categories: ["concerns", "progress"],
+  },
+  {
+    id: "vandalism_theft",
+    label: "Vandalism or Theft",
+    icon: ShieldAlert,
+    farmOperations: [],
+    categories: ["concerns"],
+  },
+  {
+    id: "other",
+    label: "Other",
+    icon: HelpCircle,
+    farmOperations: [],
+    categories: ["quality", "progress", "general", "concerns"],
+  },
+
+  // Project Quality - Common standards, materials, and workmanship
+  {
+    id: "substandard_materials",
+    label: "Substandard Materials",
+    icon: Hammer,
+    farmOperations: [],
+    categories: ["quality"],
+  },
+  {
+    id: "poor_workmanship",
+    label: "Poor Workmanship",
+    icon: Wrench,
+    farmOperations: [],
+    categories: ["quality"],
+  },
+  {
+    id: "standards_non_compliance",
+    label: "Construction Standards Non-Compliance",
+    icon: Construction,
+    farmOperations: [],
+    categories: ["quality"],
+  },
+
+  // Project Progress - Timeline, completion status, and pacing
+  {
+    id: "construction_delay",
+    label: "Construction Delay / Work Stoppage",
+    icon: Clock,
+    farmOperations: [],
+    categories: ["progress", "concerns"],
+  },
+  {
+    id: "slow_pacing",
+    label: "Slow Progress / Behind Schedule",
+    icon: Hourglass,
+    farmOperations: [],
+    categories: ["progress"],
+  },
+  {
+    id: "abandoned_site",
+    label: "Abandoned or Inactive Site",
+    icon: PauseCircle,
+    farmOperations: [],
+    categories: ["progress", "concerns"],
+  },
+  {
+    id: "unfinished_work",
+    label: "Incomplete or Unfinished Work",
+    icon: Construction,
+    farmOperations: [],
+    categories: ["progress"],
+  },
+  {
+    id: "idle_machinery_labor",
+    label: "Idle Machinery or Lack of Labor",
+    icon: HardHat,
+    farmOperations: [],
+    categories: ["progress"],
+  },
+  {
+    id: "schedule_inquiry",
+    label: "Target Completion Date Inquiry",
+    icon: Calendar,
+    farmOperations: [],
+    categories: ["progress"],
+  },
+
+  // General Feedback - Suggestions, inquiries, commendation, impact
+  {
+    id: "community_suggestion",
+    label: "Community Suggestion or Request",
+    icon: Lightbulb,
+    farmOperations: [],
+    categories: ["general"],
+  },
+  {
+    id: "general_inquiry",
+    label: "General Project Inquiry",
+    icon: HelpCircle,
+    farmOperations: [],
+    categories: ["general"],
+  },
+  {
+    id: "maintenance_request",
+    label: "Maintenance or Repair Request",
+    icon: Wrench,
+    farmOperations: [],
+    categories: ["general"],
+  },
+  {
+    id: "environmental_impact",
+    label: "Environmental or Community Impact",
+    icon: Trees,
+    farmOperations: [],
+    categories: ["general"],
+  },
+  {
+    id: "missing_billboard",
+    label: "Missing Project Signboard / Billboard",
+    icon: Signpost,
+    farmOperations: [],
+    categories: ["general"],
+  },
+  {
+    id: "public_access_traffic",
+    label: "Public Access or Traffic Concern",
+    icon: Compass,
+    farmOperations: [],
+    categories: ["general"],
+  },
+  {
+    id: "commendation",
+    label: "Commendation or Positive Feedback",
+    icon: ThumbsUp,
+    farmOperations: [],
+    categories: ["general"],
+  },
 
   // Irrigation System (SPIS, diversion dams)
   {
@@ -48,18 +206,21 @@ export const ISSUE_TYPES: IssueTypeOption[] = [
     label: "Water Leak or Seepage",
     icon: Droplets,
     farmOperations: ["Irrigation System"],
+    categories: ["quality", "concerns"],
   },
   {
     id: "irrigation_siltation",
     label: "Canal Siltation or Blockage",
     icon: Shapes,
     farmOperations: ["Irrigation System"],
+    categories: ["quality", "concerns"],
   },
   {
     id: "irrigation_gate_valve",
     label: "Gate, Valve, or Pump Malfunction",
     icon: Wrench,
     farmOperations: ["Irrigation System"],
+    categories: ["quality", "concerns"],
   },
 
   // Agricultural Transport and Infrastructure (farm-to-market roads, tramlines, bridges)
@@ -68,6 +229,7 @@ export const ISSUE_TYPES: IssueTypeOption[] = [
     label: "Pavement Damage or Potholes",
     icon: Construction,
     farmOperations: ["Agricultural Transport and Infrastructure"],
+    categories: ["quality", "concerns"],
   },
   {
     id: "road_drainage",
@@ -78,18 +240,21 @@ export const ISSUE_TYPES: IssueTypeOption[] = [
       "Storage Facility",
       "Post Harvest Facility",
     ],
+    categories: ["quality", "concerns"],
   },
   {
     id: "road_slope_erosion",
     label: "Slope Protection or Erosion",
     icon: Mountain,
     farmOperations: ["Agricultural Transport and Infrastructure", "Irrigation System"],
+    categories: ["quality", "concerns"],
   },
   {
     id: "road_signage",
     label: "Missing or Damaged Signage",
     icon: Signpost,
     farmOperations: ["Agricultural Transport and Infrastructure"],
+    categories: ["quality", "general"],
   },
 
   // Storage and Post Harvest Facilities (warehouses, trading centers, RPCs)
@@ -98,18 +263,21 @@ export const ISSUE_TYPES: IssueTypeOption[] = [
     label: "Roof Damage or Leak",
     icon: CloudRain,
     farmOperations: ["Storage Facility", "Post Harvest Facility"],
+    categories: ["quality", "concerns"],
   },
   {
     id: "facility_door_access",
     label: "Door or Access Malfunction",
     icon: Wrench,
     farmOperations: ["Storage Facility", "Post Harvest Facility"],
+    categories: ["quality", "concerns"],
   },
   {
     id: "pest_infestation",
     label: "Pest Infestation",
     icon: Bug,
     farmOperations: ["Storage Facility", "Post Harvest Facility"],
+    categories: ["concerns"],
   },
 
   // Structural damage - shared across most facility-type operations
@@ -126,6 +294,7 @@ export const ISSUE_TYPES: IssueTypeOption[] = [
       "Agricultural Support Services Facility",
       "Waste Management and Recovery",
     ],
+    categories: ["quality", "concerns"],
   },
 
   // Electrical - shared across facility-type operations
@@ -143,6 +312,7 @@ export const ISSUE_TYPES: IssueTypeOption[] = [
       "Agricultural Support Services Facility",
       "Waste Management and Recovery",
     ],
+    categories: ["quality", "concerns"],
   },
 
   // Equipment malfunction - processing/milling/lab machinery
@@ -156,6 +326,7 @@ export const ISSUE_TYPES: IssueTypeOption[] = [
       "Laboratory",
       "Agricultural Support Services Facility",
     ],
+    categories: ["quality", "concerns"],
   },
 
   // Production Facility (greenhouses, hatcheries)
@@ -164,6 +335,7 @@ export const ISSUE_TYPES: IssueTypeOption[] = [
     label: "Climate Control or Covering Damage",
     icon: Thermometer,
     farmOperations: ["Production Facility"],
+    categories: ["quality", "concerns"],
   },
 
   // Laboratory
@@ -172,6 +344,7 @@ export const ISSUE_TYPES: IssueTypeOption[] = [
     label: "Contamination or Biosafety Concern",
     icon: FlaskConical,
     farmOperations: ["Laboratory"],
+    categories: ["concerns"],
   },
 
   // Waste Management and Recovery
@@ -180,38 +353,83 @@ export const ISSUE_TYPES: IssueTypeOption[] = [
     label: "Overflow or Leak",
     icon: Droplets,
     farmOperations: ["Waste Management and Recovery"],
+    categories: ["quality", "concerns"],
   },
   {
     id: "waste_odor",
     label: "Odor or Contamination",
     icon: Wind,
     farmOperations: ["Waste Management and Recovery"],
+    categories: ["concerns"],
   },
 ];
 
+export function getCategoryDisplayName(category?: string | null): string {
+  switch (category) {
+    case "quality":
+      return "Project Quality";
+    case "progress":
+      return "Project Progress";
+    case "general":
+      return "General Feedback";
+    case "concerns":
+      return "Concerns & Issues";
+    default:
+      return category || "";
+  }
+}
+
+export interface SplitIssueTypesParams {
+  category?: string | null;
+  farmOperation?: string | null;
+}
+
 /**
- * Splits ISSUE_TYPES into the set recommended for the given Farm Operation
- * (common types first, then operation-specific ones) and the remainder, so a
- * picker can lead with relevant options and keep the full list one step away.
+ * Splits ISSUE_TYPES into the set recommended for the given category (and
+ * optionally farm operation), with all other types gathered in `more` so
+ * citizens can still browse and select any type from the complete catalog.
  */
-export function splitIssueTypesByFarmOperation(farmOperation: string): {
+export function splitIssueTypes(params: SplitIssueTypesParams = {}): {
   recommended: IssueTypeOption[];
   more: IssueTypeOption[];
 } {
+  const { category, farmOperation } = params;
   const recommended: IssueTypeOption[] = [];
   const more: IssueTypeOption[] = [];
 
   for (const type of ISSUE_TYPES) {
-    const isCommon = type.farmOperations.length === 0;
-    const matchesOperation = farmOperation && type.farmOperations.includes(farmOperation);
-    if (isCommon || matchesOperation) {
+    const isCommonOperation = type.farmOperations.length === 0;
+    const matchesOperation = farmOperation
+      ? type.farmOperations.includes(farmOperation)
+      : isCommonOperation;
+
+    const matchesCategory = category
+      ? type.categories.includes(category as ReportCategory)
+      : true;
+
+    if (matchesCategory && (isCommonOperation || (farmOperation && matchesOperation))) {
       recommended.push(type);
     } else {
       more.push(type);
     }
   }
 
+  // Sort more alphabetically by label for clean, intuitive browsing
+  more.sort((a, b) => a.label.localeCompare(b.label));
+
   return { recommended, more };
+}
+
+/**
+ * Splits ISSUE_TYPES into the set recommended for the given Farm Operation
+ * (common types first, then operation-specific ones) and the remainder.
+ * Preserved for backwards compatibility with existing consumers.
+ */
+export function splitIssueTypesByFarmOperation(farmOperation: string): {
+  recommended: IssueTypeOption[];
+  more: IssueTypeOption[];
+} {
+  return splitIssueTypes({ farmOperation });
 }
 
 /**

@@ -94,3 +94,49 @@ test("the disclosure stays open when at least one of several selections is outsi
   );
   assert.match(html, /<details[^>]*\bopen\b/);
 });
+
+test("renders category-specific eyebrow and recommended cards for Project Quality", () => {
+  const html = renderToStaticMarkup(
+    <IssueTypePicker value="" category="quality" onChange={() => {}} />,
+  );
+  const group = extractGroup(html);
+
+  assert.match(html, /Common for Project Quality/);
+  assert.match(group, /Substandard Materials/);
+  assert.match(group, /Poor Workmanship/);
+  assert.doesNotMatch(group, /Slow Progress \/ Behind Schedule/);
+  assert.match(html, /Browse all issue types/);
+});
+
+test("renders category-specific eyebrow and cards for Project Progress", () => {
+  const html = renderToStaticMarkup(
+    <IssueTypePicker value="" category="progress" onChange={() => {}} />,
+  );
+  const group = extractGroup(html);
+
+  assert.match(html, /Common for Project Progress/);
+  assert.match(group, /Construction Delay \/ Work Stoppage/);
+  assert.match(group, /Slow Progress \/ Behind Schedule/);
+  assert.doesNotMatch(group, /Substandard Materials/);
+});
+
+test("renders category-specific eyebrow and cards for General Feedback", () => {
+  const html = renderToStaticMarkup(
+    <IssueTypePicker value="" category="general" onChange={() => {}} />,
+  );
+  const group = extractGroup(html);
+
+  assert.match(html, /Common for General Feedback/);
+  assert.match(group, /Community Suggestion or Request/);
+});
+
+test("renders category-specific eyebrow and cards for Concerns & Issues", () => {
+  const html = renderToStaticMarkup(
+    <IssueTypePicker value="" category="concerns" farmOperation="Agricultural Support Services Facility" onChange={() => {}} />,
+  );
+  const group = extractGroup(html);
+
+  assert.match(html, /Common for Concerns (&amp;|&) Issues/);
+  assert.match(group, /Safety Hazard/);
+  assert.match(group, /Vandalism or Theft/);
+});

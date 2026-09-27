@@ -4,23 +4,31 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
   formatIssueTypeValue,
+  getCategoryDisplayName,
   parseIssueTypeValue,
-  splitIssueTypesByFarmOperation,
+  splitIssueTypes,
   type IssueTypeOption,
 } from "@/lib/abemis/issue-type-map";
 
 interface IssueTypePickerProps {
   value: string;
-  farmOperation: string;
+  category?: string;
+  farmOperation?: string;
   onChange: (value: string) => void;
   /** Whether to show the required-field marker. Defaults to true for e-report; pass
    * false where the picker is an optional add-on, e.g. within feedback. */
   required?: boolean;
 }
 
-export function IssueTypePicker({ value, farmOperation, onChange, required = true }: IssueTypePickerProps) {
+export function IssueTypePicker({
+  value,
+  category,
+  farmOperation = "",
+  onChange,
+  required = true,
+}: IssueTypePickerProps) {
   const selected = parseIssueTypeValue(value);
-  const { recommended, more } = splitIssueTypesByFarmOperation(farmOperation);
+  const { recommended, more } = splitIssueTypes({ category, farmOperation });
 
   const toggle = (label: string) => {
     const next = selected.includes(label)
@@ -33,6 +41,13 @@ export function IssueTypePicker({ value, farmOperation, onChange, required = tru
     (label) => !recommended.some((type) => type.label === label),
   );
 
+  const categoryLabel = getCategoryDisplayName(category);
+  const eyebrow = categoryLabel
+    ? `Common for ${categoryLabel}`
+    : farmOperation
+      ? `Common for ${farmOperation}`
+      : "Common issue types";
+
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -41,7 +56,7 @@ export function IssueTypePicker({ value, farmOperation, onChange, required = tru
           : <span className="font-normal text-slate-400 dark:text-slate-500">(Optional)</span>}
       </Label>
       <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-        Select all that apply &middot; {farmOperation ? `Common for ${farmOperation}` : "Common issue types"}
+        Select all that apply &middot; {eyebrow}
       </p>
 
       <div

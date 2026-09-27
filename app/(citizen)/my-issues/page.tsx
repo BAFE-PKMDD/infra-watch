@@ -44,6 +44,8 @@ interface IssueItem {
   barangay: string;
   streetLandmark: string;
   issueType: string;
+  category?: string | null;
+  farmOperation?: string | null;
   issueDescription: string;
   dateNoticed: string;
   status: IssueStatus;
@@ -215,6 +217,11 @@ function IssueCard({ item }: { item: IssueItem }) {
               <StatusIcon className={`h-3.5 w-3.5 ${status.color}`} />
               <span className={status.color}>{status.label}</span>
             </span>
+            {item.category && (
+              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                {item.category}
+              </Badge>
+            )}
             {item.responseCount > 0 && (
               <Badge variant="outline" className="gap-1">
                 <MessageSquare className="h-3 w-3" />
@@ -239,7 +246,12 @@ function IssueCard({ item }: { item: IssueItem }) {
       </div>
 
       <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
-        <Badge variant="outline">{item.issueType}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline">{item.issueType}</Badge>
+          {item.farmOperation && (
+            <Badge variant="secondary" className="text-xs">{item.farmOperation}</Badge>
+          )}
+        </div>
         <Link href={`/my-issues/${item.id}`}>
           <Button variant="outline" size="sm" className="gap-2">
             <Eye className="h-4 w-4" />

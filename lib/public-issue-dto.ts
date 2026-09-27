@@ -42,6 +42,8 @@ export type PublicIssueRow = {
   ticketNumber: string;
   projectId: string | null;
   category: string;
+  issueType?: string | null;
+  farmOperation?: string | null;
   status: string;
   publicDescription: string | null;
   region: string | null;
@@ -72,7 +74,8 @@ export function formatPublicIssue(row: PublicIssueRow) {
     projectId: row.projectId,
     projectName: row.projectName ?? "Unlinked Infrastructure Report",
     category: row.category,
-    issueType: row.category,
+    issueType: row.issueType || row.category,
+    farmOperation: row.farmOperation || null,
     description: row.publicDescription ?? "",
     issueDescription: row.publicDescription ?? "",
     status: toPublicStatus(row.status),

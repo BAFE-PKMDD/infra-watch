@@ -41,6 +41,8 @@ type IssueDetails = {
   projectName: string;
   project?: { id: string | null; name: string; code: string | null } | null;
   issueType: string;
+  category?: string | null;
+  farmOperation?: string | null;
   issueDescription: string;
   status: string;
   fmrStatus?: IssueStatus;
@@ -142,6 +144,11 @@ export default function IssueDetailPage({ params }: PageProps) {
                   <StatusIcon className="size-3.5" />
                   {statusConfig[status].label}
                 </Badge>
+                {issue.category && (
+                  <Badge className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    Category: {issue.category}
+                  </Badge>
+                )}
                 <Badge className="inline-flex items-center gap-1.5 rounded-full border border-rose-300 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 dark:border-rose-400/40 dark:bg-rose-500/10 dark:text-rose-300">
                   <TriangleAlert className="size-3.5" />
                   Issue: {issue.issueType}
@@ -156,6 +163,9 @@ export default function IssueDetailPage({ params }: PageProps) {
                 <MapPin className="size-4 text-emerald-400" /> Location
               </h2>
               <div className="grid grid-cols-2 gap-4">
+                {issue.farmOperation && (
+                  <DetailCell label="Farm Operation" value={issue.farmOperation} />
+                )}
                 <DetailCell label="Region" value={issue.region || "N/A"} />
                 <DetailCell label="Province" value={issue.province || "N/A"} />
                 <DetailCell label="City / Municipality" value={issue.city || "N/A"} />

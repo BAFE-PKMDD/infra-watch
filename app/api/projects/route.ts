@@ -36,6 +36,7 @@ const SELECT_COLUMNS = {
   municipality: projects.municipality,
   barangay: projects.barangay,
   region: projects.region,
+  farmOperation: projects.farmOperation,
 };
 
 export async function GET(request: NextRequest) {

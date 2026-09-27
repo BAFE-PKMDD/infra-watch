@@ -44,6 +44,8 @@ type IssueItem = {
   city: string;
   barangay: string;
   issueType: string;
+  category?: string | null;
+  farmOperation?: string | null;
   issueDescription: string;
   status: IssueStatus;
   fmrStatus?: IssueStatus;
@@ -343,20 +345,30 @@ const IssueRow = memo(({ issue }: { issue: IssueItem }) => {
       <td className="px-6 py-4 text-slate-900 dark:text-slate-100">
         <div className="flex flex-col gap-1">
           <span className="line-clamp-2 font-medium md:max-w-xs">{issue.issueDescription}</span>
-          <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-500">{issue.issueType}</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {issue.category && (
+              <span className="inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                {issue.category}
+              </span>
+            )}
+            <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-500">{issue.issueType}</span>
+          </div>
         </div>
       </td>
       <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
         <div className="flex items-start gap-1.5">
           <MapPin className="mt-0.5 size-4 shrink-0 text-slate-400 dark:text-slate-500" />
           <div className="flex flex-col">
-            <span className="font-medium">{[issue.barangay, issue.city].filter(Boolean).join(", ") || "N/A"}</span>
+            <span className="font-medium">{[issue.barangay, issue.city].filter(Boolean).join(", ") || "Not provided"}</span>
+            {issue.farmOperation && (
+              <span className="text-xs text-slate-500 dark:text-slate-400">{issue.farmOperation}</span>
+            )}
           </div>
         </div>
       </td>
       <td className="whitespace-nowrap px-6 py-4 text-right">
         <Link href={`/report-issue/${issue.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300">
-          View Details
+          Open report
           <ArrowUpRight className="size-3.5" />
         </Link>
       </td>

@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Activity,
   Banknote,
+  BarChart3,
   Building2,
   Calendar,
   Check,
@@ -21,9 +22,12 @@ import {
   ClipboardCheck,
   ExternalLink,
   FileText,
+  HardHat,
   Image as ImageIcon,
+  LayoutGrid,
   Loader2,
   MapPin,
+  MessageCircle,
   MessageSquare,
   Pencil,
   Search,
@@ -34,6 +38,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -70,13 +75,37 @@ import { IssueTypePicker } from "@/components/report-issue/issue-type-picker";
 import { useSubmissionSurveyGate } from "@/hooks/use-submission-survey-gate";
 
 type FlowPath = "knows-project" | "no-project" | null;
-type StepId = "project-search" | "farm-operation" | "project-type" | "location" | "match" | "issue-details" | "contact" | "review";
+type StepId =
+  | "project-search"
+  | "farm-operation"
+  | "project-type"
+  | "location"
+  | "match"
+  | "category"
+  | "issue-details"
+  | "contact"
+  | "review";
 
 type StepDefinition = {
   id: StepId;
   label: string;
   icon: LucideIcon;
 };
+
+export type ReportCategory = "quality" | "progress" | "general" | "concerns";
+
+export const categoryOptions: Array<{ value: ReportCategory; label: string; icon: LucideIcon; description: string }> = [
+  { value: "quality", label: "Project Quality", icon: HardHat, description: "Materials, workmanship, and construction standards" },
+  { value: "progress", label: "Project Progress", icon: BarChart3, description: "Timeline, completion status, and pacing" },
+  { value: "general", label: "General Feedback", icon: MessageCircle, description: "Anything else about this project" },
+  { value: "concerns", label: "Concerns & Issues", icon: AlertTriangle, description: "A problem, delay, or something that needs attention" },
+];
+
+export function getCategoryLabel(value?: string | null): string {
+  if (!value) return "Not selected";
+  const matched = categoryOptions.find((c) => c.value === value);
+  return matched ? matched.label : value;
+}
 
 type ProjectDetails = {
   id: string;
@@ -94,6 +123,7 @@ type ProjectDetails = {
 
 const stepsKnowsProject: StepDefinition[] = [
   { id: "project-search", label: "Project", icon: Search },
+  { id: "category", label: "Category", icon: LayoutGrid },
   { id: "issue-details", label: "Details", icon: FileText },
   { id: "contact", label: "Contact", icon: User },
   { id: "review", label: "Review", icon: ClipboardCheck },
@@ -104,10 +134,13 @@ const stepsNoProject: StepDefinition[] = [
   { id: "project-type", label: "Project Type", icon: Tag },
   { id: "location", label: "Location", icon: MapPin },
   { id: "match", label: "Match", icon: Search },
+  { id: "category", label: "Category", icon: LayoutGrid },
   { id: "issue-details", label: "Details", icon: FileText },
   { id: "contact", label: "Contact", icon: User },
   { id: "review", label: "Review", icon: ClipboardCheck },
 ];
+
+const MATCH_PAGE_SIZE = 5;
 
 const stepVariants = {
   enter: (direction: number) => ({ x: direction > 0 ? 80 : -80, opacity: 0 }),
@@ -134,6 +167,8 @@ export default function ReportIssuePage() {
   const [direction, setDirection] = useState(1);
   const [selectedProject, setSelectedProject] = useState<SelectedProject | null>(null);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [visibleMatchCount, setVisibleMatchCount] = useState(MATCH_PAGE_SIZE);
+  const [visibleTypeMatchCount, setVisibleTypeMatchCount] = useState(MATCH_PAGE_SIZE);
   const [evidence, setEvidence] = useState<GeoEvidenceReadyItem[]>([]);
   const [isEvidenceProcessing, setIsEvidenceProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,9 +179,13 @@ export default function ReportIssuePage() {
   const [selectedCityCode, setSelectedCityCode] = useState("");
   const [selectedBarangayCode, setSelectedBarangayCode] = useState("");
   const linkedProjectInitialized = useRef(false);
+  // Survives across a failed submit's retry so re-submitting doesn't
+  // re-upload (and orphan a duplicate copy of) files already stored.
+  const uploadedEvidenceCacheRef = useRef(new Map<File, IssueEvidenceItem>());
 
   const [form, setForm] = useState({
     farmOperation: "",
+    category: "concerns" as ReportCategory,
     projectType: "",
     region: "",
     province: "",
@@ -176,7 +215,7 @@ export default function ReportIssuePage() {
       const response = await fetch(`/api/projects/${encodeURIComponent(requestedProjectId)}`);
       if (!response.ok) return null;
       const result = await response.json() as {
-        data?: { id: string; name: string; code?: string; province?: string; city?: string };
+        data?: { id: string; name: string; code?: string; province?: string; city?: string; farmOperation?: string };
       };
       return result.data || null;
     },
@@ -193,6 +232,7 @@ export default function ReportIssuePage() {
       ...previous,
       province: selected.province || "",
       city: selected.municipality || "",
+      farmOperation: selected.farmOperation || previous.farmOperation,
     }));
     setFlowPath("knows-project");
     setCurrentStep("project-search");
@@ -225,21 +265,39 @@ export default function ReportIssuePage() {
     staleTime: Infinity,
   });
 
+  // Reset the "see more" reveal count when the underlying match criteria
+  // changes, following React's render-time state-adjustment pattern instead
+  // of an effect (which would cause an extra cascading render).
+  const matchCriteriaKey = `${form.province}|${form.city}`;
+  const [lastMatchCriteriaKey, setLastMatchCriteriaKey] = useState(matchCriteriaKey);
+  if (matchCriteriaKey !== lastMatchCriteriaKey) {
+    setLastMatchCriteriaKey(matchCriteriaKey);
+    setVisibleMatchCount(MATCH_PAGE_SIZE);
+  }
+
+  const typeMatchCriteriaKey = `${form.projectType}|${form.province}`;
+  const [lastTypeMatchCriteriaKey, setLastTypeMatchCriteriaKey] = useState(typeMatchCriteriaKey);
+  if (typeMatchCriteriaKey !== lastTypeMatchCriteriaKey) {
+    setLastTypeMatchCriteriaKey(typeMatchCriteriaKey);
+    setVisibleTypeMatchCount(MATCH_PAGE_SIZE);
+  }
+
   const { data: suggestedProjects = [], isFetching: isSuggestionsLoading } = useQuery({
     queryKey: ["issue-project-suggestions", form.province, form.city],
     queryFn: async (): Promise<SelectedProject[]> => {
       const searchTerm = form.city || form.province;
       if (!searchTerm) return [];
-      const response = await fetch(`/api/projects?search=${encodeURIComponent(searchTerm)}&limit=5`);
+      const response = await fetch(`/api/projects?search=${encodeURIComponent(searchTerm)}&limit=20`);
       if (!response.ok) throw new Error("Failed to find nearby projects");
       const result = await response.json();
-      return ((result.data || []) as Array<{ id: string; name: string; sourceId?: string; code?: string; province?: string; municipality?: string }>).map((project) => ({
+      return ((result.data || []) as Array<{ id: string; name: string; sourceId?: string; code?: string; province?: string; municipality?: string; farmOperation?: string }>).map((project) => ({
         id: project.id,
         name: project.name,
         sourceId: project.sourceId,
         sourceProjectId: project.code,
         province: project.province,
         municipality: project.municipality,
+        farmOperation: project.farmOperation,
       }));
     },
     enabled: currentStep === "match" && !!(form.city || form.province),
@@ -249,18 +307,19 @@ export default function ReportIssuePage() {
   const { data: typeSuggestedProjects = [], isFetching: isTypeSuggestionsLoading } = useQuery({
     queryKey: ["issue-project-type-suggestions", form.projectType, form.province],
     queryFn: async (): Promise<SelectedProject[]> => {
-      const params = new URLSearchParams({ type: form.projectType, limit: "4" });
+      const params = new URLSearchParams({ type: form.projectType, limit: "20" });
       if (form.province) params.set("province", form.province);
       const response = await fetch(`/api/projects?${params.toString()}`);
       if (!response.ok) throw new Error("Failed to find similar projects");
       const result = await response.json();
-      return ((result.data || []) as Array<{ id: string; name: string; sourceId?: string; code?: string; province?: string; municipality?: string }>).map((project) => ({
+      return ((result.data || []) as Array<{ id: string; name: string; sourceId?: string; code?: string; province?: string; municipality?: string; farmOperation?: string }>).map((project) => ({
         id: project.id,
         name: project.name,
         sourceId: project.sourceId,
         sourceProjectId: project.code,
         province: project.province,
         municipality: project.municipality,
+        farmOperation: project.farmOperation,
       }));
     },
     enabled: currentStep === "match" && !isSuggestionsLoading && suggestedProjects.length === 0 && !!form.projectType,
@@ -343,6 +402,9 @@ export default function ReportIssuePage() {
     setSelectedProject(project);
     setValue("province", project.province || "");
     setValue("city", project.municipality || "");
+    if (project.farmOperation) {
+      setValue("farmOperation", project.farmOperation);
+    }
   };
 
   const handleEvidenceReady = useCallback((items: GeoEvidenceReadyItem[]) => setEvidence(items), []);
@@ -405,6 +467,12 @@ export default function ReportIssuePage() {
 
       // Upload sequentially to avoid buffering several large videos at once on the server.
       for (const item of evidence) {
+        const cached = uploadedEvidenceCacheRef.current.get(item.file);
+        if (cached) {
+          uploadedEvidence.push(cached);
+          continue;
+        }
+
         const uploadData = new FormData();
         uploadData.append("file", item.file);
         const uploadResponse = await fetch("/api/upload?folder=issue-evidence", {
@@ -428,6 +496,7 @@ export default function ReportIssuePage() {
         }
         if (typeof item.accuracy === "number") uploadedItem.accuracy = item.accuracy;
         if (item.track && item.track.length > 0) uploadedItem.track = item.track;
+        uploadedEvidenceCacheRef.current.set(item.file, uploadedItem);
         uploadedEvidence.push(uploadedItem);
       }
 
@@ -436,13 +505,14 @@ export default function ReportIssuePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: selectedProject?.sourceId || selectedProject?.id || null,
-          farmOperation: form.farmOperation || null,
+          category: getCategoryLabel(form.category),
+          farmOperation: form.farmOperation || selectedProject?.farmOperation || null,
           projectType: form.projectType || null,
-          region: form.region || "N/A",
-          province: form.province || "N/A",
-          city: form.city || "N/A",
-          barangay: form.barangay || "N/A",
-          streetLandmark: form.streetLandmark || "N/A",
+          region: form.region || null,
+          province: form.province || null,
+          city: form.city || null,
+          barangay: form.barangay || null,
+          streetLandmark: form.streetLandmark || null,
           issueType: form.issueType,
           issueDescription: form.issueDescription,
           dateNoticed: form.dateNoticed,
@@ -527,12 +597,12 @@ export default function ReportIssuePage() {
                       selected
                       expanded
                       onToggle={() => undefined}
-                      onSelect={() => goToStep("issue-details")}
+                      onSelect={() => goToStep("category")}
                       actionLabel="Continue with this Project"
                     />
                   )}
                   <div className="flex items-center justify-end pt-2">
-                    <Button type="button" onClick={() => goToStep("issue-details")} disabled={!selectedProject} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                    <Button type="button" onClick={() => goToStep("category")} disabled={!selectedProject} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
                   </div>
                 </div>
               )}
@@ -636,7 +706,7 @@ export default function ReportIssuePage() {
                     </div>
                   ) : suggestedProjects.length > 0 ? (
                     <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
-                      {suggestedProjects.map((project) => {
+                      {suggestedProjects.slice(0, visibleMatchCount).map((project) => {
                         return (
                           <ProjectSuggestionCard
                             key={project.id}
@@ -646,11 +716,22 @@ export default function ReportIssuePage() {
                             onToggle={() => setExpandedProjectId(expandedProjectId === project.id ? null : project.id)}
                             onSelect={() => {
                               setSelectedProject(project);
-                              goToStep("issue-details");
+                              goToStep("category");
                             }}
                           />
                         );
                       })}
+                      {visibleMatchCount < suggestedProjects.length && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setVisibleMatchCount((count) => count + MATCH_PAGE_SIZE)}
+                          className="group w-full gap-2 rounded-full border-slate-300 dark:border-slate-700"
+                        >
+                          See more projects
+                          <ChevronDown className="size-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -673,7 +754,7 @@ export default function ReportIssuePage() {
                             <p>These are other &ldquo;{form.projectType}&rdquo; projects, shown because none matched your location. <strong>They are not based on your description.</strong> Only select one if you&apos;re sure it&apos;s the same project.</p>
                           </div>
                           <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
-                            {typeSuggestedProjects.map((project) => (
+                            {typeSuggestedProjects.slice(0, visibleTypeMatchCount).map((project) => (
                               <ProjectSuggestionCard
                                 key={project.id}
                                 project={project}
@@ -682,10 +763,21 @@ export default function ReportIssuePage() {
                                 onToggle={() => setExpandedProjectId(expandedProjectId === project.id ? null : project.id)}
                                 onSelect={() => {
                                   setSelectedProject(project);
-                                  goToStep("issue-details");
+                                  goToStep("category");
                                 }}
                               />
                             ))}
+                            {visibleTypeMatchCount < typeSuggestedProjects.length && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setVisibleTypeMatchCount((count) => count + MATCH_PAGE_SIZE)}
+                                className="group w-full gap-2 rounded-full border-slate-300 dark:border-slate-700"
+                              >
+                                See more projects
+                                <ChevronDown className="size-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -698,10 +790,59 @@ export default function ReportIssuePage() {
                       {selectedProject && (
                         <Button type="button" variant="ghost" onClick={() => setSelectedProject(null)}>Clear Match</Button>
                       )}
-                      <Button type="button" onClick={() => goToStep("issue-details")} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                      <Button type="button" onClick={() => goToStep("category")} className="bg-emerald-600 text-white hover:bg-emerald-700">
                         {selectedProject ? "Use Match" : "None of these, continue"}
                       </Button>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === "category" && (
+                <div className="space-y-5">
+                  <StepHeader
+                    title="What's this about?"
+                    body="Choose the category that best fits your feedback."
+                  />
+                  <div
+                    role="radiogroup"
+                    aria-label="Issue category"
+                    className="grid gap-3 sm:grid-cols-2"
+                  >
+                    {categoryOptions.map((option) => (
+                      <CategoryCard
+                        key={option.value}
+                        option={option}
+                        isSelected={form.category === option.value}
+                        isRecommended={option.value === "concerns"}
+                        onSelect={() => {
+                          if (form.category !== option.value) {
+                            setForm((prev) => ({
+                              ...prev,
+                              category: option.value,
+                              issueType: "",
+                            }));
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => goToStep(flowPath === "knows-project" ? "project-search" : "match", -1)}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => goToStep("issue-details")}
+                      disabled={!form.category}
+                      className="bg-emerald-600 text-white hover:bg-emerald-700"
+                    >
+                      Next
+                    </Button>
                   </div>
                 </div>
               )}
@@ -711,6 +852,7 @@ export default function ReportIssuePage() {
                   <StepHeader title="Issue details" body="Describe what happened and attach photos or videos when available." />
                   <IssueTypePicker
                     value={form.issueType}
+                    category={form.category}
                     farmOperation={form.farmOperation}
                     onChange={(value) => setValue("issueType", value)}
                   />
@@ -720,14 +862,14 @@ export default function ReportIssuePage() {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-3">
                       <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Description <span className="text-red-500 dark:text-red-400">*</span></Label>
-                      <span className={`text-[11px] font-medium ${form.issueDescription.trim().length >= 20 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-300"}`}>
+                      <span className={`text-xs font-medium ${form.issueDescription.trim().length >= 20 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-300"}`}>
                         {form.issueDescription.trim().length >= 20
                           ? "Minimum met"
                           : `${20 - form.issueDescription.trim().length} more character${20 - form.issueDescription.trim().length === 1 ? "" : "s"} required`}
                       </span>
                     </div>
                     <Textarea value={form.issueDescription} onChange={(event) => setValue("issueDescription", event.target.value)} placeholder="Provide clear details about the issue..." className="min-h-32 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
-                    <p className="text-right text-[11px] text-slate-500">{form.issueDescription.length}/1000</p>
+                    <p className="text-right text-xs text-slate-500">{form.issueDescription.length}/1000</p>
                   </div>
                   <GeoEvidenceUpload
                     maxFiles={5}
@@ -737,7 +879,7 @@ export default function ReportIssuePage() {
                     onProcessingChange={handleEvidenceProcessingChange}
                   />
                   <div className="flex items-center justify-between pt-2">
-                    <Button type="button" variant="ghost" onClick={() => goToStep(flowPath === "knows-project" ? "project-search" : "match", -1)}>Back</Button>
+                    <Button type="button" variant="ghost" onClick={() => goToStep("category", -1)}>Back</Button>
                     <Button type="button" disabled={isEvidenceProcessing} onClick={() => validateIssueDetails() && goToStep("contact")} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
                   </div>
                 </div>
@@ -767,9 +909,15 @@ export default function ReportIssuePage() {
                   <StepHeader title="Review your report" body="Check everything below, then confirm to submit." />
 
                   {flowPath === "knows-project" ? (
-                    <ReviewSection title="Project" onEdit={() => goToStep("project-search", -1)}>
-                      <ReviewRow label="Project" value={selectedProject?.name || "Not selected"} />
-                    </ReviewSection>
+                    <>
+                      <ReviewSection title="Project" onEdit={() => goToStep("project-search", -1)}>
+                        <ReviewRow label="Project" value={selectedProject?.name || "Not selected"} />
+                        <ReviewRow label="Farm Operation" value={form.farmOperation || selectedProject?.farmOperation || "Not specified"} />
+                      </ReviewSection>
+                      <ReviewSection title="Category" onEdit={() => goToStep("category", -1)}>
+                        <ReviewRow label="Category" value={getCategoryLabel(form.category)} />
+                      </ReviewSection>
+                    </>
                   ) : (
                     <>
                       <ReviewSection title="Farm operation" onEdit={() => goToStep("farm-operation", -1)}>
@@ -777,12 +925,15 @@ export default function ReportIssuePage() {
                         <ReviewRow label="Project Type" value={form.projectType || "Not selected"} />
                       </ReviewSection>
                       <ReviewSection title="Location" onEdit={() => goToStep("location", -1)}>
-                        <ReviewRow label="Region" value={form.region || "N/A"} />
-                        <ReviewRow label="Province" value={form.province || "N/A"} />
-                        <ReviewRow label="City / Municipality" value={form.city || "N/A"} />
-                        <ReviewRow label="Barangay" value={form.barangay || "N/A"} />
-                        <ReviewRow label="Street / Landmark" value={form.streetLandmark || "N/A"} />
+                        <ReviewRow label="Region" value={form.region || "Not provided"} />
+                        <ReviewRow label="Province" value={form.province || "Not provided"} />
+                        <ReviewRow label="City / Municipality" value={form.city || "Not provided"} />
+                        <ReviewRow label="Barangay" value={form.barangay || "Not provided"} />
+                        <ReviewRow label="Street / Landmark" value={form.streetLandmark || "Not provided"} />
                         <ReviewRow label="Matched Project" value={selectedProject?.name || "None - submitted without a project match"} />
+                      </ReviewSection>
+                      <ReviewSection title="Category" onEdit={() => goToStep("category", -1)}>
+                        <ReviewRow label="Category" value={getCategoryLabel(form.category)} />
                       </ReviewSection>
                     </>
                   )}
@@ -807,7 +958,7 @@ export default function ReportIssuePage() {
                                 <EvidenceIcon className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />
                                 <span className="truncate">{item.file.name}</span>
                                 {item.lat !== null && item.lon !== null && (
-                                  <span className="shrink-0 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Geotagged</span>
+                                  <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">Geotagged</span>
                                 )}
                               </li>
                             );
@@ -925,7 +1076,7 @@ function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; cu
 }
 
 function formatBudget(value?: number) {
-  if (!value || value <= 0) return "N/A";
+  if (!value || value <= 0) return "Unavailable";
   return new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
@@ -1092,10 +1243,10 @@ function ProjectSuggestionCard({
                 <div className="space-y-4 p-4">
                   <h3 className="text-sm font-bold text-slate-950 dark:text-white">Project Details</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <ProjectDetailItem icon={<MapPin className="size-4" />} label="Location" value={details?.location || [project.municipality, project.province].filter(Boolean).join(", ") || "N/A"} />
+                    <ProjectDetailItem icon={<MapPin className="size-4" />} label="Location" value={details?.location || [project.municipality, project.province].filter(Boolean).join(", ") || "Unavailable"} />
                     <ProjectDetailItem icon={<Building2 className="size-4" />} label="Agency" value={details?.implementingAgency || "BAFE"} />
                     <ProjectDetailItem icon={<Banknote className="size-4" />} label="Budget" value={formatBudget(details?.budget)} />
-                    <ProjectDetailItem icon={<Activity className="size-4" />} label="Status" value={details?.stage || details?.status || "N/A"} />
+                    <ProjectDetailItem icon={<Activity className="size-4" />} label="Status" value={details?.stage || details?.status || "Unavailable"} />
                   </div>
                 </div>
 
@@ -1106,7 +1257,7 @@ function ProjectSuggestionCard({
                     className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
                   >
                     <MessageSquare className="size-4 shrink-0" />
-                    <span className="flex-1">Click here! You might want to visit this project and leave feedback instead</span>
+                    <span className="flex-1">Leave feedback on this project instead</span>
                     <ExternalLink className="size-3.5 shrink-0" />
                   </Link>
                   <Button type="button" onClick={onSelect} className="w-full bg-emerald-600 text-white hover:bg-emerald-700">
@@ -1266,5 +1417,54 @@ function CheckRow({ checked, onChange, label }: { checked: boolean; onChange: (c
       <Checkbox checked={checked} onCheckedChange={(value) => onChange(value === true)} className="mt-0.5" />
       <span>{label}</span>
     </label>
+  );
+}
+
+function CategoryCard({
+  option,
+  isSelected,
+  isRecommended,
+  disabled,
+  onSelect,
+}: {
+  option: { value: ReportCategory; label: string; icon: LucideIcon; description: string };
+  isSelected: boolean;
+  isRecommended?: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+}) {
+  const Icon = option.icon;
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={isSelected}
+      disabled={disabled}
+      onClick={onSelect}
+      className={cn(
+        "relative flex items-start gap-3 rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-950",
+        isSelected
+          ? "border-emerald-600 bg-emerald-50 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300"
+          : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-emerald-700",
+      )}
+    >
+      <Icon className="size-5 shrink-0" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-sm font-bold">{option.label}</span>
+          {isRecommended && (
+            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+              Suggested
+            </span>
+          )}
+        </div>
+        <p className="mt-0.5 text-xs font-medium opacity-80">{option.description}</p>
+      </div>
+      {isSelected && (
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white dark:bg-emerald-500">
+          <Check className="size-3 stroke-[3]" aria-hidden="true" />
+        </span>
+      )}
+    </button>
   );
 }

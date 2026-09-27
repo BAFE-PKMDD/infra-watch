@@ -18,12 +18,13 @@ import type { SlaTableRow } from "@/types/reports.types";
 
 export function ReportDownloadButton({ data, moduleName }: { data: SlaTableRow[]; moduleName: string }) {
   function exportToCSV() {
-    const headers = ["ID", "Reference", "Status", "Category", "Submitted", "First response", "Response time (ms)", "SLA breach"];
+    const headers = ["ID", "Reference", "Status", "Category", "Farm Operation", "Submitted", "First response", "Response time (ms)", "SLA breach"];
     const rows = data.map((item) => [
       item.id,
       item.referenceId,
       item.status,
       item.category || "N/A",
+      item.farmOperation || "N/A",
       format(item.createdAt, "yyyy-MM-dd HH:mm:ss"),
       item.firstResponseAt ? format(item.firstResponseAt, "yyyy-MM-dd HH:mm:ss") : "N/A",
       item.responseTimeMs?.toString() || "0",
@@ -57,6 +58,8 @@ export function ReportDownloadButton({ data, moduleName }: { data: SlaTableRow[]
     const tableData = data.map((item) => [
       item.referenceId,
       item.status,
+      item.category || "N/A",
+      item.farmOperation || "N/A",
       format(item.createdAt, "MMM dd, HH:mm"),
       item.firstResponseAt ? format(item.firstResponseAt, "MMM dd, HH:mm") : "---",
       item.responseTimeMs ? `${(item.responseTimeMs / (1000 * 60 * 60)).toFixed(1)}h` : "---",
@@ -65,7 +68,7 @@ export function ReportDownloadButton({ data, moduleName }: { data: SlaTableRow[]
 
     autoTable(doc, {
       startY: 35,
-      head: [["Reference", "Status", "Submitted", "Responded", "Time", "SLA"]],
+      head: [["Reference", "Status", "Category", "Farm Operation", "Submitted", "Responded", "Time", "SLA"]],
       body: tableData,
       theme: "striped",
       headStyles: { fillColor: [15, 23, 42], fontSize: 9 },

@@ -54,7 +54,15 @@ export function SlaDataTable({ data }: { data: SlaTableRow[] }) {
                 <TableCell className="font-medium text-slate-950 dark:text-white">
                   <div className="flex flex-col">
                     <span className="max-w-[200px] truncate">{row.referenceId}</span>
-                    <span className="mt-0.5 font-mono text-[10px] text-slate-400">{row.id.slice(0, 8)}</span>
+                    <div className="flex flex-wrap items-center gap-1 mt-0.5 text-[10px]">
+                      <span className="font-mono text-slate-400">{row.id.slice(0, 8)}</span>
+                      {row.category && (
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">· {row.category}</span>
+                      )}
+                      {row.farmOperation && (
+                        <span className="text-slate-500">({row.farmOperation})</span>
+                      )}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>

@@ -19,6 +19,7 @@ export interface ProjectResult {
   municipality?: string;
   barangay?: string;
   region?: string;
+  farmOperation?: string;
   /** "nearby" when no project matched every search word and this is a broader,
    * any-word fallback match instead — the UI should say so, not present it as exact. */
   matchType?: "exact" | "nearby";
@@ -32,6 +33,7 @@ export interface SelectedProject {
   province?: string;
   municipality?: string;
   region?: string;
+  farmOperation?: string;
 }
 
 interface ProjectsApiItem {
@@ -43,6 +45,7 @@ interface ProjectsApiItem {
   municipality?: string;
   barangay?: string;
   region?: string;
+  farmOperation?: string;
   matchType?: "exact" | "nearby";
 }
 
@@ -104,6 +107,7 @@ export function ProjectSearchInput({
       municipality: p.municipality,
       barangay: p.barangay,
       region: p.region,
+      farmOperation: p.farmOperation,
       matchType: p.matchType,
     }));
   };
@@ -175,6 +179,7 @@ export function ProjectSearchInput({
       province: project.province,
       municipality: project.municipality,
       region: project.region,
+      farmOperation: project.farmOperation,
     });
     setSearchInput("");
     setShowDropdown(false);

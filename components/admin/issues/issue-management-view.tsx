@@ -40,6 +40,9 @@ type AdminIssue = {
   id: string;
   ticketNumber: string;
   projectName: string | null;
+  category?: string | null;
+  reportedFarmOperation?: string | null;
+  farmOperation?: string | null;
   issueType: string;
   issueDescription: string;
   status: Exclude<IssueStatus, "all">;
@@ -260,15 +263,25 @@ export function IssueManagementView() {
                   <TableCell className="max-w-[520px] whitespace-normal px-4 py-4">
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
+                        {issue.category && (
+                          <Badge variant="outline" className="h-auto rounded-full border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                            {issue.category}
+                          </Badge>
+                        )}
                         <span className="text-xs font-extrabold uppercase tracking-wide text-primary">{issue.issueType}</span>
                         <span className="text-xs font-semibold text-slate-400">{issue.ticketNumber}</span>
                       </div>
                       <Link href={`/issues/${issue.id}`} className="line-clamp-2 text-sm font-extrabold leading-6 text-slate-950 hover:text-primary dark:text-white">
                         {issue.issueDescription || "No description provided"}
                       </Link>
-                      {issue.projectName && (
-                        <p className="line-clamp-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{issue.projectName}</p>
-                      )}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                        {issue.projectName && (
+                          <p className="line-clamp-1 font-semibold">{issue.projectName}</p>
+                        )}
+                        {(issue.farmOperation || issue.reportedFarmOperation) && (
+                          <p className="line-clamp-1 font-medium">Farm Operation: {issue.farmOperation || issue.reportedFarmOperation}</p>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="whitespace-normal py-4">

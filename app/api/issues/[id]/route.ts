@@ -7,7 +7,7 @@ import {
   sanitizePublicIssueEvidence,
 } from "@/lib/public-issue-dto";
 import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
-import { eq, or } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 
 export const runtime = "nodejs";
 
@@ -27,6 +27,8 @@ export type IssueDetailRow = {
   reporterEmail: string | null;
   isAnonymous: boolean;
   category: string;
+  issueType: string | null;
+  farmOperation: string | null;
   status: string;
   description: string;
   publicDescription: string | null;
@@ -84,7 +86,8 @@ function formatIssueDetail(
       code: row.projectId,
     } : null,
     category: row.category,
-    issueType: row.category,
+    issueType: row.issueType || row.category,
+    farmOperation: row.farmOperation || null,
     status: toPublicStatus(row.status),
     fmrStatus: row.status === "submitted" ? "pending" : row.status,
     issueDescription: isOwner ? row.description : row.publicDescription,
@@ -182,6 +185,8 @@ async function loadIssue(id: string): Promise<IssueDetailRow | null> {
       reporterEmail: issues.reporterEmail,
       isAnonymous: issues.isAnonymous,
       category: issues.category,
+      issueType: issues.issueType,
+      farmOperation: sql<string | null>`coalesce(${issues.reportedFarmOperation}, ${projects.farmOperation})`,
       status: issues.status,
       description: issues.description,
       publicDescription: issues.publicDescription,
