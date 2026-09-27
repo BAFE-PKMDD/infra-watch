@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { Download, Search, ShieldCheck } from "lucide-react";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
+import { DataQualityIssueBreakdown } from "@/components/admin/data-quality/data-quality-issue-breakdown";
 import { DataQualityOverview } from "@/components/admin/data-quality/data-quality-overview";
 import { Pagination } from "@/components/admin/projects/pagination";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export default function DataQualityPage() {
       title="Data Quality"
       description="Project records that may need correction or cleaning."
     >
+      <div className="analytics-scope contents">
       <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900" aria-label="Data quality filters">
         <form className="flex flex-col gap-3 lg:flex-row lg:items-end" onSubmit={applySearch}>
           <div className="flex-1 space-y-1.5 lg:max-w-md">
@@ -108,6 +110,7 @@ export default function DataQualityPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900">Analyzing project data…</div>
       ) : reportQuery.data ? (
         <>
+          <DataQualityIssueBreakdown summary={reportQuery.data.summary} />
           <DataQualityOverview report={reportQuery.data} />
           <Pagination
             page={reportQuery.data.pagination.page}
@@ -122,6 +125,7 @@ export default function DataQualityPage() {
       <div className="flex items-start gap-3 rounded-lg border border-slate-200 border-l-[3px] border-l-primary bg-white p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
         <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
         <p>Data Quality is recommendation-only. It cannot correct, clean, archive, delete, or otherwise change project records.</p>
+      </div>
       </div>
     </AdminPageWrapper>
   );

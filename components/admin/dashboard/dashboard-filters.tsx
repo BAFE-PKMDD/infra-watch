@@ -190,14 +190,15 @@ function Filter({
   );
 }
 
+export const PROJECT_STATUS_LABELS: Record<ProjectStatusFilter, string> = {
+  planned: "Not yet started",
+  ongoing: "Ongoing",
+  completed: "Completed",
+  suspended: "Suspended",
+};
+
 function formatStatus(status: string) {
-  const labels: Record<ProjectStatusFilter, string> = {
-    planned: "Not yet started",
-    ongoing: "Ongoing",
-    completed: "Completed",
-    suspended: "Suspended",
-  };
-  return labels[status as ProjectStatusFilter] ?? status;
+  return PROJECT_STATUS_LABELS[status as ProjectStatusFilter] ?? status;
 }
 
 function formatHealth(health: string) {

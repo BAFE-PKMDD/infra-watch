@@ -18,6 +18,7 @@ import { formatDashboardCompactCurrency, formatDashboardCurrency } from "./execu
 
 type ProjectTypeRow = ManagerialDashboardData["projectTypes"][number];
 type ChartRow = { key: string; label: string; allocatedBudget: number; total: number; delayed: number; drillable: boolean };
+export type ProjectTypeMeasure = "allocatedBudget" | "total";
 
 export function formatProjectTypeAxisLabel(projectType: string) {
   return projectType.length > 24 ? `${projectType.slice(0, 23)}…` : projectType;
@@ -27,10 +28,10 @@ export function selectProjectType(onSelect: (projectType: string) => void, proje
   if (projectType !== "Other") onSelect(projectType);
 }
 
-export function limitProjectTypes(data: ProjectTypeRow[], limit = 8): ProjectTypeRow[] {
+export function limitProjectTypes(data: ProjectTypeRow[], limit = 8, measure: ProjectTypeMeasure = "allocatedBudget"): ProjectTypeRow[] {
   if (data.length <= limit) return data;
   const unknown = data.find((item) => item.projectType === "Unknown");
-  const ranked = data.filter((item) => item.projectType !== "Unknown").sort((a, b) => b.allocatedBudget - a.allocatedBudget);
+  const ranked = data.filter((item) => item.projectType !== "Unknown").sort((a, b) => b[measure] - a[measure]);
   const reserved = unknown ? 2 : 1;
   const kept = ranked.slice(0, Math.max(limit - reserved, 0));
   const remainder = ranked.slice(kept.length);
@@ -43,8 +44,8 @@ export function limitProjectTypes(data: ProjectTypeRow[], limit = 8): ProjectTyp
   return [...kept, ...(other.total > 0 ? [other] : []), ...(unknown ? [unknown] : [])];
 }
 
-export function limitBreakdownByBudget(rows: ManagerialDashboardBreakdownRow[], limit = 8) {
-  return [...rows].sort((a, b) => b.allocatedBudget - a.allocatedBudget || a.key.localeCompare(b.key, "en-PH")).slice(0, limit);
+export function limitBreakdownByBudget(rows: ManagerialDashboardBreakdownRow[], limit = 8, measure: ProjectTypeMeasure = "allocatedBudget") {
+  return [...rows].sort((a, b) => b[measure] - a[measure] || a.key.localeCompare(b.key, "en-PH")).slice(0, limit);
 }
 
 export function ProjectTypeBudgetChart({
@@ -65,12 +66,13 @@ export function ProjectTypeBudgetChart({
     viewerKey,
   });
   const [contextTarget, setContextTarget] = useState<string | null>(null);
+  const [measure, setMeasure] = useState<ProjectTypeMeasure>("allocatedBudget");
 
-  const topLevelData = limitProjectTypes(data);
+  const topLevelData = limitProjectTypes(data, 8, measure);
   const namedProjectTypes = topLevelData
     .filter((item) => item.projectType !== "Other" && item.projectType !== "Unknown")
     .map((item) => item.projectType);
-  const breakdownData = drilldown.data ? limitBreakdownByBudget(drilldown.data.rows) : [];
+  const breakdownData = drilldown.data ? limitBreakdownByBudget(drilldown.data.rows, 8, measure) : [];
 
   const chartData: ChartRow[] = drilldown.isDrilledIn
     ? breakdownData.map((item) => ({ key: item.key, label: formatProjectTypeAxisLabel(item.key), allocatedBudget: item.allocatedBudget, total: item.total, delayed: item.delayed, drillable: false }))
@@ -86,16 +88,34 @@ export function ProjectTypeBudgetChart({
     ? chartData.map((item) => `${item.label}: ${formatDashboardCurrency(item.allocatedBudget)} across ${item.total} projects`).join("; ")
     : "No project-type budget data available.";
   const contextRow = chartData.find((item) => item.key === contextTarget) ?? null;
+  const measureNoun = measure === "allocatedBudget" ? "Approved budget" : "Project count";
 
   return (
     <ChartPanel
-      title="How is the approved budget distributed?"
+      title={measure === "allocatedBudget" ? "How is the approved budget distributed?" : "How many projects does each facility type have?"}
       description={drilldown.isDrilledIn
-        ? `Approved budget by program within ${drilldown.parent}. Select a bar to view its projects.`
-        : "Approved budget by project type. Select a bar to drill into its programs; smaller categories are combined as Other."}
+        ? `${measureNoun} by program within ${drilldown.parent}. Select a bar to view its projects.`
+        : `${measureNoun} by project type. Select a bar to drill into its programs; smaller categories are combined as Other.`}
       summary={summary}
       headerAction={
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          <div role="group" aria-label="Measure" className="flex shrink-0 items-center gap-1 rounded-md border border-slate-200 p-0.5 dark:border-slate-700">
+            {(["allocatedBudget", "total"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={measure === option}
+                onClick={() => setMeasure(option)}
+                className={`min-h-11 rounded px-3 text-sm font-medium transition-colors ${
+                  measure === option
+                    ? "bg-primary text-primary-foreground"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
+              >
+                {option === "allocatedBudget" ? "Budget" : "Projects"}
+              </button>
+            ))}
+          </div>
           {drilldown.isDrilledIn ? (
             <Button type="button" variant="outline" size="sm" className="min-h-11 gap-1.5 px-3 text-sm" onClick={drilldown.drillUp}>
               <ArrowUp className="size-4" aria-hidden="true" />
@@ -132,15 +152,15 @@ export function ProjectTypeBudgetChart({
           seeDetailsLabel={contextRow ? `See details for ${contextRow.label}` : "See details"}
           onSeeDetails={() => contextRow && openDetails(contextRow)}
         >
-          <ChartContainer config={{ allocatedBudget: { label: "Allocated budget", color: "var(--primary)" } }} className="h-80 w-full aspect-auto" role="img" aria-label={drilldown.isDrilledIn ? `Allocated budget by program within ${drilldown.parent}` : "Allocated budget by project type"}>
+          <ChartContainer config={{ [measure]: { label: measureNoun, color: "var(--primary)" } }} className="h-80 w-full aspect-auto" role="img" aria-label={drilldown.isDrilledIn ? `${measureNoun} by program within ${drilldown.parent}` : `${measureNoun} by project type`}>
             <BarChart data={chartData} layout="vertical" margin={{ left: 12, right: 16 }}>
               <CartesianGrid horizontal={false} />
-              <XAxis type="number" tickFormatter={(value) => formatDashboardCompactCurrency(Number(value))} />
+              <XAxis type="number" tickFormatter={(value) => measure === "allocatedBudget" ? formatDashboardCompactCurrency(Number(value)) : Number(value).toLocaleString("en-PH")} />
               <YAxis type="category" dataKey="label" width={150} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
-              <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatDashboardCurrency(Number(value))} />} />
+              <ChartTooltip content={<ChartTooltipContent formatter={(value) => measure === "allocatedBudget" ? formatDashboardCurrency(Number(value)) : `${Number(value).toLocaleString("en-PH")} projects`} />} />
               <Bar
-                dataKey="allocatedBudget"
-                fill="var(--color-allocatedBudget)"
+                dataKey={measure}
+                fill={`var(--color-${measure})`}
                 radius={[0, 5, 5, 0]}
                 className="cursor-pointer"
                 onMouseDown={(entry, _index, event) => {

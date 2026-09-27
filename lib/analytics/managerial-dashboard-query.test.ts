@@ -39,6 +39,21 @@ test("builds PostgreSQL aggregate and bounded detail queries instead of a portfo
     "regions",
     "projectTypes",
     "fundingYears",
+    "statusByYear",
+    "regionProjectTypes",
+    "projectTypeStats",
+    "procurementModes",
+    "completionDelayBuckets",
+    "lateDaysByRegion",
+    "lateDaysByProjectType",
+    "lateRateByContractLength",
+    "lateRateByYear",
+    "ntpLagByProcurementMode",
+    "ongoingOverdueBuckets",
+    "ongoingByYear",
+    "turnoverBuckets",
+    "turnoverByRegion",
+    "contractors",
     "progressVariance",
     "priorityProjects",
     "filterOptions",
@@ -56,6 +71,47 @@ test("builds PostgreSQL aggregate and bounded detail queries instead of a portfo
     assert.match(sqlText, /count\(|sum\(|group by|array_agg\(/i);
     assert.match(sqlText, /case when/i);
   }
+
+  const statusByYearSql = plan.find(({ name }) => name === "statusByYear")!.query.toSQL().sql;
+  assert.match(statusByYearSql, /group by/i);
+  assert.match(statusByYearSql, /count\(|sum\(/i);
+
+  const regionProjectTypesSql = plan.find(({ name }) => name === "regionProjectTypes")!.query.toSQL().sql;
+  assert.match(regionProjectTypesSql, /group by/i);
+  assert.match(regionProjectTypesSql, /count\(|sum\(/i);
+
+  const projectTypeStatsSql = plan.find(({ name }) => name === "projectTypeStats")!.query.toSQL().sql;
+  assert.match(projectTypeStatsSql, /group by/i);
+  assert.match(projectTypeStatsSql, /percentile_cont/i);
+  assert.match(projectTypeStatsSql, /filter \(where/i);
+
+  for (const aggregateName of ["procurementModes", "lateRateByYear", "ongoingByYear", "turnoverByRegion"] as const) {
+    const sqlText = plan.find(({ name }) => name === aggregateName)!.query.toSQL().sql;
+    assert.match(sqlText, /group by/i);
+    assert.match(sqlText, /count\(|sum\(/i);
+  }
+
+  for (const bucketedName of ["completionDelayBuckets", "lateRateByContractLength", "ongoingOverdueBuckets", "turnoverBuckets"] as const) {
+    const sqlText = plan.find(({ name }) => name === bucketedName)!.query.toSQL().sql;
+    assert.match(sqlText, /group by/i);
+    assert.match(sqlText, /case\s*when/i);
+  }
+
+  for (const percentileName of ["lateDaysByRegion", "lateDaysByProjectType", "ntpLagByProcurementMode"] as const) {
+    const sqlText = plan.find(({ name }) => name === percentileName)!.query.toSQL().sql;
+    assert.match(sqlText, /group by/i);
+    assert.match(sqlText, /percentile_cont/i);
+    assert.match(sqlText, /filter \(where/i);
+  }
+
+  const ntpLagSql = plan.find(({ name }) => name === "ntpLagByProcurementMode")!.query.toSQL().sql;
+  assert.match(ntpLagSql, /make_date/i);
+
+  const contractorsSql = plan.find(({ name }) => name === "contractors")!.query.toSQL().sql;
+  assert.match(contractorsSql, /group by/i);
+  assert.match(contractorsSql, /percentile_cont/i);
+  assert.match(contractorsSql, /mode\(\) within group/i);
+  assert.match(contractorsSql, /coalesce/i);
 });
 
 test("chart drill-down breakdown is a grouped aggregate query scoped like every other portfolio read", () => {

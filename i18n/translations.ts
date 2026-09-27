@@ -170,7 +170,7 @@ export const translations = {
       nationalSummary: "National Summary"
     },
     infraAnalytics: {
-      title: "Status of Infrastructure Projects",
+      title: "Status of infrastructure projects",
       asOf: "As of",
       target: "Target",
       preImplementation: "Under Pre-implementation",
@@ -180,12 +180,26 @@ export const translations = {
       turnedOver: "Turned-over",
       viewBreakdown: "View Breakdown",
       charts: {
-        regionalTitle: "Regional Target and Turned-over Projects",
-        bannerTitle: "Turned-over Projects per Banner Program",
+        regionalTitle: "Regional target and turned-over projects",
+        bannerTitle: "Turned-over projects per banner program",
         yAxisLabel: "Operating Unit (RFOs)",
         xAxisLabel: "Banner Program",
         targetLegend: "Target",
         turnedOverLegend: "Turned-over"
+      },
+      performancePanel: {
+        title: "Schedule performance",
+        description: "Tracks in-progress projects against their recorded target completion date."
+      },
+      schedulePerformance: {
+        title: "Overdue rate",
+        overdueLabel: "overdue",
+        detail: "{overdueCount} of {total} in-progress projects with a recorded target date are overdue.",
+        median: "Median {days} days overdue among overdue projects.",
+        medianUnavailable: "No overdue projects in this data set.",
+        unknown: "{count} in-progress projects have no recorded target completion date.",
+        unavailable: "Not currently available",
+        unavailableDetail: "No in-progress projects in this data set have a recorded target completion date."
       }
     },
     about: {
@@ -1025,6 +1039,20 @@ export const translations = {
         xAxisLabel: "Banner Program",
         targetLegend: "Target",
         turnedOverLegend: "Nai-turn over"
+      },
+      performancePanel: {
+        title: "Pagganap sa Iskedyul",
+        description: "Sinusubaybayan ang mga proyektong isinasagawa laban sa naitalang target na petsa ng pagkumpleto."
+      },
+      schedulePerformance: {
+        title: "Rate ng Lampas sa Target",
+        overdueLabel: "lampas sa target",
+        detail: "{overdueCount} sa {total} proyektong isinasagawa na may naitalang target na petsa ang lampas na sa deadline.",
+        median: "Median na {days} araw na lampas sa target sa mga lampas-na-sa-deadline na proyekto.",
+        medianUnavailable: "Walang lampas-sa-deadline na proyekto sa data set na ito.",
+        unknown: "{count} proyektong isinasagawa ang walang naitalang target na petsa ng pagkumpleto.",
+        unavailable: "Kasalukuyang Hindi Available",
+        unavailableDetail: "Walang proyektong isinasagawa sa data set na ito ang may naitalang target na petsa ng pagkumpleto."
       }
     },
     about: {

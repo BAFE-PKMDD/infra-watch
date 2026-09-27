@@ -61,6 +61,9 @@ test("renders accessible titles with keyboard filter and drill-through alternati
   assert.match(types, /Unknown/);
   assert.match(types, /₱|PHP/);
   assert.match(types, /aria-label="Chart options"/);
+  assert.match(types, /aria-label="Measure"/);
+  assert.match(types, />Budget</);
+  assert.match(types, />Projects</);
   assert.match(regions, /Regional performance ranking/);
   assert.match(regions, /40\.0%/);
   assert.match(regions, /4 completed of 10/);
@@ -194,4 +197,20 @@ test("limits long project-type lists while preserving totals in Other and Unknow
     limited.reduce((sum, item) => sum + item.allocatedBudget, 0),
     data.reduce((sum, item) => sum + item.allocatedBudget, 0),
   );
+});
+
+test("ranks project types by project count when the measure toggle is set to Projects", () => {
+  const data = [
+    { projectType: "Greenhouse", total: 50, allocatedBudget: 1000, delayed: 0 },
+    { projectType: "Cold Storage", total: 5, allocatedBudget: 90000, delayed: 0 },
+    { projectType: "Warehouse", total: 20, allocatedBudget: 500, delayed: 0 },
+    { projectType: "Silo", total: 2, allocatedBudget: 300, delayed: 0 },
+  ];
+  // limit 3 with no "Unknown" row reserves one slot for "Other", so the top 2
+  // ranked rows are kept as-is and the remaining 2 are folded into "Other".
+  const byBudget = limitProjectTypes(data, 3, "allocatedBudget");
+  assert.deepEqual(byBudget.slice(0, 2).map((item) => item.projectType), ["Cold Storage", "Greenhouse"]);
+
+  const byCount = limitProjectTypes(data, 3, "total");
+  assert.deepEqual(byCount.slice(0, 2).map((item) => item.projectType), ["Greenhouse", "Warehouse"]);
 });

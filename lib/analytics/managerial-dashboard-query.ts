@@ -1,9 +1,11 @@
 import { and, desc, eq, gte, ilike, inArray, isNull, notInArray, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 
 import { mapInternalToPublicStage } from "@/constants/stage-mapping";
+import { FARM_OPERATIONS, getProjectTypeMapping } from "@/lib/abemis/project-type-map";
 import { db } from "@/lib/db";
 import { projectMetricSnapshots, projects, syncLogs } from "@/lib/db/schema";
 import { getProjectScopeConditions, type ScopedUser } from "@/lib/scope";
+import { PROJECT_STATUS_FILTER_VALUES } from "@/types/managerial-dashboard.types";
 import type {
   DashboardBreakdownDimension,
   ManagerialDashboardBreakdownData,
@@ -20,6 +22,15 @@ const UNKNOWN = "Unknown";
 const STALE_AFTER_HOURS = 26;
 const PRIORITY_LIMIT = 10;
 const VARIANCE_LIMIT = 50;
+const COMMON_TYPES_LIMIT = 20;
+const UNCLASSIFIED_CATEGORY = "Unclassified";
+const LATE_DAYS_MIN_SAMPLE = 10;
+const CONTRACTOR_MIN_PROJECTS = 8;
+
+const DELAY_BUCKET_ORDER = ["onTimeOrEarly", "late1to30", "late31to90", "late91to180", "late181to365", "lateOver365"] as const;
+const CONTRACT_LENGTH_BUCKET_ORDER = ["30orLess", "31to60", "61to90", "91to180", "over180"] as const;
+const OVERDUE_BUCKET_ORDER = ["notYetDue", "under6mo", "6to12mo", "1to2yr", "over2yr", "noDates"] as const;
+const TURNOVER_BUCKET_ORDER = ["under6mo", "6to12mo", "1to2yr", "2to4yr", "over4yr"] as const;
 const REGIONAL_INSIGHT_MINIMUM = 5;
 export const MAX_DASHBOARD_ROWS = 30_000;
 
@@ -136,6 +147,21 @@ type DashboardQueryName =
   | "regions"
   | "projectTypes"
   | "fundingYears"
+  | "statusByYear"
+  | "regionProjectTypes"
+  | "projectTypeStats"
+  | "procurementModes"
+  | "completionDelayBuckets"
+  | "lateDaysByRegion"
+  | "lateDaysByProjectType"
+  | "lateRateByContractLength"
+  | "lateRateByYear"
+  | "ntpLagByProcurementMode"
+  | "ongoingOverdueBuckets"
+  | "ongoingByYear"
+  | "turnoverBuckets"
+  | "turnoverByRegion"
+  | "contractors"
   | "progressVariance"
   | "priorityProjects"
   | "filterOptions";
@@ -152,9 +178,31 @@ export function currencyFromCents(value: unknown) {
   return Number(cents) / 100;
 }
 
-function currencySumSql(column: AnyColumn) {
-  return sql<number>`round(coalesce(sum(${column}), 0) * 100)::bigint`
+function currencySumOfExpression(expression: SQL) {
+  return sql<number>`round(coalesce(sum(${expression}), 0) * 100)::bigint`
     .mapWith(currencyFromCents);
+}
+
+function currencySumSql(column: AnyColumn) {
+  return currencySumOfExpression(sql`${column}`);
+}
+
+// Zero and blank budgets are a known data-quality placeholder (see
+// lib/data-quality/project-quality.ts "missing_approved_budget"), so a
+// "typical cost" excludes them the same way totals already do; null means
+// no project of this type has a usable budget to compute a typical cost from.
+function percentileOfExpression(expression: SQL, fraction: number, filterCondition: SQL) {
+  return sql<number | null>`percentile_cont(${fraction}) within group (order by ${expression}) filter (where ${filterCondition})`
+    .mapWith((value) => (value === null ? null : Number(value)));
+}
+
+function percentileSql(column: AnyColumn, fraction: number) {
+  return percentileOfExpression(sql`${column}`, fraction, sql`${column} > 0`);
+}
+
+function percentSql(numerator: SQL, denominator: SQL) {
+  return sql<number | null>`round(100.0 * (${numerator}) / nullif((${denominator}), 0), 1)`
+    .mapWith((value) => (value === null ? null : Number(value)));
 }
 
 function canonicalStatusExpression() {
@@ -245,7 +293,12 @@ function dashboardBaseQuery(
       physicalProgress: sql<number | null>`case when ${expressions.hasProgressEvidence} then ${projects.physicalProgress} else null end`.as("physical_progress"),
       startDate: projects.startDate,
       targetCompletionDate: projects.targetCompletionDate,
+      actualCompletionDate: projects.actualCompletionDate,
       calendarDays: projects.calendarDays,
+      procurementMode: projects.procurementMode,
+      contractorName: projects.contractorName,
+      contractAmount: projects.contractAmount,
+      dateTurnOver: projects.dateTurnOver,
       canonicalStatus: expressions.canonicalStatus.as("canonical_status"),
       health: expressions.health.as("health"),
       expectedProgress: sql<number | null>`case when ${expressions.health} in ('onTrack', 'atRisk') then ${expressions.expectedProgress} else null end`.as("expected_progress"),
@@ -445,6 +498,171 @@ export function buildDashboardAggregateQueryPlan(
     allocatedBudget: budget,
   }).from(base).where(filtered).groupBy(yearFundedLabel);
 
+  const statusByYear = db.select({
+    yearFunded: yearFundedLabel,
+    status: base.canonicalStatus,
+    count,
+    budget,
+  }).from(base).where(filtered).groupBy(yearFundedLabel, base.canonicalStatus);
+
+  const regionProjectTypes = db.select({
+    region: regionLabel,
+    projectType: projectTypeLabel,
+    count,
+    budget,
+  }).from(base).where(filtered).groupBy(regionLabel, projectTypeLabel);
+
+  const projectTypeStats = db.select({
+    projectType: projectTypeLabel,
+    total: count,
+    allocatedBudget: budget,
+    medianBudget: percentileSql(base.allocatedBudget, 0.5),
+    p25Budget: percentileSql(base.allocatedBudget, 0.25),
+    p75Budget: percentileSql(base.allocatedBudget, 0.75),
+  }).from(base).where(filtered).groupBy(projectTypeLabel);
+
+  const procurementModeLabel = label(base.procurementMode).as("procurement_mode_label");
+  const procurementModes = db.select({
+    mode: procurementModeLabel,
+    total: count,
+    allocatedBudget: budget,
+  }).from(base).where(filtered).groupBy(procurementModeLabel);
+
+  // "Late" reuses the same targetCompletionDate the rest of this dashboard already
+  // treats as the authoritative deadline (see dashboardSqlExpressions' `health`
+  // logic) rather than recomputing a second deadline from calendarDays, so the
+  // two don't disagree about whether the same project is late.
+  const hasCompletionDates = sql`${base.actualCompletionDate} is not null and ${base.targetCompletionDate} is not null`;
+  const lateDays = sql<number>`(${base.actualCompletionDate}::date - ${base.targetCompletionDate}::date)`;
+  const isLateCompleted = sql`${hasCompletionDates} and ${lateDays} > 0`;
+  const completedWithDatesCount = sql`sum(case when ${hasCompletionDates} then 1 else 0 end)`;
+  const lateCompletedCount = sql`sum(case when ${isLateCompleted} then 1 else 0 end)`;
+
+  const delayBucketExpr = sql<string>`case
+    when ${lateDays} <= 0 then 'onTimeOrEarly'
+    when ${lateDays} <= 30 then 'late1to30'
+    when ${lateDays} <= 90 then 'late31to90'
+    when ${lateDays} <= 180 then 'late91to180'
+    when ${lateDays} <= 365 then 'late181to365'
+    else 'lateOver365'
+  end`.as("delay_bucket");
+  const completionDelayBuckets = db.select({
+    bucket: delayBucketExpr,
+    count,
+  }).from(base).where(and(filtered, hasCompletionDates)).groupBy(delayBucketExpr);
+
+  const lateDaysByRegion = db.select({
+    key: regionLabel,
+    medianLateDays: percentileOfExpression(lateDays, 0.5, isLateCompleted),
+    lateCount: numberSql(lateCompletedCount),
+    totalWithDates: numberSql(completedWithDatesCount),
+  }).from(base).where(filtered).groupBy(regionLabel);
+
+  const lateDaysByProjectType = db.select({
+    key: projectTypeLabel,
+    medianLateDays: percentileOfExpression(lateDays, 0.5, isLateCompleted),
+    lateCount: numberSql(lateCompletedCount),
+    totalWithDates: numberSql(completedWithDatesCount),
+  }).from(base).where(filtered).groupBy(projectTypeLabel);
+
+  const contractLengthBucketExpr = sql<string>`case
+    when ${base.calendarDays} <= 30 then '30orLess'
+    when ${base.calendarDays} <= 60 then '31to60'
+    when ${base.calendarDays} <= 90 then '61to90'
+    when ${base.calendarDays} <= 180 then '91to180'
+    else 'over180'
+  end`.as("contract_length_bucket");
+  const lateRateByContractLength = db.select({
+    bucket: contractLengthBucketExpr,
+    lateCount: numberSql(lateCompletedCount),
+    total: numberSql(completedWithDatesCount),
+  }).from(base).where(and(filtered, sql`${base.calendarDays} is not null`)).groupBy(contractLengthBucketExpr);
+
+  const lateRateByYear = db.select({
+    yearFunded: yearFundedLabel,
+    lateCount: numberSql(lateCompletedCount),
+    total: numberSql(completedWithDatesCount),
+  }).from(base).where(filtered).groupBy(yearFundedLabel);
+
+  // "Budget takes effect" isn't a stored field; this assumes January 1 of the
+  // funding year, the standard PH government budget-cycle reference point.
+  // Disclosed in the chart's own description, not asserted as fact elsewhere.
+  const isValidFundingYear = sql`${base.yearFunded} ~ '^[0-9]{4}$'`;
+  const ntpLagDays = sql<number>`(${base.startDate}::date - make_date(${base.yearFunded}::int, 1, 1))`;
+  const hasNtpLag = sql`${base.startDate} is not null`;
+  const ntpLagByProcurementMode = db.select({
+    mode: procurementModeLabel,
+    medianDays: percentileOfExpression(ntpLagDays, 0.5, hasNtpLag),
+    p25Days: percentileOfExpression(ntpLagDays, 0.25, hasNtpLag),
+    p75Days: percentileOfExpression(ntpLagDays, 0.75, hasNtpLag),
+  }).from(base).where(and(filtered, isValidFundingYear, hasNtpLag)).groupBy(procurementModeLabel);
+
+  const asOfDateSql = sql`${asOf}::date`;
+  const daysPastTarget = sql<number>`(${asOfDateSql} - ${base.targetCompletionDate}::date)`;
+  const isOngoing = sql`${base.canonicalStatus} = 'ongoing'`;
+  const isZeroProgress = sql`coalesce(${base.physicalProgress}, 0) = 0`;
+  const overdueBucketExpr = sql<string>`case
+    when ${base.targetCompletionDate} is null then 'noDates'
+    when ${daysPastTarget} < 0 then 'notYetDue'
+    when ${daysPastTarget} <= 182 then 'under6mo'
+    when ${daysPastTarget} <= 365 then '6to12mo'
+    when ${daysPastTarget} <= 730 then '1to2yr'
+    else 'over2yr'
+  end`.as("overdue_bucket");
+  const ongoingOverdueBuckets = db.select({
+    bucket: overdueBucketExpr,
+    zeroProgress: numberSql(sql`sum(case when ${isZeroProgress} then 1 else 0 end)::int`),
+    someProgress: numberSql(sql`sum(case when not (${isZeroProgress}) then 1 else 0 end)::int`),
+  }).from(base).where(and(filtered, isOngoing)).groupBy(overdueBucketExpr);
+
+  const ongoingByYear = db.select({
+    yearFunded: yearFundedLabel,
+    zeroProgress: numberSql(sql`sum(case when ${isZeroProgress} then 1 else 0 end)::int`),
+    someProgress: numberSql(sql`sum(case when not (${isZeroProgress}) then 1 else 0 end)::int`),
+  }).from(base).where(and(filtered, isOngoing)).groupBy(yearFundedLabel);
+
+  // dateTurnOver is a raw, previously-unused text field, read here as "the date
+  // turnover happened"; a completed project with it still blank is read as
+  // still waiting. See the plan's disclosed assumption for this interpretation.
+  const hasTurnedOver = sql`${base.dateTurnOver} is not null and btrim(${base.dateTurnOver}) <> ''`;
+  const isWaitingTurnover = sql`${base.canonicalStatus} = 'completed' and ${base.actualCompletionDate} is not null and not (${hasTurnedOver})`;
+  const waitingDays = sql<number>`(${asOfDateSql} - ${base.actualCompletionDate}::date)`;
+  const turnoverBucketExpr = sql<string>`case
+    when ${waitingDays} < 183 then 'under6mo'
+    when ${waitingDays} < 365 then '6to12mo'
+    when ${waitingDays} < 730 then '1to2yr'
+    when ${waitingDays} < 1461 then '2to4yr'
+    else 'over4yr'
+  end`.as("turnover_bucket");
+  const turnoverBuckets = db.select({
+    bucket: turnoverBucketExpr,
+    count,
+  }).from(base).where(and(filtered, isWaitingTurnover)).groupBy(turnoverBucketExpr);
+
+  const turnoverByRegion = db.select({
+    region: regionLabel,
+    waiting: count,
+    waitingOver1Year: numberSql(sql`sum(case when ${waitingDays} >= 365 then 1 else 0 end)::int`),
+    allocatedBudget: budget,
+  }).from(base).where(and(filtered, isWaitingTurnover)).groupBy(regionLabel);
+
+  const contractorLabel = sql<string>`nullif(btrim(${base.contractorName}), '')`.as("contractor_label");
+  // A WHERE clause can't reference a SELECT-list alias in Postgres (WHERE
+  // evaluates before SELECT), unlike GROUP BY which can — so this re-derives
+  // the condition from the base column instead of reusing contractorLabel.
+  const hasContractor = sql`nullif(btrim(${base.contractorName}), '') is not null`;
+  const contractValueExpr = sql`coalesce(${base.contractAmount}, ${base.actualBidAmount})`;
+  const contractors = db.select({
+    name: contractorLabel,
+    projectsChecked: numberSql(completedWithDatesCount),
+    medianLateDays: percentileOfExpression(lateDays, 0.5, isLateCompleted),
+    latePct: percentSql(lateCompletedCount, completedWithDatesCount),
+    overThreeMonthsLatePct: percentSql(sql`sum(case when ${hasCompletionDates} and ${lateDays} > 90 then 1 else 0 end)`, completedWithDatesCount),
+    contractValue: currencySumOfExpression(contractValueExpr),
+    regionCount: numberSql(sql`count(distinct ${label(base.region)})::int`),
+    mostlyBuilds: sql<string | null>`mode() within group (order by ${label(base.projectType)})`,
+  }).from(base).where(and(filtered, hasContractor)).groupBy(contractorLabel);
+
   const progressVariance = db.select({
     projectId: base.projectId,
     projectName: base.projectName,
@@ -494,6 +712,21 @@ export function buildDashboardAggregateQueryPlan(
     { name: "regions", query: regions },
     { name: "projectTypes", query: projectTypes },
     { name: "fundingYears", query: fundingYears },
+    { name: "statusByYear", query: statusByYear },
+    { name: "regionProjectTypes", query: regionProjectTypes },
+    { name: "projectTypeStats", query: projectTypeStats },
+    { name: "procurementModes", query: procurementModes },
+    { name: "completionDelayBuckets", query: completionDelayBuckets },
+    { name: "lateDaysByRegion", query: lateDaysByRegion },
+    { name: "lateDaysByProjectType", query: lateDaysByProjectType },
+    { name: "lateRateByContractLength", query: lateRateByContractLength },
+    { name: "lateRateByYear", query: lateRateByYear },
+    { name: "ntpLagByProcurementMode", query: ntpLagByProcurementMode },
+    { name: "ongoingOverdueBuckets", query: ongoingOverdueBuckets },
+    { name: "ongoingByYear", query: ongoingByYear },
+    { name: "turnoverBuckets", query: turnoverBuckets },
+    { name: "turnoverByRegion", query: turnoverByRegion },
+    { name: "contractors", query: contractors },
     { name: "progressVariance", query: progressVariance },
     { name: "priorityProjects", query: priorityProjects },
     { name: "filterOptions", query: filterOptions },
@@ -545,6 +778,109 @@ export async function getDashboardBreakdown(
   const asOf = manilaDateKey(new Date());
   const rows = await buildDashboardBreakdownQuery(filters, user, asOf, dimension);
   return { asOf, dimension, rows };
+}
+
+const REGION_COST_MIN_SAMPLE = 5;
+
+/**
+ * On-demand only (not part of buildDashboardAggregateQueryPlan): a percentile
+ * per (region, one chosen project type) would mean computing it for every one
+ * of ~200 types on every dashboard load, most of which nobody looks at. Fetched
+ * only once a type is picked, same on-demand shape as buildDashboardBreakdownQuery.
+ */
+export function buildRegionCostByTypeQuery(
+  filters: ManagerialDashboardFilters,
+  user: ScopedUser,
+  asOf: string,
+  projectType: string,
+) {
+  const base = dashboardBaseQuery(filters, user, asOf);
+  const filtered = filteredBaseCondition(base, filters);
+  const label = (column: AnyColumn) => sql<string>`coalesce(nullif(btrim(${column}), ''), ${UNKNOWN})`;
+  const regionLabel = label(base.region).as("region_label");
+  const matchesType = sql`lower(btrim(${base.projectType})) = lower(btrim(${projectType}))`;
+  const withType = and(filtered, matchesType);
+
+  const byRegion = db.select({
+    region: regionLabel,
+    total: numberSql(sql`count(*)::int`),
+    medianBudget: percentileSql(base.allocatedBudget, 0.5),
+    p25Budget: percentileSql(base.allocatedBudget, 0.25),
+    p75Budget: percentileSql(base.allocatedBudget, 0.75),
+  }).from(base).where(withType).groupBy(regionLabel);
+
+  const nationwide = db.select({
+    total: numberSql(sql`count(*)::int`),
+    medianBudget: percentileSql(base.allocatedBudget, 0.5),
+    p25Budget: percentileSql(base.allocatedBudget, 0.25),
+    p75Budget: percentileSql(base.allocatedBudget, 0.75),
+  }).from(base).where(withType);
+
+  return { byRegion, nationwide };
+}
+
+export async function getRegionCostByType(
+  filters: ManagerialDashboardFilters,
+  user: ScopedUser,
+  projectType: string,
+) {
+  const asOf = manilaDateKey(new Date());
+  const { byRegion, nationwide } = buildRegionCostByTypeQuery(filters, user, asOf, projectType);
+  const [regionRows, nationwideRows] = await Promise.all([byRegion, nationwide]);
+  return {
+    asOf,
+    projectType,
+    nationwide: nationwideRows[0] ?? { total: 0, medianBudget: null, p25Budget: null, p75Budget: null },
+    regions: regionRows
+      .filter((row) => row.region !== UNKNOWN && row.total >= REGION_COST_MIN_SAMPLE)
+      .sort((a, b) => (b.medianBudget ?? 0) - (a.medianBudget ?? 0)),
+  };
+}
+
+function computeExpectedProgressAt(startDate: Date | null, targetDate: Date | null, asOfDateKey: string): number | null {
+  if (!startDate || !targetDate) return null;
+  const start = startDate.getTime();
+  const target = targetDate.getTime();
+  const duration = target - start;
+  if (duration <= 0) return null;
+  const asOf = new Date(`${asOfDateKey}T00:00:00.000Z`).getTime();
+  return Math.min(100, Math.max(0, (100 * (asOf - start)) / duration));
+}
+
+export async function getProgressCurve(projectId: string, user: ScopedUser) {
+  const scopeConditions = getProjectScopeConditions(user);
+  const [projectRows, snapshotRows] = await Promise.all([
+    db.select({
+      projectId: projects.abemisId,
+      projectName: projects.name,
+      startDate: projects.startDate,
+      targetCompletionDate: projects.targetCompletionDate,
+    }).from(projects).where(and(eq(projects.abemisId, projectId), ...scopeConditions)).limit(1),
+    db.select({
+      captureDate: projectMetricSnapshots.captureDate,
+      physicalProgress: projectMetricSnapshots.physicalProgress,
+    }).from(projectMetricSnapshots)
+      .innerJoin(projects, eq(projects.abemisId, projectMetricSnapshots.projectId))
+      .where(and(eq(projectMetricSnapshots.projectId, projectId), ...scopeConditions))
+      .orderBy(projectMetricSnapshots.captureDate),
+  ]);
+
+  const project = projectRows[0];
+  if (!project) return null;
+
+  const points = snapshotRows
+    .filter((row): row is typeof row & { physicalProgress: number } => row.physicalProgress !== null)
+    .map((row) => ({
+      date: row.captureDate,
+      actualProgress: row.physicalProgress,
+      plannedProgress: computeExpectedProgressAt(project.startDate, project.targetCompletionDate, row.captureDate),
+    }));
+
+  return {
+    projectId: project.projectId,
+    projectName: project.projectName,
+    points,
+  };
 }
 
 export function aggregateManagerialDashboardRows(
@@ -749,6 +1085,21 @@ export async function getManagerialDashboardData(
     regionRows,
     projectTypeRows,
     fundingYearRows,
+    statusByYearRows,
+    regionProjectTypeRows,
+    projectTypeStatsRows,
+    procurementModeRows,
+    completionDelayBucketRows,
+    lateDaysByRegionRows,
+    lateDaysByProjectTypeRows,
+    lateRateByContractLengthRows,
+    lateRateByYearRows,
+    ntpLagByProcurementModeRows,
+    ongoingOverdueBucketRows,
+    ongoingByYearRows,
+    turnoverBucketRows,
+    turnoverByRegionRows,
+    contractorRows,
     varianceRows,
     priorityRows,
     optionRows,
@@ -765,6 +1116,21 @@ export async function getManagerialDashboardData(
     plan[6].query,
     plan[7].query,
     plan[8].query,
+    plan[9].query,
+    plan[10].query,
+    plan[11].query,
+    plan[12].query,
+    plan[13].query,
+    plan[14].query,
+    plan[15].query,
+    plan[16].query,
+    plan[17].query,
+    plan[18].query,
+    plan[19].query,
+    plan[20].query,
+    plan[21].query,
+    plan[22].query,
+    plan[23].query,
     db
       .select({ status: syncLogs.status })
       .from(syncLogs)
@@ -873,6 +1239,25 @@ export async function getManagerialDashboardData(
       ...row,
       completionRate: safePercentage(row.completed, row.total),
     })).sort((a, b) => a.yearFunded.localeCompare(b.yearFunded, undefined, { numeric: true })),
+    statusByYear: groupStatusByYear(statusByYearRows),
+    regionCategories: groupRegionCategories(regionProjectTypeRows),
+    commonProjectTypes: buildCommonProjectTypes(projectTypeStatsRows),
+    procurementModes: [...procurementModeRows].sort((a, b) => b.allocatedBudget - a.allocatedBudget),
+    completionDelayBuckets: zeroFillBuckets(DELAY_BUCKET_ORDER, completionDelayBucketRows, { count: 0 }),
+    lateDaysByRegion: lateDaysByRegionRows.filter((row) => row.key !== UNKNOWN && row.totalWithDates >= LATE_DAYS_MIN_SAMPLE),
+    lateDaysByProjectType: lateDaysByProjectTypeRows.filter((row) => row.key !== UNKNOWN && row.totalWithDates >= LATE_DAYS_MIN_SAMPLE),
+    lateRateByContractLength: zeroFillBuckets(CONTRACT_LENGTH_BUCKET_ORDER, lateRateByContractLengthRows, { lateCount: 0, total: 0 }),
+    lateRateByYear: [...lateRateByYearRows].sort((a, b) => a.yearFunded.localeCompare(b.yearFunded, undefined, { numeric: true })),
+    ntpLagByProcurementMode: [...ntpLagByProcurementModeRows],
+    ongoingOverdueBuckets: zeroFillBuckets(OVERDUE_BUCKET_ORDER, ongoingOverdueBucketRows, { zeroProgress: 0, someProgress: 0 }),
+    ongoingByYear: [...ongoingByYearRows].sort((a, b) => a.yearFunded.localeCompare(b.yearFunded, undefined, { numeric: true })),
+    turnoverBacklog: {
+      buckets: zeroFillBuckets(TURNOVER_BUCKET_ORDER, turnoverBucketRows, { count: 0 }),
+      byRegion: turnoverByRegionRows.filter((row) => row.region !== UNKNOWN).sort((a, b) => b.waiting - a.waiting),
+    },
+    contractors: contractorRows
+      .filter((row) => row.projectsChecked >= CONTRACTOR_MIN_PROJECTS)
+      .sort((a, b) => b.projectsChecked - a.projectsChecked),
     progressVariance: varianceRows.map((row) => ({
       projectId: row.projectId,
       projectName: row.projectName,
@@ -1215,6 +1600,91 @@ function sum(values: Array<string | number | null | undefined>) {
 
 function safePercentage(numerator: number, denominator: number) {
   return denominator > 0 ? round((numerator / denominator) * 100) : 0;
+}
+
+function emptyStatusRecord(): Record<ProjectStatusFilter, number> {
+  return Object.fromEntries(
+    PROJECT_STATUS_FILTER_VALUES.map((status) => [status, 0]),
+  ) as Record<ProjectStatusFilter, number>;
+}
+
+function groupStatusByYear(
+  rows: Array<{ yearFunded: string; status: ProjectStatusFilter; count: number; budget: number }>,
+) {
+  const byYear = new Map<string, { counts: Record<ProjectStatusFilter, number>; allocatedBudget: Record<ProjectStatusFilter, number> }>();
+  for (const row of rows) {
+    const entry = byYear.get(row.yearFunded) ?? {
+      counts: emptyStatusRecord(),
+      allocatedBudget: emptyStatusRecord(),
+    };
+    entry.counts[row.status] = row.count;
+    entry.allocatedBudget[row.status] = row.budget;
+    byYear.set(row.yearFunded, entry);
+  }
+  return Array.from(byYear.entries())
+    .map(([yearFunded, entry]) => ({ yearFunded, ...entry }))
+    .sort((a, b) => a.yearFunded.localeCompare(b.yearFunded, undefined, { numeric: true }));
+}
+
+// Fills in every bucket in `order`, even ones the grouped query returned no
+// rows for, so charts always render a fixed, complete set of buckets instead
+// of silently dropping a zero-count one.
+function zeroFillBuckets<Bucket extends string, Fields extends Record<string, number>>(
+  order: readonly Bucket[],
+  rows: Array<{ bucket: string } & Fields>,
+  empty: Fields,
+): Array<{ bucket: Bucket } & Fields> {
+  const byBucket = new Map(rows.map((row) => [row.bucket, row]));
+  return order.map((bucket) => ({ bucket, ...(byBucket.get(bucket) as Fields | undefined) ?? empty }));
+}
+
+const FACILITY_CATEGORIES = [...FARM_OPERATIONS, UNCLASSIFIED_CATEGORY];
+
+function emptyCategoryRecord(): Record<string, { count: number; budget: number }> {
+  return Object.fromEntries(FACILITY_CATEGORIES.map((category) => [category, { count: 0, budget: 0 }]));
+}
+
+// The 9-value facility category comes from the APSAM infrastructure-categorization
+// reference (lib/abemis/project-type-map.ts), a JS lookup keyed by raw project type —
+// not queryable in SQL — so rows are grouped by (region, projectType) in the database
+// and re-bucketed into (region, category) here.
+function groupRegionCategories(
+  rows: Array<{ region: string; projectType: string; count: number; budget: number }>,
+) {
+  const byRegion = new Map<string, Record<string, { count: number; budget: number }>>();
+  for (const row of rows) {
+    const category = getProjectTypeMapping(row.projectType)?.farmOperation ?? UNCLASSIFIED_CATEGORY;
+    const entry = byRegion.get(row.region) ?? emptyCategoryRecord();
+    entry[category] = { count: entry[category].count + row.count, budget: entry[category].budget + row.budget };
+    byRegion.set(row.region, entry);
+  }
+  return Array.from(byRegion.entries())
+    .map(([region, categories]) => ({ region, categories }))
+    .sort((a, b) => a.region.localeCompare(b.region));
+}
+
+function buildCommonProjectTypes(
+  rows: Array<{
+    projectType: string;
+    total: number;
+    allocatedBudget: number;
+    medianBudget: number | null;
+    p25Budget: number | null;
+    p75Budget: number | null;
+  }>,
+) {
+  return [...rows]
+    .sort((a, b) => b.total - a.total || a.projectType.localeCompare(b.projectType))
+    .slice(0, COMMON_TYPES_LIMIT)
+    .map((row) => ({
+      projectType: row.projectType,
+      category: getProjectTypeMapping(row.projectType)?.farmOperation ?? null,
+      total: row.total,
+      allocatedBudget: row.allocatedBudget,
+      medianBudget: row.medianBudget,
+      p25Budget: row.p25Budget,
+      p75Budget: row.p75Budget,
+    }));
 }
 
 function round(value: number) {

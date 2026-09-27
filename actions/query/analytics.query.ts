@@ -25,6 +25,17 @@ export interface BannerStat {
   turnedOver: number;
 }
 
+export interface SchedulePerformanceStat {
+  /** Rows still in scope (not completed/turned over) with a target date already in the past. */
+  overdueCount: number;
+  /** Median days between target completion date and now, over the overdue subset only. Null when nothing is overdue. */
+  medianDaysOverdue: number | null;
+  /** Rows still in scope with a recorded target completion date; denominator for the overdue rate. */
+  total: number;
+  /** Rows still in scope with no recorded target completion date. Never folded into overdue or on-time. */
+  unknownScheduleCount: number;
+}
+
 export interface InfraAnalyticsData {
   asOfDate: string;
   scopeLabel: string;
@@ -44,6 +55,7 @@ export interface InfraAnalyticsData {
     completedOrTurnedOver: { count: number; percentage: number; total: number };
     mappedProjects: { count: number; total: number };
   };
+  schedulePerformance: SchedulePerformanceStat;
   source: {
     name: "ABEMIS infrastructure project feed";
     projectCount: number;
@@ -66,6 +78,9 @@ export type InfraAnalyticsRow = {
   budget: string | null;
   latitude: number | null;
   longitude: number | null;
+  startDate: Date | null;
+  targetCompletionDate: Date | null;
+  actualCompletionDate: Date | null;
 };
 
 type QueryRows = () => Promise<InfraAnalyticsRow[]>;
@@ -100,6 +115,15 @@ export function aggregateInfraAnalyticsRows(
   let budgetCoverage = 0;
   let mappedProjects = 0;
 
+  // "One asOf instant is used for every widget in a response" (docs/dashboard-kpi-definitions.md) —
+  // reuse the same sync instant already shown as the page's "as of" date, not a fresh wall clock,
+  // so overdue status can't drift from what the rest of the page reports as current.
+  const now = lastSuccessfulSyncAt ?? new Date();
+  let scheduleTotal = 0;
+  let scheduleOverdueCount = 0;
+  let scheduleUnknownCount = 0;
+  const overdueDaysList: number[] = [];
+
   for (const row of rows) {
     const stage = getProjectStage(row.status, row.stage);
     stageCounts[stage] += 1;
@@ -120,6 +144,19 @@ export function aggregateInfraAnalyticsRows(
       }
     }
     if (isPhilippineCoordinatePair(row.latitude, row.longitude)) mappedProjects += 1;
+
+    const isPendingSchedule = stage !== "completed" && stage !== "turnedOver" && row.actualCompletionDate === null;
+    if (isPendingSchedule) {
+      if (row.targetCompletionDate === null) {
+        scheduleUnknownCount += 1;
+      } else {
+        scheduleTotal += 1;
+        if (row.targetCompletionDate.getTime() < now.getTime()) {
+          scheduleOverdueCount += 1;
+          overdueDaysList.push(daysBetween(row.targetCompletionDate, now));
+        }
+      }
+    }
   }
 
   const stages = Object.fromEntries(
@@ -141,6 +178,7 @@ export function aggregateInfraAnalyticsRows(
       }).format(lastSuccessfulSyncAt)
     : "Unknown";
   const completedCount = stageCounts.completed + stageCounts.turnedOver;
+  const medianDaysOverdue = computeMedian(overdueDaysList);
 
   return {
     status: "ready",
@@ -172,6 +210,12 @@ export function aggregateInfraAnalyticsRows(
           total: rows.length,
         },
         mappedProjects: { count: mappedProjects, total: rows.length },
+      },
+      schedulePerformance: {
+        overdueCount: scheduleOverdueCount,
+        medianDaysOverdue,
+        total: scheduleTotal,
+        unknownScheduleCount: scheduleUnknownCount,
       },
       source: {
         name: "ABEMIS infrastructure project feed",
@@ -212,6 +256,9 @@ async function queryInfraAnalyticsRows(): Promise<InfraAnalyticsRow[]> {
       budget: projects.budget,
       latitude: projects.latitude,
       longitude: projects.longitude,
+      startDate: projects.startDate,
+      targetCompletionDate: projects.targetCompletionDate,
+      actualCompletionDate: projects.actualCompletionDate,
     })
     .from(projects)
     .where(projectYearScopeCondition())
@@ -286,6 +333,22 @@ function increment(
 
 function percentage(count: number, total: number) {
   return total > 0 ? Number(((count / total) * 100).toFixed(2)) : 0;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function daysBetween(earlier: Date, later: Date) {
+  return Math.floor((later.getTime() - earlier.getTime()) / MS_PER_DAY);
+}
+
+function computeMedian(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 === 1
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+  return Math.round(median);
 }
 
 function buildScopeLabel(rows: InfraAnalyticsRow[]) {

@@ -12,27 +12,39 @@ import { tryParseManagerialDashboardFilters } from "@/lib/analytics/dashboard-fi
 import { useManagerialDashboard } from "@/hooks/use-managerial-dashboard";
 import type { ManagerialDashboardFilters } from "@/types/managerial-dashboard.types";
 import { ChartEmptyState, ChartPanel } from "./chart-panel";
-import { DataCoverage } from "./data-coverage";
 import {
   buildDrillthroughSelection,
   DashboardDrillthroughDialog,
   type DrillthroughSelection,
 } from "./dashboard-drillthrough-dialog";
+import { CommonProjectTypesTable } from "./common-project-types-table";
+import { CompletionDelayHistogram } from "./completion-delay-histogram";
+import { ContractorTrackRecordTable } from "./contractor-track-record-table";
 import { DataFreshness } from "./data-freshness";
 import { DelayedProjectsByRegionChart } from "./delayed-projects-by-region-chart";
 import { DashboardFilters, dashboardFiltersToSearchParams, mergeDashboardFilter } from "./dashboard-filters";
 import { DashboardSkeleton } from "./dashboard-skeleton";
 import { DashboardState } from "./dashboard-state";
-import { ExecutiveInsights } from "./executive-insights";
 import { ExecutiveKpis } from "./executive-kpis";
 import { FundingYearChart } from "./funding-year-chart";
+import { LateDaysByDimensionChart } from "./late-days-by-dimension-chart";
+import { LateRateByContractLengthChart } from "./late-rate-by-contract-length-chart";
+import { LateRateByYearChart } from "./late-rate-by-year-chart";
 import { OptionalManagerialAiCopilot } from "./managerial-ai-copilot";
-import { PortfolioTrendChart } from "./portfolio-trend-chart";
-import { ProgressVarianceChart } from "./progress-variance-chart";
+import { NtpLagChart } from "./ntp-lag-chart";
+import { OngoingByYearChart, OngoingOverdueBucketsChart } from "./ongoing-overdue-chart";
 import { PriorityProjectsTable } from "./priority-projects-table";
+import { ProcurementModeChart } from "./procurement-mode-chart";
+import { ProgressCurveChart } from "./progress-curve-chart";
+import { ProjectStatusFunnelChart } from "./project-status-funnel-chart";
 import { ProjectTypeBudgetChart } from "./project-type-budget-chart";
+import { RegionCategoryHeatTable } from "./region-category-heat-table";
+import { RegionCostByTypeChart } from "./region-cost-by-type-chart";
 import { RegionalPerformanceChart } from "./regional-performance-chart";
+import { RegionTotalsChart } from "./region-totals-chart";
 import { ScheduleHealthChart } from "./schedule-health-chart";
+import { StatusByYearChart } from "./status-by-year-chart";
+import { TurnoverBacklogChart } from "./turnover-backlog-chart";
 
 // Leaflet touches browser globals at module load time, so this chart must never be part
 // of the server render, not just deferred until mount.
@@ -67,13 +79,6 @@ export function ManagerialDashboardClient({
     router.replace(params.size > 0 ? `${pathname}?${params.toString()}` : pathname, {
       scroll: false,
     });
-  }
-
-  function applyPartialFilters(partial: Partial<ManagerialDashboardFilters>) {
-    setDrillthrough(null);
-    const next = { ...filters, ...partial };
-    if (partial.region && partial.region !== filters.region) delete next.province;
-    updateFilters(next);
   }
 
   if (!parsedFilters) {
@@ -155,9 +160,6 @@ export function ManagerialDashboardClient({
             coverage={data.coverage}
             assessedProjects={data.scheduleHealth.reduce((total, entry) => entry.key === "notAssessed" ? total : total + entry.count, 0)}
           />
-          <PortfolioTrendChart trend={data.trend} />
-          <ExecutiveInsights insights={data.insights} onApplyFilter={applyPartialFilters} />
-          <DataCoverage coverage={data.coverage} />
           <PriorityProjectsTable projects={data.priorityProjects} />
 
           <RegionMapChart
@@ -165,7 +167,7 @@ export function ManagerialDashboardClient({
             onSelect={(region) => updateFilters(mergeDashboardFilter(filters, "region", region))}
           />
 
-          <section aria-label="Primary portfolio charts" className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-300 duration-500 grid items-start gap-4 motion-reduce:animate-none lg:grid-cols-2">
+          <section aria-label="Primary charts" className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-300 duration-500 grid items-start gap-4 motion-reduce:animate-none lg:grid-cols-2">
             <DelayedProjectsByRegionChart
               data={data.regions}
               filters={filters}
@@ -209,8 +211,59 @@ export function ManagerialDashboardClient({
                 />
               </div>
               <div className="lg:col-span-2">
-                <ProgressVarianceChart data={data.progressVariance} />
+                <StatusByYearChart data={data.statusByYear} />
               </div>
+            </div>
+          </details>
+
+          <details className="group animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-700 duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900">
+            <summary className="cursor-pointer list-none px-4 py-3.5 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
+              <span className="inline-flex items-center gap-2">
+                <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-90">›</span>
+                <span className="text-base font-semibold text-slate-950 dark:text-white">Where projects stand</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">Project stages, spread across regions, and what gets built, by facility type</span>
+              </span>
+            </summary>
+            <div className="grid items-start gap-4 border-t border-slate-100 p-4 dark:border-slate-800">
+              <ProjectStatusFunnelChart data={data.statusBreakdown} />
+              <RegionTotalsChart data={data.regions} />
+              <RegionCategoryHeatTable data={data.regionCategories} />
+              <CommonProjectTypesTable data={data.commonProjectTypes} />
+            </div>
+          </details>
+
+          <details className="group animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-700 duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900">
+            <summary className="cursor-pointer list-none px-4 py-3.5 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
+              <span className="inline-flex items-center gap-2">
+                <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-90">›</span>
+                <span className="text-base font-semibold text-slate-950 dark:text-white">Delivery and delay analytics</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">Procurement, schedule performance, contractors, and turn-over</span>
+              </span>
+            </summary>
+            <div className="grid items-start gap-4 border-t border-slate-100 p-4 dark:border-slate-800">
+              <ProcurementModeChart data={data.procurementModes} />
+              <RegionCostByTypeChart
+                projectTypes={data.projectTypes}
+                filters={filters}
+                viewerKey={user?.id}
+              />
+              <CompletionDelayHistogram data={data.completionDelayBuckets} />
+              <div className="grid items-start gap-4 lg:grid-cols-2">
+                <LateDaysByDimensionChart data={data.lateDaysByRegion} dimensionLabel="region" />
+                <LateDaysByDimensionChart data={data.lateDaysByProjectType} dimensionLabel="type of facility" />
+              </div>
+              <div className="grid items-start gap-4 lg:grid-cols-2">
+                <LateRateByContractLengthChart data={data.lateRateByContractLength} />
+                <LateRateByYearChart data={data.lateRateByYear} />
+              </div>
+              <NtpLagChart data={data.ntpLagByProcurementMode} />
+              <div className="grid items-start gap-4 lg:grid-cols-2">
+                <OngoingOverdueBucketsChart data={data.ongoingOverdueBuckets} />
+                <OngoingByYearChart data={data.ongoingByYear} />
+              </div>
+              <TurnoverBacklogChart data={data.turnoverBacklog} />
+              <ContractorTrackRecordTable data={data.contractors} />
+              <ProgressCurveChart progressVariance={data.progressVariance} viewerKey={user?.id} />
             </div>
           </details>
         </>

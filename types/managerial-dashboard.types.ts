@@ -16,6 +16,11 @@ export const PROJECT_STATUS_FILTER_VALUES = [
 
 export type ProjectStatusFilter = (typeof PROJECT_STATUS_FILTER_VALUES)[number];
 
+export type CompletionDelayBucket = "onTimeOrEarly" | "late1to30" | "late31to90" | "late91to180" | "late181to365" | "lateOver365";
+export type ContractLengthBucket = "30orLess" | "31to60" | "61to90" | "91to180" | "over180";
+export type OverdueBucket = "notYetDue" | "under6mo" | "6to12mo" | "1to2yr" | "over2yr" | "noDates";
+export type TurnoverBucket = "under6mo" | "6to12mo" | "1to2yr" | "2to4yr" | "over4yr";
+
 export type ManagerialDashboardFilters = {
   program?: string;
   year?: string;
@@ -65,6 +70,21 @@ export type ManagerialDashboardBreakdownData = {
   asOf: string;
   dimension: DashboardBreakdownDimension;
   rows: ManagerialDashboardBreakdownRow[];
+};
+
+export type RegionCostRow = { region: string; total: number; medianBudget: number | null; p25Budget: number | null; p75Budget: number | null };
+
+export type ManagerialDashboardCostByRegionData = {
+  asOf: string;
+  projectType: string;
+  nationwide: { total: number; medianBudget: number | null; p25Budget: number | null; p75Budget: number | null };
+  regions: RegionCostRow[];
+};
+
+export type ManagerialDashboardProgressCurveData = {
+  projectId: string;
+  projectName: string;
+  points: Array<{ date: string; actualProgress: number; plannedProgress: number | null }>;
 };
 
 export type ManagerialDashboardData = {
@@ -123,6 +143,47 @@ export type ManagerialDashboardData = {
     delayed: number;
     completionRate: number;
     allocatedBudget: number;
+  }>;
+  statusByYear?: Array<{
+    yearFunded: string;
+    counts: Record<ProjectStatusFilter, number>;
+    allocatedBudget: Record<ProjectStatusFilter, number>;
+  }>;
+  regionCategories?: Array<{
+    region: string;
+    categories: Record<string, { count: number; budget: number }>;
+  }>;
+  commonProjectTypes?: Array<{
+    projectType: string;
+    category: string | null;
+    total: number;
+    allocatedBudget: number;
+    medianBudget: number | null;
+    p25Budget: number | null;
+    p75Budget: number | null;
+  }>;
+  procurementModes?: Array<{ mode: string; total: number; allocatedBudget: number }>;
+  completionDelayBuckets?: Array<{ bucket: CompletionDelayBucket; count: number }>;
+  lateDaysByRegion?: Array<{ key: string; medianLateDays: number | null; lateCount: number; totalWithDates: number }>;
+  lateDaysByProjectType?: Array<{ key: string; medianLateDays: number | null; lateCount: number; totalWithDates: number }>;
+  lateRateByContractLength?: Array<{ bucket: ContractLengthBucket; lateCount: number; total: number }>;
+  lateRateByYear?: Array<{ yearFunded: string; lateCount: number; total: number }>;
+  ntpLagByProcurementMode?: Array<{ mode: string; medianDays: number | null; p25Days: number | null; p75Days: number | null }>;
+  ongoingOverdueBuckets?: Array<{ bucket: OverdueBucket; zeroProgress: number; someProgress: number }>;
+  ongoingByYear?: Array<{ yearFunded: string; zeroProgress: number; someProgress: number }>;
+  turnoverBacklog?: {
+    buckets: Array<{ bucket: TurnoverBucket; count: number }>;
+    byRegion: Array<{ region: string; waiting: number; waitingOver1Year: number; allocatedBudget: number }>;
+  };
+  contractors?: Array<{
+    name: string;
+    projectsChecked: number;
+    medianLateDays: number | null;
+    latePct: number | null;
+    overThreeMonthsLatePct: number | null;
+    contractValue: number;
+    regionCount: number;
+    mostlyBuilds: string | null;
   }>;
   progressVariance: Array<{
     projectId: string;

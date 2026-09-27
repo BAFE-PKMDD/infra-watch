@@ -19,7 +19,18 @@ const row: InfraAnalyticsRow = {
   budget: null,
   latitude: null,
   longitude: null,
+  startDate: null,
+  targetCompletionDate: null,
+  actualCompletionDate: null,
 };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+function daysAgo(days: number) {
+  return new Date(Date.now() - days * DAY_MS);
+}
+function daysFromNow(days: number) {
+  return new Date(Date.now() + days * DAY_MS);
+}
 
 test("returns a typed empty state instead of reference figures", () => {
   const result = aggregateInfraAnalyticsRows([]);
@@ -160,4 +171,33 @@ test("publishes one traceable summary contract for homepage and public analytics
   assert.equal(result.data?.source.name, "ABEMIS infrastructure project feed");
   assert.equal(result.data?.source.projectCount, result.data?.totalTarget);
   assert.match(result.data?.source.lastSuccessfulSync ?? "", /2026/);
+});
+
+test("counts overdue schedule rows, keeps unknown target dates separate, and excludes completed or actually-finished rows", () => {
+  const rows: InfraAnalyticsRow[] = [
+    { ...row, stage: "Implementation", targetCompletionDate: daysAgo(10) }, // construction, overdue
+    { ...row, stage: "Implementation", targetCompletionDate: daysAgo(30) }, // construction, overdue
+    { ...row, stage: "Procurement", targetCompletionDate: daysFromNow(5) }, // procurement, not yet due
+    { ...row, stage: "Implementation", targetCompletionDate: null }, // unknown target date
+    { ...row, status: "Inventory", stage: null, targetCompletionDate: daysAgo(100) }, // completed stage, out of scope
+    { ...row, stage: "Implementation", targetCompletionDate: daysAgo(15), actualCompletionDate: new Date() }, // already actually completed
+  ];
+  const result = aggregateInfraAnalyticsRows(rows);
+  assert.deepEqual(result.data?.schedulePerformance, {
+    overdueCount: 2,
+    medianDaysOverdue: 20,
+    total: 3,
+    unknownScheduleCount: 1,
+  });
+});
+
+test("returns explicit zero and unknown schedule figures instead of throwing when no target dates are recorded", () => {
+  const result = aggregateInfraAnalyticsRows([row, { ...row, stage: "Procurement" }]);
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.data?.schedulePerformance, {
+    overdueCount: 0,
+    medianDaysOverdue: null,
+    total: 0,
+    unknownScheduleCount: 2,
+  });
 });

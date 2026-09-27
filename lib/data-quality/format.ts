@@ -1,5 +1,5 @@
 import { formatBudgetDetailed } from "@/lib/format";
-import type { DataQualityIssue, DataQualityIssueType } from "./project-quality";
+import type { DataQualityIssue, DataQualityIssueType, DataQualitySeverity } from "./project-quality";
 
 export const ISSUE_LABELS: Record<DataQualityIssueType, string> = {
   missing_approved_budget: "Missing approved budget",
@@ -9,6 +9,19 @@ export const ISSUE_LABELS: Record<DataQualityIssueType, string> = {
   invalid_coordinates: "Invalid coordinates",
   duplicate_project_code: "Duplicate project code",
   stale_source_record: "Not seen in latest successful sync",
+};
+
+// Every finding of a given type is always raised at the same severity today
+// (see lib/data-quality/project-quality.ts and service.ts); kept here as the
+// one shared lookup so presentation code doesn't re-derive it per finding.
+export const ISSUE_SEVERITY: Record<DataQualityIssueType, DataQualitySeverity> = {
+  missing_approved_budget: "critical",
+  missing_actual_bid_amount: "info",
+  bid_exceeds_approved_budget: "warning",
+  missing_location: "warning",
+  invalid_coordinates: "warning",
+  duplicate_project_code: "critical",
+  stale_source_record: "warning",
 };
 
 const MONEY_FINDING_TYPES = new Set<DataQualityIssueType>([

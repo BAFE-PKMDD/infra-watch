@@ -15,11 +15,13 @@ export default async function DashboardPage() {
       title={DASHBOARD_TITLE}
       description="Monitor project delivery, approved budgets, and regional performance."
     >
-      <Suspense fallback={<DashboardSkeleton />}>
-        <ManagerialDashboardClient
-          managerialAiEnabled={process.env.ENABLE_MANAGERIAL_AI === "true"}
-        />
-      </Suspense>
+      <div className="analytics-scope">
+        <Suspense fallback={<DashboardSkeleton />}>
+          <ManagerialDashboardClient
+            managerialAiEnabled={process.env.ENABLE_MANAGERIAL_AI === "true"}
+          />
+        </Suspense>
+      </div>
     </AdminPageWrapper>
   );
 }

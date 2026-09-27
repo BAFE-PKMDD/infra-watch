@@ -42,8 +42,6 @@ test("overview keeps two primary charts and moves secondary analytics into a det
   assert.match(dashboardSource, /Project timing, reported progress, and regional comparisons/);
   assert.match(dashboardSource, /ScheduleHealthChart/);
   assert.match(dashboardSource, /RegionalPerformanceChart/);
-  assert.match(dashboardSource, /ProgressVarianceChart/);
-  assert.doesNotMatch(dashboardSource, /progressVariance\.length\s*>\s*0/);
 });
 
 test("dashboard action row uses the requested labels", () => {
