@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { getBlurDataURL } from "@/lib/image-utils";
+import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useForm } from "@tanstack/react-form";
-import { Mail, MapPin, Phone, Send, User, MessageSquare, Clock, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, Mail, MapPin, Phone, Send, User, MessageSquare, Clock, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,16 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { createContactMessage } from "@/actions/mutation/contact.mutation";
 import { useTranslation } from "@/i18n";
 
+const BAFE_CONTACT_EMAIL = "bafe@da.gov.ph";
+
+const HOTLINES = [
+  { label: "0949-842-9485", href: "tel:+639498429485" },
+  { label: "0956-234-9888", href: "tel:+639562349888" },
+];
+
+const linkClassName =
+  "inline-flex min-h-11 items-center font-medium text-blue-700 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded dark:text-sky-300";
+
 export default function ContactPage() {
   const { t } = useTranslation();
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -26,7 +37,8 @@ export default function ContactPage() {
       name: "",
       email: "",
       subject: "",
-      message: ""
+      message: "",
+      website: ""
     },
     onSubmit: async ({ value, formApi }) => {
       setErrorMessage(null);
@@ -36,11 +48,13 @@ export default function ContactPage() {
         if (result.success) {
           formApi.reset();
           setIsSubmitted(true);
-        } else {
-          setErrorMessage(result.message || "Failed to send message. Please try again.");
+          return;
         }
+
+        const fieldErrors = Object.values(result.fieldErrors ?? {}).filter(Boolean);
+        setErrorMessage(fieldErrors.length > 0 ? `${result.message} ${fieldErrors.join(" ")}` : result.message);
       } catch {
-        setErrorMessage("An error occurred while sending your message.");
+        setErrorMessage(t("contact.form.error"));
       }
     }
   });
@@ -49,38 +63,63 @@ export default function ContactPage() {
     {
       title: t("contact.cards.headOffice.title"),
       icon: MapPin,
-      lines: ["Bureau of Agricultural and Fisheries Engineering", "9th flr. Two Cyberpod Centris, EDSA Quezon Avenue, Brgy. Pinyahan, QC"]
+      content: (
+        <>
+          <p>Bureau of Agricultural and Fisheries Engineering</p>
+          <p>9th flr. Two Cyberpod Centris, EDSA Quezon Avenue, Brgy. Pinyahan, QC</p>
+        </>
+      )
     },
     {
       title: t("contact.cards.hotline.title"),
       icon: Phone,
-      lines: ["0949-842-9485 or 0956-234-9888", "Monâ€“Fri, 8AMâ€“5PM"]
+      content: (
+        <>
+          <p className="flex flex-wrap gap-x-3">
+            {HOTLINES.map((hotline) => (
+              <a key={hotline.href} href={hotline.href} className={linkClassName}>
+                {hotline.label}
+              </a>
+            ))}
+          </p>
+          <p>{t("contact.cards.hours")}</p>
+        </>
+      )
     },
     {
       title: t("contact.cards.email.title"),
       icon: Mail,
-      lines: ["bafe@da.gov.ph", t("contact.form.responseInfo")]
+      content: (
+        <>
+          <p>
+            <a href={`mailto:${BAFE_CONTACT_EMAIL}`} className={linkClassName}>
+              {BAFE_CONTACT_EMAIL}
+            </a>
+          </p>
+          <p>{t("contact.cards.hours")}</p>
+        </>
+      )
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Hero Section */}
       <div className="relative h-[280px] overflow-hidden bg-blue-700 dark:bg-slate-950">
         <div className="absolute inset-0">
-          <Image 
-            src="/hero-road.jpg" 
-            alt="Contact" 
-            fill 
-            className="object-cover" 
-            priority 
-            quality={90} 
-            placeholder="blur" 
-            blurDataURL={getBlurDataURL(1920, 1080)} 
-            sizes="100vw" 
+          <Image
+            src="/hero-road.jpg"
+            alt=""
+            fill
+            className="object-cover"
+            priority
+            quality={90}
+            placeholder="blur"
+            blurDataURL={getBlurDataURL(1920, 1080)}
+            sizes="100vw"
           />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-sky-800/55 to-blue-800/60 dark:from-slate-950/90 dark:via-slate-900/85 dark:to-slate-950/90" />
+        <div className="absolute inset-0 bg-slate-950/70 dark:bg-slate-950/85" />
         <div className="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: "easeOut" }}>
             <p className="text-amber-300 text-xs font-semibold tracking-[0.3em] uppercase mb-2">{t("contact.hero.subtitle")}</p>
@@ -112,17 +151,26 @@ export default function ContactPage() {
                       <CardTitle className="text-base">{card.title}</CardTitle>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-0 space-y-1">
-                    {card.lines.map((line) => (
-                      <p key={line} className="text-sm text-slate-700 dark:text-slate-300">
-                        {line}
-                      </p>
-                    ))}
+                  <CardContent className="p-0 space-y-1 text-sm text-slate-700 dark:text-slate-300">
+                    {card.content}
                   </CardContent>
                 </Card>
               </motion.div>
             );
           })}
+        </div>
+
+        <div className="flex flex-col gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-6 sm:flex-row sm:items-center sm:justify-between dark:border-amber-700 dark:bg-amber-950/30">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+            <div>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t("contact.cards.report.title")}</h2>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{t("contact.cards.report.desc")}</p>
+            </div>
+          </div>
+          <Button asChild className="min-h-11 shrink-0 bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
+            <Link href="/report-issue/new">{t("contact.cards.report.cta")}</Link>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -154,7 +202,7 @@ export default function ContactPage() {
                   <Button
                     variant="outline"
                     onClick={() => setIsSubmitted(false)}
-                    className="gap-2"
+                    className="min-h-11 gap-2"
                   >
                     <Send className="w-4 h-4" />
                     {t("contact.form.success.cta")}
@@ -173,7 +221,7 @@ export default function ContactPage() {
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t("contact.form.title")}</h2>
                   </div>
                   <form
-                    className="space-y-4"
+                    className="relative space-y-4"
                     onSubmit={(event) => {
                       event.preventDefault();
                       form.handleSubmit();
@@ -307,26 +355,42 @@ export default function ContactPage() {
                           );
                         }}
                       </form.Field>
+                      <form.Field name="website">
+                        {(field) => (
+                          <div aria-hidden="true" className="absolute -left-[10000px] h-px w-px overflow-hidden">
+                            <label htmlFor="contact-website">Website</label>
+                            <input
+                              id="contact-website"
+                              name="website"
+                              type="text"
+                              tabIndex={-1}
+                              autoComplete="off"
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </form.Field>
                     </FieldGroup>
 
                     {errorMessage && (
-                      <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                      <div role="alert" className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
                         <p className="text-sm text-red-700 dark:text-red-300">
                           {errorMessage}
                         </p>
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <Clock className="w-4 h-4" />
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
+                        <Clock className="mt-0.5 w-4 h-4 shrink-0" aria-hidden="true" />
                         <span>{t("contact.form.responseInfo")}</span>
                       </div>
                       <form.Subscribe selector={(state) => [state.isSubmitting]}>
                         {([isSubmitting]) => (
                           <Button
                             type="submit"
-                            className="inline-flex items-center gap-2 px-4 py-2 min-w-[140px] justify-center bg-blue-700 hover:bg-blue-800 text-white"
+                            className="inline-flex min-h-11 shrink-0 items-center gap-2 px-4 py-2 min-w-[140px] justify-center bg-blue-700 hover:bg-blue-800 text-white"
                             disabled={isSubmitting}
                           >
                             {!isSubmitting && <Send className="w-4 h-4" />}

@@ -581,6 +581,12 @@ export const translations = {
         headOffice: { title: "Head Office" },
         hotline: { title: "Hotline" },
         email: { title: "Email" },
+        hours: "Monday to Friday, 8 AM to 5 PM",
+        report: {
+          title: "Problem with a project?",
+          desc: "Use an Online E-Report or SMS grievance so the concern gets a ticket number and a moderator response.",
+          cta: "Report an issue",
+        },
       },
       form: {
         title: "Send us a message",
@@ -598,11 +604,12 @@ export const translations = {
         },
         submit: "Send message",
         sending: "Sending...",
-        responseInfo: "Response within one business day",
+        responseInfo: "BAFE staff review messages Monday to Friday and reply to the email you provide.",
+        error: "Your message could not be sent. Please try again, or email bafe@da.gov.ph directly.",
         success: {
-          title: "Message Sent!",
-          desc: "Thank you for reaching out. We'll get back to you within one business day.",
-          cta: "Send Another Message",
+          title: "Message received",
+          desc: "BAFE staff will review it and reply to the email address you provided. For a problem with a specific project, file an E-Report so it gets a ticket number.",
+          cta: "Send another message",
         },
       },
       office: {
@@ -1435,6 +1442,12 @@ export const translations = {
         headOffice: { title: "Pangunahing Tanggapan" },
         hotline: { title: "Hotline" },
         email: { title: "Email" },
+        hours: "Lunes hanggang Biyernes, 8 AM hanggang 5 PM",
+        report: {
+          title: "May problema sa isang proyekto?",
+          desc: "Gumamit ng Online E-Report o SMS grievance para magkaroon ng ticket number at tugon mula sa moderator ang inyong concern.",
+          cta: "Mag-ulat ng isyu",
+        },
       },
       form: {
         title: "Magpadala sa amin ng mensahe",
@@ -1452,11 +1465,12 @@ export const translations = {
         },
         submit: "Ipadala ang mensahe",
         sending: "Ipinapadala...",
-        responseInfo: "Tugon sa loob ng isang araw ng trabaho",
+        responseInfo: "Sinusuri ng mga kawani ng BAFE ang mga mensahe mula Lunes hanggang Biyernes at sasagot sa email na inyong ibinigay.",
+        error: "Hindi naipadala ang inyong mensahe. Pakisubukang muli, o direktang mag-email sa bafe@da.gov.ph.",
         success: {
-          title: "Naipadala na ang Mensahe!",
-          desc: "Salamat sa pakikipag-ugnay. Babalik kami sa iyo sa loob ng isang araw ng trabaho.",
-          cta: "Magpadala ng Iba Pang Mensahe",
+          title: "Natanggap ang mensahe",
+          desc: "Susuriin ito ng mga kawani ng BAFE at sasagot sa email address na inyong ibinigay. Para sa problema sa isang partikular na proyekto, mag-file ng E-Report para magkaroon ito ng ticket number.",
+          cta: "Magpadala ng panibagong mensahe",
         },
       },
       office: {

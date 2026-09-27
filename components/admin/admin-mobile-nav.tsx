@@ -10,6 +10,7 @@ import {
   DatabaseZap,
   FileText,
   FolderKanban,
+  Inbox,
   LayoutDashboard,
   MessageSquare,
   MessageSquareText,
@@ -29,6 +30,7 @@ const items = [
   { label: "Projects", href: "/admin-projects", icon: FolderKanban, resource: "projects", action: "list" },
   { label: "Feedbacks", href: "/feedbacks", icon: MessageSquare, resource: "feedback", action: "list" },
   { label: "Reported Issues", href: "/issues", icon: CircleAlert, resource: "issues", action: "list" },
+  { label: "Messages", href: "/contact-messages", icon: Inbox, resource: "contact_messages", action: "list" },
   // Admin and regional-admin: unscoped across every region/agency, see
   // admin-sidebar.tsx for why regional admins are included.
   { label: "Issue Reports", href: "/reports/issues", icon: BarChart3, resource: "reports", action: "view", roles: ["admin", "regional_admin"] },

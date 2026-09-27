@@ -333,6 +333,32 @@ export const auditLogs = pgTable(
   }),
 );
 
+export const contactMessages = pgTable(
+  "contact_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    subject: text("subject").notNull(),
+    message: text("message").notNull(),
+    status: text("status").$type<"new" | "in_progress" | "resolved">().default("new").notNull(),
+    userId: text("user_id"),
+    senderKey: text("sender_key").notNull(),
+    handledBy: text("handled_by"),
+    handledAt: timestamp("handled_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index("contact_messages_created_at_idx").on(table.createdAt),
+    statusIdx: index("contact_messages_status_idx").on(table.status, table.createdAt),
+    senderKeyIdx: index("contact_messages_sender_key_idx").on(table.senderKey, table.createdAt),
+  }),
+);
+
+export type ContactMessage = typeof contactMessages.$inferSelect;
+export type NewContactMessage = typeof contactMessages.$inferInsert;
+
 export const chatHistory = pgTable(
   "ai_chat_history",
   {

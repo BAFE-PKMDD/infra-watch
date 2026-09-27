@@ -13,6 +13,7 @@ import {
   FileText,
   FolderKanban,
   Home,
+  Inbox,
   LayoutDashboard,
   MessageSquare,
   MessageSquareText,
@@ -42,6 +43,7 @@ const menu = [
       { label: "Projects", href: "/admin-projects", icon: FolderKanban, resource: "projects", action: "list" },
       { label: "Feedbacks", href: "/feedbacks", icon: MessageSquare, resource: "feedback", action: "list" },
       { label: "Reported Issues", href: "/issues", icon: CircleAlert, resource: "issues", action: "list" },
+      { label: "Contact Messages", href: "/contact-messages", icon: Inbox, resource: "contact_messages", action: "list" },
     ],
   },
   {
