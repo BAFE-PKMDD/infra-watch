@@ -1,9 +1,13 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
-import { CircleMarker, MapContainer, TileLayer, Polygon, useMap, GeoJSON } from "react-leaflet";
+import { CircleMarker, MapContainer, TileLayer, WMSTileLayer, useMap, GeoJSON } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { getProjectMarkerColor } from "@/lib/public-project-map";
+
+const GEOSERVER_URL = process.env.NEXT_PUBLIC_GEOSERVER_URL ?? "";
+const GEOSERVER_WORKSPACE = process.env.NEXT_PUBLIC_GEOSERVER_WORKSPACE ?? "geoagri";
+const WMS_BASE = `${GEOSERVER_URL}/${GEOSERVER_WORKSPACE}/wms`;
 
 interface ProjectPin {
   id: string;
@@ -30,10 +34,7 @@ interface GISMapCanvasProps {
 
 interface RegionFeature {
   type: "Feature";
-  properties: {
-    psgc_code: string;
-    name: string;
-  };
+  properties: { psgc_code: string; name: string };
   geometry: {
     type: "Polygon" | "MultiPolygon";
     coordinates: number[][][] | number[][][][];
@@ -45,56 +46,52 @@ interface RegionsGeoJSON {
   features: RegionFeature[];
 }
 
-
-function FitFilteredPins({ pins, fallbackCenter, fallbackZoom }: {
+function FitFilteredPins({
+  pins,
+  fallbackCenter,
+  fallbackZoom,
+}: {
   pins: ProjectPin[];
   fallbackCenter: [number, number];
   fallbackZoom: number;
 }) {
   const map = useMap();
-
   useEffect(() => {
     if (pins.length === 0) {
       map.setView(fallbackCenter, fallbackZoom);
       return;
     }
-    const sortedLatitudes = pins.map((pin) => pin.lat).sort((a, b) => a - b);
-    const sortedLongitudes = pins.map((pin) => pin.lng).sort((a, b) => a - b);
+    const lats = pins.map((p) => p.lat).sort((a, b) => a - b);
+    const lngs = pins.map((p) => p.lng).sort((a, b) => a - b);
     const trim = pins.length >= 20 ? Math.floor(pins.length * 0.02) : 0;
-    const upperIndex = pins.length - 1 - trim;
-    map.fitBounds([
-      [sortedLatitudes[trim], sortedLongitudes[trim]],
-      [sortedLatitudes[upperIndex], sortedLongitudes[upperIndex]],
-    ], { padding: [24, 24], maxZoom: 10 });
+    const upper = pins.length - 1 - trim;
+    map.fitBounds([[lats[trim], lngs[trim]], [lats[upper], lngs[upper]]], {
+      padding: [24, 24],
+      maxZoom: 10,
+    });
   }, [fallbackCenter, fallbackZoom, map, pins]);
-
   return null;
 }
 
 function MapSizeWatcher() {
   const map = useMap();
-
   useEffect(() => {
     const container = map.getContainer();
     const invalidate = () => map.invalidateSize({ animate: false });
-    const onFullscreenChange = () => window.setTimeout(invalidate, 50);
-    const onWindowResize = () => invalidate();
+    const onFull = () => window.setTimeout(invalidate, 50);
     let observer: ResizeObserver | null = null;
-
     if (typeof ResizeObserver !== "undefined") {
       observer = new ResizeObserver(invalidate);
       observer.observe(container);
     }
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    window.addEventListener("resize", onWindowResize);
-
+    document.addEventListener("fullscreenchange", onFull);
+    window.addEventListener("resize", invalidate);
     return () => {
       observer?.disconnect();
-      document.removeEventListener("fullscreenchange", onFullscreenChange);
-      window.removeEventListener("resize", onWindowResize);
+      document.removeEventListener("fullscreenchange", onFull);
+      window.removeEventListener("resize", invalidate);
     };
   }, [map]);
-
   return null;
 }
 
@@ -116,13 +113,12 @@ function RegionBoundaryLayer({ selectedRegion }: { selectedRegion: string }) {
         return res.json();
       })
       .then((data: RegionsGeoJSON) => setRegionsData(data))
-      .catch((err) => setError(err));
+      .catch((err: Error) => setError(err));
   }, []);
 
   if (!regionsData || error) return null;
 
   const isAll = selectedRegion === "all";
-
   return (
     <GeoJSON
       key={selectedRegion}
@@ -133,14 +129,7 @@ function RegionBoundaryLayer({ selectedRegion }: { selectedRegion: string }) {
         const raw = (feature?.properties?.psgc_code as string) ?? "";
         const isSelected = isRegionSelected(raw, selectedRegion);
         if (isSelected) {
-          return {
-            color: "#06b6d4",
-            weight: 4,
-            opacity: 1,
-            fillColor: "#06b6d4",
-            fillOpacity: 0.2,
-            interactive: false,
-          };
+          return { color: "#06b6d4", weight: 4, opacity: 1, fillColor: "#06b6d4", fillOpacity: 0.2, interactive: false };
         }
         return {
           color: "#ffffff",
@@ -165,24 +154,14 @@ export default function GISMapCanvas({
   mapZoom,
   selectedRegion = "all",
 }: GISMapCanvasProps) {
-
   const tileUrl = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";
   const attribution = '&copy; <a href="https://www.google.com/maps">Google</a>, FMR Watch Projects';
 
-  // Polygon layers coordinates
-  const watershedPolygon: [number, number][] = [
-    [10.6, 124.9],
-    [10.9, 124.9],
-    [10.9, 125.15],
-    [10.6, 125.15],
-  ];
-
-  const agriZonePolygon: [number, number][] = [
-    [11.2, 125.0],
-    [11.4, 125.0],
-    [11.4, 125.2],
-    [11.2, 125.2],
-  ];
+  const wmsParams = {
+    transparent: true,
+    format: "image/png",
+    version: "1.1.1",
+  } as const;
 
   return (
     <div className="w-full h-full relative z-0">
@@ -198,35 +177,29 @@ export default function GISMapCanvas({
         <FitFilteredPins pins={filteredPins} fallbackCenter={mapCenter} fallbackZoom={mapZoom} />
         <RegionBoundaryLayer selectedRegion={selectedRegion} />
 
-        {/* Watersheds overlay boundary polygon */}
-        {watershedOverlay && (
-          <Polygon
-            positions={watershedPolygon}
-            pathOptions={{
-              color: "rgb(20, 184, 166)", // teal-500
-              fillColor: "rgb(20, 184, 166)",
-              fillOpacity: 0.1,
-              dashArray: "6, 6",
-              weight: 3,
-            }}
+        {/* Watersheds / Waterways — live GeoServer WMS */}
+        {watershedOverlay && GEOSERVER_URL && (
+          <WMSTileLayer
+            url={WMS_BASE}
+            layers={`${GEOSERVER_WORKSPACE}:WATERWAYS`}
+            {...wmsParams}
+            opacity={0.7}
+            attribution="&copy; BAFE GeoServer"
           />
         )}
 
-        {/* Agricultural Zone overlay boundary polygon */}
-        {agriZoneOverlay && (
-          <Polygon
-            positions={agriZonePolygon}
-            pathOptions={{
-              color: "rgb(245, 158, 11)", // amber-500
-              fillColor: "rgb(245, 158, 11)",
-              fillOpacity: 0.1,
-              dashArray: "6, 6",
-              weight: 3,
-            }}
+        {/* Agricultural Production Areas — live GeoServer WMS */}
+        {agriZoneOverlay && GEOSERVER_URL && (
+          <WMSTileLayer
+            url={WMS_BASE}
+            layers={`${GEOSERVER_WORKSPACE}:BSWM_AGRI_PROD_AREA`}
+            {...wmsParams}
+            opacity={0.6}
+            attribution="&copy; BAFE GeoServer"
           />
         )}
 
-        {/* Marker pins */}
+        {/* Project marker pins */}
         {filteredPins.map((pin) => (
           <CircleMarker
             key={pin.id}
@@ -238,11 +211,7 @@ export default function GISMapCanvas({
               fillOpacity: 1,
               weight: 1,
             }}
-            eventHandlers={{
-              click: () => {
-                setSelectedProject(pin);
-              },
-            }}
+            eventHandlers={{ click: () => setSelectedProject(pin) }}
           />
         ))}
       </MapContainer>

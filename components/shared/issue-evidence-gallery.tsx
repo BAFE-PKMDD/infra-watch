@@ -77,9 +77,14 @@ export function IssueEvidenceGallery({
                   <video src={src} controls playsInline preload="metadata" className="h-full w-full object-cover" />
                 )}
                 {item.type === "video" ? (
-                  <span className="pointer-events-none absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-slate-950/75 text-white backdrop-blur">
+                  <button
+                    type="button"
+                    onClick={() => setViewingIndex(index)}
+                    aria-label={`Open ${item.name || `video evidence ${index + 1}`} in the full viewer`}
+                    className="absolute left-2 top-2 grid size-11 place-items-center rounded-full bg-slate-950/75 text-white backdrop-blur transition hover:bg-slate-950/90"
+                  >
                     <Play className="size-3.5 fill-current" />
-                  </span>
+                  </button>
                 ) : null}
               </div>
               <div className="flex min-h-12 items-center gap-2 px-3 py-2">
@@ -87,12 +92,12 @@ export function IssueEvidenceGallery({
                   {item.name || `${item.type === "video" ? "Video" : "Photo"} evidence ${index + 1}`}
                 </span>
                 {hasCoordinates ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300" title={`${item.lat}, ${item.lon}`}>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300" title={`${item.lat}, ${item.lon}`}>
                     <MapPin className="size-3" />
                     {item.lat?.toFixed(4)}, {item.lon?.toFixed(4)}
                   </span>
                 ) : (
-                  <span className="shrink-0 rounded-full bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-800">No GPS</span>
+                  <span className="shrink-0 rounded-full bg-slate-200 px-2 py-1 text-xs font-bold text-slate-500 dark:bg-slate-800">GPS unavailable</span>
                 )}
               </div>
             </article>

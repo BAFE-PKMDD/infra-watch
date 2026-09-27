@@ -8,18 +8,24 @@ import {
   useMemo,
   useRef,
   useState,
+  type RefObject,
   type SyntheticEvent,
 } from "react";
 import Link from "next/link";
-import { Camera, Maximize2 } from "lucide-react";
+import type L from "leaflet";
+import { Camera, Check, Copy, Maximize2 } from "lucide-react";
 import {
   CircleMarker,
   MapContainer,
+  Marker,
   Polyline,
   Popup,
   useMap,
 } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 
 import {
   DEFAULT_EVIDENCE_BASEMAP_ID,
@@ -28,6 +34,20 @@ import {
   EvidenceBasemapSelector,
   type EvidenceBasemapId,
 } from "@/components/shared/evidence-basemap";
+import {
+  LegendPopover,
+  ZoomFitControl,
+} from "@/components/shared/evidence-map-controls";
+import {
+  createEvidenceClusterIcon,
+  createEvidencePinIcon,
+} from "@/components/shared/evidence-map-markers";
+import {
+  formatEvidenceLabel,
+  getStatusDotClass,
+  shortenReferenceId,
+  useClipboardCopy,
+} from "@/components/shared/system-evidence-map-format";
 import { interpolateGeoTrackPoint } from "@/lib/geo-track-playback";
 import { getFullUrl } from "@/lib/minio-url";
 import { cn } from "@/lib/utils";
@@ -48,6 +68,8 @@ type SystemEvidenceMapCanvasProps = {
   onSelectIssue: (issueId: string) => void;
 };
 
+type MarkerRegistry = Map<string, L.Marker | L.CircleMarker>;
+
 type PlaybackSnapshot = {
   playerId: string;
   issueId: string;
@@ -60,12 +82,6 @@ type PlaybackActivateHandler = (playerId: string) => void;
 type PlaybackDisposeHandler = (playerId: string) => void;
 type OpenSplitViewHandler = (request: GeoVideoSplitViewRequest) => void;
 
-function formatLabel(value: string) {
-  return value
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 function formatDate(value: string | null) {
   if (!value) return "Date unavailable";
   return new Intl.DateTimeFormat("en-PH", {
@@ -75,7 +91,11 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
-function MapViewport({ issues, selectedIssueId }: Pick<SystemEvidenceMapCanvasProps, "issues" | "selectedIssueId">) {
+function MapViewport({
+  issues,
+  selectedIssueId,
+  fitRequestId,
+}: Pick<SystemEvidenceMapCanvasProps, "issues" | "selectedIssueId"> & { fitRequestId: number }) {
   const map = useMap();
 
   const positions = useMemo(
@@ -85,6 +105,22 @@ function MapViewport({ issues, selectedIssueId }: Pick<SystemEvidenceMapCanvasPr
     ]),
     [issues],
   );
+  const positionsRef = useRef(positions);
+  useEffect(() => {
+    positionsRef.current = positions;
+  }, [positions]);
+
+  useEffect(() => {
+    if (!fitRequestId) return;
+    const pts = positionsRef.current;
+    if (pts.length === 0) {
+      map.setView(PHILIPPINES_CENTER, 6, { animate: true });
+    } else if (pts.length === 1) {
+      map.flyTo(pts[0], 15, { duration: 0.65 });
+    } else {
+      map.fitBounds(pts, { padding: [48, 48], maxZoom: 15, animate: true, duration: 0.65 });
+    }
+  }, [fitRequestId, map]);
 
   useEffect(() => {
     const container = map.getContainer();
@@ -126,6 +162,38 @@ function MapViewport({ issues, selectedIssueId }: Pick<SystemEvidenceMapCanvasPr
     const point = selected?.evidence[0] ?? selected?.geoVideoTrack[0];
     if (point) map.flyTo([point.lat, point.lon], Math.max(map.getZoom(), 14), { duration: 0.65 });
   }, [issues, map, selectedIssueId]);
+
+  return null;
+}
+
+/** Opens the representative marker's popup when a card is selected, unspiderfying clusters as needed. */
+function PopupSync({
+  selectedIssueId,
+  clusteredMarkersRef,
+  plainMarkersRef,
+  clusterGroupRef,
+}: {
+  selectedIssueId: string | null;
+  clusteredMarkersRef: RefObject<MarkerRegistry>;
+  plainMarkersRef: RefObject<MarkerRegistry>;
+  clusterGroupRef: RefObject<L.MarkerClusterGroup | null>;
+}) {
+  useEffect(() => {
+    if (!selectedIssueId) return;
+
+    const clusteredMarker = clusteredMarkersRef.current.get(selectedIssueId);
+    if (clusteredMarker) {
+      const clusterGroup = clusterGroupRef.current;
+      if (clusterGroup) {
+        clusterGroup.zoomToShowLayer(clusteredMarker, () => clusteredMarker.openPopup());
+      } else {
+        clusteredMarker.openPopup();
+      }
+      return;
+    }
+
+    plainMarkersRef.current.get(selectedIssueId)?.openPopup();
+  }, [selectedIssueId, clusteredMarkersRef, plainMarkersRef, clusterGroupRef]);
 
   return null;
 }
@@ -283,6 +351,8 @@ function IssuePopup({
     && issue.geoVideoUrl
     && getFullUrl(issue.geoVideoUrl) === videoUrl
   );
+  const shortId = shortenReferenceId(issue.ticketNumber);
+  const [copied, handleCopy] = useClipboardCopy(issue.ticketNumber);
 
   return (
     <div className="w-[min(23rem,76vw)] overflow-hidden text-slate-900">
@@ -302,13 +372,23 @@ function IssuePopup({
         />
       ) : null}
 
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <span className="rounded-full bg-slate-900 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white">
-          {issue.ticketNumber}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={handleCopy}
+          title={`#${issue.ticketNumber}`}
+          className="-mx-1 inline-flex max-w-full items-center gap-1 rounded px-1 py-0.5 font-mono text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        >
+          <span className="truncate">#{shortId}</span>
+          {copied ? <Check className="size-3 shrink-0 text-emerald-600" /> : <Copy className="size-3 shrink-0 opacity-60" />}
+        </button>
+        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">
+          {formatEvidenceLabel(issue.category)}
         </span>
-        <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800">
-          {formatLabel(issue.category)}
-        </span>
+      </div>
+      <div className="mb-2 flex items-center gap-1.5 text-xs text-slate-600">
+        <span className={cn("size-1.5 shrink-0 rounded-full", getStatusDotClass(issue.status))} />
+        {formatEvidenceLabel(issue.status)}
       </div>
       <p className="line-clamp-3 text-sm font-semibold leading-5 break-words">{issue.description}</p>
       <p className="mt-2 line-clamp-2 text-xs leading-4 text-slate-600">{getSystemEvidenceLocationLabel(issue)}</p>
@@ -316,7 +396,7 @@ function IssuePopup({
         <span className="text-[11px] font-semibold text-slate-600">{formatDate(issue.createdAt)}</span>
         <Link
           href={issue.detailUrl}
-          className="rounded-md bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="rounded-md bg-primary px-2.5 py-1.5 text-[11px] font-bold text-primary-foreground! transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           {issue.sourceType === "feedback" ? "Open feedback" : "Open report"}
         </Link>
@@ -325,21 +405,23 @@ function IssuePopup({
   );
 }
 
-const IssueLayers = memo(function IssueLayers({
-  issues,
-  selectedIssueId,
-  onSelectIssue,
-  onPlaybackActivate,
-  onPlaybackUpdate,
-  onPlaybackDispose,
-  onOpenSplitView,
-}: SystemEvidenceMapCanvasProps & {
+type IssueLayerHandlers = {
   onPlaybackActivate: PlaybackActivateHandler;
   onPlaybackUpdate: PlaybackUpdateHandler;
   onPlaybackDispose: PlaybackDisposeHandler;
   onOpenSplitView: OpenSplitViewHandler;
-}) {
+};
+
+/** Renders GeoVideo route polylines and their start markers, outside the marker cluster group. */
+const RouteLayers = memo(function RouteLayers({
+  issues,
+  selectedIssueId,
+  onSelectIssue,
+  plainMarkersRef,
+  ...handlers
+}: SystemEvidenceMapCanvasProps & IssueLayerHandlers & { plainMarkersRef: RefObject<MarkerRegistry> }) {
   const map = useMap();
+  const { onPlaybackActivate, onPlaybackUpdate, onPlaybackDispose, onOpenSplitView } = handlers;
   const handleOpenSplitView = useCallback<OpenSplitViewHandler>((request) => {
     onOpenSplitView(request);
     map.closePopup();
@@ -348,6 +430,8 @@ const IssueLayers = memo(function IssueLayers({
   return issues.map((issue) => {
     const selected = issue.issueId === selectedIssueId;
     const trackPositions = issue.geoVideoTrack.map((point) => [point.lat, point.lon] as [number, number]);
+    if (trackPositions.length === 0) return null;
+
     const routePlayerId = `${issue.issueId}:route`;
     const startPlayerId = `${issue.issueId}:start`;
 
@@ -381,63 +465,85 @@ const IssueLayers = memo(function IssueLayers({
           </Polyline>
         )}
 
-        {trackPositions.length > 0 && (
-          <CircleMarker
-            center={trackPositions[0]}
-            radius={selected ? 7 : 5}
-            pathOptions={{ color: "#ffffff", weight: 2, fillColor: "#0284c7", fillOpacity: 1 }}
-            eventHandlers={{ click: () => onSelectIssue(issue.issueId) }}
+        <CircleMarker
+          center={trackPositions[0]}
+          radius={selected ? 7 : 5}
+          pathOptions={{ color: "#ffffff", weight: 2, fillColor: "#0284c7", fillOpacity: 1 }}
+          eventHandlers={{ click: () => onSelectIssue(issue.issueId) }}
+          ref={(instance) => {
+            if (issue.evidence.length > 0) return;
+            if (instance) plainMarkersRef.current.set(issue.issueId, instance);
+            else plainMarkersRef.current.delete(issue.issueId);
+          }}
+        >
+          <Popup
+            maxWidth={420}
+            eventHandlers={{ remove: () => onPlaybackDispose(startPlayerId) }}
           >
-            <Popup
-              maxWidth={420}
-              eventHandlers={{ remove: () => onPlaybackDispose(startPlayerId) }}
-            >
-              <IssuePopup
-                issue={issue}
-                playerId={startPlayerId}
-                onPlaybackActivate={onPlaybackActivate}
-                onPlaybackUpdate={onPlaybackUpdate}
-                onPlaybackDispose={onPlaybackDispose}
-                onOpenSplitView={handleOpenSplitView}
-              />
-            </Popup>
-          </CircleMarker>
-        )}
-
-        {issue.evidence.map((media, mediaIndex) => {
-          const mediaPlayerId = `${issue.issueId}:media:${mediaIndex}:${media.url}`;
-          return (
-            <CircleMarker
-              key={`${issue.issueId}-${media.type}-${mediaIndex}-${media.lat}-${media.lon}`}
-              center={[media.lat, media.lon]}
-              radius={selected ? 10 : media.type === "video" ? 8 : 7}
-              pathOptions={{
-                color: selected ? "#0f172a" : "#ffffff",
-                weight: selected ? 4 : 2,
-                fillColor: media.type === "video" ? "#0284c7" : "#10b981",
-                fillOpacity: 0.94,
-              }}
-              eventHandlers={{ click: () => onSelectIssue(issue.issueId) }}
-            >
-              <Popup
-                maxWidth={420}
-                eventHandlers={{ remove: () => onPlaybackDispose(mediaPlayerId) }}
-              >
-                <IssuePopup
-                  issue={issue}
-                  mediaIndex={mediaIndex}
-                  playerId={mediaPlayerId}
-                  onPlaybackActivate={onPlaybackActivate}
-                  onPlaybackUpdate={onPlaybackUpdate}
-                  onPlaybackDispose={onPlaybackDispose}
-                  onOpenSplitView={handleOpenSplitView}
-                />
-              </Popup>
-            </CircleMarker>
-          );
-        })}
+            <IssuePopup
+              issue={issue}
+              playerId={startPlayerId}
+              onPlaybackActivate={onPlaybackActivate}
+              onPlaybackUpdate={onPlaybackUpdate}
+              onPlaybackDispose={onPlaybackDispose}
+              onOpenSplitView={handleOpenSplitView}
+            />
+          </Popup>
+        </CircleMarker>
       </Fragment>
     );
+  });
+});
+
+/** Renders clustered photo/video evidence pins. Rendered inside a MarkerClusterGroup. */
+const EvidenceMarkers = memo(function EvidenceMarkers({
+  issues,
+  selectedIssueId,
+  onSelectIssue,
+  clusteredMarkersRef,
+  ...handlers
+}: SystemEvidenceMapCanvasProps & IssueLayerHandlers & { clusteredMarkersRef: RefObject<MarkerRegistry> }) {
+  const map = useMap();
+  const { onPlaybackActivate, onPlaybackUpdate, onPlaybackDispose, onOpenSplitView } = handlers;
+  const handleOpenSplitView = useCallback<OpenSplitViewHandler>((request) => {
+    onOpenSplitView(request);
+    map.closePopup();
+  }, [map, onOpenSplitView]);
+
+  return issues.flatMap((issue) => {
+    const selected = issue.issueId === selectedIssueId;
+
+    return issue.evidence.map((media, mediaIndex) => {
+      const mediaPlayerId = `${issue.issueId}:media:${mediaIndex}:${media.url}`;
+      return (
+        <Marker
+          key={`${issue.issueId}-${media.type}-${mediaIndex}-${media.lat}-${media.lon}`}
+          position={[media.lat, media.lon]}
+          icon={createEvidencePinIcon(media.type, selected)}
+          eventHandlers={{ click: () => onSelectIssue(issue.issueId) }}
+          ref={(instance) => {
+            if (mediaIndex !== 0) return;
+            if (instance) clusteredMarkersRef.current.set(issue.issueId, instance);
+            else clusteredMarkersRef.current.delete(issue.issueId);
+          }}
+        >
+          <Popup
+            maxWidth={420}
+            eventHandlers={{ remove: () => onPlaybackDispose(mediaPlayerId) }}
+          >
+            <IssuePopup
+              issue={issue}
+              mediaIndex={mediaIndex}
+              playerId={mediaPlayerId}
+              onPlaybackActivate={onPlaybackActivate}
+              onPlaybackUpdate={onPlaybackUpdate}
+              onPlaybackDispose={onPlaybackDispose}
+              onOpenSplitView={handleOpenSplitView}
+            />
+          </Popup>
+        </Marker>
+      );
+    });
   });
 });
 
@@ -451,10 +557,18 @@ export default function SystemEvidenceMapCanvas({
   const [basemapId, setBasemapId] = useState<EvidenceBasemapId>(DEFAULT_EVIDENCE_BASEMAP_ID);
   const [basemapRevision, setBasemapRevision] = useState(0);
   const [basemapMessage, setBasemapMessage] = useState<string | null>(null);
+  const [fitRequestId, setFitRequestId] = useState(0);
   const activePlayerIdRef = useRef<string | null>(null);
   const activeBasemapIdRef = useRef<EvidenceBasemapId>(DEFAULT_EVIDENCE_BASEMAP_ID);
   const tileErrorCountRef = useRef(0);
   const automaticFallbackAttemptedRef = useRef(false);
+  const clusteredMarkersRef = useRef<MarkerRegistry>(new Map());
+  const plainMarkersRef = useRef<MarkerRegistry>(new Map());
+  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
+
+  const handleFitRequest = useCallback(() => {
+    setFitRequestId((id) => id + 1);
+  }, []);
 
   const handleBasemapChange = useCallback((nextBasemapId: EvidenceBasemapId) => {
     tileErrorCountRef.current = 0;
@@ -554,7 +668,7 @@ export default function SystemEvidenceMapCanvas({
         zoom={6}
         minZoom={4}
         maxZoom={EVIDENCE_BASEMAPS[DEFAULT_EVIDENCE_BASEMAP_ID].maxZoom}
-        zoomControl
+        zoomControl={false}
         preferCanvas
         className="h-full w-full"
       >
@@ -565,17 +679,47 @@ export default function SystemEvidenceMapCanvas({
           onLoad={handleBasemapLoad}
           onTileError={handleBasemapTileError}
         />
-        <MapViewport issues={issues} selectedIssueId={selectedIssueId} />
+        <MapViewport issues={issues} selectedIssueId={selectedIssueId} fitRequestId={fitRequestId} />
+        <ZoomFitControl
+          onFitRequest={handleFitRequest}
+          className="absolute bottom-3 left-3 z-[850] lg:bottom-4 lg:left-4"
+        />
+        <PopupSync
+          selectedIssueId={selectedIssueId}
+          clusteredMarkersRef={clusteredMarkersRef}
+          plainMarkersRef={plainMarkersRef}
+          clusterGroupRef={clusterGroupRef}
+        />
 
-        <IssueLayers
+        <RouteLayers
           issues={issues}
           selectedIssueId={selectedIssueId}
           onSelectIssue={onSelectIssue}
+          plainMarkersRef={plainMarkersRef}
           onPlaybackActivate={handlePlaybackActivate}
           onPlaybackUpdate={handlePlaybackUpdate}
           onPlaybackDispose={handlePlaybackDispose}
           onOpenSplitView={handleOpenSplitView}
         />
+
+        <MarkerClusterGroup
+          ref={clusterGroupRef}
+          maxClusterRadius={50}
+          spiderfyOnMaxZoom
+          showCoverageOnHover={false}
+          iconCreateFunction={createEvidenceClusterIcon}
+        >
+          <EvidenceMarkers
+            issues={issues}
+            selectedIssueId={selectedIssueId}
+            onSelectIssue={onSelectIssue}
+            clusteredMarkersRef={clusteredMarkersRef}
+            onPlaybackActivate={handlePlaybackActivate}
+            onPlaybackUpdate={handlePlaybackUpdate}
+            onPlaybackDispose={handlePlaybackDispose}
+            onOpenSplitView={handleOpenSplitView}
+          />
+        </MarkerClusterGroup>
 
         {activePlaybackPoint ? (
           <>
@@ -594,6 +738,8 @@ export default function SystemEvidenceMapCanvas({
           </>
         ) : null}
       </MapContainer>
+
+      <LegendPopover className="absolute left-3 top-20 z-[860] lg:left-4 lg:top-4" />
 
       <EvidenceBasemapSelector
         value={basemapId}

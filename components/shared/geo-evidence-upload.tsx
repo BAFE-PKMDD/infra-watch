@@ -272,6 +272,9 @@ export function GeoEvidenceUpload({
   const recordingStartedAtRef = useRef(0);
   const recordingTrackRef = useRef<GeoTrackPoint[]>([]);
   const recordingActiveRef = useRef(false);
+  const recordedBytesRef = useRef(0);
+  const autoStoppingRef = useRef(false);
+  const stopRecordingRef = useRef<(() => Promise<void>) | null>(null);
   const captureBusyRef = useRef(false);
   const cameraSessionRef = useRef(0);
   const previewUrlsRef = useRef(new Set(items.map((item) => item.preview)));
@@ -369,6 +372,8 @@ export function GeoEvidenceUpload({
     recordingLocationPromiseRef.current = null;
     recordingStartedAtRef.current = 0;
     recordingTrackRef.current = [];
+    recordedBytesRef.current = 0;
+    autoStoppingRef.current = false;
     setIsRecording(false);
     setCameraLocationStatus("idle");
     setCameraLocationError(null);
@@ -429,7 +434,7 @@ export function GeoEvidenceUpload({
         warning: position || (track && track.length > 0)
           ? undefined
           : source === "camera"
-            ? "Not geotagged — this camera capture will not have an Evidence Map pin."
+            ? "Not geotagged. This camera capture will not have an Evidence Map pin."
             : "No embedded GPS was found.",
       }];
     });
@@ -792,8 +797,23 @@ export function GeoEvidenceUpload({
       };
       const recorder = new MediaRecorder(stream, recorderOptions);
       chunksRef.current = [];
+      recordedBytesRef.current = 0;
+      autoStoppingRef.current = false;
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data);
+        if (event.data.size === 0) return;
+        chunksRef.current.push(event.data);
+        recordedBytesRef.current += event.data.size;
+        // Stop with headroom instead of discarding the whole recording once
+        // the hard MAX_VIDEO_BYTES cap is hit at finalize time. The encoder's
+        // bitrate is a target, not a guarantee, so this margin absorbs the
+        // last buffered chunk MediaRecorder flushes on stop().
+        if (!autoStoppingRef.current && recordedBytesRef.current >= MAX_VIDEO_BYTES * 0.9) {
+          autoStoppingRef.current = true;
+          toast.info("Recording stopped automatically", {
+            description: "The clip reached the 100 MB size limit.",
+          });
+          void stopRecordingRef.current?.();
+        }
       };
       recorder.onerror = () => {
         if (cameraSessionRef.current !== session) return;
@@ -840,7 +860,7 @@ export function GeoEvidenceUpload({
     }
   };
 
-  const stopRecording = async () => {
+  const stopRecording = useCallback(async () => {
     if (captureBusyRef.current) return;
     const recorder = recorderRef.current;
     if (!recorder || recorder.state === "inactive") return;
@@ -896,7 +916,11 @@ export function GeoEvidenceUpload({
       toast.error("The camera did not produce a playable video. Please try recording again.");
     }
     stopCamera();
-  };
+  }, [addReadyFile, stopCamera, stopLocationWatch]);
+
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
 
   const moveEvidencePoint = useCallback((
     id: string,
@@ -1048,7 +1072,7 @@ export function GeoEvidenceUpload({
                 ) : (
                   <video src={item.preview} controls preload="metadata" className="h-full w-full object-cover" />
                 )}
-                <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-slate-950/80 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white backdrop-blur">
+                <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-slate-950/80 px-2 py-1 text-xs font-extrabold uppercase tracking-wide text-white backdrop-blur">
                   {item.locationSource === "da-sidecar"
                     ? <MapPin className="size-3" />
                     : item.source === "camera" ? <Camera className="size-3" /> : <Images className="size-3" />}
@@ -1058,7 +1082,7 @@ export function GeoEvidenceUpload({
                   type="button"
                   onClick={() => removeItem(item.id)}
                   disabled={disabled}
-                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-slate-950/80 text-white backdrop-blur transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="absolute right-2 top-2 grid size-11 place-items-center rounded-full bg-slate-950/80 text-white backdrop-blur transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label={`Remove ${item.file.name}`}
                 >
                   <Trash2 className="size-3.5" />
@@ -1067,15 +1091,15 @@ export function GeoEvidenceUpload({
               <div className="space-y-2.5 p-3">
                 <div className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate text-xs font-extrabold text-slate-900 dark:text-white">{item.file.name}</span>
-                  <span className="text-[10px] font-bold uppercase text-slate-500">{item.type}</span>
+                  <span className="text-xs font-bold uppercase text-slate-500">{item.type}</span>
                 </div>
                 {item.status === "extracting" ? (
-                  <div className="flex items-center gap-2 rounded-lg bg-sky-500/10 px-2.5 py-2 text-[11px] font-bold text-sky-700 dark:text-sky-300">
+                  <div className="flex items-center gap-2 rounded-lg bg-sky-500/10 px-2.5 py-2 text-xs font-bold text-sky-700 dark:text-sky-300">
                     <Loader2 className="size-3.5 animate-spin" /> Reading location metadata&hellip;
                   </div>
                 ) : typeof item.lat === "number" && typeof item.lon === "number" ? (
                   <div className={cn(
-                    "flex items-start gap-2 rounded-lg px-2.5 py-2 text-[11px] font-semibold",
+                    "flex items-start gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold",
                     typeof item.accuracy === "number" && item.accuracy > 100
                       ? "bg-amber-500/10 text-amber-800 dark:text-amber-200"
                       : "bg-emerald-500/10 text-emerald-800 dark:text-emerald-200",
@@ -1092,7 +1116,7 @@ export function GeoEvidenceUpload({
                           const level = getAccuracyLevel(item.accuracy);
                           const color = getAccuracyColor(level);
                           return (
-                            <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-extrabold uppercase tracking-wide ring-1", color.pill)}>
+                            <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-px text-xs font-extrabold uppercase tracking-wide ring-1", color.pill)}>
                               <AccuracySignalBars level={level} />
                               {getAccuracyLabel(level)}
                             </span>
@@ -1109,7 +1133,7 @@ export function GeoEvidenceUpload({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-2.5 py-2 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
+                    <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-2.5 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
                       <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
                       <span>{item.warning || "No GPS coordinates are attached."}</span>
                     </div>
@@ -1117,7 +1141,7 @@ export function GeoEvidenceUpload({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 w-full text-xs"
+                      className="h-11 w-full text-xs"
                       disabled={disabled || locatingItemId === item.id}
                       onClick={() => void locateItem(item.id)}
                     >
@@ -1137,9 +1161,9 @@ export function GeoEvidenceUpload({
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
             <div>
               <p className="flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-white"><MapPin className="size-4 text-emerald-500" /> Location preview</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">Drag a pin to correct an approximate device location.</p>
+              <p className="mt-0.5 text-xs text-slate-500">Drag a pin to correct an approximate device location.</p>
             </div>
-            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-extrabold uppercase text-emerald-700 dark:text-emerald-300">{hasDaSidecar ? "DA + device GPS" : "Device metadata"}</span>
+            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-extrabold uppercase text-emerald-700 dark:text-emerald-300">{hasDaSidecar ? "DA + device GPS" : "Device metadata"}</span>
           </div>
           <LeafletEvidenceMap
             points={mapData.points}
@@ -1165,7 +1189,7 @@ export function GeoEvidenceUpload({
                     {cameraMode === "photo" ? <Camera className="size-4 text-sky-300" aria-hidden="true" /> : <Video className="size-4 text-amber-300" aria-hidden="true" />}
                     {cameraMode === "photo" ? "Geotagged photo capture" : "GeoVideo recorder"}
                   </DialogTitle>
-                  <DialogDescription className="mt-0.5 text-[11px] text-slate-400">
+                  <DialogDescription className="mt-0.5 text-xs text-slate-400">
                     {cameraMode === "photo"
                       ? "The photo uses the verified device location shown below."
                       : "The route starts from the verified location shown below."}
@@ -1195,7 +1219,7 @@ export function GeoEvidenceUpload({
                     <span className="inline-flex items-center gap-2 rounded-full bg-red-500 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg">
                       <Radio className="size-3.5 animate-pulse" aria-hidden="true" /> REC {recordingSeconds}s
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-950/85 px-3 py-1.5 text-[11px] font-bold text-emerald-300 shadow-lg backdrop-blur">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-950/85 px-3 py-1.5 text-xs font-bold text-emerald-300 shadow-lg backdrop-blur">
                       <Crosshair className="size-3.5" aria-hidden="true" /> {recordingPointCount} GPS point{recordingPointCount === 1 ? "" : "s"}
                     </span>
                   </div>
@@ -1234,7 +1258,7 @@ export function GeoEvidenceUpload({
                             const level = getAccuracyLevel(cameraPosition.accuracy);
                             const color = getAccuracyColor(level);
                             return (
-                              <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ring-1", color.pill)}>
+                              <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide ring-1", color.pill)}>
                                 <AccuracySignalBars level={level} />
                                 {getAccuracyLabel(level)}
                               </span>

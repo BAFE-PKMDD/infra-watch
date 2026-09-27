@@ -17,6 +17,8 @@ type EvidenceBasemapDefinition = {
   subdomains?: string;
   maxNativeZoom: number;
   maxZoom: number;
+  /** Optional labels/roads layer drawn above a muted base layer (e.g. Esri's Light Gray Canvas is split in two). */
+  referenceUrl?: string;
 };
 
 export const DEFAULT_EVIDENCE_BASEMAP_ID: EvidenceBasemapId = "streets";
@@ -26,9 +28,10 @@ export const EVIDENCE_BASEMAPS: Record<EvidenceBasemapId, EvidenceBasemapDefinit
     id: "streets",
     label: "Street",
     description: "Roads and places",
-    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxNativeZoom: 19,
+    url: "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    referenceUrl: "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ",
+    maxNativeZoom: 16,
     maxZoom: 20,
   },
   satellite: {
@@ -63,6 +66,9 @@ const BASEMAP_ICONS = {
   satellite: Satellite,
   terrain: Mountain,
 } as const;
+
+export const MAP_CONTROL_SURFACE_CLASS =
+  "border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900";
 
 function BasemapZoomPolicy({ basemapId }: { basemapId: EvidenceBasemapId }) {
   const map = useMap();
@@ -112,6 +118,15 @@ export function EvidenceBasemapLayer({
         keepBuffer={3}
         eventHandlers={eventHandlers}
       />
+      {basemap.referenceUrl && (
+        <TileLayer
+          key={`${basemap.id}:reference:${revision}`}
+          url={basemap.referenceUrl}
+          maxNativeZoom={basemap.maxNativeZoom}
+          maxZoom={basemap.maxZoom}
+          keepBuffer={3}
+        />
+      )}
       <BasemapZoomPolicy basemapId={basemapId} />
     </>
   );
@@ -135,7 +150,8 @@ export function EvidenceBasemapSelector({
       role="group"
       aria-label="Choose map style"
       className={cn(
-        "inline-flex items-center gap-1 rounded-xl border border-slate-200/90 bg-white/95 p-1 shadow-lg shadow-slate-900/10 backdrop-blur-md dark:border-slate-700 dark:bg-slate-950/95",
+        "inline-flex items-center gap-1 rounded-md p-1",
+        MAP_CONTROL_SURFACE_CLASS,
         className,
       )}
     >
@@ -152,9 +168,9 @@ export function EvidenceBasemapSelector({
             aria-label={`${option.label} map: ${option.description}`}
             title={`${option.label} - ${option.description}`}
             className={cn(
-              "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-xs font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1",
+              "inline-flex min-h-10 items-center justify-center gap-2 rounded px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
               selected
-                ? "bg-slate-950 text-white shadow-sm dark:bg-emerald-400 dark:text-slate-950"
+                ? "bg-primary text-primary-foreground"
                 : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
             )}
           >

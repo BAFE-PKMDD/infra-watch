@@ -106,11 +106,8 @@ export default function GISMapPage() {
         <div className="space-y-6">
           <div>
             <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <Compass className="w-5 h-5 text-primary" /> GIS Mapping Console
+              <Compass className="w-5 h-5 text-primary" /> Infra Map
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs mt-1.5 leading-relaxed">
-              Overlay AMEFIP program projects with administrative boundaries and GeoServer GIS data.
-            </p>
           </div>
 
           {/* Search bar */}

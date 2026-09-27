@@ -6,15 +6,15 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  CalendarDays,
   Camera,
+  Check,
+  ChevronLeft,
   ChevronRight,
-  FileText,
+  Copy,
   Layers3,
   Loader2,
   MapPin,
   RefreshCw,
-  RotateCcw,
   Route,
   Search,
   SlidersHorizontal,
@@ -22,10 +22,27 @@ import {
   X,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { getFullUrl } from "@/lib/minio-url";
+import {
+  formatEvidenceLabel,
+  getStatusDotClass,
+  shortenReferenceId,
+  useClipboardCopy,
+} from "@/components/shared/system-evidence-map-format";
 import {
   getSystemEvidenceLocationLabel,
   parseSystemEvidenceResponse,
@@ -38,11 +55,11 @@ const SystemEvidenceMapCanvas = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full min-h-[28rem] w-full items-center justify-center bg-slate-200 dark:bg-slate-900">
-        <div className="rounded-2xl border border-white/70 bg-white/90 px-5 py-4 text-center shadow-xl backdrop-blur dark:border-slate-700 dark:bg-slate-950/90">
-          <Loader2 className="mx-auto mb-2 size-5 animate-spin text-emerald-600" />
-          <p className="text-sm font-bold text-slate-900 dark:text-white">Preparing evidence map</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Loading the geographic canvas…</p>
+      <div className="flex h-full min-h-[28rem] w-full items-center justify-center bg-muted">
+        <div className="rounded-lg border border-border bg-card px-5 py-4 text-center shadow-sm">
+          <Loader2 className="mx-auto mb-2 size-5 animate-spin text-primary" />
+          <p className="text-sm font-medium text-foreground">Preparing evidence map</p>
+          <p className="mt-1 text-xs text-muted-foreground">Loading the geographic canvas…</p>
         </div>
       </div>
     ),
@@ -67,12 +84,6 @@ async function fetchSystemEvidence() {
   return parseSystemEvidenceResponse(payload);
 }
 
-function formatLabel(value: string) {
-  return value
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 function formatDate(value: string | null) {
   if (!value) return "Date unavailable";
   return new Intl.DateTimeFormat("en-PH", {
@@ -80,13 +91,6 @@ function formatDate(value: string | null) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
-}
-
-function statusTone(status: string) {
-  if (status === "resolved") return "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300";
-  if (status === "reviewing" || status === "in-progress") return "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-500/40 dark:bg-sky-500/15 dark:text-sky-300";
-  if (status === "closed" || status === "suspended") return "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
-  return "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300";
 }
 
 function SelectField({
@@ -103,19 +107,69 @@ function SelectField({
   options: Array<{ value: string; label: string }>;
 }) {
   return (
-    <label htmlFor={id} className="space-y-1.5">
-      <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">{label}</span>
+    <label htmlFor={id} className="space-y-1">
+      <span className="block text-xs font-medium text-muted-foreground">{label}</span>
       <select
         id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </select>
     </label>
+  );
+}
+
+function EvidenceThumb({ issue }: { issue: SystemEvidenceIssue }) {
+  const [hasError, setHasError] = useState(false);
+  const firstImage = issue.evidence.find((item) => item.type === "image");
+  const hasVideo = issue.evidence.some((item) => item.type === "video");
+  const thumbUrl = firstImage ? getFullUrl(firstImage.url) : null;
+
+  if (thumbUrl && !hasError) {
+    return (
+      // Report evidence is served from MinIO/object storage and can be displayed directly.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={thumbUrl}
+        alt=""
+        onError={() => setHasError(true)}
+        className="size-14 shrink-0 rounded-md object-cover"
+      />
+    );
+  }
+
+  const Icon = hasVideo ? Video : issue.geoVideoTrack.length > 0 ? Route : Camera;
+  return (
+    <div className="flex size-14 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+      <Icon className="size-5" />
+    </div>
+  );
+}
+
+function ReferenceIdBadge({ ticketNumber }: { ticketNumber: string }) {
+  const shortId = shortenReferenceId(ticketNumber);
+  const [copied, handleCopy] = useClipboardCopy(ticketNumber);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="-mx-1 inline-flex max-w-full items-center gap-1 rounded px-1 py-0.5 font-mono text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          />
+        }
+      >
+        <span className="truncate">#{shortId}</span>
+        {copied ? <Check className="size-3 shrink-0 text-emerald-600" /> : <Copy className="size-3 shrink-0 opacity-60" />}
+      </TooltipTrigger>
+      <TooltipContent>#{ticketNumber}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -137,55 +191,49 @@ function ResultCard({
     <article
       ref={cardRef}
       className={cn(
-        "overflow-hidden rounded-xl border bg-white shadow-sm transition-all [content-visibility:auto] [contain-intrinsic-size:0_180px] dark:bg-slate-950",
-        selected
-          ? "border-emerald-500 ring-2 ring-emerald-500/15"
-          : "border-slate-200 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:hover:border-slate-700",
+        "relative border-l-[3px] border-transparent px-3 py-3 transition-colors [content-visibility:auto] [contain-intrinsic-size:0_96px]",
+        selected ? "border-l-primary bg-primary/5" : "hover:bg-muted/60",
       )}
     >
-      <button type="button" onClick={onSelect} className="w-full p-3.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{issue.ticketNumber}</p>
-            <p className="mt-1 line-clamp-2 text-sm font-extrabold leading-5 text-slate-900 dark:text-white">{issue.description}</p>
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex w-full items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+      >
+        <EvidenceThumb issue={issue} />
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-medium leading-5 break-words text-foreground [overflow-wrap:anywhere]">{issue.description}</p>
+          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+            {getSystemEvidenceLocationLabel(issue)} · {formatDate(issue.createdAt)}
+          </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className={cn("size-1.5 shrink-0 rounded-full", getStatusDotClass(issue.status))} />
+              {formatEvidenceLabel(issue.status)}
+            </span>
+            {imageCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Camera className="size-3" /> {imageCount}
+              </span>
+            )}
+            {(videoCount > 0 || issue.geoVideoTrack.length > 0) && (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Video className="size-3" /> {videoCount || 1}
+              </span>
+            )}
           </div>
-          <span className={cn("shrink-0 rounded-full border px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide", statusTone(issue.status))}>
-            {formatLabel(issue.status)}
-          </span>
-        </div>
-
-        <div className="mt-3 flex items-start gap-2 text-[11px] leading-4 text-slate-600 dark:text-slate-300">
-          <MapPin className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <span className="line-clamp-2">{getSystemEvidenceLocationLabel(issue)}</span>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="h-5 max-w-full truncate border-slate-300 bg-slate-100/70 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-            {formatLabel(issue.category)}
-          </Badge>
-          {imageCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
-              <Camera className="size-3" /> {imageCount}
-            </span>
-          )}
-          {(videoCount > 0 || issue.geoVideoTrack.length > 0) && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-800 dark:text-sky-300">
-              <Video className="size-3" /> {videoCount || 1}
-            </span>
-          )}
-          <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-            <CalendarDays className="size-3" /> {formatDate(issue.createdAt)}
-          </span>
         </div>
       </button>
 
-      <Link
-        href={issue.detailUrl}
-        className="flex items-center justify-between border-t border-slate-100 px-3.5 py-2 text-[11px] font-bold text-slate-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
-      >
-        {issue.sourceType === "feedback" ? "View project feedback" : "View full report"}
-        <ChevronRight className="size-3.5" />
-      </Link>
+      <div className="mt-2 flex items-center justify-between pl-[4.25rem]">
+        <ReferenceIdBadge ticketNumber={issue.ticketNumber} />
+        <Link
+          href={issue.detailUrl}
+          className="rounded text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          {issue.sourceType === "feedback" ? "View feedback" : "View report"}
+        </Link>
+      </div>
     </article>
   );
 }
@@ -199,6 +247,7 @@ export function SystemEvidenceMapClient() {
   const [dateTo, setDateTo] = useState("");
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const cardRefs = useRef(new Map<string, HTMLElement>());
 
   const { data: issues = [], isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -259,6 +308,7 @@ export function SystemEvidenceMapClient() {
 
   const evidenceCount = filteredIssues.reduce((total, issue) => total + issue.evidence.length, 0);
   const routeCount = filteredIssues.filter((issue) => issue.geoVideoTrack.length > 1).length;
+  const popoverFilterCount = (media !== "all" ? 1 : 0) + (dateFrom || dateTo ? 1 : 0);
   const activeFilterCount = [search, category !== "all", status !== "all", media !== "all", dateFrom, dateTo].filter(Boolean).length;
 
   const resetFilters = () => {
@@ -271,75 +321,74 @@ export function SystemEvidenceMapClient() {
     setSelectedIssueId(null);
   };
 
+  const clearMediaAndDateFilters = () => {
+    setMedia("all");
+    setDateFrom("");
+    setDateTo("");
+  };
+
   const selectIssue = (issueId: string, revealMap = false) => {
     setSelectedIssueId(issueId);
     if (revealMap) setMobilePanelOpen(false);
   };
 
   return (
-    <section className="relative isolate h-[calc(100dvh-5rem)] min-h-[42rem] overflow-hidden bg-slate-100 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
-      <div className="grid h-full lg:grid-cols-[23rem_minmax(0,1fr)]">
+    <section className="relative isolate h-[calc(100dvh-5rem)] min-h-[42rem] overflow-hidden bg-muted text-foreground">
+      <div
+        className={cn(
+          "grid h-full transition-[grid-template-columns] duration-200",
+          sidebarCollapsed ? "lg:grid-cols-[0rem_minmax(0,1fr)]" : "lg:grid-cols-[22rem_minmax(0,1fr)]",
+        )}
+      >
         <aside
           aria-label="Evidence map filters and results"
           className={cn(
-            "absolute inset-x-3 bottom-3 top-20 z-[1100] min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/97 shadow-2xl backdrop-blur-xl transition duration-200 dark:border-slate-700 dark:bg-slate-950/97 lg:static lg:z-auto lg:translate-y-0 lg:rounded-none lg:border-y-0 lg:border-l-0 lg:opacity-100 lg:shadow-none",
+            "absolute inset-x-0 bottom-0 top-auto z-[1100] flex max-h-[82dvh] min-h-0 flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl transition duration-200 lg:static lg:inset-auto lg:z-auto lg:max-h-none lg:min-w-0 lg:translate-y-0 lg:rounded-none lg:border-y-0 lg:border-l-0 lg:opacity-100 lg:shadow-none",
             mobilePanelOpen
               ? "flex translate-y-0 opacity-100"
               : "hidden translate-y-3 opacity-0 lg:flex lg:pointer-events-auto",
+            sidebarCollapsed && "lg:opacity-0 lg:pointer-events-none",
           )}
         >
-          <div className="border-b border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex justify-center pt-2 pb-1 lg:hidden">
+            <span className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+          </div>
+
+          <div className="border-b border-border p-4">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Citizen Reports Map</h1>
-                <p className="mt-1 max-w-xs text-xs leading-5 text-slate-600 dark:text-slate-300">Geotagged photos and inspection video routes submitted by citizens monitoring public projects.</p>
-              </div>
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Citizen Reports Map</h1>
               <Button type="button" variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobilePanelOpen(false)} aria-label="Close filters">
                 <X className="size-4" />
               </Button>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <div className="rounded-xl border border-slate-200/90 bg-white/95 p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">Reports</p>
-                  <FileText className="size-3.5 text-slate-500 dark:text-slate-400" />
-                </div>
-                <p className="mt-1 text-xl font-black tabular-nums text-slate-950 dark:text-white">{filteredIssues.length}</p>
+            {activeFilterCount > 0 && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                >
+                  Reset filters
+                </button>
               </div>
-              <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/60 p-2.5 shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/40">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Media</p>
-                  <Camera className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <p className="mt-1 text-xl font-black tabular-nums text-emerald-800 dark:text-emerald-300">{evidenceCount}</p>
-              </div>
-              <div className="rounded-xl border border-sky-200/70 bg-sky-50/60 p-2.5 shadow-sm dark:border-sky-900/50 dark:bg-sky-950/40">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 dark:text-sky-300">Routes</p>
-                  <Route className="size-3.5 text-sky-600 dark:text-sky-400" />
-                </div>
-                <p className="mt-1 text-xl font-black tabular-nums text-sky-800 dark:text-sky-300">{routeCount}</p>
-              </div>
-            </div>
-          </div>
+            )}
 
-          <div className="border-b border-slate-200 p-4 dark:border-slate-800">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
+            <div className="mt-3.5 relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search reports or places..."
                 aria-label="Search evidence reports"
-                className="h-10 rounded-lg border-slate-300 bg-white pl-9 pr-8 text-xs font-medium text-slate-900 placeholder:text-slate-500 focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-400"
+                className="h-10 rounded-md border-input bg-background pl-9 pr-8 text-sm text-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
                   aria-label="Clear search text"
                 >
                   <X className="size-3.5" />
@@ -347,189 +396,208 @@ export function SystemEvidenceMapClient() {
               )}
             </div>
 
-            <div className="mt-3.5 grid grid-cols-2 gap-2.5">
+            <div className="mt-3 grid grid-cols-2 gap-2.5">
               <SelectField
                 id="evidence-category"
                 label="Category"
                 value={category}
                 onChange={setCategory}
-                options={[{ value: "all", label: "All categories" }, ...categories.map((item) => ({ value: item, label: formatLabel(item) }))]}
+                options={[{ value: "all", label: "All categories" }, ...categories.map((item) => ({ value: item, label: formatEvidenceLabel(item) }))]}
               />
               <SelectField
                 id="evidence-status"
                 label="Status"
                 value={status}
                 onChange={setStatus}
-                options={[{ value: "all", label: "All statuses" }, ...statuses.map((item) => ({ value: item, label: formatLabel(item) }))]}
+                options={[{ value: "all", label: "All statuses" }, ...statuses.map((item) => ({ value: item, label: formatEvidenceLabel(item) }))]}
               />
             </div>
 
-            <fieldset className="mt-3.5">
-              <legend className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">Media Type</legend>
-              <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-200 bg-slate-100/90 p-1 dark:border-slate-800 dark:bg-slate-900">
-                {([
-                  { value: "all", label: "All", icon: Layers3 },
-                  { value: "image", label: "Photos", icon: Camera },
-                  { value: "video", label: "Videos", icon: Video },
-                ] as const).map((option) => {
-                  const Icon = option.icon;
-                  const isSelected = media === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setMedia(option.value)}
-                      aria-pressed={isSelected}
-                      className={cn(
-                        "flex h-9 items-center justify-center gap-1.5 rounded-md text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-                        isSelected
-                          ? "bg-white text-slate-950 shadow-sm dark:bg-slate-800 dark:text-white"
-                          : "text-slate-700 hover:bg-white/60 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white",
-                      )}
-                    >
-                      <Icon className="size-3.5 shrink-0" /> {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </fieldset>
-
-            <div className="mt-3.5 grid grid-cols-2 gap-2.5">
-              <label htmlFor="evidence-date-from" className="space-y-1.5">
-                <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">From Date</span>
-                <Input
-                  id="evidence-date-from"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(event) => setDateFrom(event.target.value)}
-                  max={dateTo || undefined}
-                  className="h-10 rounded-lg border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                />
-              </label>
-              <label htmlFor="evidence-date-to" className="space-y-1.5">
-                <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">To Date</span>
-                <Input
-                  id="evidence-date-to"
-                  type="date"
-                  value={dateTo}
-                  onChange={(event) => setDateTo(event.target.value)}
-                  min={dateFrom || undefined}
-                  className="h-10 rounded-lg border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                />
-              </label>
-            </div>
-
-            {activeFilterCount > 0 && (
-              <div className="mt-3.5 flex items-center justify-between border-t border-slate-200/80 pt-3 dark:border-slate-800">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {activeFilterCount} active filter{activeFilterCount === 1 ? "" : "s"}
-                </span>
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-extrabold text-emerald-800 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+            <div className="mt-3">
+              <Popover>
+                <PopoverTrigger
+                  render={<Button type="button" variant="outline" size="sm" className="gap-1.5" />}
                 >
-                  <RotateCcw className="size-3" />
-                  Reset all
-                </button>
-              </div>
-            )}
+                  <SlidersHorizontal className="size-3.5" />
+                  {popoverFilterCount > 0 ? `Filters · ${popoverFilterCount}` : "Filters"}
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-72 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-foreground">Filters</p>
+                    {popoverFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={clearMediaAndDateFilters}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  <fieldset>
+                    <legend className="mb-1.5 text-xs font-medium text-muted-foreground">Media type</legend>
+                    <div className="grid grid-cols-3 gap-1 rounded-md border border-border bg-muted/50 p-1">
+                      {([
+                        { value: "all", label: "All", icon: Layers3 },
+                        { value: "image", label: "Photos", icon: Camera },
+                        { value: "video", label: "Videos", icon: Video },
+                      ] as const).map((option) => {
+                        const Icon = option.icon;
+                        const isSelected = media === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setMedia(option.value)}
+                            aria-pressed={isSelected}
+                            className={cn(
+                              "flex h-9 items-center justify-center gap-1.5 rounded text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                              isSelected
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground",
+                            )}
+                          >
+                            <Icon className="size-3.5 shrink-0" /> {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <label htmlFor="evidence-date-from" className="space-y-1">
+                      <span className="block text-xs font-medium text-muted-foreground">From date</span>
+                      <Input
+                        id="evidence-date-from"
+                        type="date"
+                        value={dateFrom}
+                        onChange={(event) => setDateFrom(event.target.value)}
+                        max={dateTo || undefined}
+                        className="h-9 rounded-md border-input bg-background px-2.5 text-sm text-foreground"
+                      />
+                    </label>
+                    <label htmlFor="evidence-date-to" className="space-y-1">
+                      <span className="block text-xs font-medium text-muted-foreground">To date</span>
+                      <Input
+                        id="evidence-date-to"
+                        type="date"
+                        value={dateTo}
+                        onChange={(event) => setDateTo(event.target.value)}
+                        min={dateFrom || undefined}
+                        className="h-9 rounded-md border-input bg-background px-2.5 text-sm text-foreground"
+                      />
+                    </label>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-600 dark:text-slate-300">Mapped reports</p>
-              {isFetching && !isLoading && <Loader2 className="size-3.5 animate-spin text-emerald-600" />}
+            <div className="flex items-center justify-between border-b border-border px-4 py-2">
+              <p className="text-xs font-medium text-muted-foreground">Mapped reports</p>
+              {isFetching && !isLoading && <Loader2 className="size-3.5 animate-spin text-primary" />}
             </div>
-            <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3 overscroll-contain">
-              {isLoading ? (
-                Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-36 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-900" />)
-              ) : filteredIssues.length > 0 ? (
-                filteredIssues.map((issue) => (
-                  <ResultCard
-                    key={issue.issueId}
-                    issue={issue}
-                    selected={visibleSelectedIssueId === issue.issueId}
-                    onSelect={() => selectIssue(issue.issueId, true)}
-                    cardRef={(element) => {
-                      if (element) cardRefs.current.set(issue.issueId, element);
-                      else cardRefs.current.delete(issue.issueId);
-                    }}
-                  />
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-6 text-center dark:border-slate-700 dark:bg-slate-900/30">
-                  <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    <MapPin className="size-5" />
+            <TooltipProvider delay={200}>
+              <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto overscroll-contain">
+                {isLoading ? (
+                  <div className="space-y-2.5 p-3">
+                    {Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-24 animate-pulse rounded-md bg-muted" />)}
                   </div>
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">No mapped evidence found</h3>
-                  <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
-                    {activeFilterCount > 0
-                      ? "No reports match your current filters or date range."
-                      : "No geotagged evidence reports have been recorded yet."}
-                  </p>
-                  {activeFilterCount > 0 ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={resetFilters}
-                      className="mt-4 border-slate-300 text-xs font-bold text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                    >
-                      <RotateCcw className="mr-1.5 size-3.5 text-emerald-600" />
-                      Reset all filters
-                    </Button>
-                  ) : (
-                    <Link
-                      href="/report-issue"
-                      className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                    >
-                      Submit an evidence report
-                    </Link>
-                  )}
-                </div>
-              )}
-            </div>
+                ) : filteredIssues.length > 0 ? (
+                  filteredIssues.map((issue) => (
+                    <ResultCard
+                      key={issue.issueId}
+                      issue={issue}
+                      selected={visibleSelectedIssueId === issue.issueId}
+                      onSelect={() => selectIssue(issue.issueId, true)}
+                      cardRef={(element) => {
+                        if (element) cardRefs.current.set(issue.issueId, element);
+                        else cardRefs.current.delete(issue.issueId);
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="p-6 text-center">
+                    <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                      <MapPin className="size-5" />
+                    </div>
+                    <h3 className="text-sm font-medium text-foreground">No mapped evidence found</h3>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {activeFilterCount > 0
+                        ? "No reports match your current filters or date range."
+                        : "No geotagged evidence reports have been recorded yet."}
+                    </p>
+                    {activeFilterCount > 0 ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={resetFilters}
+                        className="mt-4"
+                      >
+                        <RefreshCw className="size-3.5 text-primary" />
+                        Reset all filters
+                      </Button>
+                    ) : (
+                      <Link
+                        href="/report-issue"
+                        className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        Submit an evidence report
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+            </TooltipProvider>
           </div>
         </aside>
+
+        <button
+          type="button"
+          onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          aria-label={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+          aria-expanded={!sidebarCollapsed}
+          className={cn(
+            "absolute top-1/2 z-[1150] hidden size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-[left] duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex",
+            sidebarCollapsed ? "left-0" : "left-[22rem]",
+          )}
+        >
+          {sidebarCollapsed ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
+        </button>
 
         <main className="relative min-h-0 overflow-hidden">
           <SystemEvidenceMapCanvas issues={filteredIssues} selectedIssueId={visibleSelectedIssueId} onSelectIssue={selectIssue} />
 
-          <div className="absolute left-14 right-14 top-3 z-[1000] flex items-center justify-between gap-3 lg:hidden">
-            <div className="min-w-0 rounded-xl border border-white/70 bg-white/92 px-3 py-2 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-950/92">
-              <p className="truncate text-sm font-black text-slate-950 dark:text-white">Citizen Reports Map</p>
-              <p className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">{filteredIssues.length} geotagged report{filteredIssues.length === 1 ? "" : "s"}</p>
+          <div className="absolute left-3 right-3 top-3 z-[1000] flex items-center justify-between gap-3 lg:hidden">
+            <div className="min-w-0 rounded-lg border border-border bg-card/95 px-3 py-2 shadow-sm">
+              <p className="truncate text-sm font-semibold text-foreground">Citizen Reports Map</p>
+              <p className="text-xs text-muted-foreground">{filteredIssues.length} geotagged report{filteredIssues.length === 1 ? "" : "s"}</p>
             </div>
-            <Button type="button" onClick={() => setMobilePanelOpen(true)} className="h-10 bg-slate-950 text-white shadow-lg hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+            <Button type="button" onClick={() => setMobilePanelOpen(true)} className="h-10 shrink-0">
               <SlidersHorizontal className="size-4" />
               Filters
-              {activeFilterCount > 0 && <span className="rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] text-white">{activeFilterCount}</span>}
+              {activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
             </Button>
           </div>
 
-          <div className="pointer-events-none absolute bottom-3 left-3 z-[800] flex flex-wrap gap-2 rounded-xl border border-slate-200/90 bg-white/95 px-3 py-2 text-[10px] font-bold text-slate-700 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-950/95 dark:text-slate-200 lg:bottom-5 lg:left-5">
-            <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-emerald-500 ring-2 ring-white" /> Photo</span>
-            <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-sky-600 ring-2 ring-white" /> Video</span>
-            <span className="inline-flex items-center gap-1.5"><Route className="size-3 text-sky-600" /> GeoVideo route</span>
-            <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-amber-400 ring-2 ring-white" /> Live video position</span>
-          </div>
-
           {isLoading && (
-            <div className="absolute inset-0 z-[900] flex items-center justify-center bg-slate-950/15 backdrop-blur-[1px]">
-              <div className="rounded-2xl border border-white/70 bg-white/95 px-5 py-4 text-center shadow-2xl dark:border-slate-700 dark:bg-slate-950/95">
-                <Loader2 className="mx-auto mb-2 size-5 animate-spin text-emerald-600" />
-                <p className="text-sm font-bold">Locating evidence…</p>
+            <div className="absolute inset-0 z-[900] flex items-center justify-center bg-background/40">
+              <div className="rounded-lg border border-border bg-card px-5 py-4 text-center shadow-lg">
+                <Loader2 className="mx-auto mb-2 size-5 animate-spin text-primary" />
+                <p className="text-sm font-medium text-foreground">Locating evidence…</p>
               </div>
             </div>
           )}
 
           {isError && (
-            <div className="absolute inset-0 z-[900] flex items-center justify-center bg-slate-950/25 p-4 backdrop-blur-sm">
-              <div className="max-w-sm rounded-2xl border border-red-200 bg-white p-6 text-center shadow-2xl dark:border-red-900 dark:bg-slate-950">
-                <AlertTriangle className="mx-auto mb-3 size-7 text-red-500" />
-                <h2 className="text-base font-black">Evidence map unavailable</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{error instanceof Error ? error.message : "Please try again shortly."}</p>
+            <div className="absolute inset-0 z-[900] flex items-center justify-center bg-background/50 p-4">
+              <div className="max-w-sm rounded-lg border border-destructive/30 bg-card p-6 text-center shadow-lg">
+                <AlertTriangle className="mx-auto mb-3 size-7 text-destructive" />
+                <h2 className="text-base font-semibold text-foreground">Evidence map unavailable</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{error instanceof Error ? error.message : "Please try again shortly."}</p>
                 <Button type="button" variant="outline" className="mt-4" onClick={() => refetch()} disabled={isFetching}>
                   {isFetching ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
                   Try again
