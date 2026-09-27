@@ -20,6 +20,7 @@ import {
   EvidenceBasemapSelector,
   type EvidenceBasemapId,
 } from "@/components/shared/evidence-basemap";
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 import type { GeoTrackPoint } from "@/types/geo-evidence.types";
 
@@ -157,6 +158,7 @@ export default function LeafletEvidenceMap({
   basemapSelectorClassName,
   className = "h-80 w-full",
 }: LeafletEvidenceMapProps) {
+  const { t } = useTranslation();
   const [uncontrolledBasemapId, setUncontrolledBasemapId] = useState(defaultBasemapId);
   const basemapId = controlledBasemapId ?? uncontrolledBasemapId;
   const pointIcons = useMemo(
@@ -208,7 +210,9 @@ export default function LeafletEvidenceMap({
               <Popup>
                 <strong>{track.label}</strong>
                 <br />
-                {track.points.length} GPS point{track.points.length === 1 ? "" : "s"}
+                {t(track.points.length === 1 ? "community.leafletMap.gpsPointsOne" : "community.leafletMap.gpsPointsMany", {
+                  count: track.points.length,
+                })}
               </Popup>
             </Polyline>
           );
@@ -225,7 +229,7 @@ export default function LeafletEvidenceMap({
               radius={6}
               pathOptions={{ color: "#ffffff", fillColor: "#10b981", fillOpacity: 1, weight: 2 }}
             >
-              <Popup>{track.label} start</Popup>
+              <Popup>{t("community.leafletMap.trackStart", { label: track.label })}</Popup>
             </CircleMarker>,
             <CircleMarker
               key={`${track.id}-end`}
@@ -233,7 +237,7 @@ export default function LeafletEvidenceMap({
               radius={6}
               pathOptions={{ color: "#ffffff", fillColor: "#ef4444", fillOpacity: 1, weight: 2 }}
             >
-              <Popup>{track.label} end</Popup>
+              <Popup>{t("community.leafletMap.trackEnd", { label: track.label })}</Popup>
             </CircleMarker>,
           ];
         })}
@@ -286,8 +290,10 @@ export default function LeafletEvidenceMap({
                 <strong>{point.label}</strong>
                 <br />
                 {point.lat.toFixed(6)}, {point.lon.toFixed(6)}
-                {typeof point.accuracy === "number" ? <><br />Accuracy: &plusmn;{Math.round(point.accuracy)} m</> : null}
-                {isEditable ? <><br />Drag the pin to correct its location.</> : null}
+                {typeof point.accuracy === "number"
+                  ? <><br />{t("community.leafletMap.accuracy", { meters: Math.round(point.accuracy) })}</>
+                  : null}
+                {isEditable ? <><br />{t("community.leafletMap.dragToCorrect")}</> : null}
               </Popup>
             </Marker>
           );

@@ -13,21 +13,22 @@ import {
   User as UserIcon,
   Bookmark,
 } from "lucide-react";
+import { useTranslation } from "@/i18n";
 import { useAuth } from "@/providers/auth-provider";
 
 const subscribe = () => () => {};
 
 const FEED_VIEWS = [
-  { href: "/citizen-feed", label: "Citizen Feed", icon: MessageSquare },
-  { href: "/evidence-map", label: "Citizen Reports Map", icon: MapPin },
-  { href: "/report-issue", label: "Submit Issue Report", icon: AlertTriangle },
+  { href: "/citizen-feed", labelKey: "community.leftSidebar.citizenFeed", icon: MessageSquare },
+  { href: "/evidence-map", labelKey: "community.leftSidebar.reportsMap", icon: MapPin },
+  { href: "/report-issue", labelKey: "community.leftSidebar.submitIssue", icon: AlertTriangle },
 ] as const;
 
 const USER_LINKS = [
-  { href: "/citizen-feed?filter=saved", label: "Saved Posts", icon: Bookmark },
-  { href: "/my-feedbacks", label: "My Feedbacks", icon: MessageSquare },
-  { href: "/my-issues", label: "My Issues", icon: AlertTriangle },
-  { href: "/my-notifications", label: "Notifications", icon: Bell },
+  { href: "/citizen-feed?filter=saved", labelKey: "community.leftSidebar.savedPosts", icon: Bookmark },
+  { href: "/my-feedbacks", labelKey: "community.leftSidebar.myFeedbacks", icon: MessageSquare },
+  { href: "/my-issues", labelKey: "community.leftSidebar.myIssues", icon: AlertTriangle },
+  { href: "/my-notifications", labelKey: "community.leftSidebar.notifications", icon: Bell },
 ] as const;
 
 function getInitials(name: string) {
@@ -40,6 +41,7 @@ function getInitials(name: string) {
 }
 
 export function FeedLeftSidebar() {
+  const { t } = useTranslation();
   const { user, isAuthenticated, isLoading } = useAuth();
   const mounted = useSyncExternalStore(subscribe, () => true, () => false);
   const pathname = usePathname();
@@ -65,7 +67,7 @@ export function FeedLeftSidebar() {
                 {user.image ? (
                   <Image
                     src={user.image}
-                    alt={user.name || "User"}
+                    alt={user.name || t("community.leftSidebar.userImageAlt")}
                     width={40}
                     height={40}
                     className="rounded-full object-cover"
@@ -80,7 +82,7 @@ export function FeedLeftSidebar() {
                     {user.name}
                   </p>
                   <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                    Signed in
+                    {t("community.leftSidebar.signedIn")}
                   </p>
                 </div>
               </div>
@@ -92,7 +94,7 @@ export function FeedLeftSidebar() {
                     className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
                   >
                     <link.icon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                    {link.label}
+                    {t(link.labelKey)}
                   </Link>
                 ))}
               </div>
@@ -103,14 +105,14 @@ export function FeedLeftSidebar() {
                 <UserIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" />
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Sign in to post project feedback or report infrastructure issues.
+                {t("community.leftSidebar.signInPrompt")}
               </p>
               <Link
                 href="/sign-in?callbackUrl=/citizen-feed"
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-sm transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                Sign In
+                {t("community.leftSidebar.signIn")}
               </Link>
             </div>
           )}
@@ -119,7 +121,7 @@ export function FeedLeftSidebar() {
         {/* Quick Nav */}
         <div className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <p className="px-2.5 mb-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-            Navigation
+            {t("community.leftSidebar.navigation")}
           </p>
           <nav className="space-y-0.5">
             {FEED_VIEWS.map((link) => {
@@ -134,7 +136,7 @@ export function FeedLeftSidebar() {
                     }`}
                 >
                   <link.icon className={`w-4 h-4 ${isActive ? "text-emerald-700 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400"}`} />
-                  {link.label}
+                  {t(link.labelKey)}
                 </Link>
               );
             })}

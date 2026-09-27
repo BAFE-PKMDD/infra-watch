@@ -14,16 +14,19 @@ import type {
 } from "@/actions/query/community-stats.query";
 import { getFeedSidebarData } from "@/actions/query/community-stats.query";
 import { ProjectPreviewSheet } from "@/components/feedback-feed/project-preview-sheet";
+import { useTranslation } from "@/i18n";
 
-function timeAgo(date: Date): string {
+type Translate = (path: string, variables?: Record<string, string | number>) => string;
+
+function timeAgo(date: Date, t: Translate): string {
   const now = new Date();
   const diff = now.getTime() - new Date(date).getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days}d ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  return `${Math.floor(days / 30)}mo ago`;
+  if (days === 0) return t("community.rightSidebar.today");
+  if (days === 1) return t("community.rightSidebar.yesterday");
+  if (days < 7) return t("community.rightSidebar.daysAgo", { count: days });
+  if (days < 30) return t("community.rightSidebar.weeksAgo", { count: Math.floor(days / 7) });
+  return t("community.rightSidebar.monthsAgo", { count: Math.floor(days / 30) });
 }
 
 // ─── Skeletons ─────────────────────────────────────────
@@ -65,6 +68,7 @@ function ArticlesSkeleton() {
 
 // ─── Main Sidebar ─────────────────────────────────────
 export function FeedRightSidebar() {
+  const { t } = useTranslation();
   const [data, setData] = useState<FeedSidebarData | null>(null);
   const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
 
@@ -91,7 +95,7 @@ export function FeedRightSidebar() {
           <div className="bg-white dark:bg-[#0d1526] rounded-xl border border-slate-200 dark:border-slate-800 p-4">
             <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              Most Discussed
+              {t("community.rightSidebar.mostDiscussed")}
             </h3>
             <div className="space-y-1">
               {data.trending.map((project, index) => (
@@ -122,7 +126,7 @@ export function FeedRightSidebar() {
           <div className="bg-white dark:bg-[#0d1526] rounded-2xl border border-slate-200 dark:border-[#1e3a5f]/30 p-4">
             <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Newspaper className="w-3.5 h-3.5" />
-              Latest Articles
+              {t("community.rightSidebar.latestArticles")}
             </h3>
             <div className="space-y-3">
               {data.latestArticles.map((article) => (
@@ -154,7 +158,7 @@ export function FeedRightSidebar() {
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                        {timeAgo(article.createdAt)}
+                        {timeAgo(article.createdAt, t)}
                       </span>
                       <ExternalLink className="w-2.5 h-2.5 text-slate-300 dark:text-slate-600" />
                     </div>

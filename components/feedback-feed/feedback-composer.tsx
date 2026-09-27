@@ -22,6 +22,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { useAuth } from "@/providers/auth-provider";
 import { dispatchClientNotification } from "@/lib/client-notifications";
 import { getFileUrl } from "@/lib/minio-url";
@@ -35,11 +36,11 @@ import { getAnonymousUser } from "@/lib/anonymous-identifier";
 import { AnonymousIcon } from "@/components/shared/anonymous-avatar";
 
 
-const CATEGORIES: { value: FeedbackCategory; label: string; icon: LucideIcon }[] = [
-  { value: "general", label: "General", icon: MessageCircle },
-  { value: "quality", label: "Quality", icon: HardHat },
-  { value: "progress", label: "Progress", icon: BarChart3 },
-  { value: "concerns", label: "Concerns", icon: AlertTriangle },
+const CATEGORIES: { value: FeedbackCategory; labelKey: string; icon: LucideIcon }[] = [
+  { value: "general", labelKey: "community.categories.general", icon: MessageCircle },
+  { value: "quality", labelKey: "community.categories.quality", icon: HardHat },
+  { value: "progress", labelKey: "community.categories.progress", icon: BarChart3 },
+  { value: "concerns", labelKey: "community.categories.concerns", icon: AlertTriangle },
 ];
 
 const MAX_MEDIA = 5;
@@ -85,6 +86,7 @@ function getInitials(name: string): string {
 }
 
 export function FeedbackComposer() {
+  const { t } = useTranslation();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { needsSurvey } = useSubmissionSurveyGate(isAuthenticated);
   const queryClient = useQueryClient();
@@ -121,7 +123,7 @@ export function FeedbackComposer() {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Upload failed");
+        throw new Error(err.error || t("community.composer.uploadFailed"));
       }
       return res.json();
     },
@@ -152,18 +154,18 @@ export function FeedbackComposer() {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to submit feedback");
+        throw new Error(err.error || t("community.composer.submitFailed"));
       }
       return res.json();
     },
     onSuccess: (result) => {
-      toast.success("Feedback submitted!", {
-        description: "Your feedback is pending review and will appear once approved.",
+      toast.success(t("community.composer.submittedToast"), {
+        description: t("community.composer.submittedToastBody"),
       });
       dispatchClientNotification({
         type: "feedback_submitted",
-        title: "Feedback submitted",
-        message: "Your feedback was submitted for moderator review.",
+        title: t("community.composer.submittedNotificationTitle"),
+        message: t("community.composer.submittedNotificationBody"),
         metadata: {
           feedbackId: result?.data?.id,
           projectId: selectedProject?.sourceId || selectedProject?.id,
@@ -178,7 +180,7 @@ export function FeedbackComposer() {
     onError: (error: Error) => {
       // Send them back to the editable form so they can see and fix the problem.
       setIsReviewing(false);
-      toast.error("Submission failed", { description: error.message });
+      toast.error(t("community.composer.submissionFailed"), { description: error.message });
     },
   });
 
@@ -198,7 +200,7 @@ export function FeedbackComposer() {
     if (!files || files.length === 0) return;
 
     if (media.length + files.length > MAX_MEDIA) {
-      toast.error(`Maximum ${MAX_MEDIA} files allowed`);
+      toast.error(t("community.composer.maxFiles", { max: MAX_MEDIA }));
       return;
     }
 
@@ -211,13 +213,13 @@ export function FeedbackComposer() {
         const fileType = uploadKindFromType(file.type);
 
         if (!fileType || !isAllowedClientUploadType(file.type)) {
-          toast.error(`"${file.name}" is not a supported file type`);
+          toast.error(t("community.composer.unsupportedType", { name: file.name }));
           continue;
         }
 
         const maxSize = fileType === "video" ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
         if (file.size > maxSize) {
-          toast.error(`"${file.name}" exceeds ${fileType === "video" ? "100MB" : "5MB"} limit`);
+          toast.error(t("community.composer.tooLarge", { name: file.name, limit: fileType === "video" ? "100MB" : "5MB" }));
           continue;
         }
 
@@ -230,7 +232,7 @@ export function FeedbackComposer() {
         } catch (error) {
           const message = error instanceof Error
             ? error.message
-            : "Upload blocked. Please choose a valid image or video.";
+            : t("community.composer.uploadBlocked");
           toast.error(getUploadErrorTitle(message), {
             description: message,
             duration: 6500,
@@ -267,11 +269,11 @@ export function FeedbackComposer() {
   // Submit handler
   const handleSubmit = () => {
     if (!selectedProject) {
-      toast.error("Please select a project first");
+      toast.error(t("community.composer.selectProjectFirst"));
       return;
     }
     if (!comment.trim()) {
-      toast.error("Please write your feedback");
+      toast.error(t("community.composer.writeFeedbackFirst"));
       return;
     }
 
@@ -305,7 +307,7 @@ export function FeedbackComposer() {
             href="/sign-in"
             className="flex-1 px-4 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
-            Sign in to share your feedback on a project...
+            {t("community.composer.signInPrompt")}
           </Link>
         </div>
       </div>
@@ -337,7 +339,7 @@ export function FeedbackComposer() {
                   {!isAnonymous && user?.image ? (
                     <Image
                       src={user.image}
-                      alt={user.name || "You"}
+                      alt={user.name || t("community.composer.you")}
                       width={36}
                       height={36}
                       className="w-full h-full object-cover"
@@ -354,7 +356,7 @@ export function FeedbackComposer() {
                 <div>
                   <div className="flex items-center gap-1.5">
                     <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                      {anonUser ? anonUser.displayName : user?.name || "You"}
+                      {anonUser ? t("community.feedbackCard.anonymousName", { number: anonUser.number }) : user?.name || t("community.composer.you")}
                     </p>
                     {anonUser && (
                       <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
@@ -363,7 +365,7 @@ export function FeedbackComposer() {
                     )}
                   </div>
                   <p className="text-[11px] text-slate-400">
-                    {isAnonymous ? "Sharing feedback anonymously" : "Sharing feedback"}
+                    {isAnonymous ? t("community.composer.sharingAnonymously") : t("community.composer.sharing")}
                   </p>
                 </div>
               </>
@@ -379,7 +381,7 @@ export function FeedbackComposer() {
             value={selectedProject}
             onSelect={setSelectedProject}
             onClear={() => setSelectedProject(null)}
-            placeholder="Search for a project..."
+            placeholder={t("community.composer.projectSearchPlaceholder")}
             variant="compact"
           />
         </div>
@@ -389,7 +391,7 @@ export function FeedbackComposer() {
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="What would you like to share about this project?"
+            placeholder={t("community.composer.commentPlaceholder")}
             rows={2}
             maxLength={MAX_CHARACTERS}
             className="w-full px-0 py-2 bg-transparent text-sm sm:text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none resize-none leading-relaxed border-0"
@@ -427,7 +429,7 @@ export function FeedbackComposer() {
                   type="button"
                   onClick={() => setMedia((prev) => prev.filter((_, i) => i !== index))}
                   className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Remove"
+                  aria-label={t("community.composer.removeMedia")}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -453,7 +455,7 @@ export function FeedbackComposer() {
                   : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#13233c]/60"
                   }`}
               >
-                <cat.icon className="w-3.5 h-3.5 mr-1 inline" /> {cat.label}
+                <cat.icon className="w-3.5 h-3.5 mr-1 inline" /> {t(cat.labelKey)}
               </button>
             ))}
           </div>
@@ -471,7 +473,7 @@ export function FeedbackComposer() {
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
                     className="p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-transform hover:scale-110"
-                    aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                    aria-label={t(star > 1 ? "community.composer.rateMany" : "community.composer.rateOne", { count: star })}
                   >
                     <Star
                       className={`w-4 h-4 transition-colors ${star <= (hoverRating || rating)
@@ -493,7 +495,7 @@ export function FeedbackComposer() {
                     ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                     }`}
-                  title="Positive experience"
+                  title={t("community.composer.positiveExperience")}
                 >
                   <ThumbsUp className="w-4 h-4" />
                 </button>
@@ -505,7 +507,7 @@ export function FeedbackComposer() {
                     ? "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40"
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                     }`}
-                  title="Negative experience"
+                  title={t("community.composer.negativeExperience")}
                 >
                   <ThumbsDown className="w-4 h-4" />
                 </button>
@@ -517,7 +519,7 @@ export function FeedbackComposer() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading || media.length >= MAX_MEDIA}
                 className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                title={`Attach media (${media.length}/${MAX_MEDIA})`}
+                title={t("community.composer.attachMedia", { count: media.length, max: MAX_MEDIA })}
               >
                 {isUploading ? (
                   <Loader2 className="w-4.5 h-4.5 animate-spin" />
@@ -543,7 +545,7 @@ export function FeedbackComposer() {
                   ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
                   : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
-                title={isAnonymous ? "Posting anonymously" : "Post as yourself"}
+                title={isAnonymous ? t("community.composer.postingAnonymously") : t("community.composer.postAsYourself")}
               >
                 <EyeOff className="w-4.5 h-4.5" />
               </button>
@@ -556,7 +558,7 @@ export function FeedbackComposer() {
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-700 shadow-sm"
             >
               <Send className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Review</span>
+              <span className="hidden sm:inline">{t("community.composer.review")}</span>
             </button>
           </div>
         </div>
@@ -566,24 +568,47 @@ export function FeedbackComposer() {
         {isReviewing && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Review your feedback</h3>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Check everything below, then confirm to post.</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t("community.composer.reviewTitle")}</h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("community.composer.reviewHint")}</p>
             </div>
 
             <div className="space-y-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-[#0a1220]">
-              <ReviewRow label="Project" value={selectedProject?.name || "Not selected"} />
-              <ReviewRow label="Category" value={CATEGORIES.find((cat) => cat.value === category)?.label || category} />
+              <ReviewRow label={t("community.composer.project")} value={selectedProject?.name || t("community.composer.notSelected")} />
+              <ReviewRow
+                label={t("community.composer.category")}
+                value={(() => {
+                  const selectedCategory = CATEGORIES.find((cat) => cat.value === category);
+                  return selectedCategory ? t(selectedCategory.labelKey) : category;
+                })()}
+              />
               <div>
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Your Feedback</p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t("community.composer.yourFeedback")}</p>
                 <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{comment}</p>
               </div>
-              <ReviewRow label="Rating" value={rating > 0 ? `${rating} star${rating > 1 ? "s" : ""}` : "Not rated"} />
               <ReviewRow
-                label="Sentiment"
-                value={sentiment === "positive" ? "Positive" : sentiment === "negative" ? "Negative" : "Not specified"}
+                label={t("community.composer.rating")}
+                value={rating > 0
+                  ? t(rating > 1 ? "community.composer.starsMany" : "community.composer.starsOne", { count: rating })
+                  : t("community.composer.notRated")}
               />
-              <ReviewRow label="Attachments" value={media.length === 0 ? "None" : `${media.length} file${media.length > 1 ? "s" : ""}`} />
-              <ReviewRow label="Posting as" value={isAnonymous ? "Anonymous" : user?.name || "You"} />
+              <ReviewRow
+                label={t("community.composer.sentiment")}
+                value={sentiment === "positive"
+                  ? t("community.composer.positive")
+                  : sentiment === "negative"
+                    ? t("community.composer.negative")
+                    : t("community.composer.notSpecified")}
+              />
+              <ReviewRow
+                label={t("community.composer.attachments")}
+                value={media.length === 0
+                  ? t("community.composer.none")
+                  : t(media.length > 1 ? "community.composer.filesMany" : "community.composer.filesOne", { count: media.length })}
+              />
+              <ReviewRow
+                label={t("community.composer.postingAs")}
+                value={isAnonymous ? t("community.composer.anonymous") : user?.name || t("community.composer.you")}
+              />
             </div>
 
             <div className="flex items-center justify-between gap-3">
@@ -593,7 +618,7 @@ export function FeedbackComposer() {
                 disabled={isSubmitting}
                 className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                Edit
+                {t("community.composer.edit")}
               </button>
               <button
                 type="button"
@@ -604,12 +629,12 @@ export function FeedbackComposer() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Posting...
+                    {t("community.composer.posting")}
                   </>
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5" />
-                    Confirm & Post
+                    {t("community.composer.confirmPost")}
                   </>
                 )}
               </button>

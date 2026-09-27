@@ -43,11 +43,15 @@ import {
   createEvidencePinIcon,
 } from "@/components/shared/evidence-map-markers";
 import {
-  formatEvidenceLabel,
   getStatusDotClass,
   shortenReferenceId,
+  translateCategoryLabel,
+  translateEvidenceDescription,
+  translateEvidenceLocation,
+  translateStatusLabel,
   useClipboardCopy,
 } from "@/components/shared/system-evidence-map-format";
+import { useTranslation } from "@/i18n";
 import { interpolateGeoTrackPoint } from "@/lib/geo-track-playback";
 import { getFullUrl } from "@/lib/minio-url";
 import { cn } from "@/lib/utils";
@@ -55,10 +59,7 @@ import {
   GeoVideoSplitViewer,
   type GeoVideoSplitViewRequest,
 } from "@/components/shared/geo-video-split-viewer";
-import {
-  getSystemEvidenceLocationLabel,
-  type SystemEvidenceIssue,
-} from "@/components/shared/system-evidence-map-types";
+import type { SystemEvidenceIssue } from "@/components/shared/system-evidence-map-types";
 
 const PHILIPPINES_CENTER: [number, number] = [12.8797, 121.774];
 
@@ -81,9 +82,15 @@ type PlaybackUpdateHandler = (snapshot: PlaybackSnapshot) => void;
 type PlaybackActivateHandler = (playerId: string) => void;
 type PlaybackDisposeHandler = (playerId: string) => void;
 type OpenSplitViewHandler = (request: GeoVideoSplitViewRequest) => void;
+type Translate = (path: string, variables?: Record<string, string | number>) => string;
 
-function formatDate(value: string | null) {
-  if (!value) return "Date unavailable";
+/** A basemap problem, kept as data so the notice follows the language switch. */
+type BasemapNotice =
+  | { kind: "unavailable" }
+  | { kind: "fallback"; from: EvidenceBasemapId; to: EvidenceBasemapId };
+
+function formatDate(value: string | null, t: Translate) {
+  if (!value) return t("community.common.dateUnavailable");
   return new Intl.DateTimeFormat("en-PH", {
     month: "short",
     day: "numeric",
@@ -219,6 +226,7 @@ function GeoVideoPopupPlayer({
   onPlaybackDispose: PlaybackDisposeHandler;
   onOpenSplitView?: OpenSplitViewHandler;
 }) {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -257,7 +265,7 @@ function GeoVideoPopupPlayer({
         muted
         playsInline
         preload="none"
-        aria-label={name || `GeoVideo evidence for ${issue.ticketNumber}`}
+        aria-label={name || t("community.evidenceMap.videoLabel", { ticket: issue.ticketNumber })}
         className="aspect-video w-full bg-black object-contain"
         onLoadedMetadata={reportPlayback}
         onDurationChange={reportPlayback}
@@ -268,16 +276,16 @@ function GeoVideoPopupPlayer({
         onPause={reportPlayback}
         onEnded={reportPlayback}
       >
-        Your browser does not support embedded video playback.
+        {t("community.evidenceMap.videoUnsupported")}
       </video>
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-black/80 via-black/35 to-transparent p-2 pb-7 text-white">
         <span className="rounded-md border border-white/15 bg-slate-950/75 px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] backdrop-blur-sm">
-          GeoVideo evidence
+          {t("community.evidenceMap.geoVideoBadge")}
         </span>
         {synchronized ? (
           <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-300/25 bg-amber-950/85 px-2 py-1 text-[9px] font-bold text-amber-100 backdrop-blur-sm">
             <span className="size-1.5 rounded-full bg-amber-400 shadow-[0_0_0_3px_rgba(251,191,36,0.2)]" />
-            Pin synced &middot; {issue.geoVideoTrack.length} GPS points
+            {t("community.evidenceMap.pinSynced", { count: issue.geoVideoTrack.length })}
           </span>
         ) : null}
       </div>
@@ -289,7 +297,7 @@ function GeoVideoPopupPlayer({
             className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-amber-400 px-3 text-xs font-extrabold text-slate-950 transition-colors hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
           >
             <Maximize2 className="size-4" aria-hidden="true" />
-            Open split view
+            {t("community.evidenceMap.openSplitView")}
           </button>
         </div>
       ) : null}
@@ -298,13 +306,14 @@ function GeoVideoPopupPlayer({
 }
 
 function EvidenceImage({ src, alt }: { src: string; alt: string }) {
+  const { t } = useTranslation();
   const [hasError, setHasError] = useState(false);
 
   if (hasError) {
     return (
       <div className="mb-3 flex h-28 w-full flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-100/70 text-slate-500">
         <Camera className="mb-1 size-5 text-slate-400" />
-        <span className="text-[11px] font-semibold text-slate-600">Photo preview unavailable</span>
+        <span className="text-[11px] font-semibold text-slate-600">{t("community.evidenceMap.photoUnavailable")}</span>
       </div>
     );
   }
@@ -338,6 +347,7 @@ function IssuePopup({
   onPlaybackDispose: PlaybackDisposeHandler;
   onOpenSplitView: OpenSplitViewHandler;
 }) {
+  const { t } = useTranslation();
   const media = mediaIndex === undefined ? null : issue.evidence[mediaIndex];
   const fullUrl = media ? getFullUrl(media.url) : issue.geoVideoUrl ? getFullUrl(issue.geoVideoUrl) : null;
   const videoUrl = media?.type === "video"
@@ -357,7 +367,7 @@ function IssuePopup({
   return (
     <div className="w-[min(23rem,76vw)] overflow-hidden text-slate-900">
       {media?.type === "image" && fullUrl ? (
-        <EvidenceImage src={fullUrl} alt={media.name || "Geotagged issue evidence"} />
+        <EvidenceImage src={fullUrl} alt={media.name || t("community.evidenceMap.photoAlt")} />
       ) : videoUrl ? (
         <GeoVideoPopupPlayer
           issue={issue}
@@ -383,22 +393,22 @@ function IssuePopup({
           {copied ? <Check className="size-3 shrink-0 text-emerald-600" /> : <Copy className="size-3 shrink-0 opacity-60" />}
         </button>
         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">
-          {formatEvidenceLabel(issue.category)}
+          {translateCategoryLabel(issue.category, t)}
         </span>
       </div>
       <div className="mb-2 flex items-center gap-1.5 text-xs text-slate-600">
         <span className={cn("size-1.5 shrink-0 rounded-full", getStatusDotClass(issue.status))} />
-        {formatEvidenceLabel(issue.status)}
+        {translateStatusLabel(issue.status, t)}
       </div>
-      <p className="line-clamp-3 text-sm font-semibold leading-5 break-words">{issue.description}</p>
-      <p className="mt-2 line-clamp-2 text-xs leading-4 text-slate-600">{getSystemEvidenceLocationLabel(issue)}</p>
+      <p className="line-clamp-3 text-sm font-semibold leading-5 break-words">{translateEvidenceDescription(issue.description, t)}</p>
+      <p className="mt-2 line-clamp-2 text-xs leading-4 text-slate-600">{translateEvidenceLocation(issue, t)}</p>
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
-        <span className="text-[11px] font-semibold text-slate-600">{formatDate(issue.createdAt)}</span>
+        <span className="text-[11px] font-semibold text-slate-600">{formatDate(issue.createdAt, t)}</span>
         <Link
           href={issue.detailUrl}
           className="rounded-md bg-primary px-2.5 py-1.5 text-[11px] font-bold text-primary-foreground! transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          {issue.sourceType === "feedback" ? "Open feedback" : "Open report"}
+          {issue.sourceType === "feedback" ? t("community.evidenceMap.openFeedback") : t("community.evidenceMap.openReport")}
         </Link>
       </div>
     </div>
@@ -552,11 +562,12 @@ export default function SystemEvidenceMapCanvas({
   selectedIssueId,
   onSelectIssue,
 }: SystemEvidenceMapCanvasProps) {
+  const { t } = useTranslation();
   const [playback, setPlayback] = useState<PlaybackSnapshot | null>(null);
   const [splitViewRequest, setSplitViewRequest] = useState<GeoVideoSplitViewRequest | null>(null);
   const [basemapId, setBasemapId] = useState<EvidenceBasemapId>(DEFAULT_EVIDENCE_BASEMAP_ID);
   const [basemapRevision, setBasemapRevision] = useState(0);
-  const [basemapMessage, setBasemapMessage] = useState<string | null>(null);
+  const [basemapNotice, setBasemapNotice] = useState<BasemapNotice | null>(null);
   const [fitRequestId, setFitRequestId] = useState(0);
   const activePlayerIdRef = useRef<string | null>(null);
   const activeBasemapIdRef = useRef<EvidenceBasemapId>(DEFAULT_EVIDENCE_BASEMAP_ID);
@@ -574,7 +585,7 @@ export default function SystemEvidenceMapCanvas({
     tileErrorCountRef.current = 0;
     automaticFallbackAttemptedRef.current = false;
     activeBasemapIdRef.current = nextBasemapId;
-    setBasemapMessage(null);
+    setBasemapNotice(null);
     if (nextBasemapId === basemapId) {
       setBasemapRevision((revision) => revision + 1);
     } else {
@@ -598,7 +609,7 @@ export default function SystemEvidenceMapCanvas({
     if (tileErrorCountRef.current < 3) return;
 
     if (automaticFallbackAttemptedRef.current) {
-      setBasemapMessage("Basemap tiles are unavailable. Choose another map style to try again.");
+      setBasemapNotice({ kind: "unavailable" });
       return;
     }
 
@@ -606,7 +617,7 @@ export default function SystemEvidenceMapCanvas({
     const fallbackId: EvidenceBasemapId = basemapId === "streets" ? "satellite" : "streets";
     activeBasemapIdRef.current = fallbackId;
     tileErrorCountRef.current = 0;
-    setBasemapMessage(`${EVIDENCE_BASEMAPS[basemapId].label} tiles were unavailable, so ${EVIDENCE_BASEMAPS[fallbackId].label} is shown instead.`);
+    setBasemapNotice({ kind: "fallback", from: basemapId, to: fallbackId });
     setBasemapId(fallbackId);
   }, [basemapId]);
 
@@ -642,6 +653,15 @@ export default function SystemEvidenceMapCanvas({
     setSplitViewRequest(null);
   }, []);
 
+  const basemapMessage = basemapNotice === null
+    ? null
+    : basemapNotice.kind === "unavailable"
+      ? t("community.evidenceMap.basemapUnavailable")
+      : t("community.evidenceMap.basemapFallback", {
+        from: t(`community.basemap.${basemapNotice.from}`),
+        to: t(`community.basemap.${basemapNotice.to}`),
+      });
+
   const activePlaybackPoint = useMemo(() => {
     if (!playback) return null;
     const issue = issues.find((candidate) => candidate.issueId === playback.issueId);
@@ -653,7 +673,7 @@ export default function SystemEvidenceMapCanvas({
   return (
     <div
       role="region"
-      aria-label="Map of geotagged issue evidence"
+      aria-label={t("community.evidenceMap.mapLabel")}
       data-playback-time={playback?.currentTime.toFixed(3)}
       data-playback-lat={activePlaybackPoint?.lat.toFixed(7)}
       data-playback-lon={activePlaybackPoint?.lon.toFixed(7)}

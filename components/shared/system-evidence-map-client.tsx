@@ -38,9 +38,12 @@ import {
 import { cn } from "@/lib/utils";
 import { getFullUrl } from "@/lib/minio-url";
 import {
-  formatEvidenceLabel,
   getStatusDotClass,
   shortenReferenceId,
+  translateCategoryLabel,
+  translateEvidenceDescription,
+  translateEvidenceLocation,
+  translateStatusLabel,
   useClipboardCopy,
 } from "@/components/shared/system-evidence-map-format";
 import {
@@ -49,24 +52,36 @@ import {
   type SystemEvidenceIssue,
   type SystemEvidenceMediaType,
 } from "@/components/shared/system-evidence-map-types";
+import { useTranslation } from "@/i18n";
+
+type Translate = (path: string, variables?: Record<string, string | number>) => string;
+
+function CanvasLoading() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex h-full min-h-[28rem] w-full items-center justify-center bg-muted">
+      <div className="rounded-lg border border-border bg-card px-5 py-4 text-center shadow-sm">
+        <Loader2 className="mx-auto mb-2 size-5 animate-spin text-primary" />
+        <p className="text-sm font-medium text-foreground">{t("community.evidenceMap.preparing")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("community.evidenceMap.loadingCanvas")}</p>
+      </div>
+    </div>
+  );
+}
 
 const SystemEvidenceMapCanvas = dynamic(
   () => import("@/components/shared/system-evidence-map-canvas"),
   {
     ssr: false,
-    loading: () => (
-      <div className="flex h-full min-h-[28rem] w-full items-center justify-center bg-muted">
-        <div className="rounded-lg border border-border bg-card px-5 py-4 text-center shadow-sm">
-          <Loader2 className="mx-auto mb-2 size-5 animate-spin text-primary" />
-          <p className="text-sm font-medium text-foreground">Preparing evidence map</p>
-          <p className="mt-1 text-xs text-muted-foreground">Loading the geographic canvas…</p>
-        </div>
-      </div>
-    ),
+    loading: () => <CanvasLoading />,
   },
 );
 
 type MediaFilter = "all" | SystemEvidenceMediaType;
+
+// Thrown when /api/evidence fails without its own error text, so the UI can show it translated.
+const EVIDENCE_LOAD_FAILED = "Unable to load geotagged evidence.";
 
 async function fetchSystemEvidence() {
   const response = await fetch("/api/evidence", {
@@ -78,14 +93,14 @@ async function fetchSystemEvidence() {
     const error = payload && typeof payload === "object" && "error" in payload
       ? (payload as { error?: unknown }).error
       : null;
-    throw new Error(typeof error === "string" ? error : "Unable to load geotagged evidence.");
+    throw new Error(typeof error === "string" ? error : EVIDENCE_LOAD_FAILED);
   }
 
   return parseSystemEvidenceResponse(payload);
 }
 
-function formatDate(value: string | null) {
-  if (!value) return "Date unavailable";
+function formatDate(value: string | null, t: Translate) {
+  if (!value) return t("community.common.dateUnavailable");
   return new Intl.DateTimeFormat("en-PH", {
     month: "short",
     day: "numeric",
@@ -184,6 +199,7 @@ function ResultCard({
   onSelect: () => void;
   cardRef: (element: HTMLElement | null) => void;
 }) {
+  const { t } = useTranslation();
   const imageCount = issue.evidence.filter((item) => item.type === "image").length;
   const videoCount = issue.evidence.filter((item) => item.type === "video").length;
 
@@ -202,14 +218,14 @@ function ResultCard({
       >
         <EvidenceThumb issue={issue} />
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-sm font-medium leading-5 break-words text-foreground [overflow-wrap:anywhere]">{issue.description}</p>
+          <p className="line-clamp-2 text-sm font-medium leading-5 break-words text-foreground [overflow-wrap:anywhere]">{translateEvidenceDescription(issue.description, t)}</p>
           <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-            {getSystemEvidenceLocationLabel(issue)} · {formatDate(issue.createdAt)}
+            {translateEvidenceLocation(issue, t)} · {formatDate(issue.createdAt, t)}
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className={cn("size-1.5 shrink-0 rounded-full", getStatusDotClass(issue.status))} />
-              {formatEvidenceLabel(issue.status)}
+              {translateStatusLabel(issue.status, t)}
             </span>
             {imageCount > 0 && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -231,7 +247,7 @@ function ResultCard({
           href={issue.detailUrl}
           className="rounded text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          {issue.sourceType === "feedback" ? "View feedback" : "View report"}
+          {issue.sourceType === "feedback" ? t("community.evidenceMap.viewFeedback") : t("community.evidenceMap.viewReport")}
         </Link>
       </div>
     </article>
@@ -239,6 +255,7 @@ function ResultCard({
 }
 
 export function SystemEvidenceMapClient() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [status, setStatus] = useState("all");
@@ -341,7 +358,7 @@ export function SystemEvidenceMapClient() {
         )}
       >
         <aside
-          aria-label="Evidence map filters and results"
+          aria-label={t("community.evidenceMap.panelLabel")}
           className={cn(
             "absolute inset-x-0 bottom-0 top-auto z-[1100] flex max-h-[82dvh] min-h-0 flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl transition duration-200 lg:static lg:inset-auto lg:z-auto lg:max-h-none lg:min-w-0 lg:translate-y-0 lg:rounded-none lg:border-y-0 lg:border-l-0 lg:opacity-100 lg:shadow-none",
             mobilePanelOpen
@@ -356,8 +373,8 @@ export function SystemEvidenceMapClient() {
 
           <div className="border-b border-border p-4">
             <div className="flex items-start justify-between gap-3">
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">Citizen Reports Map</h1>
-              <Button type="button" variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobilePanelOpen(false)} aria-label="Close filters">
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">{t("community.evidenceMap.title")}</h1>
+              <Button type="button" variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobilePanelOpen(false)} aria-label={t("community.evidenceMap.closeFilters")}>
                 <X className="size-4" />
               </Button>
             </div>
@@ -369,7 +386,7 @@ export function SystemEvidenceMapClient() {
                   onClick={resetFilters}
                   className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                 >
-                  Reset filters
+                  {t("community.evidenceMap.resetFilters")}
                 </button>
               </div>
             )}
@@ -380,8 +397,8 @@ export function SystemEvidenceMapClient() {
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search reports or places..."
-                aria-label="Search evidence reports"
+                placeholder={t("community.evidenceMap.searchPlaceholder")}
+                aria-label={t("community.evidenceMap.searchLabel")}
                 className="h-10 rounded-md border-input bg-background pl-9 pr-8 text-sm text-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
               />
               {search && (
@@ -389,7 +406,7 @@ export function SystemEvidenceMapClient() {
                   type="button"
                   onClick={() => setSearch("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
-                  aria-label="Clear search text"
+                  aria-label={t("community.evidenceMap.clearSearch")}
                 >
                   <X className="size-3.5" />
                 </button>
@@ -399,17 +416,23 @@ export function SystemEvidenceMapClient() {
             <div className="mt-3 grid grid-cols-2 gap-2.5">
               <SelectField
                 id="evidence-category"
-                label="Category"
+                label={t("community.evidenceMap.category")}
                 value={category}
                 onChange={setCategory}
-                options={[{ value: "all", label: "All categories" }, ...categories.map((item) => ({ value: item, label: formatEvidenceLabel(item) }))]}
+                options={[
+                  { value: "all", label: t("community.evidenceMap.allCategories") },
+                  ...categories.map((item) => ({ value: item, label: translateCategoryLabel(item, t) })),
+                ]}
               />
               <SelectField
                 id="evidence-status"
-                label="Status"
+                label={t("community.evidenceMap.status")}
                 value={status}
                 onChange={setStatus}
-                options={[{ value: "all", label: "All statuses" }, ...statuses.map((item) => ({ value: item, label: formatEvidenceLabel(item) }))]}
+                options={[
+                  { value: "all", label: t("community.evidenceMap.allStatuses") },
+                  ...statuses.map((item) => ({ value: item, label: translateStatusLabel(item, t) })),
+                ]}
               />
             </div>
 
@@ -419,29 +442,31 @@ export function SystemEvidenceMapClient() {
                   render={<Button type="button" variant="outline" size="sm" className="gap-1.5" />}
                 >
                   <SlidersHorizontal className="size-3.5" />
-                  {popoverFilterCount > 0 ? `Filters · ${popoverFilterCount}` : "Filters"}
+                  {popoverFilterCount > 0
+                    ? t("community.evidenceMap.filtersCount", { count: popoverFilterCount })
+                    : t("community.evidenceMap.filters")}
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-72 space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-foreground">Filters</p>
+                    <p className="text-sm font-medium text-foreground">{t("community.evidenceMap.filters")}</p>
                     {popoverFilterCount > 0 && (
                       <button
                         type="button"
                         onClick={clearMediaAndDateFilters}
                         className="text-xs font-medium text-primary hover:underline"
                       >
-                        Clear
+                        {t("community.evidenceMap.clear")}
                       </button>
                     )}
                   </div>
 
                   <fieldset>
-                    <legend className="mb-1.5 text-xs font-medium text-muted-foreground">Media type</legend>
+                    <legend className="mb-1.5 text-xs font-medium text-muted-foreground">{t("community.evidenceMap.mediaType")}</legend>
                     <div className="grid grid-cols-3 gap-1 rounded-md border border-border bg-muted/50 p-1">
                       {([
-                        { value: "all", label: "All", icon: Layers3 },
-                        { value: "image", label: "Photos", icon: Camera },
-                        { value: "video", label: "Videos", icon: Video },
+                        { value: "all", label: t("community.evidenceMap.mediaAll"), icon: Layers3 },
+                        { value: "image", label: t("community.evidenceMap.mediaPhotos"), icon: Camera },
+                        { value: "video", label: t("community.evidenceMap.mediaVideos"), icon: Video },
                       ] as const).map((option) => {
                         const Icon = option.icon;
                         const isSelected = media === option.value;
@@ -467,7 +492,7 @@ export function SystemEvidenceMapClient() {
 
                   <div className="grid grid-cols-2 gap-2.5">
                     <label htmlFor="evidence-date-from" className="space-y-1">
-                      <span className="block text-xs font-medium text-muted-foreground">From date</span>
+                      <span className="block text-xs font-medium text-muted-foreground">{t("community.evidenceMap.fromDate")}</span>
                       <Input
                         id="evidence-date-from"
                         type="date"
@@ -478,7 +503,7 @@ export function SystemEvidenceMapClient() {
                       />
                     </label>
                     <label htmlFor="evidence-date-to" className="space-y-1">
-                      <span className="block text-xs font-medium text-muted-foreground">To date</span>
+                      <span className="block text-xs font-medium text-muted-foreground">{t("community.evidenceMap.toDate")}</span>
                       <Input
                         id="evidence-date-to"
                         type="date"
@@ -496,7 +521,7 @@ export function SystemEvidenceMapClient() {
 
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex items-center justify-between border-b border-border px-4 py-2">
-              <p className="text-xs font-medium text-muted-foreground">Mapped reports</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("community.evidenceMap.mappedReports")}</p>
               {isFetching && !isLoading && <Loader2 className="size-3.5 animate-spin text-primary" />}
             </div>
             <TooltipProvider delay={200}>
@@ -523,11 +548,11 @@ export function SystemEvidenceMapClient() {
                     <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
                       <MapPin className="size-5" />
                     </div>
-                    <h3 className="text-sm font-medium text-foreground">No mapped evidence found</h3>
+                    <h3 className="text-sm font-medium text-foreground">{t("community.evidenceMap.emptyTitle")}</h3>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {activeFilterCount > 0
-                        ? "No reports match your current filters or date range."
-                        : "No geotagged evidence reports have been recorded yet."}
+                        ? t("community.evidenceMap.emptyFiltered")
+                        : t("community.evidenceMap.emptyNone")}
                     </p>
                     {activeFilterCount > 0 ? (
                       <Button
@@ -538,14 +563,14 @@ export function SystemEvidenceMapClient() {
                         className="mt-4"
                       >
                         <RefreshCw className="size-3.5 text-primary" />
-                        Reset all filters
+                        {t("community.evidenceMap.resetAllFilters")}
                       </Button>
                     ) : (
                       <Link
                         href="/report-issue"
                         className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
-                        Submit an evidence report
+                        {t("community.evidenceMap.submitReport")}
                       </Link>
                     )}
                   </div>
@@ -558,7 +583,7 @@ export function SystemEvidenceMapClient() {
         <button
           type="button"
           onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
-          aria-label={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+          aria-label={sidebarCollapsed ? t("community.evidenceMap.showSidebar") : t("community.evidenceMap.hideSidebar")}
           aria-expanded={!sidebarCollapsed}
           className={cn(
             "absolute top-1/2 z-[1150] hidden size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-[left] duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex",
@@ -573,12 +598,16 @@ export function SystemEvidenceMapClient() {
 
           <div className="absolute left-3 right-3 top-3 z-[1000] flex items-center justify-between gap-3 lg:hidden">
             <div className="min-w-0 rounded-lg border border-border bg-card/95 px-3 py-2 shadow-sm">
-              <p className="truncate text-sm font-semibold text-foreground">Citizen Reports Map</p>
-              <p className="text-xs text-muted-foreground">{filteredIssues.length} geotagged report{filteredIssues.length === 1 ? "" : "s"}</p>
+              <p className="truncate text-sm font-semibold text-foreground">{t("community.evidenceMap.title")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t(filteredIssues.length === 1 ? "community.evidenceMap.reportCountOne" : "community.evidenceMap.reportCountMany", {
+                  count: filteredIssues.length,
+                })}
+              </p>
             </div>
             <Button type="button" onClick={() => setMobilePanelOpen(true)} className="h-10 shrink-0">
               <SlidersHorizontal className="size-4" />
-              Filters
+              {t("community.evidenceMap.filters")}
               {activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
             </Button>
           </div>
@@ -587,7 +616,7 @@ export function SystemEvidenceMapClient() {
             <div className="absolute inset-0 z-[900] flex items-center justify-center bg-background/40">
               <div className="rounded-lg border border-border bg-card px-5 py-4 text-center shadow-lg">
                 <Loader2 className="mx-auto mb-2 size-5 animate-spin text-primary" />
-                <p className="text-sm font-medium text-foreground">Locating evidence…</p>
+                <p className="text-sm font-medium text-foreground">{t("community.evidenceMap.locating")}</p>
               </div>
             </div>
           )}
@@ -596,11 +625,15 @@ export function SystemEvidenceMapClient() {
             <div className="absolute inset-0 z-[900] flex items-center justify-center bg-background/50 p-4">
               <div className="max-w-sm rounded-lg border border-destructive/30 bg-card p-6 text-center shadow-lg">
                 <AlertTriangle className="mx-auto mb-3 size-7 text-destructive" />
-                <h2 className="text-base font-semibold text-foreground">Evidence map unavailable</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{error instanceof Error ? error.message : "Please try again shortly."}</p>
+                <h2 className="text-base font-semibold text-foreground">{t("community.evidenceMap.unavailableTitle")}</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {error instanceof Error
+                    ? error.message === EVIDENCE_LOAD_FAILED ? t("community.evidenceMap.loadFailed") : error.message
+                    : t("community.evidenceMap.tryAgainShortly")}
+                </p>
                 <Button type="button" variant="outline" className="mt-4" onClick={() => refetch()} disabled={isFetching}>
                   {isFetching ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-                  Try again
+                  {t("community.evidenceMap.tryAgain")}
                 </Button>
               </div>
             </div>

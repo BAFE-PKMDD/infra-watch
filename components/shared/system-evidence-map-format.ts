@@ -2,10 +2,70 @@
 
 import { useState, type MouseEvent } from "react";
 
+import {
+  getSystemEvidenceLocationLabel,
+  SYSTEM_EVIDENCE_NO_DESCRIPTION,
+  SYSTEM_EVIDENCE_NO_LOCATION,
+  type SystemEvidenceIssue,
+} from "@/components/shared/system-evidence-map-types";
+
 export function formatEvidenceLabel(value: string) {
   return value
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+type Translate = (path: string, variables?: Record<string, string | number>) => string;
+
+// Known stored values mapped to their community.categories / community.statuses keys. The English
+// entries read exactly as formatEvidenceLabel would, so unknown values can fall back to it.
+const CATEGORY_KEYS: Record<string, string> = {
+  general: "general",
+  quality: "quality",
+  progress: "progress",
+  concerns: "concerns",
+  damage: "damage",
+  stopped: "stopped",
+  safety: "safety",
+  flooding: "flooding",
+  blocked: "blocked",
+  other: "other",
+  Uncategorized: "uncategorized",
+};
+
+const STATUS_KEYS: Record<string, string> = {
+  pending: "pending",
+  submitted: "submitted",
+  reviewing: "reviewing",
+  "in-progress": "inProgress",
+  approved: "approved",
+  resolved: "resolved",
+  closed: "closed",
+  rejected: "rejected",
+  suspended: "suspended",
+};
+
+/** Category label in the viewer's language; values without a translation keep formatEvidenceLabel's text. */
+export function translateCategoryLabel(value: string, t: Translate) {
+  const key = Object.hasOwn(CATEGORY_KEYS, value) ? CATEGORY_KEYS[value] : null;
+  return key ? t(`community.categories.${key}`) : formatEvidenceLabel(value);
+}
+
+/** Status label in the viewer's language; values without a translation keep formatEvidenceLabel's text. */
+export function translateStatusLabel(value: string, t: Translate) {
+  const key = Object.hasOwn(STATUS_KEYS, value) ? STATUS_KEYS[value] : null;
+  return key ? t(`community.statuses.${key}`) : formatEvidenceLabel(value);
+}
+
+/** Location line for a report, with the "not specified" fallback in the viewer's language. */
+export function translateEvidenceLocation(issue: SystemEvidenceIssue, t: Translate) {
+  const label = getSystemEvidenceLocationLabel(issue);
+  return label === SYSTEM_EVIDENCE_NO_LOCATION ? t("community.evidenceMap.noLocation") : label;
+}
+
+/** Report text, with the parser's "no description" fallback in the viewer's language. */
+export function translateEvidenceDescription(description: string, t: Translate) {
+  return description === SYSTEM_EVIDENCE_NO_DESCRIPTION ? t("community.evidenceMap.noDescription") : description;
 }
 
 /** Approved/resolved reads as done, rejected as blocked, everything else (pending, submitted, ...) as awaiting review. */

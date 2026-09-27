@@ -9,6 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { MAP_CONTROL_SURFACE_CLASS } from "@/components/shared/evidence-basemap";
 
@@ -46,25 +47,26 @@ export function ZoomFitControl({
   className?: string;
   onFitRequest: () => void;
 }) {
+  const { t } = useTranslation();
   const map = useMap();
 
   return (
     <div
       role="group"
-      aria-label="Map zoom and fit controls"
+      aria-label={t("community.mapControls.groupLabel")}
       className={cn(
         "flex flex-col divide-y divide-slate-200 overflow-hidden rounded-md dark:divide-slate-700",
         MAP_CONTROL_SURFACE_CLASS,
         className,
       )}
     >
-      <ControlButton label="Zoom in" onClick={() => map.zoomIn()}>
+      <ControlButton label={t("community.mapControls.zoomIn")} onClick={() => map.zoomIn()}>
         <Plus className="size-4" />
       </ControlButton>
-      <ControlButton label="Zoom out" onClick={() => map.zoomOut()}>
+      <ControlButton label={t("community.mapControls.zoomOut")} onClick={() => map.zoomOut()}>
         <Minus className="size-4" />
       </ControlButton>
-      <ControlButton label="Fit to reports" onClick={onFitRequest}>
+      <ControlButton label={t("community.mapControls.fitToReports")} onClick={onFitRequest}>
         <Locate className="size-4" />
       </ControlButton>
     </div>
@@ -72,6 +74,8 @@ export function ZoomFitControl({
 }
 
 export function LegendPopover({ className }: { className?: string }) {
+  const { t } = useTranslation();
+
   return (
     <Popover>
       <PopoverTrigger
@@ -82,26 +86,26 @@ export function LegendPopover({ className }: { className?: string }) {
         )}
       >
         <Info className="size-4" />
-        Legend
+        {t("community.mapControls.legend")}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 space-y-2 text-xs">
-        <p className="mb-1 font-semibold text-slate-900 dark:text-slate-100">Map legend</p>
+        <p className="mb-1 font-semibold text-slate-900 dark:text-slate-100">{t("community.mapControls.legendTitle")}</p>
         <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-          <Camera className="size-3.5 shrink-0 text-[#10b981]" /> Photo evidence
+          <Camera className="size-3.5 shrink-0 text-[#10b981]" /> {t("community.mapControls.photoEvidence")}
         </div>
         <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-          <Video className="size-3.5 shrink-0 text-[#0284c7]" /> Video evidence
+          <Video className="size-3.5 shrink-0 text-[#0284c7]" /> {t("community.mapControls.videoEvidence")}
         </div>
         <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-          <Route className="size-3.5 shrink-0 text-[#0284c7]" /> GeoVideo route
+          <Route className="size-3.5 shrink-0 text-[#0284c7]" /> {t("community.mapControls.geoVideoRoute")}
         </div>
         <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
           <span className="size-2.5 shrink-0 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-900" />
-          Live video position
+          {t("community.mapControls.liveVideoPosition")}
         </div>
         <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
           <span className="flex size-3.5 shrink-0 items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground">N</span>
-          Clustered reports
+          {t("community.mapControls.clusteredReports")}
         </div>
       </PopoverContent>
     </Popover>

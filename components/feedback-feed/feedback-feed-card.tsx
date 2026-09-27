@@ -28,6 +28,7 @@ import { FeedbackCommentSkeleton } from "@/components/projects/feedback-comment-
 import { voteFeedback } from "@/actions/mutation/feedback-vote.mutation";
 import { getUserVotes } from "@/actions/query/feedback-votes.query";
 import { getFeedbackComments } from "@/actions/query/feedback-comments.query";
+import { useTranslation } from "@/i18n";
 import { useAuth } from "@/providers/auth-provider";
 import { getAnonymousUser } from "@/lib/anonymous-identifier";
 import { AnonymousIcon } from "@/components/shared/anonymous-avatar";
@@ -47,13 +48,14 @@ function FeedImageAttachment({
   unoptimized: boolean;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const [hasError, setHasError] = useState(false);
 
   if (hasError) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 p-2 text-center text-slate-600 dark:text-slate-400">
         <ImageIcon className="size-5 mb-1 text-slate-400 dark:text-slate-500" />
-        <span className="text-xs font-medium">Image unavailable</span>
+        <span className="text-xs font-medium">{t("community.feedbackCard.imageUnavailable")}</span>
       </div>
     );
   }
@@ -85,10 +87,13 @@ interface FeedbackFeedCardProps {
 }
 
 export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const isAnonymous = item.isAnonymous || !item.user;
   const anon = useMemo(() => getAnonymousUser(item.userId || item.id), [item.userId, item.id]);
-  const displayName = isAnonymous ? anon.displayName : (item.user?.name || "Citizen");
+  const displayName = isAnonymous
+    ? t("community.feedbackCard.anonymousName", { number: anon.number })
+    : (item.user?.name || t<string>("community.common.citizen"));
   const userImage = !isAnonymous ? item.user?.image : null;
 
   // Voting state
@@ -121,7 +126,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
       navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copied to clipboard!");
+      toast.success(t("community.common.linkCopiedToast"));
     }
   };
 
@@ -192,13 +197,13 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
   if (isHidden) {
     return (
       <div className="bg-white dark:bg-[#0d1526] rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 text-center text-sm text-slate-500 dark:text-slate-400 flex items-center justify-between">
-        <span>Post hidden from your feed.</span>
+        <span>{t("community.feedbackCard.hidden")}</span>
         <button
           type="button"
           onClick={() => setIsHidden(false)}
           className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
         >
-          Undo
+          {t("community.common.undo")}
         </button>
       </div>
     );
@@ -246,7 +251,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
 
               {isAnonymous && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700">
-                  Anonymous Citizen
+                  {t("community.feedbackCard.anonymousBadge")}
                 </span>
               )}
 
@@ -271,7 +276,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
             <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex-wrap">
               <span className="whitespace-nowrap">{format(new Date(item.createdAt), "MMM d, yyyy")}</span>
               <span className="text-slate-400 dark:text-slate-400">·</span>
-              <span title="Public post" className="inline-flex items-center">
+              <span title={t("community.feedbackCard.publicPost")} className="inline-flex items-center">
                 <Globe className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400" />
               </span>
               {item.project && (
@@ -313,7 +318,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
             onClick={() => setIsExpandedText((prev) => !prev)}
             className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:underline mt-1 cursor-pointer"
           >
-            {isExpandedText ? "See less" : "See more"}
+            {isExpandedText ? t("community.common.seeLess") : t("community.common.seeMore")}
           </button>
         )}
       </div>
@@ -367,7 +372,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
                 <div className="relative w-full h-full z-10 flex items-center justify-center">
                   <FeedImageAttachment
                     src={mediaUrl}
-                    alt={mediaItem.caption || "Feedback image"}
+                    alt={mediaItem.caption || t("community.feedbackCard.imageAlt")}
                     unoptimized={isLocalMinIO(mediaUrl)}
                     className="object-contain"
                   />
@@ -390,7 +395,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
                     {mediaUrl && (
                       <FeedImageAttachment
                         src={mediaUrl}
-                        alt={mediaItem.caption || `Attachment ${index + 1}`}
+                        alt={mediaItem.caption || t("community.feedbackCard.attachmentAlt", { number: index + 1 })}
                         unoptimized={isLocalMinIO(mediaUrl)}
                         className="object-cover"
                       />
@@ -424,7 +429,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
                     {mediaUrl && (
                       <FeedImageAttachment
                         src={mediaUrl}
-                        alt={mediaItem.caption || `Attachment ${index + 1}`}
+                        alt={mediaItem.caption || t("community.feedbackCard.attachmentAlt", { number: index + 1 })}
                         unoptimized={isLocalMinIO(mediaUrl)}
                         className="object-cover"
                       />
@@ -457,7 +462,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
                     {mediaUrl && (
                       <FeedImageAttachment
                         src={mediaUrl}
-                        alt={mediaItem.caption || `Attachment ${index + 1}`}
+                        alt={mediaItem.caption || t("community.feedbackCard.attachmentAlt", { number: index + 1 })}
                         unoptimized={isLocalMinIO(mediaUrl)}
                         className="object-cover"
                       />
@@ -514,7 +519,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
               onClick={toggleComments}
               className="hover:underline cursor-pointer font-medium"
             >
-              {commentCount} comment{commentCount !== 1 ? "s" : ""}
+              {t(commentCount !== 1 ? "community.feedbackCard.commentsMany" : "community.feedbackCard.commentsOne", { count: commentCount })}
             </button>
           )}
         </div>
@@ -532,14 +537,14 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
               ? "text-[#1877F2] dark:text-[#3982f6] bg-blue-50/70 dark:bg-blue-950/40 font-bold"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70"
           }`}
-          aria-label="Mark as helpful"
+          aria-label={t("community.feedbackCard.markHelpful")}
         >
           <ThumbsUp
             className={`w-4.5 h-4.5 transition-transform ${
               userVote === "helpful" ? "fill-[#1877F2] text-[#1877F2] scale-110" : "text-slate-500 dark:text-slate-400"
             }`}
           />
-          <span>Helpful</span>
+          <span>{t("community.feedbackCard.helpful")}</span>
         </button>
 
         {/* Unhelpful */}
@@ -552,14 +557,14 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
               ? "text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/40 font-bold"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70"
           }`}
-          aria-label="Mark as unhelpful"
+          aria-label={t("community.feedbackCard.markUnhelpful")}
         >
           <ThumbsDown
             className={`w-4.5 h-4.5 transition-transform ${
               userVote === "unhelpful" ? "fill-rose-600 text-rose-600 scale-110" : "text-slate-500 dark:text-slate-400"
             }`}
           />
-          <span>Unhelpful</span>
+          <span>{t("community.feedbackCard.unhelpful")}</span>
         </button>
 
         {/* Comment */}
@@ -573,13 +578,13 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
           }`}
         >
           <MessageCircle className="w-4.5 h-4.5" />
-          <span>Comment</span>
+          <span>{t("community.feedbackCard.comment")}</span>
         </button>
 
         {/* Social Share Menu (Facebook, X, WhatsApp, LinkedIn, Telegram, Device, Copy) */}
         <SocialShareMenu
           url={`/citizen-feed#feedback-${item.id}`}
-          title={`Citizen Feedback on ${item.project?.name || "INFRA Watch"}`}
+          title={t("community.feedbackCard.shareTitle", { project: item.project?.name || "INFRA Watch" })}
           text={item.comment || undefined}
         />
       </div>
@@ -624,8 +629,8 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
                         ? getAnonymousUser(comment.userId || comment.id)
                         : null;
                       const commentName = commentAnon
-                        ? commentAnon.shortName
-                        : comment.user.name || "Citizen";
+                        ? t("community.feedbackCard.anonymousShortName", { number: commentAnon.number })
+                        : comment.user.name || t<string>("community.common.citizen");
 
                       return (
                         <div key={comment.id} className="flex items-start gap-2.5">
@@ -675,7 +680,7 @@ export function FeedbackFeedCard({ item }: FeedbackFeedCardProps) {
                         onClick={loadAllComments}
                         className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline pl-2 cursor-pointer"
                       >
-                        View all {commentCount} comments
+                        {t("community.feedbackCard.viewAllComments", { count: commentCount })}
                       </button>
                     )}
                   </div>

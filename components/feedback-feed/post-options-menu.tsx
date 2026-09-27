@@ -25,6 +25,7 @@ import {
   toggleSavePostAction,
   togglePostSubscriptionAction,
 } from "@/actions/mutation/post-interactions.mutation";
+import { useTranslation } from "@/i18n";
 
 interface PostOptionsMenuProps {
   postId: string;
@@ -43,6 +44,7 @@ export function PostOptionsMenu({
   onViewProject,
   onHidePost,
 }: PostOptionsMenuProps) {
+  const { t } = useTranslation();
   const [isInterested, setIsInterested] = useState(false);
   const [isNotificationsOn, setIsNotificationsOn] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -91,12 +93,12 @@ export function PostOptionsMenu({
     });
 
     if (nextState) {
-      toast.success("Marked as Interested", {
-        description: "Saved to your bookmarks. View them anytime in the Saved tab.",
+      toast.success(t("community.postOptions.savedToast"), {
+        description: t("community.postOptions.savedToastBody"),
       });
     } else {
-      toast.info("Removed from Interested", {
-        description: "Post removed from your saved items.",
+      toast.info(t("community.postOptions.unsavedToast"), {
+        description: t("community.postOptions.unsavedToastBody"),
       });
     }
   };
@@ -123,12 +125,12 @@ export function PostOptionsMenu({
     });
 
     if (nextState) {
-      toast.success("Notifications turned on", {
-        description: "You'll receive in-app and email updates when someone comments on this post.",
+      toast.success(t("community.postOptions.notificationsOnToast"), {
+        description: t("community.postOptions.notificationsOnToastBody"),
       });
     } else {
-      toast.info("Notifications turned off", {
-        description: "You'll no longer receive notifications for this post.",
+      toast.info(t("community.postOptions.notificationsOffToast"), {
+        description: t("community.postOptions.notificationsOffToastBody"),
       });
     }
   };
@@ -142,11 +144,11 @@ export function PostOptionsMenu({
       try {
         await navigator.clipboard.writeText(shareUrl || window.location.href);
         setIsCopied(true);
-        toast.success("Link copied to clipboard!");
+        toast.success(t("community.common.linkCopiedToast"));
         setTimeout(() => setIsCopied(false), 2000);
       } catch (error) {
         console.error("Copy failed:", error);
-        toast.error("Failed to copy link");
+        toast.error(t("community.common.copyLinkFailed"));
       }
     }
   };
@@ -155,14 +157,14 @@ export function PostOptionsMenu({
     if (onHidePost) {
       onHidePost();
     }
-    toast.info("Post hidden from your feed", {
-      description: "You will see fewer posts like this.",
+    toast.info(t("community.postOptions.hiddenToast"), {
+      description: t("community.postOptions.hiddenToastBody"),
     });
   };
 
   const handleReport = () => {
-    toast.success("Post reported to moderators", {
-      description: "Thank you for helping keep Infra Watch transparent and safe.",
+    toast.success(t("community.postOptions.reportedToast"), {
+      description: t("community.postOptions.reportedToastBody"),
     });
   };
 
@@ -170,7 +172,7 @@ export function PostOptionsMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#1877F2] relative"
-        aria-label="Post options"
+        aria-label={t("community.postOptions.menuLabel")}
       >
         <MoreHorizontal className="w-5 h-5" />
         {(isInterested || isNotificationsOn) && (
@@ -197,12 +199,12 @@ export function PostOptionsMenu({
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">
-              {isInterested ? "Remove from Interested" : "Interested / Save post"}
+              {isInterested ? t("community.postOptions.unsave") : t("community.postOptions.save")}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-normal">
               {isInterested
-                ? "Remove this post from your saved bookmarks"
-                : "Save this to your bookmarks and see more like this"}
+                ? t("community.postOptions.unsaveHint")
+                : t("community.postOptions.saveHint")}
             </div>
           </div>
         </DropdownMenuItem>
@@ -222,13 +224,13 @@ export function PostOptionsMenu({
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">
               {isNotificationsOn
-                ? "Turn off notifications for this post"
-                : "Turn on notifications for this post"}
+                ? t("community.postOptions.notificationsOff")
+                : t("community.postOptions.notificationsOn")}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-normal">
               {isNotificationsOn
-                ? "Stop receiving updates when new comments are added"
-                : "Receive alerts when other citizens comment or updates arrive"}
+                ? t("community.postOptions.notificationsOffHint")
+                : t("community.postOptions.notificationsOnHint")}
             </div>
           </div>
         </DropdownMenuItem>
@@ -244,7 +246,7 @@ export function PostOptionsMenu({
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold text-slate-900 dark:text-white leading-tight truncate">
-                View project details
+                {t("community.postOptions.viewProject")}
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-normal truncate">
                 {projectName}
@@ -267,10 +269,10 @@ export function PostOptionsMenu({
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">
-              {isCopied ? "Link copied!" : "Copy link"}
+              {isCopied ? t("community.common.linkCopied") : t("community.common.copyLink")}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-normal">
-              Copy link to this specific post
+              {t("community.postOptions.copyLinkHint")}
             </div>
           </div>
         </DropdownMenuItem>
@@ -287,10 +289,10 @@ export function PostOptionsMenu({
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">
-              Hide post
+              {t("community.postOptions.hide")}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-normal">
-              See fewer posts like this
+              {t("community.postOptions.hideHint")}
             </div>
           </div>
         </DropdownMenuItem>
@@ -305,10 +307,10 @@ export function PostOptionsMenu({
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-rose-600 dark:text-rose-400 leading-tight">
-              Report post
+              {t("community.postOptions.report")}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-normal">
-              We won&apos;t let the author know who reported this
+              {t("community.postOptions.reportHint")}
             </div>
           </div>
         </DropdownMenuItem>
