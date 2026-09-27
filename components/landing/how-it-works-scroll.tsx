@@ -3,46 +3,28 @@
 import { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { ChevronDown, ClipboardCheck, Search, Send, ShieldCheck, Tractor, type LucideIcon } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 type Step = {
+  /** Key under landing.howItWorks.steps for the step's title and description. */
+  id: "explore" | "inspect" | "report" | "resolve";
   num: string;
   icon: LucideIcon;
-  title: string;
-  desc: string;
+  /** Reporting channel names; product names, so they stay the same in every language. */
   methods?: string[];
 };
 
 const STEPS: Step[] = [
-  {
-    num: "01",
-    icon: Search,
-    title: "Explore Database",
-    desc: "Browse agricultural and irrigation infrastructure projects. Filter by sub-program, budget, region, and status.",
-  },
-  {
-    num: "02",
-    icon: ClipboardCheck,
-    title: "Inspect Site Details",
-    desc: "Review coordinates, physical vs. financial progress, and the official program of works.",
-  },
-  {
-    num: "03",
-    icon: Send,
-    title: "Report or Give Feedback",
-    desc: "Three channels — Citizen Feed, Online E-Report, or SMS Grievance — each built for a different situation. See below to pick the one that fits.",
-    methods: ["Citizen Feed", "Online E-Report", "SMS Grievance"],
-  },
-  {
-    num: "04",
-    icon: ShieldCheck,
-    title: "Resolve Reported Issues",
-    desc: "Government moderators investigate citizen feedback and coordinate actions to resolve problems.",
-  },
+  { id: "explore", num: "01", icon: Search },
+  { id: "inspect", num: "02", icon: ClipboardCheck },
+  { id: "report", num: "03", icon: Send, methods: ["Citizen Feed", "Online E-Report", "SMS Grievance"] },
+  { id: "resolve", num: "04", icon: ShieldCheck },
 ];
 
 const STEP_VH = 85;
 
 export function HowItWorksScroll() {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start start", "end end"] });
@@ -75,17 +57,17 @@ export function HowItWorksScroll() {
   return (
     <section
       ref={containerRef}
-      aria-label="How It Works"
+      aria-label={t("landing.howItWorks.title")}
       className="relative bg-slate-50 dark:bg-slate-950"
       style={{ height: `${STEPS.length * STEP_VH}vh` }}
     >
       <div className="sticky top-0 flex h-screen flex-col items-center justify-center overflow-hidden px-4">
         <div className="mx-auto w-full max-w-2xl text-center">
           <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-            How It Works
+            {t("landing.howItWorks.title")}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            INFRA Watch connects citizens, site monitors, and government administrators in a closed feedback loop.
+            {t("landing.howItWorks.description")}
           </p>
         </div>
 
@@ -131,8 +113,10 @@ export function HowItWorksScroll() {
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-primary bg-white text-primary shadow-sm dark:border-indigo-400 dark:bg-slate-900 dark:text-indigo-300">
                 <step.icon className="h-6 w-6" aria-hidden />
               </div>
-              <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white sm:text-xl">{step.title}</h3>
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500 dark:text-slate-400">{step.desc}</p>
+              <h3 className="mt-5 text-lg font-bold text-slate-900 dark:text-white sm:text-xl">{t(`landing.howItWorks.steps.${step.id}.title`)}</h3>
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                {t(`landing.howItWorks.steps.${step.id}.description`)}
+              </p>
               {step.methods && (
                 <ul className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
                   {step.methods.map((method) => (
@@ -156,7 +140,7 @@ export function HowItWorksScroll() {
           style={{ opacity: scrollHintOpacity }}
           className="pointer-events-none absolute bottom-8 flex flex-col items-center gap-1 text-slate-400 dark:text-slate-600"
         >
-          <span className="text-[11px] font-semibold uppercase tracking-widest">Scroll</span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest">{t("landing.howItWorks.scroll")}</span>
           <ChevronDown className="h-4 w-4 animate-bounce" />
         </motion.div>
       </div>
@@ -165,14 +149,15 @@ export function HowItWorksScroll() {
 }
 
 function StaticHowItWorks() {
+  const { t } = useTranslation();
   return (
-    <section aria-label="How It Works" className="relative mx-auto max-w-6xl px-4 py-16 md:py-28">
+    <section aria-label={t("landing.howItWorks.title")} className="relative mx-auto max-w-6xl px-4 py-16 md:py-28">
       <div className="mx-auto mb-12 max-w-xl text-center md:mb-16">
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-          How It Works
+          {t("landing.howItWorks.title")}
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-          INFRA Watch connects citizens, site monitors, and government administrators in a closed feedback loop.
+          {t("landing.howItWorks.description")}
         </p>
       </div>
 
@@ -185,8 +170,10 @@ function StaticHowItWorks() {
                 {step.num}
               </span>
             </div>
-            <h3 className="mt-5 font-bold text-base text-slate-900 dark:text-white">{step.title}</h3>
-            <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{step.desc}</p>
+            <h3 className="mt-5 font-bold text-base text-slate-900 dark:text-white">{t(`landing.howItWorks.steps.${step.id}.title`)}</h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              {t(`landing.howItWorks.steps.${step.id}.description`)}
+            </p>
             {step.methods && (
               <ul className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
                 {step.methods.map((method) => (

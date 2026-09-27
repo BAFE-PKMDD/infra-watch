@@ -10,6 +10,7 @@ import {
 } from "@/lib/geojson-to-svg-path";
 import { PHILIPPINE_REGION_BY_CODE, type RegionCode } from "@/lib/philippines-regions";
 import type { RegionalStat } from "@/actions/query/analytics.query";
+import { useTranslation } from "@/i18n";
 
 const VIEW_WIDTH = 420;
 const VIEW_HEIGHT = 640;
@@ -40,6 +41,7 @@ export function PhilippinesRegionsMap({
   provinces: GeoFeatureCollection;
   regionalStats: RegionalStat[];
 }) {
+  const { t } = useTranslation();
   const [activeCode, setActiveCode] = useState<RegionCode | null>(null);
   const prefersReducedMotion = useReducedMotion();
 
@@ -75,16 +77,18 @@ export function PhilippinesRegionsMap({
   const activeRegion = activeCode ? PHILIPPINE_REGION_BY_CODE.get(activeCode) : null;
   const activeStat = activeCode ? statsByCode.get(activeCode) : null;
   const panelState = activeRegion && activeStat ? "stats" : activeRegion ? "no-data" : "idle";
+  // The region name is bolded inside the sentence, so split the template around it instead
+  // of filling the placeholder; word order differs between English and Tagalog.
+  const [noDataBefore, noDataAfter = ""] = t("landing.regionsMap.noData").split("{region}");
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] lg:items-center lg:gap-12">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-          Regional Overview
+          {t("landing.regionsMap.title")}
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-          Hover or focus a region on the map to see its funded and completed agricultural and
-          fisheries infrastructure projects for 2021&ndash;2026.
+          {t("landing.regionsMap.description")}
         </p>
 
         <div
@@ -121,7 +125,7 @@ export function PhilippinesRegionsMap({
                   <div>
                     <dt className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       <Banknote className="size-3" aria-hidden="true" />
-                      Total Investment
+                      {t("landing.stats.totalInvestment")}
                     </dt>
                     <dd className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
                       {formatBudget(activeStat.approvedBudget)}
@@ -130,14 +134,14 @@ export function PhilippinesRegionsMap({
                   <div>
                     <dt className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       <Layers className="size-3" aria-hidden="true" />
-                      Total Projects
+                      {t("landing.stats.totalProjects")}
                     </dt>
                     <dd className="mt-1 text-xl font-bold text-slate-900 dark:text-white">{activeStat.target}</dd>
                   </div>
                   <div>
                     <dt className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       <CheckCircle2 className="size-3" aria-hidden="true" />
-                      Completed Projects
+                      {t("landing.stats.completedProjects")}
                     </dt>
                     <dd className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
                       {formatCompletionRate(activeStat.completedOrTurnedOver, activeStat.target)}
@@ -158,8 +162,9 @@ export function PhilippinesRegionsMap({
                   <MapPin className="size-4" aria-hidden="true" />
                 </span>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {noDataBefore}
                   <span className="font-bold text-slate-700 dark:text-slate-300">{activeRegion.displayName}</span>
-                  {" "}has no funded projects on record for 2021&ndash;2026.
+                  {noDataAfter}
                 </p>
               </motion.div>
             ) : (
@@ -175,7 +180,7 @@ export function PhilippinesRegionsMap({
                   <MapPin className="size-5" aria-hidden="true" />
                 </span>
                 <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
-                  Hover a region to see its details
+                  {t("landing.regionsMap.idle")}
                 </p>
               </motion.div>
             )}
@@ -187,7 +192,7 @@ export function PhilippinesRegionsMap({
         <svg
           viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
           role="img"
-          aria-label="Map of Philippine regions. Hover or tab through each region to see its project counts."
+          aria-label={t("landing.regionsMap.mapLabel")}
           className="h-auto w-full"
         >
           {provincePaths.map((entry, index) => {
@@ -200,7 +205,10 @@ export function PhilippinesRegionsMap({
                 d={entry.d}
                 tabIndex={0}
                 role="button"
-                aria-label={`${region?.displayName ?? entry.code}: ${stat?.target ?? 0} funded projects`}
+                aria-label={t("landing.regionsMap.regionLabel", {
+                  region: region?.displayName ?? entry.code,
+                  count: stat?.target ?? 0,
+                })}
                 onMouseEnter={() => setActiveCode(entry.code)}
                 onMouseLeave={() => setActiveCode((current) => (current === entry.code ? null : current))}
                 onFocus={() => setActiveCode(entry.code)}

@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createElement } from "react";
+import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 import { PublicPortfolioStatistics } from "./public-portfolio-statistics";
 import type { InfraAnalyticsResult } from "@/actions/query/analytics.query";
+import { LanguageProvider } from "@/providers/language-provider";
+
+// PublicPortfolioStatistics reads its labels through useTranslation(), so render inside the
+// app's LanguageProvider (which needs an app router); the language defaults to English.
+const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {} } as unknown as AppRouterInstance;
+const render = (element: ReactElement) => renderToStaticMarkup(
+  createElement(AppRouterContext.Provider, { value: router }, createElement(LanguageProvider, null, element)),
+);
 
 const result: InfraAnalyticsResult = {
   status: "ready",
@@ -42,7 +51,7 @@ const result: InfraAnalyticsResult = {
 };
 
 test("renders public KPIs from the authoritative traceable analytics contract", () => {
-  const html = renderToStaticMarkup(createElement(PublicPortfolioStatistics, { result }));
+  const html = render(createElement(PublicPortfolioStatistics, { result }));
   assert.match(html, /25,907/);
   assert.match(html, /71\.01%/);
   assert.match(html, /₱24\.5B/);
@@ -52,7 +61,7 @@ test("renders public KPIs from the authoritative traceable analytics contract", 
 });
 
 test("never falls back to plausible figures when live statistics are unavailable", () => {
-  const html = renderToStaticMarkup(createElement(PublicPortfolioStatistics, {
+  const html = render(createElement(PublicPortfolioStatistics, {
     result: { status: "unavailable", data: null },
   }));
   assert.match(html, /Statistics temporarily unavailable/);
