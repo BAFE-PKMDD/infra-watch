@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { directory } from "../../../i18n/sections/directory";
+
 const directorySource = readFileSync(
   new URL("./projects-directory-client.tsx", import.meta.url),
   "utf8",
@@ -16,12 +18,18 @@ test("the public map provides an accessible native fullscreen toggle", () => {
   assert.match(directorySource, /requestFullscreen/);
   assert.match(directorySource, /document\.exitFullscreen/);
   assert.match(directorySource, /fullscreenchange/);
-  assert.match(directorySource, /aria-label=\{isMapFullscreen \? "Exit map fullscreen" : "View map fullscreen"\}/);
+  assert.match(
+    directorySource,
+    /aria-label=\{isMapFullscreen \? t\("directory\.map\.exitFullscreen"\) : t\("directory\.map\.enterFullscreen"\)\}/,
+  );
+  assert.equal(directory.en.map.exitFullscreen, "Exit map fullscreen");
+  assert.equal(directory.en.map.enterFullscreen, "View map fullscreen");
 });
 
 test("the public map filters coordinate-backed markers by source project type", () => {
   assert.match(querySource, /projectType:\s*projects\.projectType/);
-  assert.match(directorySource, /aria-label="Project type"/);
+  assert.match(directorySource, /aria-label=\{t\("directory\.filters\.projectType"\)\}/);
+  assert.equal(directory.en.filters.projectType, "Project type");
   assert.match(directorySource, /setSelectedPin\(null\)/);
   assert.match(directorySource, /mapProjectType/);
 });
