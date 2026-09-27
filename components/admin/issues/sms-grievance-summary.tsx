@@ -83,7 +83,7 @@ export function SmsGrievanceMetadataCard({
       <div>
         <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Message details</h3>
         <dl className="space-y-3">
-          <Detail label="Sender" value={record.maskedContact} />
+          <Detail label="Sender" value={record.contactNumber} />
           <Detail label="Received" value={new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(record.receivedAt))} />
           <Detail label="Category" value={record.categoryLabel} />
           <Detail label="Project" value={record.projectLabel} />

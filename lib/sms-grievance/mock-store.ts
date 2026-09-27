@@ -3,13 +3,15 @@ import type { SmsMockScenario } from "@/types/sms-grievance.types";
 // Bump this suffix whenever fixture content changes meaningfully (wording, masking
 // format, new fields) so browsers with an older cached prototype state fall back to the
 // fresh fixtures automatically instead of showing stale sample text indefinitely.
-export const SMS_PROTOTYPE_STORAGE_KEY = "infrawatch:sms-grievance-prototype:v4";
+export const SMS_PROTOTYPE_STORAGE_KEY = "infrawatch:sms-grievance-prototype:v5";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-// Validates that cached browser state genuinely originated from this app's own sample
-// set — tied to the current fixtures' known ids/text (not a fixed "[SAMPLE" text prefix,
-// since sample message text is now realistic-sounding rather than literally bracketed).
+// Validates that cached browser state genuinely originated from the records the page
+// most recently rendered — tied to those records' known ids (not a fixed "[SAMPLE" text
+// prefix, since sample message text is now realistic-sounding rather than literally
+// bracketed, and live-fetched records carry a real contactNumber rather than a masked
+// literal).
 function isControlledSampleRecord(value: unknown, knownIds: ReadonlySet<string>): value is SmsMockScenario {
   if (!value || typeof value !== "object") return false;
   const record = value as Partial<SmsMockScenario>;
@@ -18,7 +20,8 @@ function isControlledSampleRecord(value: unknown, knownIds: ReadonlySet<string>)
     && knownIds.has(record.id)
     && typeof record.originalText === "string"
     && record.originalText.trim().length > 0
-    && record.maskedContact === "09*******89"
+    && typeof record.contactNumber === "string"
+    && record.contactNumber.trim().length > 0
     && Array.isArray(record.conversation);
 
   if (!isControlledSample) return false;

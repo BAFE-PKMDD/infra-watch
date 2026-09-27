@@ -59,15 +59,23 @@ function MessageIdentity({ item }: { item: SmsMockScenario }) {
   );
 }
 
-function MaskedContact({ value }: { value: string }) {
+function ContactNumber({ value }: { value: string }) {
   return (
-    <span className="font-mono text-xs font-medium tabular-nums text-slate-600 dark:text-slate-300" aria-label={`Masked sender number ${value}`}>
+    <span className="font-mono text-xs font-medium tabular-nums text-slate-600 dark:text-slate-300" aria-label={`Sender number ${value}`}>
       {value}
     </span>
   );
 }
 
-export function SmsGrievanceTable({ initialRecords }: { initialRecords: SmsMockScenario[] }) {
+export function SmsGrievanceTable({
+  initialRecords,
+  dataSource = "sample",
+  liveFetchError = false,
+}: {
+  initialRecords: SmsMockScenario[];
+  dataSource?: "live" | "sample";
+  liveFetchError?: boolean;
+}) {
   const [records, setRecords] = useState(initialRecords);
   const [filter, setFilter] = useState<QueueFilter>("all");
 
@@ -80,7 +88,7 @@ export function SmsGrievanceTable({ initialRecords }: { initialRecords: SmsMockS
 
   return (
     <div className="space-y-6">
-      <SmsPrototypeBanner />
+      <SmsPrototypeBanner dataSource={dataSource} liveFetchError={liveFetchError} />
 
       <section aria-labelledby="sms-queue-heading" className="border border-slate-200 bg-white px-4 py-5 sm:px-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -98,7 +106,7 @@ export function SmsGrievanceTable({ initialRecords }: { initialRecords: SmsMockS
               setFilter("all");
             }}
           >
-            <RotateCcw aria-hidden="true" className="size-4" /> Restore sample messages
+            <RotateCcw aria-hidden="true" className="size-4" /> {dataSource === "live" ? "Restore original messages" : "Restore sample messages"}
           </Button>
         </div>
 
@@ -159,7 +167,7 @@ export function SmsGrievanceTable({ initialRecords }: { initialRecords: SmsMockS
 
                     <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <MaskedContact value={item.maskedContact} />
+                        <ContactNumber value={item.contactNumber} />
                         <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">•</span>
                         <span className="text-xs tabular-nums text-slate-600 dark:text-slate-300">Received {receivedDateFormatter.format(new Date(item.receivedAt))}</span>
                       </div>
@@ -192,7 +200,7 @@ export function SmsGrievanceTable({ initialRecords }: { initialRecords: SmsMockS
                         <MessageIdentity item={item} />
                         <p className="line-clamp-2 text-sm font-medium leading-6 text-slate-900 dark:text-slate-100">{item.originalText}</p>
                         <div className="flex items-start gap-2">
-                          <MaskedContact value={item.maskedContact} />
+                          <ContactNumber value={item.contactNumber} />
                           <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">•</span>
                           <p className="min-w-0 text-xs leading-5 text-slate-600 dark:text-slate-300">{item.projectLabel}</p>
                         </div>

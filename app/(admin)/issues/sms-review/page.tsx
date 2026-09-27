@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { SmsGrievanceTable } from "@/components/admin/issues/sms-grievance-table";
-import { SMS_MOCK_SCENARIOS } from "@/lib/sms-grievance/mock-fixtures";
+import { getSmsGrievanceQueue } from "@/lib/sms-grievance/live-source";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +12,10 @@ export const metadata: Metadata = {
   description: "Review incoming SMS grievance messages and route each one to the right team.",
 };
 
-export default function SmsReviewPage() {
+export default async function SmsReviewPage() {
   if (process.env.NODE_ENV === "production") notFound();
+
+  const { records, dataSource, liveFetchError } = await getSmsGrievanceQueue();
 
   return (
     <AdminPageWrapper
@@ -21,7 +23,7 @@ export default function SmsReviewPage() {
       title="SMS Grievance"
       description="Review each message, confirm whether it belongs in InfraWatch, and route it to the right team."
     >
-      <SmsGrievanceTable initialRecords={SMS_MOCK_SCENARIOS} />
+      <SmsGrievanceTable initialRecords={records} dataSource={dataSource} liveFetchError={liveFetchError} />
     </AdminPageWrapper>
   );
 }

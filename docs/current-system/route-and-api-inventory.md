@@ -58,8 +58,8 @@ Route groups in parentheses are omitted from public URLs. Dynamic segments are s
 | `/feedbacks` | Scoped feedback moderation | Admin/moderator with feedback-list permission |
 | `/issues` | Scoped E-Report management queue | Admin/moderator with issue-list permission |
 | `/issues/[id]` | Private issue review, notes, responses, status | Admin/moderator with issue permission and scope |
-| `/issues/sms-review` | Synthetic SMS review queue | Authorized development-only prototype |
-| `/issues/sms-review/[id]` | Synthetic SMS detail/tagging | Authorized development-only prototype |
+| `/issues/sms-review` | Live SMS review queue (synthetic fallback if the feed is unreachable) | Authorized development-only prototype |
+| `/issues/sms-review/[id]` | Live SMS detail/tagging (synthetic fallback if the feed is unreachable) | Authorized development-only prototype |
 | `/reports/issues` | Issue response/resolution SLA report | Administrator only |
 | `/reports/feedbacks` | Feedback moderation SLA report | Administrator only |
 | `/sync` | ABEMIS sync status/history/manual trigger | View permission; trigger restricted to administrator |
@@ -208,10 +208,10 @@ Route groups in parentheses are omitted from public URLs. Dynamic segments are s
 
 ### Prototype-only SMS services
 
-- Deterministic synthetic fixtures
+- Server-side fetch and mapping of the live SMS grievance API, with deterministic synthetic fixtures as an offline fallback
 - Browser-local state/store validation
 - Transition requirements and project-tag policy
-- Mapping of accepted sample grievance to a sample admin issue
+- Mapping of accepted grievance to a sample admin issue
 
 ## 4. Coverage note
 

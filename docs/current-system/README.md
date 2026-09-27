@@ -65,7 +65,7 @@ Important source paths include:
 
 - Existing “analytics” describe infrastructure projects and operational response times. The repository does **not** currently implement website visitor/download analytics or consented age/gender analytics.
 - The Data Quality module is recommendation/export-only. It does not clean, archive, or delete project records.
-- The SMS grievance feature is a browser-local synthetic prototype and is disabled in production.
+- The SMS grievance feature loads real messages from the SMS grievance line's public API server-side (falling back to a synthetic sample set if that feed is unreachable); review decisions on top of those messages stay browser-local only, and the whole feature is disabled in production.
 - Public map points are limited to projects or evidence with usable source-backed coordinates; missing coordinates are not invented.
 - A feedback marked “anonymous” remains associated internally with the authenticated submitting account; its identity is hidden from public presentation, not removed from authorized staff data.
 - Application audit/session tables currently contain IP-address and user-agent fields. These are security/administration records, not an approved source for demographic inference.

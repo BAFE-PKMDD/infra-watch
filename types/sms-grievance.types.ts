@@ -10,7 +10,8 @@ export type SmsPrototypeScenario =
   | "restricted_misconduct"
   | "possible_danger"
   | "pending_acknowledgment"
-  | "failed_response";
+  | "failed_response"
+  | "live_import";
 
 export type SmsCaseStatus =
   | "imported"
@@ -63,7 +64,7 @@ export type SmsMockScenario = {
   duplicateOf?: string;
   receivedAt: string;
   originalText: string;
-  maskedContact: "09*******89";
+  contactNumber: string;
   senderMode: "anonymous" | "identified";
   relevance: SmsRelevanceStatus;
   relevanceReason: string;
@@ -82,7 +83,7 @@ export type SmsMockScenario = {
   sensitive: boolean;
   urgentReview: boolean;
   deliveryStatus: SmsDeliveryStatus;
-  language: "English" | "Filipino" | "Regional language";
+  language: "English" | "Filipino" | "Regional language" | "Unknown";
   conversation: SmsConversationItem[];
 };
 

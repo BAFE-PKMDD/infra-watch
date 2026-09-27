@@ -61,7 +61,7 @@ test("the prototype contains exactly twelve deterministic scenarios, each flagge
   assert.equal(new Set(SMS_MOCK_SCENARIOS.map((scenario) => scenario.id)).size, 12);
   assert.ok(SMS_MOCK_SCENARIOS.every((scenario) => scenario.prototype === true));
   assert.ok(SMS_MOCK_SCENARIOS.every((scenario) => scenario.originalText.trim().length > 0));
-  assert.ok(SMS_MOCK_SCENARIOS.every((scenario) => scenario.maskedContact === "09*******89"));
+  assert.ok(SMS_MOCK_SCENARIOS.every((scenario) => scenario.contactNumber === "09*******89"));
 });
 
 test("duplicate and follow-up scenarios preserve conversation identity", () => {

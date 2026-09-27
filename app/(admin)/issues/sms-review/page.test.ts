@@ -9,7 +9,8 @@ test("SMS review prototype fails closed in production", () => {
   assert.match(source, /notFound\(\)/);
 });
 
-test("SMS review uses only deterministic local fixtures", () => {
-  assert.match(source, /SMS_MOCK_SCENARIOS/);
+test("SMS review sources its queue through the live-source module rather than fetching or hardcoding fixtures inline", () => {
+  assert.match(source, /getSmsGrievanceQueue/);
+  assert.doesNotMatch(source, /SMS_MOCK_SCENARIOS/);
   assert.doesNotMatch(source, /fetch\(|https?:\/\//);
 });

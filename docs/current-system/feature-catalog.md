@@ -368,12 +368,12 @@ Important limitation: the server currently accepts arbitrary transitions among r
 
 **Status:** Prototype
 
-- Available only outside production and only to users with issue-management access.
-- Uses deterministic synthetic SMS records and browser-local storage.
-- Preserves the original SMS as immutable sample input.
+- Available only outside production and only to signed-in admin/moderator/regional-admin staff.
+- Loads real, untriaged messages server-side from the SMS grievance line's public API (`SMS_GRIEVANCE_API_URL`); falls back to deterministic synthetic records, with a visible on-page warning, if that feed can't be reached.
+- Preserves the original SMS text exactly as received. Review decisions (tags, routing, status, simulated replies) live in browser-local storage only and are never written back to the source feed or to a database.
 - Lets staff derive tags/routing and select an actual BAFE project from current InfraWatch project records, or explicitly mark `Not a BAFE project`.
 - A parser/project phrase is only a clue; it cannot confirm a project.
-- Does not receive or send real SMS and does not create production database cases.
+- Does not send real SMS replies and does not create production database cases. Live sender numbers are shown as received to the signed-in staff who already have access to this page.
 
 Sources: `lib/sms-grievance/`, `types/sms-grievance.types.ts`, admin SMS components/routes.
 

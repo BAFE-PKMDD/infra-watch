@@ -36,7 +36,17 @@ function closedLabelFor(record: SmsMockScenario) {
   return null;
 }
 
-export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; initialRecords: SmsMockScenario[] }) {
+export function SmsGrievanceDetailView({
+  id,
+  initialRecords,
+  dataSource = "sample",
+  liveFetchError = false,
+}: {
+  id: string;
+  initialRecords: SmsMockScenario[];
+  dataSource?: "live" | "sample";
+  liveFetchError?: boolean;
+}) {
   const [records, setRecords] = useState(initialRecords);
   const [storageReady, setStorageReady] = useState(false);
   const selected = records.find((item) => item.id === id) ?? null;
@@ -164,10 +174,10 @@ export function SmsGrievanceDetailView({ id, initialRecords }: { id: string; ini
 
   return (
     <div className="space-y-5">
-      <SmsPrototypeBanner />
+      <SmsPrototypeBanner dataSource={dataSource} liveFetchError={liveFetchError} />
 
       <Link href="/issues/sms-review" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
-        <ArrowLeft aria-hidden="true" className="size-4" /> Back to sample messages
+        <ArrowLeft aria-hidden="true" className="size-4" /> {dataSource === "live" ? "Back to messages" : "Back to sample messages"}
       </Link>
 
       {!selected ? (

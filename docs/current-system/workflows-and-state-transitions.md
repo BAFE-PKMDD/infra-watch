@@ -297,9 +297,10 @@ Authorized staff can permanently delete a scoped issue. The UI states that this 
 
 ```text
 Authorized moderator/admin opens development-only SMS review
-  → synthetic SMS records load from fixtures + browser localStorage
-  → select a sample message
-  → original SMS remains immutable
+  → server fetches the live SMS grievance API; falls back to synthetic fixtures if unreachable
+  → browser localStorage restores any in-progress review decisions for those same records
+  → select a message
+  → original SMS text remains immutable; review decisions stay local to the browser only
   → staff decide:
       A. BAFE project
          → search current InfraWatch project records
