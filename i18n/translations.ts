@@ -258,6 +258,7 @@ export const translations = {
       office: {
         title: "Visit our office",
         mapTitle: "BAFE Office Location",
+        openInMaps: "Open in Google Maps",
       },
     },
     projects: {
@@ -666,6 +667,7 @@ export const translations = {
       office: {
         title: "Bisitahin ang opisina namin",
         mapTitle: "Lokasyon ng opisina ng BAFE",
+        openInMaps: "Buksan sa Google Maps",
       },
     },
     projects: {

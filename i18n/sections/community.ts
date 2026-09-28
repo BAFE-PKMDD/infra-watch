@@ -178,6 +178,7 @@ const en = {
   },
   projectPreview: {
     photoAlt: "{name} - Photo {number}",
+    noPhotos: "No project photos yet",
     projectCode: "Project Code",
     startDate: "Start Date",
     completion: "Completion",
@@ -512,6 +513,7 @@ const tl: Dictionary<typeof en> = {
   },
   projectPreview: {
     photoAlt: "{name} - Photo {number}",
+    noPhotos: "Wala pang photo ng project",
     projectCode: "Project Code",
     startDate: "Petsa ng Simula",
     completion: "Pagtatapos",

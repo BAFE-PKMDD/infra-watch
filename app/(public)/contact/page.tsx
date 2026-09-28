@@ -5,7 +5,7 @@ import { getBlurDataURL } from "@/lib/image-utils";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useForm } from "@tanstack/react-form";
-import { AlertTriangle, Mail, MapPin, Phone, Send, User, MessageSquare, Clock, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, Mail, MapPin, Phone, Send, User, MessageSquare, Clock, CheckCircle2, ExternalLink } from "lucide-react";
 import { useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import { createContactMessage } from "@/actions/mutation/contact.mutation";
 import { useTranslation } from "@/i18n";
 
 const BAFE_CONTACT_EMAIL = "bafe@da.gov.ph";
+const OFFICE_MAPS_URL =
+  "https://www.google.com/maps/search/?api=1&query=Two%20Cyberpod%20Centris%2C%20EDSA%20Quezon%20Avenue%2C%20Quezon%20City";
 
 const HOTLINES = [
   { label: "0949-842-9485", href: "tel:+639498429485" },
@@ -105,15 +107,15 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Hero Section */}
-      <div className="relative h-[280px] overflow-hidden bg-blue-700 dark:bg-slate-950">
+      <div className="relative h-[280px] overflow-hidden bg-slate-950">
         <div className="absolute inset-0">
+          {/* Same hero photo and treatment as the E-Reports page. */}
           <Image
-            src="/hero-road.jpg"
+            src="/hero/main-background.png"
             alt=""
             fill
-            className="object-cover"
+            className="object-cover opacity-45"
             priority
-            quality={90}
             placeholder="blur"
             blurDataURL={getBlurDataURL(1920, 1080)}
             sizes="100vw"
@@ -420,6 +422,9 @@ export default function ContactPage() {
             </p>
             <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
               <iframe
+                // The site sends Cross-Origin-Embedder-Policy (next.config.ts), which blocks
+                // third-party frames like Google Maps unless they load credentialless.
+                {...({ credentialless: "" } as Record<string, string>)}
                 title={t("contact.office.mapTitle")}
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3854.494532314407!2d121.0396378!3d14.6419531!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397b700a33f912b%3A0xc13f2e3ebcc6f2fd!2sCyberpod%20Centris%20Two%20-%20Eton%20Centris!5e0!3m2!1sen!2sph!4v1700000000000!5m2!1sen!2sph"
                 width="100%"
@@ -430,6 +435,15 @@ export default function ContactPage() {
                 className="w-full"
               />
             </div>
+            <a
+              href={OFFICE_MAPS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-semibold text-blue-700 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:text-blue-400"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              {t("contact.office.openInMaps")}
+            </a>
           </motion.div>
         </div>
       </div>

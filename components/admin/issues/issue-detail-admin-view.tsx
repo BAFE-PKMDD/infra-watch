@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Clock,
   FileText,
+  ImageOff,
   Loader2,
   Mail,
   MapPin,
@@ -449,15 +450,20 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                                   className="group relative min-h-44 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-left outline-none transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-slate-700 dark:bg-slate-950"
                                   onClick={() => setViewingMedia(index)}
                                 >
-                                  {item.type === "image" ? (
+                                  {item.type === "image" && src ? (
                                     <Image
-                                      src={src || "/placeholder-image.jpg"}
+                                      src={src}
                                       alt={`Evidence ${index + 1}`}
                                       fill
                                       sizes="(max-width: 768px) 100vw, 33vw"
                                       className="object-cover transition-transform group-hover:scale-105 motion-reduce:transition-none"
                                       unoptimized={isLocalMinIO(src)}
                                     />
+                                  ) : item.type === "image" ? (
+                                    <div className="flex h-full min-h-44 w-full flex-col items-center justify-center gap-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                                      <ImageOff className="size-6" aria-hidden="true" />
+                                      Preview unavailable
+                                    </div>
                                   ) : (
                                     <div className="flex h-full min-h-44 w-full items-center justify-center bg-slate-950 text-white">
                                       <Play className="size-8" aria-hidden="true" />

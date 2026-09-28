@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, ArrowRight, Building2, Calendar, Clock, Ruler, Banknote, HardHat, Layers, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, ArrowRight, Building2, Calendar, Clock, Ruler, Banknote, HardHat, Layers, ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -113,7 +113,8 @@ function PreviewContent({
   // Extract all geotag images
   const images = getGeotagImages(project?.metadata);
   const hasImages = images.length > 0;
-  const allImages = hasImages ? images : ["/hero-road.jpg"];
+  // No stand-in photo: a stock image would read as this project's own photo.
+  const allImages = images;
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -158,29 +159,36 @@ function PreviewContent({
   return (
     <>
       {/* Hero Carousel */}
-      <div className="relative h-44 sm:h-48 bg-sky-700 dark:bg-slate-950 overflow-hidden flex-shrink-0 group">
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key={allImages[currentIndex]}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: "easeInOut" }}
-            className="absolute inset-0"
-          >
-            <Image
-              src={allImages[currentIndex]}
-              alt={t("community.projectPreview.photoAlt", { name: project.name, number: currentIndex + 1 })}
-              fill
-              className="object-cover"
-              sizes="480px"
-              quality={80}
-              placeholder="blur"
-              blurDataURL={getBlurDataURL(480, 200)}
-              unoptimized={allImages[currentIndex].startsWith("http")}
-            />
-          </motion.div>
-        </AnimatePresence>
+      <div className="relative h-44 sm:h-48 bg-slate-800 dark:bg-slate-950 overflow-hidden flex-shrink-0 group">
+        {hasImages ? (
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              key={allImages[currentIndex]}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6, ease: "easeInOut" }}
+              className="absolute inset-0"
+            >
+              <Image
+                src={allImages[currentIndex]}
+                alt={t("community.projectPreview.photoAlt", { name: project.name, number: currentIndex + 1 })}
+                fill
+                className="object-cover"
+                sizes="480px"
+                quality={80}
+                placeholder="blur"
+                blurDataURL={getBlurDataURL(480, 200)}
+                unoptimized={allImages[currentIndex].startsWith("http")}
+              />
+            </motion.div>
+          </AnimatePresence>
+        ) : (
+          <p className="absolute right-4 top-4 z-[2] inline-flex items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 text-xs font-semibold text-white">
+            <ImageOff className="h-3.5 w-3.5" aria-hidden="true" />
+            {t("community.projectPreview.noPhotos")}
+          </p>
+        )}
 
         <div className="absolute inset-0 bg-black/40" />
 
