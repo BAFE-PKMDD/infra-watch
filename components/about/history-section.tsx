@@ -34,10 +34,10 @@ export function HistorySection() {
         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{t("about.history.acronym")}</p>
         <div className="mt-2 flex flex-wrap gap-x-8 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
           <p>
-            Est. <span className="font-semibold text-slate-900 dark:text-white">{t("about.history.est")}</span>
+            {t("about.history.estLabel")} <span className="font-semibold text-slate-900 dark:text-white">{t("about.history.est")}</span>
           </p>
           <p>
-            Legal: <span className="font-semibold text-slate-900 dark:text-white">{t("about.history.legal")}</span>
+            {t("about.history.legalLabel")} <span className="font-semibold text-slate-900 dark:text-white">{t("about.history.legal")}</span>
           </p>
         </div>
       </div>

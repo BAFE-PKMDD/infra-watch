@@ -1,9 +1,34 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { renderToStaticMarkup } from "react-dom/server";
+import type { ReactElement } from "react";
+import { renderToStaticMarkup as renderMarkup } from "react-dom/server";
+import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 import { IssueTypePicker } from "./issue-type-picker";
-import { splitIssueTypesByFarmOperation } from "@/lib/abemis/issue-type-map";
+import { eReport } from "@/i18n/sections/eReport";
+import { ISSUE_TYPES, splitIssueTypesByFarmOperation } from "@/lib/abemis/issue-type-map";
+import { LanguageProvider } from "@/providers/language-provider";
+
+const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {} } as unknown as AppRouterInstance;
+
+// The picker reads its copy through useTranslation, so render it inside the language
+// provider the site wraps pages in (English until a visitor picks Tagalog).
+function renderToStaticMarkup(element: ReactElement) {
+  return renderMarkup(
+    <AppRouterContext.Provider value={router}>
+      <LanguageProvider>{element}</LanguageProvider>
+    </AppRouterContext.Provider>,
+  );
+}
+
+test("every issue type has English and Tagalog display labels, and English matches the stored label", () => {
+  for (const type of ISSUE_TYPES) {
+    const id = type.id as keyof typeof eReport.en.issueTypes;
+    assert.equal(eReport.en.issueTypes[id], type.label, `English label for ${type.id}`);
+    assert.ok(eReport.tl.issueTypes[id], `Tagalog label for ${type.id}`);
+  }
+  assert.equal(Object.keys(eReport.en.issueTypes).length, ISSUE_TYPES.length);
+});
 
 function extractGroup(html: string): string {
   const start = html.indexOf('data-testid="recommended-issue-types"');

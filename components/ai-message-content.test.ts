@@ -1,9 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { createElement, type ReactElement } from "react";
+import { renderToStaticMarkup as renderMarkup } from "react-dom/server";
+import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 import { AiMessageContent } from "./ai-message-content";
+import { LanguageProvider } from "@/providers/language-provider";
+
+const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {} } as unknown as AppRouterInstance;
+
+// The interface labels around an answer read useTranslation, so render inside the language
+// provider the site wraps pages in (English until a visitor picks Tagalog).
+function renderToStaticMarkup(element: ReactElement) {
+  return renderMarkup(
+    createElement(AppRouterContext.Provider, { value: router }, createElement(LanguageProvider, null, element)),
+  );
+}
 
 test("renders linked project IDs with one valid anchor", () => {
   const id = "2021-R4B-PAL-INFRA-NRP-IC-00424";
@@ -37,5 +49,6 @@ test("renders non-project Markdown links as inert text", () => {
   );
 
   assert.match(html, /Official project portal/);
+  assert.match(html, /title="External link omitted"/);
   assert.doesNotMatch(html, /href=/);
 });

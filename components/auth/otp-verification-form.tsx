@@ -5,11 +5,22 @@ import { motion } from "framer-motion";
 import { Loader2, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "@/i18n";
 import { emailOtp } from "@/lib/auth-client";
+
+type OtpType = "email-verification" | "sign-in" | "forget-password" | "phone-verification";
+
+// Dictionary key segment per OTP type: account.otp.titles.<key>, .buttons.<key>, .successTitles.<key>.
+const OTP_TYPE_KEYS: Record<OtpType, string> = {
+  "email-verification": "emailVerification",
+  "sign-in": "signIn",
+  "forget-password": "forgetPassword",
+  "phone-verification": "phoneVerification",
+};
 
 interface OTPVerificationFormProps {
   identifier: string; // email or phone
-  type?: "email-verification" | "sign-in" | "forget-password" | "phone-verification";
+  type?: OtpType;
   onSuccess: (code?: string) => void;
   onBack?: () => void;
 }
@@ -36,6 +47,8 @@ export function OTPVerificationForm({
   onSuccess,
   onBack,
 }: OTPVerificationFormProps) {
+  const { t } = useTranslation();
+  const typeKey = OTP_TYPE_KEYS[type];
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -129,7 +142,7 @@ export function OTPVerificationForm({
 
   async function handleVerify(code: string) {
     if (timer === 0) {
-      setError("This code has expired. Please request a new one.");
+      setError(t("account.otp.errors.expired"));
       return;
     }
 
@@ -166,7 +179,7 @@ export function OTPVerificationForm({
 
       if (result?.error) {
         const err = result.error;
-        setError(err.message || "Verification failed. Please try again.");
+        setError(err.message || t("account.otp.errors.verifyFailed"));
         setOtp(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
         return;
@@ -177,7 +190,7 @@ export function OTPVerificationForm({
         onSuccess(code);
       }, 1500);
     } catch {
-      setError("An unexpected error occurred. Please try again.");
+      setError(t("account.auth.unexpectedErrorRetry"));
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
@@ -209,7 +222,7 @@ export function OTPVerificationForm({
       }
 
       if (result?.error) {
-        setError(result.error.message || "Failed to resend code.");
+        setError(result.error.message || t("account.otp.errors.resendFailed"));
       } else {
         setResendCooldown(60);
         resetTimer(180);
@@ -217,7 +230,7 @@ export function OTPVerificationForm({
         inputRefs.current[0]?.focus();
       }
     } catch {
-      setError("Failed to resend code. Please try again.");
+      setError(t("account.otp.errors.resendFailedRetry"));
     } finally {
       setIsResending(false);
     }
@@ -234,13 +247,10 @@ export function OTPVerificationForm({
           <CheckCircle className="w-8 h-8 text-primary" />
         </div>
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-          {type === "email-verification" ? "Email Verified!" :
-            type === "sign-in" ? "Signed In!" :
-              type === "phone-verification" ? "Phone Verified!" :
-                "Code Verified!"}
+          {t(`account.otp.successTitles.${typeKey}`)}
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          {type === "forget-password" ? "Proceeding to password reset..." : "Continuing to your account..."}
+          {type === "forget-password" ? t("account.otp.proceedingToReset") : t("account.otp.continuingToAccount")}
         </p>
       </motion.div>
     );
@@ -250,13 +260,10 @@ export function OTPVerificationForm({
     <div className="space-y-6">
       <div className="text-center">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-          {type === "email-verification" ? "Verify your email" :
-            type === "sign-in" ? "Sign in with code" :
-              type === "phone-verification" ? "Verify your phone" :
-                "Reset password"}
+          {t(`account.otp.titles.${typeKey}`)}
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          We sent a 6-digit code to{" "}
+          {t("account.otp.sentTo")}{" "}
           <span className="font-medium text-slate-900 dark:text-white">
             {identifier}
           </span>
@@ -287,9 +294,9 @@ export function OTPVerificationForm({
         <div className={`text-xs font-medium flex items-center gap-1.5 ${timer === 0 ? 'text-red-500' : 'text-slate-500'}`}>
           <AlertCircle className="w-3.5 h-3.5" />
           {timer > 0 ? (
-            <span>Code expires in <span className="font-mono">{formatTime(timer)}</span></span>
+            <span>{t("account.otp.expiresIn")} <span className="font-mono">{formatTime(timer)}</span></span>
           ) : (
-            <span>Code has expired</span>
+            <span>{t("account.otp.expired")}</span>
           )}
         </div>
       </div>
@@ -316,13 +323,10 @@ export function OTPVerificationForm({
         {isVerifying ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Verifying...
+            {t("account.otp.verifying")}
           </>
         ) : (
-          type === "email-verification" ? "Verify Email" :
-            type === "sign-in" ? "Sign In" :
-              type === "phone-verification" ? "Verify Phone" :
-                "Verify Code"
+          t(`account.otp.buttons.${typeKey}`)
         )}
       </Button>
 
@@ -334,7 +338,7 @@ export function OTPVerificationForm({
             onClick={onBack}
             className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white underline-offset-4 hover:underline"
           >
-            Back
+            {t("account.auth.back")}
           </button>
         )}
         <button
@@ -348,7 +352,7 @@ export function OTPVerificationForm({
           ) : (
             <RefreshCw className="w-3.5 h-3.5" />
           )}
-          {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
+          {resendCooldown > 0 ? t("account.otp.resendIn", { seconds: resendCooldown }) : t("account.otp.resend")}
         </button>
       </div>
     </div>

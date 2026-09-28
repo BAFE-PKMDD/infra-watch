@@ -15,6 +15,8 @@ import type { IssueActivityItem } from "@/types/activity-feed.types";
 import { ProjectPreviewSheet } from "@/components/feedback-feed/project-preview-sheet";
 import { getAnonymousUser } from "@/lib/anonymous-identifier";
 import { AnonymousIcon } from "@/components/shared/anonymous-avatar";
+import { translateStatusLabel } from "@/components/shared/system-evidence-map-format";
+import { useTranslation } from "@/i18n";
 import { SocialShareMenu } from "./social-share-menu";
 import { PostOptionsMenu } from "./post-options-menu";
 
@@ -36,13 +38,14 @@ interface IssueFeedCardProps {
 }
 
 export function IssueFeedCard({ item }: IssueFeedCardProps) {
+  const { t } = useTranslation();
   const [responsesExpanded, setResponsesExpanded] = useState(false);
   const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
   const [isExpandedText, setIsExpandedText] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
 
   const anon = useMemo(() => getAnonymousUser(item.id), [item.id]);
-  const displayName = `Citizen Report #${anon.number}`;
+  const displayName = t("community.issueCard.reporterName", { number: anon.number });
   const locationText = [item.barangay, item.city, item.province].filter(Boolean).join(", ");
   const responseCount = Math.max(item.responseCount, item.recentResponses.length);
   const isLongText = (item.issueDescription || "").length > 280;
@@ -51,13 +54,13 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
   if (isHidden) {
     return (
       <div className="bg-slate-100/80 dark:bg-slate-900/40 rounded-xl p-4 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-800/60">
-        <span>Report hidden from your feed.</span>
+        <span>{t("community.issueCard.hidden")}</span>
         <button
           type="button"
           onClick={() => setIsHidden(false)}
           className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
         >
-          Undo
+          {t("community.common.undo")}
         </button>
       </div>
     );
@@ -85,7 +88,7 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
               </span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/40">
                 <AlertTriangle className="w-3 h-3" />
-                Reported Issue
+                {t("community.issueCard.reportedIssue")}
               </span>
             </div>
 
@@ -94,7 +97,7 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
                 {format(new Date(item.createdAt), "MMM d, yyyy")}
               </span>
               <span className="text-slate-400 dark:text-slate-600">·</span>
-              <span title="Public report" className="inline-flex items-center">
+              <span title={t("community.issueCard.publicReport")} className="inline-flex items-center">
                 <Globe className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
               </span>
               {item.project && (
@@ -136,7 +139,7 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
             onClick={() => setIsExpandedText((prev) => !prev)}
             className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:underline mt-1 cursor-pointer"
           >
-            {isExpandedText ? "See less" : "See more"}
+            {isExpandedText ? t("community.common.seeLess") : t("community.common.seeMore")}
           </button>
         )}
 
@@ -153,7 +156,7 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
       <div className="px-4 py-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1.5">
           <span className="px-2 py-0.5 rounded-md font-medium text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 capitalize">
-            Status: {item.status || "Pending"}
+            {t("community.issueCard.status", { status: translateStatusLabel(item.status || "pending", t) })}
           </span>
         </div>
 
@@ -163,7 +166,7 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
             onClick={() => setResponsesExpanded((prev) => !prev)}
             className="hover:underline cursor-pointer font-medium"
           >
-            {responseCount} response{responseCount !== 1 ? "s" : ""}
+            {t(responseCount !== 1 ? "community.issueCard.responsesMany" : "community.issueCard.responsesOne", { count: responseCount })}
           </button>
         )}
       </div>
@@ -176,7 +179,7 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
           className="flex-1 flex items-center justify-center gap-2 py-2 px-2 rounded-lg text-xs sm:text-sm font-semibold text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/30 transition-colors"
         >
           <ArrowUpRight className="w-4 h-4" />
-          <span>View Details</span>
+          <span>{t("community.issueCard.viewDetails")}</span>
         </Link>
 
         {/* Responses toggle */}
@@ -190,13 +193,13 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
           }`}
         >
           <MessageCircle className="w-4.5 h-4.5" />
-          <span>Responses</span>
+          <span>{t("community.issueCard.responses")}</span>
         </button>
 
         {/* Social Share Menu (Facebook, X, WhatsApp, LinkedIn, Telegram, Device, Copy) */}
         <SocialShareMenu
           url={`/citizen-feed#issue-${item.id}`}
-          title={`Reported Issue on ${item.project?.name || "INFRA Watch"}`}
+          title={t("community.issueCard.shareTitle", { project: item.project?.name || "INFRA Watch" })}
           text={item.issueDescription || undefined}
         />
       </div>
@@ -242,13 +245,13 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
                       href={`/report-issue/${item.id}`}
                       className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline pl-2 inline-block pt-1"
                     >
-                      View all {item.responseCount} responses
+                      {t("community.issueCard.viewAllResponses", { count: item.responseCount })}
                     </Link>
                   )}
                 </>
               ) : (
                 <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-2">
-                  No responses yet
+                  {t("community.issueCard.noResponses")}
                 </p>
               )}
             </div>

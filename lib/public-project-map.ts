@@ -1,12 +1,17 @@
 import { mapInternalToPublicStage } from "@/constants/stage-mapping";
 import { isPhilippineCoordinatePair } from "@/lib/philippine-coordinates";
 
+// `key` names the display label under t("directory.status.…"); `label` is the English text.
 export const PROJECT_MARKER_LEGEND = [
-  { label: "Completed", color: "#22c55e" },
-  { label: "On going", color: "#eab308" },
-  { label: "Not yet started", color: "#ef4444" },
-  { label: "Other / unknown", color: "#64748b" },
+  { key: "completed", label: "Completed", color: "#22c55e" },
+  { key: "onGoing", label: "On going", color: "#eab308" },
+  { key: "notYetStarted", label: "Not yet started", color: "#ef4444" },
+  { key: "unknown", label: "Other / unknown", color: "#64748b" },
 ] as const;
+
+// Pin description used when a record has no barangay or municipality. Pages compare against
+// it to show the translated "Location unavailable" label.
+export const MAP_PIN_LOCATION_UNAVAILABLE = "Location unavailable";
 
 export function getProjectMarkerColor(status: string) {
   const normalizedStatus = status.toLowerCase().replace(/\s+/g, "");
@@ -41,7 +46,7 @@ export function toSourceBackedMapPins(rows: SourceProjectPin[]) {
       lng: longitude,
       status: mapInternalToPublicStage(row.status).toLowerCase().replace(/\s+/g, ""),
       type: row.projectType?.trim() || "Unclassified",
-      desc: [row.barangay, row.municipality].filter(Boolean).join(", ") || "Location unavailable",
+      desc: [row.barangay, row.municipality].filter(Boolean).join(", ") || MAP_PIN_LOCATION_UNAVAILABLE,
       progress: row.physicalProgress,
     }];
   });

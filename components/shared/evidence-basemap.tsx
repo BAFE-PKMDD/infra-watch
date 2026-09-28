@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { Map as MapIcon, Mountain, Satellite } from "lucide-react";
 import { TileLayer, useMap } from "react-leaflet";
 
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 export type EvidenceBasemapId = "streets" | "satellite" | "terrain";
@@ -145,10 +146,12 @@ export function EvidenceBasemapSelector({
   compact = false,
   className,
 }: EvidenceBasemapSelectorProps) {
+  const { t } = useTranslation();
+
   return (
     <div
       role="group"
-      aria-label="Choose map style"
+      aria-label={t("community.basemap.groupLabel")}
       className={cn(
         "inline-flex items-center gap-1 rounded-md p-1",
         MAP_CONTROL_SURFACE_CLASS,
@@ -158,6 +161,9 @@ export function EvidenceBasemapSelector({
       {EVIDENCE_BASEMAP_OPTIONS.map((option) => {
         const Icon = BASEMAP_ICONS[option.id];
         const selected = option.id === value;
+        // The option list keeps its English label/description; the viewer sees community.basemap text.
+        const label = t(`community.basemap.${option.id}`);
+        const description = t(`community.basemap.${option.id}Description`);
 
         return (
           <button
@@ -165,8 +171,8 @@ export function EvidenceBasemapSelector({
             type="button"
             onClick={() => onValueChange(option.id)}
             aria-pressed={selected}
-            aria-label={`${option.label} map: ${option.description}`}
-            title={`${option.label} - ${option.description}`}
+            aria-label={t("community.basemap.optionLabel", { label, description })}
+            title={t("community.basemap.optionTitle", { label, description })}
             className={cn(
               "inline-flex min-h-10 items-center justify-center gap-2 rounded px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
               selected
@@ -175,7 +181,7 @@ export function EvidenceBasemapSelector({
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden="true" />
-            <span className={compact ? "sr-only" : "hidden sm:inline"}>{option.label}</span>
+            <span className={compact ? "sr-only" : "hidden sm:inline"}>{label}</span>
           </button>
         );
       })}

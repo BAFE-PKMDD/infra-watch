@@ -5,6 +5,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useTranslation } from "@/i18n"
 import { XIcon } from "lucide-react"
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -21,6 +22,18 @@ function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
 
 function DialogClose({ ...props }: DialogPrimitive.Close.Props) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
+}
+
+// Screen-reader name for the corner close button. Rendered only while the dialog is open,
+// so closed dialogs do not need the language provider.
+function DialogCloseLabel() {
+  const { t } = useTranslation()
+  return <span className="sr-only">{t("site.dialog.close")}</span>
+}
+
+function DialogCloseText() {
+  const { t } = useTranslation()
+  return <>{t("site.dialog.close")}</>
 }
 
 function DialogOverlay({
@@ -72,7 +85,7 @@ function DialogContent({
           >
             <XIcon
             />
-            <span className="sr-only">Close</span>
+            <DialogCloseLabel />
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>
@@ -110,7 +123,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close render={<Button variant="outline" />}>
-          Close
+          <DialogCloseText />
         </DialogPrimitive.Close>
       )}
     </div>

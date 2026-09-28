@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import type { InfraAnalyticsResult } from "@/actions/query/analytics.query";
+import { useTranslation } from "@/i18n";
 import { formatCurrencyCompact, formatNumber } from "@/lib/format";
 
 function easeOutQuart(t: number) {
@@ -115,12 +116,11 @@ export function PublicPortfolioStatistics({
   /** Seconds to wait before counting starts, so it stays hidden behind a parent fade-in instead of finishing before anyone can see it. */
   countStartDelay?: number;
 }) {
+  const { t } = useTranslation();
   if (result.status !== "ready" || !result.data) {
     return (
       <div className="rounded-xl border border-white/20 bg-slate-950/40 p-5 text-center text-sm font-semibold text-white backdrop-blur-md" role={result.status === "unavailable" ? "alert" : "status"}>
-        {result.status === "empty"
-          ? "No synchronized infrastructure statistics are available yet."
-          : "Statistics temporarily unavailable. No estimated or reference figures are being shown."}
+        {result.status === "empty" ? t("landing.stats.empty") : t("landing.stats.unavailable")}
       </div>
     );
   }
@@ -128,17 +128,17 @@ export function PublicPortfolioStatistics({
   const { data } = result;
   const stats = [
     {
-      label: "Total Investment",
+      label: t("landing.stats.totalInvestment"),
       numeric: data.summary.approvedBudget,
       format: (value: number) => formatCurrencyCompact(value),
     },
     {
-      label: "Total Projects",
+      label: t("landing.stats.totalProjects"),
       numeric: data.totalTarget,
       format: (value: number) => formatNumber(Math.round(value)),
     },
     {
-      label: "Completed Projects",
+      label: t("landing.stats.completedProjects"),
       numeric: data.summary.completedOrTurnedOver.percentage,
       format: (value: number) => `${value.toFixed(2)}%`,
     },

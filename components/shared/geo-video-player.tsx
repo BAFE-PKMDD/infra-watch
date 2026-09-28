@@ -7,19 +7,25 @@ import { Clock3, MapPinned, Route, Video } from "lucide-react";
 import type { EvidenceMapTrack } from "@/components/shared/leaflet-evidence-map";
 import { interpolateGeoTrackPoint } from "@/lib/geo-track-playback";
 import { getFullUrl } from "@/lib/minio-url";
+import { useTranslation } from "@/i18n";
 import type { GeoTrackPoint } from "@/types/geo-evidence.types";
 
 const LeafletEvidenceMap = dynamic(
   () => import("@/components/shared/leaflet-evidence-map"),
   {
     ssr: false,
-    loading: () => (
-      <div className="grid h-full min-h-72 place-items-center bg-slate-100 text-sm font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-400">
-        Preparing route map&hellip;
-      </div>
-    ),
+    loading: () => <RouteMapLoading />,
   },
 );
+
+function RouteMapLoading() {
+  const { t } = useTranslation();
+  return (
+    <div className="grid h-full min-h-72 place-items-center bg-slate-100 text-sm font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+      {t("site.geoVideoPlayer.preparingMap")}
+    </div>
+  );
+}
 
 type GeoVideoPlayerProps = {
   url: string;
@@ -44,7 +50,9 @@ function formatTime(seconds: number) {
   return `${minutes}:${remaining}`;
 }
 
-export function GeoVideoPlayer({ url, track, name = "GeoVideo evidence", className }: GeoVideoPlayerProps) {
+export function GeoVideoPlayer({ url, track, name: nameProp, className }: GeoVideoPlayerProps) {
+  const { t } = useTranslation();
+  const name = nameProp ?? t<string>("site.geoVideoPlayer.defaultName");
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const videoUrl = getFullUrl(url) || url;
@@ -72,11 +80,11 @@ export function GeoVideoPlayer({ url, track, name = "GeoVideo evidence", classNa
             </span>
             {name}
           </h3>
-          <p className="mt-1 text-xs text-slate-400">Video playback paired with its recorded route.</p>
+          <p className="mt-1 text-xs text-slate-400">{t("site.geoVideoPlayer.description")}</p>
         </div>
         <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-slate-300">
           {isTimestampAligned ? <Clock3 className="size-3" /> : <Route className="size-3" />}
-          {isTimestampAligned ? "Metadata timing" : "Proportional route timing"}
+          {t(isTimestampAligned ? "site.splitView.metadataTiming" : "site.geoVideoPlayer.proportionalTiming")}
         </span>
       </div>
 
@@ -93,7 +101,7 @@ export function GeoVideoPlayer({ url, track, name = "GeoVideo evidence", classNa
             onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
             onSeeked={(event) => setCurrentTime(event.currentTarget.currentTime)}
           >
-            Your browser does not support embedded video playback.
+            {t("site.splitView.videoUnsupported")}
           </video>
         </div>
         <div className="min-h-72 border-t border-white/10 lg:border-l lg:border-t-0">
@@ -113,11 +121,11 @@ export function GeoVideoPlayer({ url, track, name = "GeoVideo evidence", classNa
           <span className="truncate">
             {activePoint
               ? `${activePoint.lat.toFixed(6)}, ${activePoint.lon.toFixed(6)}`
-              : "Waiting for video metadata"}
+              : t("site.geoVideoPlayer.waitingForMetadata")}
           </span>
         </div>
         <span className="font-mono text-[11px] text-slate-400">
-          {formatTime(currentTime)} / {formatTime(duration)} &middot; {validPoints.length} GPS point{validPoints.length === 1 ? "" : "s"}
+          {formatTime(currentTime)} / {formatTime(duration)} &middot; {t(validPoints.length === 1 ? "site.splitView.gpsPoints.one" : "site.splitView.gpsPoints.other", { count: validPoints.length })}
         </span>
       </div>
     </section>

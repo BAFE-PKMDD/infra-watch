@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 
 import useMediaQuery from "@/hooks/use-media-query";
+import { useTranslation } from "@/i18n";
 import { getProjectPreview } from "@/actions/query/project-preview.query";
 import { formatCurrency } from "@/lib/format";
 import { getBlurDataURL } from "@/lib/image-utils";
@@ -108,6 +109,7 @@ function PreviewContent({
   loading: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   // Extract all geotag images
   const images = getGeotagImages(project?.metadata);
   const hasImages = images.length > 0;
@@ -168,7 +170,7 @@ function PreviewContent({
           >
             <Image
               src={allImages[currentIndex]}
-              alt={`${project.name} - Photo ${currentIndex + 1}`}
+              alt={t("community.projectPreview.photoAlt", { name: project.name, number: currentIndex + 1 })}
               fill
               className="object-cover"
               sizes="480px"
@@ -245,27 +247,34 @@ function PreviewContent({
       {/* Highlights Grid */}
       <div className="p-4 sm:p-5">
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-          <InfoField icon={Layers} label="Project Code" value={project.code} mono />
-          <InfoField icon={Calendar} label="Start Date" value={project.startDate} />
+          <InfoField icon={Layers} label={t("community.projectPreview.projectCode")} value={project.code} mono />
+          <InfoField icon={Calendar} label={t("community.projectPreview.startDate")} value={project.startDate} />
           <InfoField
             icon={Calendar}
-            label="Completion"
+            label={t("community.projectPreview.completion")}
             value={project.actualCompletionDate || project.completionDate}
           />
-          <InfoField icon={Clock} label="Duration" value={project.duration} />
-          <InfoField icon={Banknote} label="Budget" value={project.budget === null ? "Unavailable" : formatCurrency(project.budget)} />
+          <InfoField icon={Clock} label={t("community.projectPreview.duration")} value={project.duration} />
+          <InfoField
+            icon={Banknote}
+            label={t("community.projectPreview.budget")}
+            value={project.budget === null ? t("community.projectPreview.unavailable") : formatCurrency(project.budget)}
+          />
           <InfoField
             icon={Ruler}
-            label={projectLength.source === "post-geotagged" ? "Post-Geotagged" : "Target Length"}
-            value={projectLength.value}
+            label={projectLength.source === "post-geotagged"
+              ? t("community.projectPreview.postGeotagged")
+              : t("community.projectPreview.targetLength")}
+            // getProjectLengthDisplay (lib) spells its unavailable state in English.
+            value={projectLength.value === "Unavailable" ? t("community.projectPreview.unavailable") : projectLength.value}
           />
-          <InfoField icon={HardHat} label="Contractor" value={project.contractor} />
-          <InfoField icon={MapPin} label="Region" value={project.region || "N/A"} />
+          <InfoField icon={HardHat} label={t("community.projectPreview.contractor")} value={project.contractor} />
+          <InfoField icon={MapPin} label={t("community.projectPreview.region")} value={project.region || t("community.projectPreview.notAvailable")} />
         </div>
 
         {/* Implementing Agency */}
         <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <InfoField icon={Building2} label="Implementing Agency" value={implementingAgency} />
+          <InfoField icon={Building2} label={t("community.projectPreview.implementingAgency")} value={implementingAgency} />
         </div>
 
         {/* View Full Project Link */}
@@ -274,7 +283,7 @@ function PreviewContent({
           className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors"
           onClick={onClose}
         >
-          View Full Project
+          {t("community.projectPreview.viewFullProject")}
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -284,6 +293,7 @@ function PreviewContent({
 
 // --- Main Component -------------------------------------
 export function ProjectPreviewSheet({ projectId, open, onOpenChange }: ProjectPreviewSheetProps) {
+  const { t } = useTranslation();
   const [requestState, setRequestState] = useState<ProjectPreviewRequestState<ProjectDetail> | null>(null);
   const isDesktop = useMediaQuery(DESKTOP_BREAKPOINT);
   const { project, loading } = getProjectPreviewView({ open, projectId, requestState });
@@ -323,8 +333,8 @@ export function ProjectPreviewSheet({ projectId, open, onOpenChange }: ProjectPr
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent side="right" className="w-[480px] sm:max-w-[480px] p-0 overflow-hidden">
           <SheetHeader className="sr-only">
-            <SheetTitle>{project?.name || "Project Preview"}</SheetTitle>
-            <SheetDescription>Project details preview</SheetDescription>
+            <SheetTitle>{project?.name || t("community.projectPreview.sheetTitle")}</SheetTitle>
+            <SheetDescription>{t("community.projectPreview.sheetDescription")}</SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto h-full">
             <PreviewContent
@@ -347,10 +357,10 @@ export function ProjectPreviewSheet({ projectId, open, onOpenChange }: ProjectPr
         <DrawerPrimitive.Content className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl bg-background border-t max-h-[85vh]">
           <div className="mx-auto mt-3 mb-1 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600" />
           <DrawerPrimitive.Title className="sr-only">
-            {project?.name || "Project Preview"}
+            {project?.name || t("community.projectPreview.sheetTitle")}
           </DrawerPrimitive.Title>
           <DrawerPrimitive.Description className="sr-only">
-            Project details preview
+            {t("community.projectPreview.sheetDescription")}
           </DrawerPrimitive.Description>
           <div className="overflow-y-auto flex-1">
             <PreviewContent

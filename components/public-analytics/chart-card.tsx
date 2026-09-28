@@ -3,9 +3,9 @@
 import { useId, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import { publicAnalyticsStrings as S, formatCount, formatPesos, formatPesosShort } from "@/lib/public-analytics/strings";
+import { format, formatCount, formatPesos, formatPesosShort } from "@/lib/public-analytics/strings";
 
-const t = S.en;
+import { usePublicAnalyticsStrings } from "./use-strings";
 
 export type Measure = "pesos" | "projects";
 
@@ -28,6 +28,7 @@ export function Section({ id, title, description, children, className }: { id?: 
 }
 
 export function MeasureToggle({ value, onChange, label }: { value: Measure; onChange: (value: Measure) => void; label: string }) {
+  const t = usePublicAnalyticsStrings();
   return (
     <div role="group" aria-label={label} className="inline-flex rounded-md border border-pa-axis bg-pa-surface-2 p-0.5">
       {(["pesos", "projects"] as const).map((measure) => (
@@ -49,6 +50,7 @@ export function MeasureToggle({ value, onChange, label }: { value: Measure; onCh
 }
 
 export function DataTable({ rows, showPesos, labelHeader }: { rows: ChartRow[]; showPesos: boolean; labelHeader?: string }) {
+  const t = usePublicAnalyticsStrings();
   return (
     <details className="mt-4 group">
       <summary className="inline-flex min-h-11 cursor-pointer items-center rounded px-1 text-base font-medium text-pa-accent underline-offset-4 hover:underline">
@@ -101,6 +103,7 @@ export function HorizontalBars({
   onSelect?: (key: string) => void;
   selectLabel?: (row: ChartRow) => string;
 }) {
+  const t = usePublicAnalyticsStrings();
   const [expanded, setExpanded] = useState(false);
   const sorted = [...rows].sort((a, b) => (measure === "pesos" ? (b.pesos ?? 0) - (a.pesos ?? 0) : b.projects - a.projects));
   const visible = limit && !expanded ? sorted.slice(0, limit) : sorted;
@@ -159,7 +162,7 @@ export function HorizontalBars({
           onClick={() => setExpanded((value) => !value)}
           className="mt-3 min-h-11 rounded px-1 text-base font-medium text-pa-accent underline-offset-4 hover:underline"
         >
-          {expanded ? t.area.showFewer : t.area.showAll.replace("{count}", String(sorted.length))}
+          {expanded ? t.area.showFewer : format(t.area.showAll, { count: sorted.length })}
         </button>
       ) : null}
     </div>
@@ -168,6 +171,7 @@ export function HorizontalBars({
 
 /** Columns by year; value labels sit above each column. */
 export function Columns({ rows, measure, color = "var(--series)" }: { rows: ChartRow[]; measure: Measure; color?: string }) {
+  const t = usePublicAnalyticsStrings();
   const maxValue = Math.max(...rows.map((row) => (measure === "pesos" ? row.pesos ?? 0 : row.projects)), 0);
   if (rows.length === 0 || maxValue === 0) {
     return <p className="text-base text-pa-ink-2">{t.chart.emptyChart}</p>;
@@ -223,6 +227,7 @@ export function BarChartCard({
   labelHeader?: string;
   children?: ReactNode;
 }) {
+  const t = usePublicAnalyticsStrings();
   const [measure, setMeasure] = useState<Measure>(measures[0]);
   return (
     <Section title={title} description={description}>

@@ -8,8 +8,6 @@ import { useTranslation } from "@/i18n";
 export function AppFooter() {
   const { t } = useTranslation();
 
-  const subtitle = "Public Transparency and Monitoring Portal";
-
   return (
     <footer className="bg-slate-900 text-white border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -20,7 +18,7 @@ export function AppFooter() {
             <div className="flex items-center gap-3 mb-4">
               <Image
                 src="/infra-watch-logo.png"
-                alt="INFRA Watch logo"
+                alt={t("nav.logoAlt")}
                 width={88}
                 height={59}
                 className="h-11 w-auto flex-shrink-0 rounded bg-white object-contain"
@@ -28,7 +26,7 @@ export function AppFooter() {
               />
               <div>
                 <h3 className="font-bold text-lg">INFRA WATCH</h3>
-                <p className="text-xs text-slate-400">{subtitle}</p>
+                <p className="text-xs text-slate-400">{t("nav.tagline")}</p>
               </div>
             </div>
 
@@ -41,7 +39,7 @@ export function AppFooter() {
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 flex-shrink-0 text-accent" />
                 <a href="tel:+639498429485" className="text-slate-300 hover:text-white transition-colors">
-                  0949-842-9485 or 0956-234-9888
+                  {t("footer.phones", { first: "0949-842-9485", second: "0956-234-9888" })}
                 </a>
               </div>
               <div className="flex items-center gap-2">
@@ -166,7 +164,7 @@ export function AppFooter() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
             <div className="flex items-center gap-4">
               <div className="w-20 h-24 relative flex-shrink-0">
-                <Image src="/ph-seal-logo.svg" alt="Seal of the Republic of the Philippines" fill className="object-contain" sizes="80px" />
+                <Image src="/ph-seal-logo.svg" alt={t("footer.seal.alt")} fill className="object-contain" sizes="80px" />
               </div>
               <div>
                 <p className="text-sm font-semibold uppercase tracking-wide">{t("footer.seal.title")}</p>
@@ -195,7 +193,7 @@ export function AppFooter() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide mb-2">Government Links</p>
+              <p className="text-sm font-semibold uppercase tracking-wide mb-2">{t("footer.govLinks")}</p>
               <div className="flex flex-col gap-1 text-sm">
                 <a href="https://op-proper.gov.ph/" className="text-primary hover:text-primary/80 dark:text-primary" target="_blank" rel="noreferrer noopener">
                   Office of the President

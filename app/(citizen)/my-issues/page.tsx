@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { AppHeader } from "@/components/layout/app-header";
+import { categoryText, issueTypeValueText } from "@/components/report-issue/issue-type-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslation } from "@/i18n";
 import { useAuth } from "@/providers/auth-provider";
 
 type IssueStatus = "pending" | "reviewing" | "resolved" | "closed";
@@ -61,10 +63,10 @@ interface IssueItem {
   } | null;
 }
 
+// Status labels are read as t("eReport.status.<status>").
 const STATUS_CONFIG: Record<
   IssueStatus,
   {
-    label: string;
     color: string;
     bgColor: string;
     borderColor: string;
@@ -72,28 +74,24 @@ const STATUS_CONFIG: Record<
   }
 > = {
   pending: {
-    label: "Pending Review",
     color: "text-amber-600 dark:text-amber-400",
     bgColor: "bg-amber-50 dark:bg-amber-900/20",
     borderColor: "border-amber-200 dark:border-amber-800",
     icon: Clock,
   },
   reviewing: {
-    label: "Under Review",
     color: "text-blue-600 dark:text-blue-400",
     bgColor: "bg-blue-50 dark:bg-blue-900/20",
     borderColor: "border-blue-200 dark:border-blue-800",
     icon: AlertCircle,
   },
   resolved: {
-    label: "Resolved",
     color: "text-emerald-600 dark:text-emerald-400",
     bgColor: "bg-emerald-50 dark:bg-emerald-900/20",
     borderColor: "border-emerald-200 dark:border-emerald-800",
     icon: CheckCircle2,
   },
   closed: {
-    label: "Closed",
     color: "text-slate-600 dark:text-slate-400",
     bgColor: "bg-slate-50 dark:bg-slate-900/20",
     borderColor: "border-slate-200 dark:border-slate-800",
@@ -102,6 +100,23 @@ const STATUS_CONFIG: Record<
 };
 
 const ITEMS_PER_PAGE = 10;
+
+// Thrown by the list query; the message is looked up when shown, so it follows the EN/TL switch.
+class IssuesLoadError extends Error {
+  key: "signIn" | "loadFailed";
+
+  constructor(key: "signIn" | "loadFailed") {
+    super(key);
+    this.key = key;
+  }
+}
+
+/** Label for a value of the status filter. */
+function statusFilterLabel(value: string, t: (path: string) => string) {
+  if (value === "all") return t("account.common.allStatus");
+  if (value === "pending") return t("account.common.pending");
+  return t(`eReport.status.${value}`);
+}
 
 function LoadingSkeleton() {
   return (
@@ -133,21 +148,22 @@ function LoadingSkeleton() {
 }
 
 function EmptyState() {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
         <AlertCircle className="h-8 w-8 text-slate-400" />
       </div>
       <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">
-        No Issues Reported Yet
+        {t("account.issues.emptyTitle")}
       </h3>
       <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
-        You have not reported any issues yet. Help improve infrastructure projects by reporting concerns you observe.
+        {t("account.issues.emptyBody")}
       </p>
       <Link href="/report-issue/new">
         <Button className="gap-2">
           <Plus className="h-4 w-4" />
-          Report First Issue
+          {t("account.issues.emptyCta")}
         </Button>
       </Link>
     </div>
@@ -155,11 +171,12 @@ function EmptyState() {
 }
 
 function ErrorState({ message }: { message: string }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-center dark:border-rose-800 dark:bg-rose-900/20">
       <XCircle className="mx-auto mb-3 h-12 w-12 text-rose-600 dark:text-rose-400" />
       <h3 className="mb-2 text-lg font-semibold text-rose-900 dark:text-rose-100">
-        Failed to Load Issues
+        {t("account.issues.errorTitle")}
       </h3>
       <p className="text-sm text-rose-700 dark:text-rose-300">{message}</p>
     </div>
@@ -167,14 +184,15 @@ function ErrorState({ message }: { message: string }) {
 }
 
 function NoResultsState() {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
       <Search className="mx-auto mb-3 h-12 w-12 text-slate-400" />
       <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">
-        No Results Found
+        {t("account.common.noResultsTitle")}
       </h3>
       <p className="text-sm text-slate-600 dark:text-slate-400">
-        Try adjusting your search or filter criteria.
+        {t("account.common.noResultsBody")}
       </p>
     </div>
   );
@@ -205,6 +223,7 @@ function StatsCard({
 }
 
 function IssueCard({ item }: { item: IssueItem }) {
+  const { t } = useTranslation();
   const status = STATUS_CONFIG[item.status];
   const StatusIcon = status.icon;
 
@@ -215,17 +234,17 @@ function IssueCard({ item }: { item: IssueItem }) {
           <div className="mb-2 flex flex-wrap items-center gap-3">
             <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${status.bgColor} ${status.borderColor}`}>
               <StatusIcon className={`h-3.5 w-3.5 ${status.color}`} />
-              <span className={status.color}>{status.label}</span>
+              <span className={status.color}>{t(`eReport.status.${item.status}`)}</span>
             </span>
             {item.category && (
               <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                {item.category}
+                {categoryText(item.category, t)}
               </Badge>
             )}
             {item.responseCount > 0 && (
               <Badge variant="outline" className="gap-1">
                 <MessageSquare className="h-3 w-3" />
-                {item.responseCount} {item.responseCount === 1 ? "response" : "responses"}
+                {t(item.responseCount === 1 ? "account.issues.responsesOne" : "account.issues.responsesMany", { count: item.responseCount })}
               </Badge>
             )}
           </div>
@@ -235,11 +254,11 @@ function IssueCard({ item }: { item: IssueItem }) {
           <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
             <div className="flex items-center gap-1.5">
               <MapPin className="h-4 w-4" />
-              <span>{item.city || "Unknown City"}, {item.province || "Unknown Province"}</span>
+              <span>{item.city || t("account.issues.unknownCity")}, {item.province || t("account.issues.unknownProvince")}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4" />
-              <span>Reported {format(new Date(item.createdAt), "MMM d, yyyy")}</span>
+              <span>{t("account.issues.reported", { date: format(new Date(item.createdAt), "MMM d, yyyy") })}</span>
             </div>
           </div>
         </div>
@@ -247,7 +266,7 @@ function IssueCard({ item }: { item: IssueItem }) {
 
       <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{item.issueType}</Badge>
+          <Badge variant="outline">{issueTypeValueText(item.issueType, t)}</Badge>
           {item.farmOperation && (
             <Badge variant="secondary" className="text-xs">{item.farmOperation}</Badge>
           )}
@@ -255,7 +274,7 @@ function IssueCard({ item }: { item: IssueItem }) {
         <Link href={`/my-issues/${item.id}`}>
           <Button variant="outline" size="sm" className="gap-2">
             <Eye className="h-4 w-4" />
-            View Details
+            {t("account.issues.viewDetails")}
           </Button>
         </Link>
       </div>
@@ -278,10 +297,11 @@ function Pagination({
   totalItems: number;
   onPageChange: (page: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-slate-600 dark:text-slate-400">
-        Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
+        {t("account.common.showing", { from: startIndex + 1, to: Math.min(endIndex, totalItems), total: totalItems })}
       </p>
       <div className="flex items-center gap-2">
         <button
@@ -289,19 +309,19 @@ function Pagination({
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className="rounded-lg border border-slate-200 p-2 text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          aria-label="Previous page"
+          aria-label={t("account.common.previousPage")}
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <span className="text-sm text-slate-700 dark:text-slate-300">
-          Page {currentPage} of {totalPages}
+          {t("account.common.pageOf", { current: currentPage, total: totalPages })}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           className="rounded-lg border border-slate-200 p-2 text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          aria-label="Next page"
+          aria-label={t("account.common.nextPage")}
         >
           <ChevronRight className="h-5 w-5" />
         </button>
@@ -312,6 +332,7 @@ function Pagination({
 
 export default function MyIssuesPage() {
   const { user, isLoading: isAuthPending } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -322,8 +343,7 @@ export default function MyIssuesPage() {
     queryFn: async () => {
       const response = await fetch("/api/my-issues");
       if (!response.ok) {
-        if (response.status === 401) throw new Error("Please sign in to view your issues.");
-        throw new Error("Failed to fetch issues.");
+        throw new IssuesLoadError(response.status === 401 ? "signIn" : "loadFailed");
       }
       return (await response.json()) as { data: IssueItem[] };
     },
@@ -389,24 +409,34 @@ export default function MyIssuesPage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-                  My Issues
+                  {t("account.issues.title")}
                 </h1>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Track the status of issues you reported and view official responses.
+                  {t("account.issues.subtitle")}
                 </p>
               </div>
             </div>
             <Link href="/report-issue/new">
               <Button className="gap-2 whitespace-nowrap">
                 <Plus className="h-4 w-4" />
-                Report an Issue
+                {t("account.issues.reportIssue")}
               </Button>
             </Link>
           </div>
         </div>
 
         {isLoading && <LoadingSkeleton />}
-        {error && <ErrorState message={error instanceof Error ? error.message : "An error occurred."} />}
+        {error && (
+          <ErrorState
+            message={
+              error instanceof IssuesLoadError
+                ? t(`account.issues.errors.${error.key}`)
+                : error instanceof Error
+                  ? error.message
+                  : t("account.common.genericError")
+            }
+          />
+        )}
         {!isLoading && !error && data && allIssues.length === 0 && <EmptyState />}
 
         {!isLoading && !error && data && allIssues.length > 0 && (
@@ -416,7 +446,7 @@ export default function MyIssuesPage() {
                 <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search by description, location, or type..."
+                  placeholder={t("account.issues.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(event) => {
                     setSearchQuery(event.target.value);
@@ -433,14 +463,16 @@ export default function MyIssuesPage() {
                 }}
               >
                 <SelectTrigger className="h-10 w-full bg-white sm:w-48 dark:bg-slate-900">
-                  <SelectValue placeholder="Filter by status" />
+                  <SelectValue placeholder={t("account.common.filterByStatus")}>
+                    {(value: string) => statusFilterLabel(value, t)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="reviewing">Under Review</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                  {["all", "pending", "reviewing", "resolved", "closed"].map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {statusFilterLabel(value, t)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -449,19 +481,19 @@ export default function MyIssuesPage() {
               <StatsCard
                 icon={Clock}
                 count={stats.pending}
-                label="Pending Review"
+                label={t("eReport.status.pending")}
                 className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
               />
               <StatsCard
                 icon={AlertCircle}
                 count={stats.reviewing}
-                label="Under Review"
+                label={t("eReport.status.reviewing")}
                 className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200"
               />
               <StatsCard
                 icon={CheckCircle2}
                 count={stats.resolved}
-                label="Resolved"
+                label={t("eReport.status.resolved")}
                 className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200"
               />
             </div>

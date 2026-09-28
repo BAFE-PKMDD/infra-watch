@@ -1,4 +1,9 @@
-import pkg from "../package.json";
+import { account } from "./sections/account";
+import { community } from "./sections/community";
+import { directory } from "./sections/directory";
+import { eReport } from "./sections/eReport";
+import { landing } from "./sections/landing";
+import { site } from "./sections/site";
 
 export type Language = "en" | "tl";
 
@@ -7,10 +12,8 @@ export const translations = {
     nav: {
       home: "Home",
       projects: "Projects",
-      checklists: "Checklists",
       map: "Map",
       evidenceMap: "Citizen Reports Map",
-      statistics: "Statistics",
       faq: "FAQ",
       contact: "Contact Us",
       report: "E-Reports",
@@ -25,8 +28,14 @@ export const translations = {
       more: "More",
       live: "Live",
       citizenFeed: "Citizen Feed",
-      articlesAndUpdates: "Articles & Updates",
       infraAnalytics: "Infra Analytics",
+      tagline: "Public Transparency and Monitoring Portal",
+      logoAlt: "INFRA Watch logo",
+      toggleTheme: "Toggle theme",
+      toggleThemeTitle: "Toggle light/dark mode",
+      openMenu: "Open navigation",
+      closeMenu: "Close navigation",
+      userMenu: "User menu",
     },
     languageDialog: {
       title: "Choose Your Language",
@@ -34,145 +43,14 @@ export const translations = {
       english: "English",
       filipino: "Filipino (Tagalog)",
       confirm: "Continue",
-    },
-    announcement: {
-      dialog: {
-        dontShowToday: "Don't show this again today",
-        close: "Close",
-      },
-    },
-    hero: {
-      title: "INFRA WATCH",
-      subtitle: "Agricultural Infrastructure Transparency Portal",
-      version: pkg.version || "Beta",
-      mainTitle: "TRANSPARENCY PORTAL",
-      mainSubtitle: "Agricultural Infrastructure Projects",
-      departmentLabel: "Department of Agriculture - Bureau of Agricultural and Fisheries Engineering",
-      ctaPrimary: "Explore Projects",
-      ctaSecondary: "Learn More",
-      ctaReport: "E-Reports",
-    },
-    gallery: {
-      title: "Agricultural Infrastructure Projects",
-      subtitle: "Discover our agricultural infrastructure projects, documented with geotagged photos randomly selected from the database.",
-      clickToExpand: "Click to expand",
-      projectPhoto: "Project Photo",
-      photo: "Photo",
-    },
-    stats: {
-      totalInvestment: "Total Investment",
-      totalProjects: "Total Projects",
-      completedProjects: "Completed Projects",
-      totalLength: "Total Length (KM)",
-    },
-    impact: {
-      title: "Transforming Communities",
-      subtitle: "Across the Philippines",
-      description: "Every kilometer of road built creates lasting impact for farmers, families, and entire communities",
-      farmers: {
-        label: "Farmers Reached",
-        desc: "Benefiting from improved infrastructure",
-      },
-      communities: {
-        label: "Communities Connected",
-        desc: "Across the Philippines",
-      },
-      hours: {
-        label: "Hours Saved",
-        desc: "In transportation time",
-      },
-      transport: {
-        label: "Tons Transported",
-        desc: "Agricultural products moved",
-      },
-    },
-    impactSlider: {
-      title: "Transforming Communities",
-      before: "Before",
-      after: "After",
-      description: "Slide to reveal the transformation of farm-to-market roads. From impassable dirt tracks to modern concrete road, bringing communities closer to progress.",
-    },
-    howItWorks: {
-      title: "How It Works",
-      subtitle: "A straightforward process to engage with infrastructure monitoring and contribute to community development",
-      steps: [
-        {
-          title: "Explore Projects",
-          desc: "Browse our comprehensive database of Farm-to-Market Road projects. Search by location, view project details, timelines, and budget allocations.",
-        },
-        {
-          title: "Share Feedback",
-          desc: "Provide ratings, comments, and upload photos of project sites. Your feedback contributes to transparency and accountability in infrastructure development.",
-        },
-        {
-          title: "Report Issues",
-          desc: "Submit detailed reports about road conditions, construction delays, or quality concerns. Include photographic evidence and precise location data.",
-        },
-        {
-          title: "Track Progress",
-          desc: "Monitor project completion rates, budget utilization, and real-time updates. Stay informed about infrastructure developments in your community.",
-        },
-      ],
-      ctaTitle: "Ready to Get Started?",
-      ctaDesc: "Help improve your community by monitoring farm-to-market road projects",
-      ctaBtn: "Start Contributing Today",
-    },
-    updates: {
-      label: "Latest Updates",
-      title: "Community News & Insights",
-      subtitle: "Stay informed with recent articles and community insights",
-      noContent: "No featured content available at this time",
-      articlesTitle: "Featured Articles",
-      articlesSubtitle: "Latest news and updates",
-      feedbackTitle: "Community Feedback",
-      feedbackSubtitle: "Top-rated contributions from citizens",
-      anonymous: "Anonymous",
-      viewMore: "View More Feedbacks",
-      viewLess: "View Less",
-    },
-    info: {
-      title: "Transparency",
-      subtitle: "in Action",
-      desc: "Comprehensive access to farm-to-market road infrastructure projects across the Philippines",
-      features: [
-        "Near Real-time project monitoring and updates",
-        "Detailed financial information and budgets",
-        "Community feedback and engagement tools",
-        "Geotagged photos and progress documentation",
-      ],
-      active: "Active Now",
-      completed: "Completed",
-      feedback: "Published Feedback",
-      reports: "E-Reports",
-    },
-    cta: {
-      title: "Monitor Farm-to-Market",
-      subtitle: "Road Projects",
-      desc: "Access project details, budgets, and progress reports for your region",
-      browse: "Browse Projects",
-      statistics: "View Statistics",
-    },
-    status: {
-      pending: "Pending Review",
-      reviewing: "Under Review",
-      resolved: "Resolved",
-      closed: "Closed"
-    },
-    fmrStatistics: {
-      title: "Farm-to-Market Road Information",
-      description: "Hover on the map to view the farm-to-market road projects and accomplishments for 2021-2026.",
-      seeMore: "See More",
-      nationalStats: "National Statistics",
-      fundedProjects: "Funded Projects",
-      totalAllocation: "Total Allocation",
-      completedProjects: "Completed Projects",
-      lengthCompleted: "Length Completed",
-      nationalSummary: "National Summary"
+      toggle: "Change Language",
     },
     about: {
       title: "About Us",
       subtitle: "Building Trust Through Transparency",
       description: "INFRA Watch is the official transparency portal for agricultural infrastructure projects in the Philippines, led by the Department of Agriculture – Bureau of Agricultural and Fisheries Engineering (DA-BAFE). We empower citizens to monitor, report, and engage with infrastructure developments in their communities.",
+      heroImageAlt: "About Infra Watch",
+      sealAlt: "BAFE Seal",
       mission: {
         title: "Our Mission",
         desc: "To provide efficient and effective engineering services for the development and maintenance of agricultural and fisheries infrastructure that improve rural connectivity, enhance food production, and uplift the quality of life of Filipino farmers and fisherfolk."
@@ -215,6 +93,8 @@ export const translations = {
         acronym: "BAFE",
         est: "2013",
         legal: "Republic Act No. 10601 (AFMech Law)",
+        estLabel: "Est.",
+        legalLabel: "Legal:",
         intro: [
           "The Bureau of Agricultural and Fisheries Engineering (BAFE) is the national engineering arm of the Department of Agriculture, responsible for the development, coordination, regulation, and implementation of agricultural and fisheries engineering, mechanization, and infrastructure programs.",
           "BAFE was formally established as a regular bureau of the Department through Republic Act No. 10601, the Agricultural and Fisheries Mechanization (AFMech) Law of 2013. Its institutional roots, however, reach further back — to the agricultural engineering structures and mandates that existed within the Department before the bureau's creation.",
@@ -285,258 +165,46 @@ export const translations = {
         ],
         closing: "From the agricultural engineering structures that existed before its creation to its present role leading national farm-to-market road implementation and public infrastructure monitoring, BAFE's history reflects the Department of Agriculture's continuing effort to place engineering and technology at the center of agricultural modernization."
       },
-      values: [
-        { title: "Transparency", desc: "Open access to project data" },
-        { title: "Participation", desc: "Citizen engagement" }
-      ],
-      featuresTitle: "Key Features",
-      features: [
-        { title: "Near Real-time Project Tracking", desc: "Monitor ongoing infrastructure developments as they happen." },
-        { title: "Citizen Reporting Mechanism", desc: "Directly report issues and feedback to government agencies." },
-        { title: "Data-Driven Insights", desc: "Access comprehensive analytics on project progress and funding." },
-        { title: "Geotagged Infrastructure", desc: "View precise locations and visual evidence of all projects." }
-      ]
-    },
-    reportIssue: {
-      landing: {
-        badge: "Community Reporting",
-        title: "Reported Issues",
-        description: "Track and monitor issues reported by citizens across infrastructure projects",
-        cta: "Report New Issue",
-        searchPlaceholder: "Search by description or location...",
-        loading: "Loading issues...",
-        filters: {
-          statusPlaceholder: "Filter by status",
-          datePlaceholder: "Filter by date range",
-          allStatuses: "All Statuses",
-        },
-        empty: {
-          title: "No issues found",
-          description: "Try adjusting your filters or search query"
-        },
-        item: {
-          priority: "{label} Priority",
-          location: "Location:",
-          reported: "Reported",
-          viewDetails: "View Details",
-          by: "By: {name}"
-        }
+      bafeSite: {
+        title: "Do you want to know more about BAFE?",
+        desc: "Please check our official website for agency announcements, program updates, and engineering standards.",
+        cta: "Visit BAFE Website",
       },
-      detail: {
-        back: "Back to Issues",
-        title: "Issue Details",
-        reportedOnFormatted: "Reported on {date}",
-        description: "Issue Description",
-        location: "Location",
-        labels: {
-          region: "Region",
-          province: "Province",
-          city: "City/Municipality",
-          barangay: "Barangay",
-          landmark: "Landmark"
+      publications: {
+        title: "Official Publications & Reference Guidelines",
+        desc: "Access statutory frameworks, network plans, and implementation guidebooks issued by DA-BAFE.",
+        open: "Open",
+        download: "Download PDF",
+        openInNewTab: "Open {title} in a new tab",
+        bluecopy: {
+          title: "National FMR Plan",
+          descBefore: "Access the official ",
+          descStrong: "Farm-to-Market Road Network Plan Bluecopy",
+          descAfter: ". This comprehensive document outlines the strategic framework, standards, and targets for rural infrastructure development across the Philippines.",
+          coverAlt: "FMRNP Bluecopy Cover",
+          backgroundAlt: "FMR Background",
         },
-        evidence: {
-          title: "Evidence",
-          empty: "No photos or videos uploaded yet.",
-          remove: "Remove evidence"
+        ao4: {
+          title: "FMR Implementation Guidelines",
+          descBefore: "The official ",
+          descStrong: "General Guidelines on the Implementation of the Department of Agriculture's Farm-to-Market Road Projects",
+          descAfter: " for FY 2026 and onwards. This document outlines procedures, requirements, and standards for all FMR project stakeholders.",
+          read: "Read Guidelines",
+          backgroundAlt: "FMR Project Groundbreaking",
         },
-        relatedProject: {
-          label: "Related Project",
-          id: "Project #{id}",
-          view: "View Project"
+        lgu: {
+          desc: "The official reference manual for Local Government Units (LGUs) issued by the Department of Agriculture through BAFE. This guidebook assists provinces, cities, and municipalities in operationalizing Agricultural and Biosystems Engineering (ABE) offices, managing devolved agricultural and biosystems infrastructure functions, and adhering to national standards in compliance with Republic Act No. 10601.",
+          open: "Open Guidebook",
+          coverAlt: "LGU Guidebook Cover",
+          backgroundAlt: "Agricultural Infrastructure Background",
         },
-        timeline: {
-          title: "Timeline",
-          dateNoticed: "Date Noticed",
-          reportedOn: "Reported On",
-          lastUpdated: "Last Updated",
-          resolvedOn: "Resolved On"
-        },
-        reporter: {
-          title: "Reporter",
-          anonymous: {
-            title: "Anonymous Report",
-            description: "This issue was reported anonymously. Reporter details are not available."
-          }
-        },
-        responses: {
-          title: "Official Responses",
-        },
-        notFound: {
-          title: "Issue Not Found",
-          description: "The issue you're looking for doesn't exist or has been removed."
-        }
       },
-      form: {
-        title: "Report an Issue",
-        subtitle: "Help us improve by reporting issues you've noticed in your community",
-        back: "Back to Reported Issues",
-        sections: {
-          project: {
-            title: "Project Information",
-            description: "Optional - Is this issue related to a specific project?"
-          },
-          location: {
-            title: "Location Information",
-            description: "Required - Where is the issue located?"
-          },
-          details: {
-            title: "Issue Details",
-            description: "Required - Describe the issue you want to report"
-          },
-          evidence: {
-            title: "Evidence",
-            description: "Optional - Photos and videos help us understand better"
-          },
-          contact: {
-            title: "Contact Information",
-            description: "Required - How can we reach you for updates?"
-          },
-          consent: {
-            title: "Terms and Consent",
-            description: "Please review and agree to continue"
-          }
-        },
-        fields: {
-          searchProject: "Search by ID or project name...",
-          searching: "Searching...",
-          noProjects: "No projects found",
-          skipProject: "I don't know which project / Skip this part",
-          skipDescription: "You can still report the issue without linking it to a specific project",
-          region: "Region",
-          province: "Province",
-          city: "City/Municipality",
-          barangay: "Barangay",
-          landmark: "Street/Landmark",
-          issueType: "Issue Type",
-          issueDescription: "Tell us more",
-          dateNoticed: "Date Noticed",
-          dateNoticedOptional: "Date Noticed (Optional)",
-          contactNumber: "Contact Number",
-          email: "Email Address",
-          emailOptional: "Email Address (Optional)",
-          isAnonymous: "Report anonymously (your name will not be public)",
-          isAnonymousDescription: "Your identity will be hidden from public view, but we can still contact you for updates",
-          confirmAccuracy: "I confirm that the information provided is accurate to the best of my knowledge",
-          agreeToTermsPrefix: "I agree to the ",
-          andConnector: " and ",
-          agreeToTerms: "I agree to the Terms of Service and Privacy Policy",
-          charCount: "{count}/1000 characters",
-        },
-        placeholders: {
-          region: "Select region",
-          province: "Select province",
-          provinceFirst: "Select region first",
-          city: "Select city/municipality",
-          cityFirst: "Select province first",
-          barangay: "Select barangay",
-          barangayFirst: "Select city first",
-          landmark: "e.g., Barangay Hall, Main Street",
-          issueType: "Select issue type",
-          issueDescription: "Please provide a detailed description of the issue...",
-          contactNumber: "e.g., 09123456789",
-          email: "your.email@example.com",
-          description: "Please provide a detailed description of the issue...",
-        },
-        evidence: {
-          uploadLabel: "Upload Evidence ({current}/{max})",
-          dropzone: "Click to upload photos or videos",
-          limit: "Images (PNG, JPG) or Videos (MP4, MOV) up to {size}MB each (Max {max} files)",
-          maxReached: "Maximum files reached"
-        },
-        validation: {
-          required: "{field} is required",
-          descriptionMin: "Description must be at least 20 characters",
-          descriptionMax: "Description must be at most 1000 characters",
-          contactMin: "Contact number must be at least 10 digits",
-          contactFormat: "Invalid contact number format",
-          emailFormat: "Invalid email address",
-          confirmAccuracy: "You must confirm the accuracy of the information",
-          agreeToTerms: "You must agree to the terms and privacy policy"
-        },
-        messages: {
-          successTitle: "Issue Reported Successfully!",
-          successDescription: "Thank you for reporting this issue. We will review it and take appropriate action.",
-          viewReports: "View My Reports",
-          submitError: "Failed to submit issue",
-          fixErrors: "Please fix the errors in the form",
-          uploadSuccess: "Successfully uploaded {count} file(s)",
-          uploadFailed: "Failed to upload {name}",
-          maxFilesError: "Maximum {max} files allowed. You can add {remaining} more.",
-          invalidType: "File \"{name}\" is not an image or video"
-        },
-        actions: {
-          submit: "Submit Report",
-          submitting: "Submitting...",
-          cancel: "Cancel"
-        }
+      cta: {
+        title: "Ready to report?",
+        desc: "Join other citizens in monitoring infrastructure in your area.",
+        report: "Start Reporting",
+        projects: "View Projects",
       },
-      types: {
-        infrastructure: "Infrastructure Issues",
-        safety: "Safety Concerns",
-        environmental: "Environmental Issues",
-        administrative: "Administrative Concerns",
-        damage: "Road Damage / Potholes",
-        stopped: "Construction Stopped / Delayed",
-        flooding: "Flooding / Drainage Issues",
-        blocked: "Blocked Road / Materials",
-        quality: "Poor Construction Quality",
-        other: "Other"
-      },
-      actions: {
-        submit: "Submit Report",
-        cancel: "Cancel"
-      },
-      wizard: {
-        back: "Back",
-        next: "Next",
-        steps: {
-          awareness: "Start",
-          awarenessDesc: "Tell us about the project",
-          project: "Project",
-          projectDesc: "Search for the project",
-          location: "Location",
-          locationDesc: "Where is the issue?",
-          suggestions: "Match",
-          suggestionsDesc: "Find matching projects",
-          details: "Details",
-          detailsDesc: "Describe the issue",
-          contact: "Submit",
-          contactDesc: "Contact info and consent",
-        },
-        awareness: {
-          title: "Is this issue related to a specific project?",
-          subtitle: "This helps us respond to your report faster",
-          yesTitle: "Yes, I know the project",
-          yesDescription: "I can search for the project by name or code",
-          searchProject: "Search project",
-          noTitle: "No, I'm not sure",
-          noDescription: "I'll describe the location and we'll find nearby projects",
-          selectLocation: "Select location",
-        },
-        search: {
-          title: "Find the Project",
-          subtitle: "Search by project name, code, or ID",
-          projectDetails: "Project Details",
-          location: "Location",
-          agency: "Agency",
-          budget: "Budget",
-          status: "Status",
-          leaveFeedback: "Leave Feedback",
-          visitFeedback: "Click here! You might want to visit this project and leave a feedback instead",
-          selectProject: "Select this Project",
-          reportIssue: "Report an Issue",
-        },
-        suggestions: {
-          title: "Projects in Your Area",
-          subtitle: "We found the following projects near your location. Select one if it matches.",
-          searching: "Looking for projects in your area...",
-          info: "Selecting a project helps us respond faster. If none match, you can skip this step.",
-          skip: "None of these (skip)",
-          noResults: "No projects found in this area",
-          noResultsHint: "You can continue without selecting a project.",
-        },
-      }
     },
     contact: {
       hero: {
@@ -569,6 +237,14 @@ export const translations = {
           subject: "How can we help?",
           message: "Share your questions, feedback, or requests.",
         },
+        validation: {
+          nameRequired: "Name is required",
+          emailRequired: "Email is required",
+          emailInvalid: "Enter a valid email address",
+          subjectRequired: "Subject is required",
+          messageRequired: "Message is required",
+          messageMin: "Please provide at least 10 characters",
+        },
         submit: "Send message",
         sending: "Sending...",
         responseInfo: "BAFE staff review messages Monday to Friday and reply to the email you provide.",
@@ -581,128 +257,18 @@ export const translations = {
       },
       office: {
         title: "Visit our office",
+        mapTitle: "BAFE Office Location",
       },
     },
     projects: {
-      hero: {
-        subtitle: "Transparency for Rural Development",
-        title: "INFRA WATCH",
-        description: "Monitor and validate agricultural infrastructure projects across the Philippines",
-      },
-      search: {
-        title: "Search for a project",
-        description: "Quickly search a project by name or code.",
-        placeholder: "Search for project name or code",
-        clear: "Clear search",
-      },
       filters: {
-        label: "Filters",
-        clear: "Clear",
-        region: "All Regions",
-        province: "All Provinces",
-        city: "All Cities/Municipalities",
-        barangay: "All Barangays",
         status: "All Status",
       },
       stats: {
         loading: "Loading Projects...",
-        error: "Error loading projects",
-        found: "{total} Projects Found",
-        none: "No projects found",
-        adjust: "Try adjusting your filters or search query",
-      },
-      export: {
-        title: "Export Projects",
-        description: "Download the full list of projects matching your current filters.",
-        csv: "Export as CSV",
-        pdf: "Export as PDF",
-        generating: "Generating export file...",
-      },
-      view: {
-        label: "Select a view:",
-        grid: "Grid View",
-        table: "Table View",
-        map: "Maps View",
-      },
-      pagination: {
-        showing: "Showing {start} to {end} of {total} results",
-        perPage: "Per page",
-        prev: "Previous",
-        next: "Next",
-        page: "Page {current} of {total}",
       },
     },
     projectDetail: {
-      backToProjects: "Back to Projects",
-      monitoringFallback: "Monitoring the construction and development of {name} in {location}.",
-      title: "Project Detail",
-      overview: {
-        title: "Project Overview",
-        highlights: "Project Highlights",
-        projectType: "Project Type",
-        projectTypeTooltip: "Standardized infrastructure category for this project",
-        projectCode: "Project Code",
-        projectCodeTooltip: "Unique identification code for the project",
-        location: "Project Location",
-        locationTooltip: "Physical location where the project is situated",
-        implementingAgency: "Implementing Agency",
-        implementingAgencyTooltip: "Organization responsible for the project execution",
-        coordinates: "Project Latitude and Longitude",
-        coordinatesTooltip: "Geographic coordinates of the project site",
-        contractor: "Contractor",
-        contractorTooltip: "Company awarded with the project contract",
-        budget: "Total Budget",
-        budgetTooltip: "Total allocated funds for the project",
-        abc: "Bidded Amount",
-        abcTooltip: "The total bidded amount for the procurement process",
-        startDate: "Start Date",
-        startDateTooltip: "Official commencement date of the project",
-        targetCompletion: "Target Completion",
-        targetCompletionTooltip: "Estimated date when the project should be finished",
-        actualCompletion: "Actual Completion Date",
-        actualCompletionTooltip: "The date when the project was officially completed",
-        turnOverDate: "Turn Over Date",
-        turnOverDateTooltip: "Date when the project was officially handed over to the beneficiary",
-        duration: "Duration",
-        durationTooltip: "Total time elapsed for the project construction",
-        contractDuration: "Contract Duration",
-        contractDurationTooltip: "Specified time frame in the project contract",
-        calendarDays: "{days} calendar days",
-        targetLength: "Target Length",
-        targetLengthTooltip: "Proposed total distance or length of the project",
-        postGeotaggedLength: "Actual Length",
-        postGeotaggedLengthTooltip: "The actual length of the road as verified through geotagging",
-        roadClass: "Road Class",
-        roadClassTooltip: "Classification of the road (e.g., Barangay, Municipal)",
-        roadType: "Road Type",
-        roadTypeTooltip: "Type of pavement used (e.g., Concrete, Asphalt)",
-        farmOperation: "Farm Operation",
-        farmOperationTooltip: "Category of agricultural activity this facility supports (e.g., Production, Post Harvest, Storage)",
-        commodities: "Commodities Supported",
-        commoditiesTooltip: "Agricultural products that will benefit from this project",
-        bannerProgram: "Banner Program",
-        bannerProgramTooltip: "The main government program funding the project",
-        yearFunded: "Year Funded",
-        yearFundedTooltip: "The fiscal year the budget was allocated for this project",
-        status: "Status",
-        statusTooltip: "Current progress state of the project",
-        description: "Project Description",
-        descriptionTooltip: "Additional details about the project objectives and background",
-        notAvailable: "Not available",
-        notCompleted: "Not yet completed",
-        scanToView: "Scan to view project",
-        downloadQR: "Download QR",
-      },
-      sidebar: {
-        details: "Project Details",
-        articles: "Articles & Publications",
-        photos: "Photos",
-        videos: "Videos",
-        documents: "Documents",
-        pow: "Program of Works",
-        procurement: "Procurement",
-        feedback: "Feedback",
-      },
       feedback: {
         title: "Community Feedback",
         share: "Share Your Feedback",
@@ -716,99 +282,110 @@ export const translations = {
         deleting: "Deleting...",
         cancel: "Cancel",
       },
-      tabs: {
-        videos: {
-          title: "Project Videos",
-          empty: "Videos will be displayed here once uploaded.",
+      feedbackForm: {
+        progressLabel: "Feedback progress",
+        next: "Next",
+        back: "Back",
+        steps: {
+          sentiment: "Experience",
+          category: "Category",
+          details: "Details",
+          consent: "Consent",
+          review: "Review",
         },
-        photos: {
-          title: "Project Photos",
-          geotagged: "Geotagged Photos ({count})",
-          empty: "No Photos Yet",
-          emptyDesc: "Geotagged photos will appear here once uploaded.",
-          grid: "Grid",
-          map: "Maps",
-          loadingMap: "Loading map...",
-          preparingSatellite: "Preparing satellite view",
-          categories: {
-            validation: "Validation Photos",
-            progress: "Progress Photos",
-            completed: "Completed Photos",
-            uncategorized: "Uncategorized Photos",
-            other: "Other Photos",
-          },
-          viewMore: "Show More",
-          viewLess: "Show Less",
-          albums: "Photo Albums",
-          backToAlbums: "Back to Albums",
+        categories: {
+          quality: { label: "Project Quality", description: "Materials, workmanship, and construction standards" },
+          progress: { label: "Project Progress", description: "Timeline, completion status, and pacing" },
+          concerns: { label: "Concerns & Issues", description: "A problem, delay, or something that needs attention" },
+          general: { label: "General Feedback", description: "Anything else about this project" },
         },
-        articles: {
-          title: "Project Articles",
-          empty: "No Articles Yet",
-          emptyDesc: "Articles and publications will appear here once published.",
+        sentiment: {
+          title: "How was your experience?",
+          body: "This helps route your feedback correctly. You can skip this.",
+          positive: "Positive",
+          positiveDesc: "Things are going well",
+          negative: "Negative",
+          negativeDesc: "Something needs attention",
+          skip: "Prefer not to say",
         },
-        documents: {
-          title: "Project Documents",
-          empty: "No Documents Yet",
-          emptyDesc: "Project documents will be listed here once available.",
-          item: "Document {index}",
+        category: {
+          title: "What's this about?",
+          body: "Choose the category that best fits your feedback.",
+          recommended: "Suggested",
         },
-        pow: {
-          title: "Program of Works",
-          empty: "No POW Data",
-          emptyDesc: "Program of Works details will appear here once available.",
-          quantity: "Total Quantity",
-          cost: "Contract Cost",
-          date: "Date",
-          targetProgress: "Target Progress",
-          actualProgress: "Actual Progress",
-          viewAttachment: "View Attachment",
-          sCurveTitle: "Physical Progress (S-Curve)",
-          insufficientData: "Insufficient data for S-curve visualization",
+        details: {
+          title: "Tell us more",
+          body: "Share the details, add evidence, and rate your experience if you'd like.",
+          commentLabel: "Your Feedback",
+          commentPlaceholder: "Share your thoughts about this project...",
+          evidenceLabel: "Evidence attachments (Optional)",
+          evidenceHint: "Upload existing media or capture a new geotagged photo or GeoVideo.",
+          removeMedia: "Remove media",
+          uploading: "Uploading evidence securely…",
         },
-        procurement: {
-          title: "Procurement",
-          empty: "No Procurement Data",
-          emptyDesc: "Procurement records will be listed here once available.",
-          stage: "Procurement Stage",
-          date: "Date",
-          status: "Status",
-          remarks: "Remarks",
-          targetDate: "Target Date",
-          actualDate: "Actual Date",
-          factors: "Factors Affecting Progress",
-          measures: "Measures Undertaken",
-          item: "Milestone {index}",
-          milestone: "Milestone",
+        rating: {
+          label: "Rating (Optional)",
+          rateOne: "Rate 1 star",
+          rateMany: "Rate {count} stars",
+          starsOne: "1 star",
+          starsMany: "{count} stars",
+        },
+        consent: {
+          body: "Confirm how you'd like to submit this feedback.",
+          agreePrefix: "I agree to the ",
+          agreeAnd: " and ",
+          agreeSuffix: " when submitting this feedback",
+          anonymousLabel: "Submit as Anonymous",
+          anonymousHint: "Your identity will be hidden from other users",
+        },
+        review: {
+          title: "Review your feedback",
+          body: "Check everything below, then confirm to submit.",
+          edit: "Edit",
+          experience: "Your experience",
+          feedback: "Feedback",
+          sentiment: "Sentiment",
+          notSpecified: "Not specified",
+          issueType: "Issue Type",
+          rating: "Rating",
+          notRated: "Not rated",
+          attachments: "Attachments",
+          noAttachments: "None",
+          filesOne: "1 file",
+          filesMany: "{count} files",
+          submittingAs: "Submitting as",
+          anonymous: "Anonymous",
+          yourAccount: "Your account",
+          saving: "Saving Feedback...",
+          submit: "Confirm & Submit",
+        },
+        errors: {
+          commentRequired: "Please provide your feedback",
+          mediaProcessing: "Please wait while the location metadata is being processed.",
+          mediaMax: "Maximum {max} media files allowed.",
+          agreementRequired: "You must agree to the Terms of Service and Privacy Policy",
+          uploadBlocked: "Upload blocked. Please choose a valid image or video.",
+          uploadFailed: "Upload failed ({status})",
+          uploadNoPath: "The upload completed without a file path.",
+          submitFailed: "Failed to submit feedback",
+          updateFailed: "Failed to update feedback",
+        },
+        toast: {
+          updated: "Feedback updated successfully!",
+          submitted: "Feedback submitted for review",
+          submittedDesc: "Your feedback and attachments were saved and will appear once approved.",
+        },
+        notification: {
+          title: "Feedback submitted",
+          message: "Your feedback was submitted for moderator review.",
         },
       },
-      common: {
-        noContent: "No content available",
-      },
-    },
-    live: {
-      title: "Live Broadcasts",
-      subtitle: "Stay updated with real-time progress reports and project highlights from across the country.",
-      noBroadcasts: "No active broadcasts",
-      noBroadcastsDesc: "There are no live or recorded broadcasts available at the moment. Please check back later.",
-      moreBroadcasts: "More Broadcasts",
-      videosCount: "{count} videos",
-      liveNow: "Live Now",
-      recorded: "Recorded",
-      broadcastingLive: "Broadcasting Live",
-      searchPlaceholder: "Search by title or description...",
-      noResults: "No results found for \"{search}\"",
-      clearSearch: "Clear search",
-      playingNow: "Playing Now",
     },
     footer: {
-      subtitle: "DA-FMR Transparency Portal",
       links: {
         quick: {
           title: "Quick Links",
           projects: "Projects",
-      checklists: "Checklists",
-          statistics: "Statistics",
           faq: "FAQ",
           contact: "Contact Us",
         },
@@ -816,6 +393,8 @@ export const translations = {
           title: "Government",
         },
       },
+      govLinks: "Government Links",
+      phones: "{first} or {second}",
       rights: "© 2026 Bureau of Agricultural and Fisheries Engineering. All rights reserved.",
       privacy: "Privacy Policy",
       deletion: "Data Deletion",
@@ -823,829 +402,427 @@ export const translations = {
       seal: {
         title: "Republic of the Philippines",
         desc: "All content is in the public domain unless otherwise stated.",
+        alt: "Seal of the Republic of the Philippines",
       },
       govph: {
         title: "About GOVPH",
         desc: "Learn more about the Philippine government, its structure, how government works and the people behind it.",
       },
     },
+    landing: landing.en,
+    directory: directory.en,
+    eReport: eReport.en,
+    community: community.en,
+    site: site.en,
+    account: account.en,
   },
   tl: {
     nav: {
-      home: "Tahanan",
+      home: "Home",
       projects: "Proyekto",
-      checklists: "Mga Checklist",
       map: "Mapa",
-      evidenceMap: "Mapa ng mga Ulat ng Mamamayan",
-      statistics: "Istatistika",
+      evidenceMap: "Mapa ng mga Citizen Report",
       faq: "FAQ",
-      contact: "Kontak",
-      report: "E-Ulat",
-      signIn: "Mag-sign In",
-      signOut: "Mag-sign Out",
+      contact: "Kontakin Kami",
+      report: "E-Reports",
+      signIn: "Mag-login",
+      signOut: "Mag-logout",
       dashboard: "Dashboard",
-      myFeedback: "Aking mga Feedback",
-      myReports: "Aking mga Isyu",
-      myNotifications: "Mga Abiso",
-      myProfile: "Aking Profile",
+      myFeedback: "Mga Feedback Ko",
+      myReports: "Mga Isyu Ko",
+      myNotifications: "Mga Notification",
+      myProfile: "Profile Ko",
       about: "Tungkol",
-      more: "Higit Pa",
+      more: "Iba Pa",
       live: "Live",
       citizenFeed: "Citizen Feed",
-      articlesAndUpdates: "Mga Artikulo at Update",
-      infraAnalytics: "Analitika ng Infra",
+      infraAnalytics: "Infra Analytics",
+      tagline: "Portal ng Transparency at Monitoring",
+      logoAlt: "Logo ng INFRA Watch",
+      toggleTheme: "Palitan ang theme",
+      toggleThemeTitle: "Palitan ang light/dark mode",
+      openMenu: "Buksan ang menu",
+      closeMenu: "Isara ang menu",
+      userMenu: "Menu ng account",
     },
     languageDialog: {
-      title: "Piliin ang Iyong Wika",
-      subtitle: "Piliin ang iyong gustong wika para sa platform",
+      title: "Piliin ang Wika Mo",
+      subtitle: "Piliin ang wikang gusto mong gamitin sa site",
       english: "English",
       filipino: "Filipino (Tagalog)",
-      confirm: "Magpatuloy",
-    },
-    announcement: {
-      dialog: {
-        dontShowToday: "Huwag ipakita muli ngayong araw",
-        close: "Isara",
-      },
-    },
-    hero: {
-      title: "INFRA WATCH",
-      subtitle: "Transparency Portal para sa Imprastraktura",
-      version: pkg.version || "Beta",
-      mainTitle: "TRANSPARENCY PORTAL",
-      mainSubtitle: "Mga Proyekto ng Imprastraktura ng Agrikultura",
-      departmentLabel: "Department of Agriculture - Bureau of Agricultural and Fisheries Engineering",
-      ctaPrimary: "Galugarin ang mga Proyekto",
-      ctaSecondary: "Matuto Pa",
-      ctaReport: "E-Ulat",
-    },
-    gallery: {
-      title: "Mga Proyekto ng Imprastrakturang Pang-agrikultura",
-      subtitle: "Tuklasin ang aming mga proyekto ng imprastrakturang pang-agrikultura, na dokumentado ng mga geotagged na larawan.",
-      clickToExpand: "I-click para palakihin",
-      projectPhoto: "Larawan ng Proyekto",
-      photo: "Larawan",
-    },
-    stats: {
-      totalInvestment: "Kabuuang Pamumuhunan",
-      totalProjects: "Kabuuang Proyekto",
-      completedProjects: "Tapos na Proyekto",
-      totalLength: "Kabuuang Haba (KM)",
-    },
-    impact: {
-      title: "Pagbabago sa mga Komunidad",
-      subtitle: "Sa Buong Pilipinas",
-      description: "Bawat kilometro ng kalsadang itinayo ay lumilikha ng pangmatagalang epekto para sa mga magsasaka, pamilya, at buong komunidad",
-      farmers: {
-        label: "Magsasakang Naabot",
-        desc: "Nakikinabang sa pinahusay na imprastraktura",
-      },
-      communities: {
-        label: "Komunidad na Konektado",
-        desc: "Sa buong Pilipinas",
-      },
-      hours: {
-        label: "Oras na Natipid",
-        desc: "Sa oras ng transportasyon",
-      },
-      transport: {
-        label: "Tons na Nadala",
-        desc: "Mga produktong agrikultural na nailipat",
-      },
-    },
-    impactSlider: {
-      title: "Pagbabago sa mga Komunidad",
-      before: "Bago",
-      after: "Pagkatapos",
-      description: "I-slide para makita ang transpormasyon ng mga farm-to-market road. Mula sa mga hindi madaanang baku-bakong lupa tungo sa modernong konkretong kalsada, inilalapit ang mga komunidad sa kaunlaran.",
-    },
-    howItWorks: {
-      title: "Paano Ito Gumagana",
-      subtitle: "Isang simpleng proseso para lumahok sa pagsubaybay ng imprastraktura at makatulong sa pag-unlad ng komunidad",
-      steps: [
-        {
-          title: "Galugarin ang mga Proyekto",
-          desc: "I-browse ang aming komprehensibong database ng mga proyekto ng Farm-to-Market Road. Maghanap ayon sa lokasyon, tingnan ang mga detalye ng proyekto, timeline, at alokasyon ng badyet.",
-        },
-        {
-          title: "Ibahagi ang Feedback",
-          desc: "Magbigay ng mga rating, komento, at mag-upload ng mga larawan ng mga site ng proyekto. Ang iyong feedback ay nakakatulong sa transparency at pananagutan sa pagpapaunlad ng imprastraktura.",
-        },
-        {
-          title: "Iulat ang mga Isyu",
-          desc: "Magsumite ng detalyadong ulat tungkol sa kondisyon ng kalsada, pagkaantala sa konstruksyon, o mga problema sa kalidad. Isama ang mga larawan bilang ebidensya at tumpak na lokasyon.",
-        },
-        {
-          title: "Subaybayan ang Pag-unlad",
-          desc: "Subaybayan ang rate ng pagtatapos ng proyekto, paggamit ng badyet, at real-time na mga update. Manatiling may alam tungkol sa mga imprastraktura sa iyong komunidad.",
-        },
-      ],
-      ctaTitle: "Handa ka na bang Magsimula?",
-      ctaDesc: "Tulungan ang iyong komunidad sa pamamagitan ng pagsubaybay sa mga proyekto ng farm-to-market road",
-      ctaBtn: "Magsimulang Tumulong Ngayon",
-    },
-    updates: {
-      label: "Pinakabagong Update",
-      title: "Balita at Kaalaman sa Komunidad",
-      subtitle: "Manatiling may alam sa mga kamakailang artikulo at kaalaman mula sa komunidad",
-      noContent: "Walang tampok na nilalaman sa kasalukuyan",
-      articlesTitle: "Mga Tampok na Artikulo",
-      articlesSubtitle: "Pinakabagong balita at mga update",
-      feedbackTitle: "Feedback mula sa Komunidad",
-      feedbackSubtitle: "Pinakamataas na rating na kontribusyon mula sa mga mamamayan",
-      anonymous: "Hindi Kilala",
-      viewMore: "Tingnan ang Higit Pang Feedback",
-      viewLess: "Tingnan ang Mas Kaunti",
-    },
-    info: {
-      title: "Transparency",
-      subtitle: "sa Aksyon",
-      desc: "Komprehensibong pag-access sa mga proyekto ng imprastraktura ng farm-to-market road sa buong Pilipinas",
-      features: [
-        "Near Real-time na pagsubaybay at mga update sa proyekto",
-        "Detalyadong impormasyon sa pananalapi at badyet",
-        "Feedback ng komunidad at mga tool sa pakikilahok",
-        "Mga geotagged na larawan at dokumentasyon ng pag-unlad",
-      ],
-      active: "Aktibo Ngayon",
-      completed: "Tapos Na",
-      feedback: "Nailathalang Feedback",
-      reports: "Mga E-Ulat",
-    },
-    cta: {
-      title: "Subaybayan ang mga Proyekto ng",
-      subtitle: "Farm-to-Market Road",
-      desc: "I-access ang mga detalye ng proyekto, badyet, at ulat ng pag-unlad para sa iyong rehiyon",
-      browse: "Mag-browse ng Proyekto",
-      statistics: "Tingnan ang Istatistika",
-    },
-    status: {
-      pending: "Nakabinbing Pagsusuri",
-      reviewing: "Sinusuri na",
-      resolved: "Nalutas na",
-      closed: "Isinara na"
-    },
-    fmrStatistics: {
-      title: "Impormasyon ng Farm-to-Market Road",
-      description: "I-hover ang mapa upang makita ang mga proyekto at tagumpay ng farm-to-market road para sa 2021-2026.",
-      seeMore: "Tingnan Pa",
-      nationalStats: "Pambansang Istatistika",
-      fundedProjects: "Mga Pondong Proyekto",
-      totalAllocation: "Kabuuang Alokasyon",
-      completedProjects: "Mga Tapos na Proyekto",
-      lengthCompleted: "Haba na Natapos",
-      nationalSummary: "Pambansang Buod"
+      confirm: "Tuloy",
+      toggle: "Palitan ang Wika",
     },
     about: {
       title: "Tungkol sa Amin",
-      subtitle: "Pagtataguyod ng Tiwala sa Pamamagitan ng Transparency",
-      description: "Ang INFRA Watch ay ang opisyal na transparency portal para sa mga proyekto ng imprastrakturang pang-agrikultura sa Pilipinas sa pamumuno ng Department of Agriculture – Bureau of Agricultural and Fisheries Engineering (DA-BAFE). Binibigyang-kapangyarihan namin ang mga mamamayan na magmonitor, mag-ulat, at makilahok sa mga pagpapaunlad ng imprastraktura sa kanilang mga komunidad.",
+      subtitle: "Tiwala sa Pamamagitan ng Transparency",
+      description: "Ang INFRA Watch ang opisyal na transparency portal ng mga infrastructure project para sa agrikultura sa Pilipinas. Pinapatakbo ito ng Department of Agriculture – Bureau of Agricultural and Fisheries Engineering (DA-BAFE). Dito, puwede mong bantayan, i-report, at alamin ang mga project sa lugar mo.",
+      heroImageAlt: "Tungkol sa INFRA Watch",
+      sealAlt: "Seal ng BAFE",
       mission: {
-        title: "Ang Aming Misyon",
-        desc: "Magbigay ng mahusay at epektibong serbisyong pang-inhenyeriya para sa pagpapaunlad at pagpapanatili ng imprastraktura ng agrikultura at pangisdaan na nagpapabuti sa koneksyon sa kanayunan, nagpapataas ng produksyon ng pagkain, at nag-aangat sa kalidad ng buhay ng mga magsasaka at mangingisdang Pilipino."
+        title: "Misyon Namin",
+        desc: "Magbigay ng maayos at epektibong engineering services sa paggawa at pag-maintain ng mga imprastraktura para sa agrikultura at pangisdaan — para mas konektado ang mga baryo at probinsya, dumami ang ani, at gumanda ang buhay ng mga magsasaka at mangingisdang Pilipino."
       },
       vision: {
-        title: "Ang Aming Bisyon",
-        desc: "Isang modernisadong sektor ng agrikultura at pangisdaan na sinusuportahan ng de-kalidad at matatag na imprastraktura, nag-uugnay sa bawat bukid sa merkado, tumitiyak na bawat komunidad ay may access sa irigasyon at mga pasilidad pagkatapos ng ani, at nagpapatibay sa pundasyon ng pambansang seguridad sa pagkain."
+        title: "Bisyon Namin",
+        desc: "Isang modernong sektor ng agrikultura at pangisdaan na may world-class at matibay na imprastraktura — konektado ang bawat bukid sa merkado, may irigasyon at post-harvest facility ang bawat komunidad, at sapat ang pagkain para sa buong bansa."
       },
       mandate: {
         title: "Mandato at mga Tungkulin",
-        legalBasis: "Batas Republika Blg. 10601 (AFMech Law), Seksyon 24",
-        desc: "Alinsunod sa Seksyon 24 ng Batas Republika Blg. 10601 (Agricultural and Fisheries Mechanization Law), ang Bureau of Agricultural and Fisheries Engineering (BAFE) ay ang regular na kawanihan ng Kagawaran ng Pagsasaka na inatasang mag-ugnay, mangasiwa, at magsubaybay sa pambansang pagpaplano, pagpapatupad, at regulasyon ng mga proyektong pang-inhenyeriya sa agrikultura at pangisdaan, mga farm-to-market road (FMR), at mga programa sa mekanisasyon sa buong bansa.",
+        legalBasis: "Republic Act No. 10601 (AFMech Law), Section 24",
+        desc: "Ayon sa Section 24 ng Republic Act No. 10601 (Agricultural and Fisheries Mechanization Law), ang Bureau of Agricultural and Fisheries Engineering (BAFE) ang regular na staff bureau ng Department of Agriculture na inatasang mag-coordinate, mamahala, at magbantay sa pagpaplano, pagpapatupad, at regulasyon ng mga engineering project sa agrikultura at pangisdaan, ng mga farm-to-market road (FMR), at ng mga programa sa mekanisasyon sa buong bansa.",
         functionsTitle: "Mga Pangunahing Tungkulin",
         functions: [
           {
-            title: "Pagpaplano at Pagsubaybay sa Imprastraktura",
-            desc: "Mag-ugnay, mangasiwa, at magsubaybay sa pambansang pagpaplano at pagpapatupad ng inhenyeriyang pang-agrikultura at pangisdaan, mga network ng farm-to-market road (FMR), at mga proyektong imprastraktura."
+            title: "Pagpaplano at Pagbabantay ng Imprastraktura",
+            desc: "Mag-coordinate, mamahala, at magbantay sa pagpaplano at pagpapatupad ng agri-fisheries engineering, ng mga farm-to-market road (FMR), at ng mga infrastructure project para sa agrikultura sa buong bansa."
           },
           {
             title: "Mga Programa sa Mekanisasyon",
-            desc: "Tumulong sa pambansang pagpaplano, koordinasyon, at pagpapatupad ng mga komprehensibong programa sa mekanisasyon at modernisasyon ng agrikultura at pangisdaan."
+            desc: "Tumulong sa pagpaplano, coordination, at pagpapatupad ng mga programa ng bansa para gawing moderno at gumamit ng makina ang agrikultura at pangisdaan."
           },
           {
-            title: "Mga Plano, Disenyo, at Pamantayang Pang-inhenyeriya",
-            desc: "Maghanda, magsuri, magpatunay, at magrekomenda ng mga plano, disenyo, at teknikal na espisipikasyon ayon sa Philippine Agricultural and Biosystems Engineering Standards (PABES)."
+            title: "Mga Plano, Disenyo, at Standard sa Engineering",
+            desc: "Gumawa, sumuri, mag-validate, at magrekomenda ng mga engineering plan, disenyo, at technical specification para sa imprastraktura at makinarya sa agrikultura at pangisdaan, ayon sa Philippine Agricultural and Biosystems Engineering Standards (PABES)."
           },
           {
-            title: "Pagsusuri, Akreditasyon, at Regulasyon",
-            desc: "Magpatupad ng mga alituntunin sa akreditasyon ng mga testing center, magpatunay ng mga permit to operate (PTO), at magpatupad ng mga pamantayan sa kalidad at kaligtasan ng makinarya."
+            title: "Testing, Accreditation, at Regulasyon",
+            desc: "Maglabas at magpatupad ng mga patakaran sa accreditation ng mga testing center, mag-validate ng permit to operate (PTO), at ipatupad ang mga standard sa kalidad at kaligtasan ng makinarya."
           },
           {
-            title: "Pagpapalakas ng Kakayahan ng mga LGU",
-            desc: "Palakasin at suportahan ang mga grupo ng Agricultural and Biosystems Engineering (ABE) sa mga Lokal na Pamahalaan (LGU) at DA Regional Field Offices para sa maayos na serbisyo sa komunidad."
+            title: "Pagsasanay at Suporta sa mga LGU",
+            desc: "Palakasin at suportahan ang mga Agricultural and Biosystems Engineering (ABE) group sa mga Local Government Unit (LGU) at DA Regional Field Office, para sila mismo ang makapagbigay ng engineering services sa kanilang lugar."
           }
         ]
       },
       history: {
-        eyebrow: "Kasaysayan ng Institusyon",
+        eyebrow: "Kasaysayan ng Ahensya",
         agencyName: "Bureau of Agricultural and Fisheries Engineering",
         acronym: "BAFE",
         est: "2013",
-        legal: "Batas Republika Blg. 10601 (AFMech Law)",
+        legal: "Republic Act No. 10601 (AFMech Law)",
+        estLabel: "Itinatag noong",
+        legalLabel: "Batas:",
         intro: [
-          "Ang Bureau of Agricultural and Fisheries Engineering (BAFE) ang pambansang sangay pang-inhenyeriya ng Kagawaran ng Pagsasaka, na responsable sa pagpapaunlad, koordinasyon, regulasyon, at pagpapatupad ng mga programa sa inhenyeriyang pang-agrikultura at pangisdaan, mekanisasyon, at imprastraktura.",
-          "Opisyal na itinatag ang BAFE bilang regular na kawanihan ng Kagawaran sa pamamagitan ng Batas Republika Blg. 10601, ang Agricultural and Fisheries Mechanization (AFMech) Law of 2013. Gayunpaman, mas malalim ang ugat ng institusyong ito — hanggang sa mga istrukturang pang-inhenyeriya at mandato ng agrikultura na umiral na sa loob ng Kagawaran bago pa itatag ang kawanihan.",
-          "Isang tuloy-tuloy na kasaysayan ang sinusundan ng BAFE: mula sa pundasyong itinakda ng naunang batas, tungo sa Central Agri-Fishery Engineering Division (CAFED), hanggang sa paglikha ng BAFE sa ilalim ng AFMech Law, ang institusyonalisasyon nito at ang pagpapalakas ng pambansang network ng Regional Agricultural Engineering Division (RAED), ang lumalawak nitong tungkulin sa mekanisasyon at regulasyon, at — sa kasalukuyan — ang pamumuno nito sa pambansang pagpapatupad ng farm-to-market road at ang paglulunsad ng mga plataporma para sa pagsubaybay ng publiko tulad nito."
+          "Ang Bureau of Agricultural and Fisheries Engineering (BAFE) ang engineering arm ng Department of Agriculture sa buong bansa. Ito ang humahawak sa pagbuo, coordination, regulasyon, at pagpapatupad ng mga programa sa engineering, mekanisasyon, at imprastraktura para sa agrikultura at pangisdaan.",
+          "Opisyal na itinatag ang BAFE bilang regular na bureau ng Department sa ilalim ng Republic Act No. 10601, ang Agricultural and Fisheries Mechanization (AFMech) Law of 2013. Pero mas maaga pa rito nagsimula ang kuwento nito — sa mga opisina at tungkulin sa agricultural engineering na nasa loob na ng Department bago pa itinatag ang bureau.",
+          "Tuloy-tuloy ang kasaysayan ng bureau: mula sa pundasyon ng agricultural engineering na inilatag ng mga naunang batas, sa Central Agri-Fishery Engineering Division (CAFED), hanggang sa pagbuo ng BAFE sa ilalim ng AFMech Law. Sumunod ang pagpapatibay nito at ng network ng mga Regional Agricultural Engineering Division (RAED), ang paglawak ng trabaho nito sa mekanisasyon at regulasyon, at — kamakailan lang — ang pangunguna nito sa mga farm-to-market road sa buong bansa at ang paglulunsad ng mga public monitoring platform tulad nito."
         ],
-        milestonesLabel: "Mga Mahalagang Pangyayari",
+        milestonesLabel: "Mahahalagang Pangyayari",
         milestones: [
           {
             year: "1997",
             title: "Agriculture and Fisheries Modernization Act",
-            desc: "Nagbigay ang Batas Republika Blg. 8435, ang Agriculture and Fisheries Modernization Act of 1997 (AFMA), ng balangkas para sa modernisasyon ng agrikultura at pangisdaan sa Pilipinas at kinilala ang kahalagahan ng imprastraktura at suportang pang-inhenyeriya sa pagpapataas ng produktibidad at pagpapabuti ng serbisyo para sa mga magsasaka at mangingisda. Inatasan ng AFMA ang Kagawaran ng Pagsasaka at mga lokal na pamahalaan na palakasin ang kanilang suportang pang-inhenyeriya sa agrikultura, na naging mahalagang pundasyon para sa mga dedikadong istrukturang pang-inhenyeriya na sumunod."
+            desc: "Ang Republic Act No. 8435, o Agriculture and Fisheries Modernization Act of 1997 (AFMA), ang naglatag ng framework para gawing moderno ang agrikultura at pangisdaan sa Pilipinas. Kinilala nito na mahalaga ang imprastraktura at engineering support para tumaas ang ani at gumanda ang serbisyo sa mga magsasaka at mangingisda. Inutusan ng AFMA ang Department of Agriculture at ang mga local government unit na palakasin ang kanilang agricultural engineering support — isang mahalagang pundasyon ng mga engineering office na sumunod."
           },
           {
             year: "1998",
-            title: "Propesyonalisasyon ng Agricultural Engineering",
-            desc: "Itinatag ng Batas Republika Blg. 8559, ang Philippine Agricultural Engineering Act of 1998, ang propesyonal at regulatoryong balangkas para sa agricultural engineering sa Pilipinas, saklaw ang makinaryang pang-agrikultura, irigasyon at pamamahala ng tubig, mga istrukturang pang-agrikultura, elektripikasyon ng bukid, sistema pagkatapos ng ani, at iba pang aplikasyong pang-inhenyeriya na may kaugnayan sa agrikultura at pangisdaan. Nagbigay ang batas ng teknikal at propesyonal na pundasyon para sa mga tungkuling pang-inhenyeriya na kalaunan ay pinagsama-sama sa ilalim ng BAFE."
+            title: "Agricultural Engineering Bilang Propesyon",
+            desc: "Ang Republic Act No. 8559, o Philippine Agricultural Engineering Act of 1998, ang nagtakda ng mga patakaran para sa agricultural engineering bilang propesyon sa Pilipinas. Saklaw nito ang makinarya sa bukid, irigasyon at paggamit ng tubig, mga istruktura sa bukid, kuryente sa bukid, post-harvest system, at iba pang engineering work para sa agrikultura at pangisdaan. Ito ang naging teknikal at propesyonal na pundasyon ng mga trabahong pinagsama-sama kalaunan sa ilalim ng BAFE."
           },
           {
-            year: "Bago 2013",
+            year: "Bago ang 2013",
             title: "Ang Central Agri-Fishery Engineering Division",
-            desc: "Bago pa itatag ang BAFE bilang kawanihan, isinagawa ng Kagawaran ang mga sentral na tungkuling pang-inhenyeriya sa agrikultura at pangisdaan sa pamamagitan ng Central Agri-Fishery Engineering Division (CAFED) sa ilalim ng Project Development Service ng Kagawaran. Ang CAFED ang naging pangunahing yunit na tumitiyak na ang pagpaplano, konstruksyon, at paghahatid ng imprastrakturang agri-pangisdaan ay sumusunod sa teknikal at pinansyal na kahilingan ng Kagawaran — mahalagang bahagi ng kasaysayan ng institusyon ng BAFE, bagama't naiiba sa organisasyon mula sa kawanihang itinatag mamaya ng batas."
+            desc: "Bago naging bureau ang BAFE, ang Central Agri-Fishery Engineering Division (CAFED) sa ilalim ng Project Development Service ng Department ang humahawak sa engineering para sa agrikultura at pangisdaan. Ang CAFED ang nagsisiguro na pasado sa teknikal at pinansyal na requirements ng Department ang pagpaplano, paggawa, at pag-turnover ng mga agri-fishery infrastructure. Mahalagang bahagi ito ng kasaysayan ng BAFE, pero hiwalay na opisina ito sa bureau na binuo kalaunan ng batas."
           },
           {
             year: "2013",
-            title: "Ang Pagtatatag ng BAFE",
-            desc: "Itinatag ng Batas Republika Blg. 10601, ang Agricultural and Fisheries Mechanization (AFMech) Law of 2013, ang BAFE bilang regular na kawanihan ng Kagawaran ng Pagsasaka, pinagsasama ang mga tungkuling pang-inhenyeriya sa agrikultura — mga plano at disenyong pang-inhenyeriya, teknikal na pamantayan, pagpapatupad ng regulasyon, pamamahala ng proyekto, mekanisasyon, at imprastraktura — sa isang pinalakas na pambansang balangkas. Pinalakas din ng batas ang mga Regional Agricultural Engineering Division (RAED) sa mga DA Regional Field Office, na sama-samang bumuo ng isang pambansa-rehiyonal na istrukturang pang-inhenyeriya."
+            title: "Itinatag ang BAFE",
+            desc: "Sa ilalim ng Republic Act No. 10601, o Agricultural and Fisheries Mechanization (AFMech) Law of 2013, itinatag ang BAFE bilang regular na bureau ng Department of Agriculture. Pinagsama-sama rito ang mga trabaho sa agricultural engineering — engineering plan at disenyo, technical standard, pagpapatupad ng regulasyon, project management, mekanisasyon, at imprastraktura — sa iisang mas matibay na national framework. Pinalakas din ng batas ang mga Regional Agricultural Engineering Division (RAED) sa mga DA Regional Field Office, kaya nabuo ang engineering network mula national hanggang regional."
           },
           {
             year: "2013–2017",
-            title: "Pagbubuo ng Bagong Kawanihan",
-            desc: "Kasunod ng RA 10601, isinagawa ng Kagawaran ang gawaing pang-organisasyon sa pagtatatag ng BAFE — pagbuo ng istruktura, tauhan, sistema, programa, at mekanismo ng koordinasyon nito sa mga Regional Field Office. Sa panahong ito ng transisyon, gumagampan na ang BAFE ng mga pambansang tungkulin sa mekanisasyon, kabilang ang mga konsultasyon sa buong Luzon noong 2015 para sa draft na National Agricultural and Fisheries Mechanization Program (NAFMP)."
+            title: "Pagbuo ng Bagong Bureau",
+            desc: "Pagkatapos ng RA 10601, sinimulan ng Department ang pagbuo ng BAFE — ang istruktura, mga tauhan, sistema, programa, at paraan ng coordination nito sa mga Regional Field Office. Habang binubuo pa ito, ginagawa na ng BAFE ang mga trabaho sa mekanisasyon sa buong bansa, kasama ang mga konsultasyon sa buong Luzon noong 2015 para sa draft ng National Agricultural and Fisheries Mechanization Program (NAFMP)."
           },
           {
             year: "2018",
-            title: "Naging Ganap na Operasyonal ang BAFE",
-            desc: "Sa Enero 2018, ang BAFE ay gumagana na bilang bagong-tatag na kawanihan, inilarawan ng DA Region 10 bilang sentral na sangay pang-inhenyeriya ng buong Kagawaran ng Pagsasaka at mga kaakibat nitong ahensya. Kasama sa mga tungkulin nito ang pag-uugnay, pangangasiwa, at pagsubaybay sa pambansang pagpaplano at pagpapatupad ng mga proyektong pang-inhenyeriya sa agrikultura at pangisdaan — kabilang ang farm-to-market road — at ang pagsuporta sa mga programa sa mekanisasyon sa pamamagitan ng mga RAED. Nagsimula rin ang kawanihan ng capability-building para sa mga tauhan ng RAED at pagbuo ng sistema ng regulasyon para sa makinaryang pang-agrikultura at pangisdaan."
+            title: "Tumatakbo na ang BAFE",
+            desc: "Pagsapit ng Enero 2018, tumatakbo na ang BAFE bilang bagong bureau. Tinawag ito ng DA Region 10 na central engineering arm ng buong Department of Agriculture at ng mga attached agency nito. Kasama sa trabaho nito ang pag-coordinate, pamamahala, at pagbabantay sa pagpaplano at pagpapatupad ng mga engineering project sa agrikultura at pangisdaan — kasama ang mga farm-to-market road — at ang pagsuporta sa mga programa sa mekanisasyon sa pamamagitan ng mga RAED. Sinimulan din ng bureau ang pagsasanay ng mga tauhan ng RAED at ang pagbuo ng sistema ng regulasyon para sa makinarya sa agrikultura at pangisdaan."
           },
           {
             year: "2019",
-            title: "Pagpapalakas ng Ugnayan ng BAFE–RAED",
-            desc: "Opisyal na pinalakas ng Department Order No. 12, Series of 2019, ang ugnayang institusyonal sa pagitan ng BAFE at ng mga Regional Agricultural Engineering Division, kinikilala ang kani-kanilang responsibilidad sa inhenyeriyang pang-agrikultura at pangisdaan, mekanisasyon, at imprastraktura sa pambansa at rehiyonal na antas — nagpapasinkronisa ng mga plano, pamantayan, pagsubaybay, at pagpapatupad sa buong bansa."
+            title: "Mas Matibay na Ugnayan ng BAFE at RAED",
+            desc: "Opisyal na pinatibay ng Department Order No. 12, Series of 2019, ang ugnayan ng BAFE at ng mga Regional Agricultural Engineering Division. Nilinaw nito ang trabaho ng bawat isa sa engineering, mekanisasyon, at imprastraktura para sa agrikultura at pangisdaan, sa national at regional level — para magkakatugma ang mga engineering plan, standard, monitoring, at pagpapatupad sa buong bansa."
           },
           {
             year: "2020–2022",
-            title: "Paglawak ng Serbisyo sa Inhenyeriya at Mekanisasyon",
-            desc: "Patuloy na lumawak ang mga tungkulin ng BAFE sa mga programa sa mekanisasyon ng agrikultura, regulasyon ng makinarya, pamantayang pang-inhenyeriya, pagpapaunlad ng imprastraktura, at teknikal na tulong — kabilang ang pagpaparehistro ng makinarya at kagamitang pang-agrikultura at pangisdaan at ang pagbibigay ng Certificate of Conformity, mga tungkuling bahagi pa rin ng kasalukuyang balangkas ng regulasyon ng Kagawaran."
+            title: "Mas Maraming Serbisyo sa Engineering at Mekanisasyon",
+            desc: "Patuloy na lumawak ang trabaho ng BAFE: mga programa sa mekanisasyon, regulasyon ng makinarya, engineering standard, pagpapaunlad ng imprastraktura, at technical assistance. Kasama rito ang pagpaparehistro ng makinarya at kagamitan sa agrikultura at pangisdaan at ang pag-isyu ng Certificate of Conformity — mga trabahong bahagi pa rin ng regulasyon ng Department ngayon."
           },
           {
             year: "2023",
             title: "Ang National Agricultural and Fisheries Mechanization Program",
-            desc: "Gumampan ang BAFE ng sentral na tungkulin sa pagpapatupad ng National Agricultural and Fisheries Mechanization Program (NAFMP) 2023–2028, saklaw ang lokal na pagbuo at paggawa ng makinaryang pang-agrikultura, pananaliksik at pagpapaunlad, mga pamantayan at regulasyon, mga suportang serbisyo, pagpapaunlad ng institusyon, at pagpapaunlad ng human resource."
+            desc: "Malaki ang papel ng BAFE sa pagpapatupad ng National Agricultural and Fisheries Mechanization Program (NAFMP) 2023–2028. Saklaw nito ang pag-assemble at paggawa ng makinarya sa bukid dito sa bansa, research and development, mga standard at regulasyon, support services, pagpapalakas ng mga institusyon, at pagsasanay ng mga tao."
           },
           {
             year: "2024",
-            title: "Pagpapalakas ng Pambansang Koordinasyon sa Inhenyeriya",
-            desc: "Itinakda ng 2024 Joint Memorandum Circular hinggil sa functional complementation and delineation ang mga alituntunin sa koordinasyon ng BAFE, ng mga RAED, at ng mga opisina ng agricultural at biosystems engineering ng LGU sa pagpaplano, pagpapatupad, at pagsubaybay ng mga programang pang-inhenyeriya, imprastraktura, at mekanisasyon sa agrikultura at pangisdaan — pagpapalawig sa istrukturang pamamahala na nagsimula sa ilalim ng AFMech Law higit isang dekada na ang nakalipas."
+            title: "Mas Maayos na Coordination sa Engineering sa Buong Bansa",
+            desc: "Ang 2024 Joint Memorandum Circular tungkol sa functional complementation and delineation ang nagtakda kung paano magtutulungan ang BAFE, ang mga RAED, at ang mga agricultural and biosystems engineering office ng LGU sa pagpaplano, pagpapatupad, at monitoring ng mga programa sa engineering, imprastraktura, at mekanisasyon para sa agrikultura at pangisdaan. Karugtong ito ng sistemang sinimulan ng AFMech Law mahigit isang dekada na ang nakaraan."
           },
           {
             year: "2025",
-            title: "Labindalawang Taon ng Pagsulong sa Agricultural and Fisheries Engineering",
-            desc: "Noong Hunyo 2025, ipinagdiwang ng DA-BAFE ang ika-12 anibersaryo nito, binibigyang-diin ang patuloy nitong ambag sa mga disenyong pang-inhenyeriya, plano, at pamantayan para sa farm-to-market road, mga pasilidad sa irigasyon, mga pasilidad pagkatapos ng ani, at iba pang imprastrakturang pang-agrikultura."
+            title: "12 Taon ng Agricultural and Fisheries Engineering",
+            desc: "Noong Hunyo 2025, ipinagdiwang ng DA-BAFE ang ika-12 anibersaryo nito. Binigyang-diin dito ang ambag nito sa mga engineering design, plano, at standard para sa mga farm-to-market road, irigasyon, post-harvest facility, at iba pang imprastraktura para sa agrikultura."
           },
           {
             year: "2026",
-            title: "Isang Bagong Panahon sa Imprastrakturang Pang-agrikultura",
-            desc: "Itinalaga ng Kagawaran ng Pagsasaka ang BAFE na mamuno sa pambansang pagpapatupad ng mga proyektong farm-to-market road, na naglagay sa kawanihan sa sentro ng pambansang pagsisikap na palakasin ang kalidad, pagpapatupad, pagsubaybay, at koordinasyon ng mga proyektong daan pang-agrikultura. Binuo rin ng BAFE ang FMR Watch, isang plataporma ng pagsubaybay ng publiko para sa farm-to-market road na, hanggang Enero 2026, sinusubaybayan ang 4,810 proyektong ipinatupad mula 2021 hanggang 2025 — humigit-kumulang ₱76.52 bilyon sa investment at halos 2,400 kilometro ng kalsada sa buong bansa. Pinalalawig ng INFRA Watch ang parehong diskarte sa pagsubaybay ng publiko sa mas malawak na mga programang imprastraktura pang-agrikultura at pangisdaan ng BAFE."
+            title: "Bagong Yugto ng Imprastraktura sa Agrikultura",
+            desc: "Itinalaga ng Department of Agriculture ang BAFE para pangunahan ang mga farm-to-market road project sa buong bansa. Dahil dito, nasa gitna na ang bureau ng pagsisikap na pagandahin ang engineering quality, pagpapatupad, monitoring, at coordination ng mga kalsada para sa agrikultura. Binuo rin ng BAFE ang FMR Watch, isang public monitoring platform para sa mga farm-to-market road. Noong Enero 2026, sinusubaybayan nito ang 4,810 project na ginawa mula 2021 hanggang 2025 — mga ₱76.52 bilyon na pondo at halos 2,400 kilometro ng kalsada sa buong bansa. Dinadala ng INFRA Watch ang parehong public monitoring sa mas marami pang infrastructure program ng BAFE para sa agrikultura at pangisdaan."
           }
         ],
-        closing: "Mula sa mga istrukturang pang-inhenyeriya ng agrikultura na umiral bago pa ito itatag, hanggang sa kasalukuyang tungkulin nito sa pamumuno ng pambansang pagpapatupad ng farm-to-market road at pagsubaybay ng imprastrakturang publiko, ang kasaysayan ng BAFE ay sumasalamin sa patuloy na pagsisikap ng Kagawaran ng Pagsasaka na ilagay ang inhenyeriya at teknolohiya sa sentro ng modernisasyon ng agrikultura."
+        closing: "Mula sa mga agricultural engineering office na nauna pa rito, hanggang sa pangunguna nito ngayon sa mga farm-to-market road at sa public monitoring ng imprastraktura, makikita sa kasaysayan ng BAFE ang tuloy-tuloy na pagsisikap ng Department of Agriculture na gawing sentro ng modernong agrikultura ang engineering at teknolohiya."
       },
-      values: [
-        { title: "Transparency", desc: "Bukas na access sa data" },
-        { title: "Pananagutan", desc: "Malinaw na pagsubaybay" },
-        { title: "Pakikilahok", desc: "Pakikipag-ugnayan sa mamamayan" }
-      ],
-      featuresTitle: "Mga Pangunahing Tampok",
-      features: [
-        { title: "Halos Real-time na Pagsubaybay", desc: "Subaybayan ang mga kaganapan sa imprastraktura habang nangyayari." },
-        { title: "Mekaniismo ng Pag-uulat", desc: "Direktang mag-ulat ng isyu at feedback sa gobyerno." },
-        { title: "Mga Insight mula sa Data", desc: "Access sa analytics ng progreso at pondo." },
-        { title: "Geotagged na Imprastraktura", desc: "Makita ang tiyak na lokasyon at ebidensya ng proyekto." }
-      ]
-    },
-    reportIssue: {
-      landing: {
-        badge: "Pag-uulat ng Komunidad",
-        title: "Mga Iniulat na Isyu",
-        description: "Subaybayan at i-monitor ang mga isyung iniulat ng mga mamamayan sa mga proyektong pang-imprastraktura",
-        cta: "Mag-ulat ng Bagong Isyu",
-        searchPlaceholder: "Maghanap gamit ang paglalarawan o lokasyon...",
-        loading: "Kinakarga ang mga isyu...",
-        filters: {
-          statusPlaceholder: "I-filter ayon sa katayuan",
-          datePlaceholder: "I-filter ayon sa petsa",
-          allStatuses: "Lahat ng Katayuan",
-        },
-        empty: {
-          title: "Walang nahanap na isyu",
-          description: "Subukang baguhin ang iyong mga filter o query sa paghahanap"
-        },
-        item: {
-          priority: "{label} na Priority",
-          location: "Lokasyon:",
-          reported: "Iniulat",
-          viewDetails: "Tingnan ang Detalye",
-          by: "Ni: {name}"
-        }
+      bafeSite: {
+        title: "Gusto mo pang makilala ang BAFE?",
+        desc: "Tingnan ang official website namin para sa mga anunsyo, update sa mga programa, at engineering standard.",
+        cta: "Buksan ang Website ng BAFE",
       },
-      detail: {
-        back: "Bumalik sa mga Isyu",
-        title: "Mga Detalye ng Isyu",
-        reportedOnFormatted: "Iniulat noong {date}",
-        description: "Paglalarawan ng Isyu",
-        location: "Lokasyon",
-        labels: {
-          region: "Rehiyon",
-          province: "Probinsya",
-          city: "Lungsod/Munisipyo",
-          barangay: "Barangay",
-          landmark: "Landmark"
+      publications: {
+        title: "Mga Opisyal na Dokumento at Gabay",
+        desc: "Basahin ang mga batas, network plan, at guidebook sa pagpapatupad na inilabas ng DA-BAFE.",
+        open: "Buksan",
+        download: "I-download ang PDF",
+        openInNewTab: "Buksan ang {title} sa bagong tab",
+        bluecopy: {
+          title: "Pambansang FMR Plan",
+          descBefore: "Basahin ang opisyal na ",
+          descStrong: "Farm-to-Market Road Network Plan Bluecopy",
+          descAfter: ". Nakasulat dito ang plano, mga standard, at mga target para sa mga kalsada at imprastraktura sa mga probinsya sa buong Pilipinas.",
+          coverAlt: "Cover ng FMRNP Bluecopy",
+          backgroundAlt: "Background ng FMR",
         },
-        evidence: {
-          title: "Ebidensya",
-          empty: "Wala pang na-upload na larawan o video.",
-          remove: "Tanggalin ang ebidensya"
+        ao4: {
+          title: "Guidelines sa Pagpapatupad ng FMR",
+          descBefore: "Ang opisyal na ",
+          descStrong: "General Guidelines on the Implementation of the Department of Agriculture's Farm-to-Market Road Projects",
+          descAfter: " para sa FY 2026 pataas. Nakasulat dito ang mga proseso, requirements, at standard para sa lahat ng may kinalaman sa mga FMR project.",
+          read: "Basahin ang Guidelines",
+          backgroundAlt: "Groundbreaking ng isang FMR project",
         },
-        relatedProject: {
-          label: "Kaugnay na Proyekto",
-          id: "Proyekto #{id}",
-          view: "Tingnan ang Proyekto"
+        lgu: {
+          desc: "Ang opisyal na reference manual para sa mga Local Government Unit (LGU), mula sa Department of Agriculture sa pamamagitan ng BAFE. Tinutulungan nito ang mga probinsya, lungsod, at bayan na patakbuhin ang kanilang Agricultural and Biosystems Engineering (ABE) office, hawakan ang mga devolved na trabaho sa agricultural at biosystems infrastructure, at sumunod sa mga national standard ayon sa Republic Act No. 10601.",
+          open: "Buksan ang Guidebook",
+          coverAlt: "Cover ng LGU Guidebook",
+          backgroundAlt: "Background ng imprastraktura sa agrikultura",
         },
-        timeline: {
-          title: "Timeline",
-          dateNoticed: "Petsang Napansin",
-          reportedOn: "Iniulat Noong",
-          lastUpdated: "Huling Update",
-          resolvedOn: "Nalutas Noong"
-        },
-        reporter: {
-          title: "Nag-ulat",
-          anonymous: {
-            title: "Hingdi Kilalang Pag-ulat",
-            description: "Ang isyung ito ay iniulat nang hindi nagpakilala. Hindi available ang mga detalye ng nag-ulat."
-          }
-        },
-        responses: {
-          title: "Mga Opisyal na Tugon",
-        },
-        notFound: {
-          title: "Hindi Nahanap ang Isyu",
-          description: "Ang isyung hinahanap mo ay hindi umiiral o tinanggal na."
-        }
       },
-      form: {
-        title: "Mag-ulat ng Isyu",
-        subtitle: "Tulungan kaming mapabuti sa pamamagitan ng pag-uulat ng mga isyung napansin mo sa iyong komunidad",
-        back: "Bumalik sa mga Iniulat na Isyu",
-        sections: {
-          project: {
-            title: "Impormasyon ng Proyekto",
-            description: "Opsyonal - May kaugnayan ba ang isyung ito sa isang partikular na proyekto?"
-          },
-          location: {
-            title: "Impormasyon ng Lokasyon",
-            description: "Kinakailangan - Saan matatagpuan ang isyu?"
-          },
-          details: {
-            title: "Mga Detalye ng Isyu",
-            description: "Kinakailangan - Ilarawan ang isyu na nais mong iulat"
-          },
-          evidence: {
-            title: "Ebidensya",
-            description: "Opsyonal - Ang mga larawan at video ay makakatulong sa amin na mas maktulad"
-          },
-          contact: {
-            title: "Impormasyon sa Pakikipag-ugnay",
-            description: "Kinakailangan - Paano ka namin makokontak para sa mga update?"
-          },
-          consent: {
-            title: "Kasunduan at Pahintulot",
-            description: "Mangyaring suriin at sumang-ayon upang magpatuloy"
-          }
-        },
-        fields: {
-          searchProject: "Maghanap gamit ang ID o pangalan ng proyekto...",
-          searching: "Naghahanap...",
-          noProjects: "Walang nahanap na proyekto",
-          skipProject: "Hindi ko alam kung aling proyekto / Laktawan ang bahaging ito",
-          skipDescription: "Maaari mo pa ring iulat ang isyu nang hindi ito iniuugnay sa isang partikular na proyekto",
-          region: "Rehiyon",
-          province: "Probinsya",
-          city: "Lungsod/Munisipyo",
-          barangay: "Barangay",
-          landmark: "Kalye/Landmark",
-          issueType: "Uri ng Isyu",
-          issueDescription: "Sabihin sa amin ang higit pa",
-          dateNoticed: "Petsang Napansin",
-          dateNoticedOptional: "Petsang Napansin (Opsyonal)",
-          contactNumber: "Numero ng Kontak",
-          email: "Email Address",
-          emailOptional: "Email Address (Opsyonal)",
-          isAnonymous: "Mag-ulat nang hindi nagpapakilala (hindi magiging publiko ang iyong pangalan)",
-          isAnonymousDescription: "Ang iyong pagkakakilanlan ay itatago mula sa pampublikong pananaw, ngunit maaari ka pa rin naming makontak para sa mga update",
-          confirmAccuracy: "Kinukumpirma ko na ang impormasyong ibinigay ay tumpak sa abot ng aking kaalaman",
-          agreeToTermsPrefix: "Sumasang-ayon ako sa ",
-          andConnector: " at ",
-          agreeToTerms: "Mga Tuntunin ng Serbisyo at Patakaran sa Privacy",
-          charCount: "{count}/1000 (na) character"
-        },
-        placeholders: {
-          region: "Pumili ng rehiyon",
-          province: "Pumili ng probinsya",
-          provinceFirst: "Pumili muna ng rehiyon",
-          city: "Pumili ng lungsod/munisipyo",
-          cityFirst: "Pumili muna ng probinsya",
-          barangay: "Pumili ng barangay",
-          barangayFirst: "Pumili muna ng lungsod",
-          landmark: "hal., Barangay Hall, Pangunahing Kalye",
-          issueType: "Pumili ng uri ng isyu",
-          issueDescription: "Mangyaring magbigay ng detalyadong paglalarawan ng isyu...",
-          contactNumber: "hal., 09123456789",
-          email: "iyong.email@halimbawa.com",
-          description: "Mangyaring magbigay ng detalyadong paglalarawan ng isyu...",
-        },
-        evidence: {
-          uploadLabel: "I-upload ang Ebidensya ({current}/{max})",
-          dropzone: "I-click upang mag-upload ng mga larawan o video",
-          limit: "Mga Larawan (PNG, JPG) o Video (MP4, MOV) hanggang {size}MB bawat isa (Max {max} na file)",
-          maxReached: "Naabot na ang maximum na bilang ng file"
-        },
-        validation: {
-          required: "Ang {field} ay kinakailangan",
-          descriptionMin: "Ang paglalarawan ay dapat na hindi bababa sa 20 character",
-          descriptionMax: "Ang paglalarawan ay dapat na hindi hihigit sa 1000 character",
-          contactMin: "Ang numero ng kontak ay dapat na hindi bababa sa 10 digit",
-          contactFormat: "Invalid na format ng numero ng kontak",
-          emailFormat: "Invalid na email address",
-          confirmAccuracy: "Dapat mong kumpirmahin ang kawastuhan ng impormasyon",
-          agreeToTerms: "Dapat kang sumang-ayon sa mga tuntunin at patakaran sa privacy"
-        },
-        messages: {
-          successTitle: "Matagumpay na Naisumite ang Pag-ulat!",
-          successDescription: "Salamat sa pag-uulat ng isyung ito. Susuriin namin ito at gagawa ng naaangkop na aksyon.",
-          viewReports: "Tingnan ang Aking mga Ulat",
-          submitError: "Nabigong isumite ang isyu",
-          fixErrors: "Mangyaring ayusin ang mga error sa form",
-          uploadSuccess: "Matagumpay na nai-upload ang {count} (na) file",
-          uploadFailed: "Nabigong i-upload ang {name}",
-          maxFilesError: "Maximum na {max} na file ang pinapayagan. Maaari ka pang magdagdag ng {remaining}.",
-          invalidType: "Ang file na \"{name}\" ay hindi isang larawan o video"
-        },
-        actions: {
-          submit: "Isumite ang Ulat",
-          submitting: "Isinusumite...",
-          cancel: "Kanselahin"
-        }
+      cta: {
+        title: "Handa ka nang mag-report?",
+        desc: "Makisali sa pagbabantay ng mga imprastraktura sa lugar mo.",
+        report: "Mag-report Ngayon",
+        projects: "Tingnan ang mga Project",
       },
-      types: {
-        infrastructure: "Mga Isyu sa Imprastraktura",
-        safety: "Alalahanin sa Kaligtasan",
-        environmental: "Mga Isyung Pangkapaligiran",
-        administrative: "Alalahaning Administratibo",
-        damage: "Sira sa Daan / Lubak",
-        stopped: "Konstruksyon Huminto / Naantala",
-        flooding: "Pagbaha / Problema sa Drainage",
-        blocked: "Naka-block na Daan / Mga Materyales",
-        quality: "Mababang Kalidad ng Konstruksyon",
-        other: "Iba pa"
-      },
-      actions: {
-        submit: "Isumite ang Ulat",
-        cancel: "Kanselahin"
-      },
-      wizard: {
-        back: "Bumalik",
-        next: "Susunod",
-        steps: {
-          awareness: "Simula",
-          awarenessDesc: "Sabihin sa amin tungkol sa proyekto",
-          project: "Proyekto",
-          projectDesc: "Hanapin ang proyekto",
-          location: "Lokasyon",
-          locationDesc: "Saan ang isyu?",
-          suggestions: "Tugma",
-          suggestionsDesc: "Hanapin ang mga tugmang proyekto",
-          details: "Detalye",
-          detailsDesc: "Ilarawan ang isyu",
-          contact: "Isumite",
-          contactDesc: "Impormasyon sa kontak at pahintulot",
-        },
-        awareness: {
-          title: "May kaugnayan ba ang isyung ito sa isang partikular na proyekto?",
-          subtitle: "Makakatulong ito upang mas mabilis na matugunan ang iyong ulat",
-          yesTitle: "Oo, alam ko ang proyekto",
-          yesDescription: "Maaari akong maghanap ng proyekto gamit ang pangalan o code",
-          searchProject: "Maghanap ng proyekto",
-          noTitle: "Hindi, hindi ako sigurado",
-          noDescription: "Ilalarawan ko ang lokasyon at maghahanap kami ng mga kalapit na proyekto",
-          selectLocation: "Pumili ng lokasyon",
-        },
-        search: {
-          title: "Hanapin ang Proyekto",
-          subtitle: "Maghanap gamit ang pangalan ng proyekto, code, o ID",
-          projectDetails: "Mga Detalye ng Proyekto",
-          location: "Lokasyon",
-          agency: "Ahensya",
-          budget: "Badyet",
-          status: "Katayuan",
-          leaveFeedback: "Mag-iwan ng Feedback",
-          visitFeedback: "Pindutin dito! Maaari mong bisitahin ang proyektong ito at mag-iwan ng feedback sa halip",
-          selectProject: "Piliin ang Proyektong Ito",
-          reportIssue: "Mag-ulat ng Isyu",
-        },
-        suggestions: {
-          title: "Mga Proyekto sa Iyong Lugar",
-          subtitle: "Nakakita kami ng mga proyekto malapit sa iyong lokasyon. Pumili kung may katugma.",
-          searching: "Naghahanap ng mga proyekto sa iyong lugar...",
-          info: "Ang pagpili ng proyekto ay makakatulong sa amin na mas mabilis na tumugon. Kung walang katugma, maaari mong laktawan.",
-          skip: "Wala sa mga ito (laktawan)",
-          noResults: "Walang nahanap na mga proyekto sa lugar na ito",
-          noResultsHint: "Maaari kang magpatuloy kahit walang napiling proyekto.",
-        },
-      }
     },
     contact: {
       hero: {
-        subtitle: "Mag-atubiling makipag-ugnay",
+        subtitle: "Kontakin kami",
         title: "Kontakin ang BAFE",
-        description: "Pinahahalagahan namin ang inyong feedback at mga katanungan. Makipag-ugnay sa Bureau of Agricultural and Fisheries Engineering para sa suporta, pakikipagtulungan, o mga update sa proyekto.",
+        description: "Mahalaga sa amin ang feedback at mga tanong mo. Kontakin ang Bureau of Agricultural and Fisheries Engineering para sa tulong, partnership, o update tungkol sa mga project.",
       },
       cards: {
-        headOffice: { title: "Pangunahing Tanggapan" },
+        headOffice: { title: "Main Office" },
         hotline: { title: "Hotline" },
         email: { title: "Email" },
         hours: "Lunes hanggang Biyernes, 8 AM hanggang 5 PM",
         report: {
-          title: "May problema sa isang proyekto?",
-          desc: "Gumamit ng Online E-Report o SMS grievance para magkaroon ng ticket number at tugon mula sa moderator ang inyong concern.",
-          cta: "Mag-ulat ng isyu",
+          title: "May problema sa isang project?",
+          desc: "Gumamit ng Online E-Report o SMS grievance para magkaroon ng ticket number ang concern mo at masagot ito ng moderator.",
+          cta: "Mag-report ng problema",
         },
       },
       form: {
-        title: "Magpadala sa amin ng mensahe",
+        title: "Magpadala ng mensahe sa amin",
         labels: {
           name: "Pangalan",
           email: "Email",
-          subject: "Paksa",
+          subject: "Subject",
           message: "Mensahe",
         },
         placeholders: {
-          name: "Inyong pangalan",
-          email: "ikaw@halimbawa.com",
-          subject: "Paano kami makakatulong?",
-          message: "Ibahagi ang inyong mga katanungan, feedback, o kahilingan.",
+          name: "Pangalan mo",
+          email: "ikaw@example.com",
+          subject: "Ano'ng maitutulong namin?",
+          message: "Isulat dito ang tanong, feedback, o request mo.",
+        },
+        validation: {
+          nameRequired: "Ilagay ang pangalan mo",
+          emailRequired: "Ilagay ang email mo",
+          emailInvalid: "Maglagay ng tamang email address",
+          subjectRequired: "Ilagay ang subject",
+          messageRequired: "Ilagay ang mensahe mo",
+          messageMin: "Maglagay ng kahit 10 character",
         },
         submit: "Ipadala ang mensahe",
-        sending: "Ipinapadala...",
-        responseInfo: "Sinusuri ng mga kawani ng BAFE ang mga mensahe mula Lunes hanggang Biyernes at sasagot sa email na inyong ibinigay.",
-        error: "Hindi naipadala ang inyong mensahe. Pakisubukang muli, o direktang mag-email sa bafe@da.gov.ph.",
+        sending: "Pinapadala...",
+        responseInfo: "Binabasa ng BAFE staff ang mga mensahe mula Lunes hanggang Biyernes, at sasagot sila sa email na ibinigay mo.",
+        error: "Hindi naipadala ang mensahe mo. Subukan ulit, o mag-email diretso sa bafe@da.gov.ph.",
         success: {
-          title: "Natanggap ang mensahe",
-          desc: "Susuriin ito ng mga kawani ng BAFE at sasagot sa email address na inyong ibinigay. Para sa problema sa isang partikular na proyekto, mag-file ng E-Report para magkaroon ito ng ticket number.",
-          cta: "Magpadala ng panibagong mensahe",
+          title: "Natanggap na ang mensahe mo",
+          desc: "Babasahin ito ng BAFE staff at sasagot sila sa email na ibinigay mo. Kung may problema sa isang project, mag-file ng E-Report para magkaroon ito ng ticket number.",
+          cta: "Magpadala ulit ng mensahe",
         },
       },
       office: {
-        title: "Bisitahin ang aming opisina",
+        title: "Bisitahin ang opisina namin",
+        mapTitle: "Lokasyon ng opisina ng BAFE",
       },
     },
     projects: {
-      hero: {
-        subtitle: "Transparensiya para sa Pag-unlad ng Kanayunan",
-        title: "INFRA WATCH",
-        description: "Subaybayan at i-validate ang mga proyekto ng imprastrakturang pang-agrikultura sa buong Pilipinas",
-      },
-      search: {
-        title: "Maghanap ng proyekto",
-        description: "Mabilis na maghanap ng proyekto sa pamamagitan ng pangalan o code.",
-        placeholder: "Maghanap ng pangalan o code ng proyekto",
-        clear: "Linisin ang paghahanap",
-      },
       filters: {
-        label: "Mga Filter",
-        clear: "Linisin",
-        region: "Lahat ng Rehiyon",
-        province: "Lahat ng Probinsya",
-        city: "Lahat ng Lungsod/Munisipyo",
-        barangay: "Lahat ng Barangay",
         status: "Lahat ng Status",
       },
       stats: {
-        loading: "Naglo-load ng mga Proyekto...",
-        error: "Error sa pag-load ng mga proyekto",
-        found: "{total} Proyektong Nahanap",
-        none: "Walang nahanap na proyekto",
-        adjust: "Subukang i-adjust ang iyong mga filter o paghahanap",
-      },
-      export: {
-        title: "I-export ang mga Proyekto",
-        description: "I-download ang buong listahan ng mga proyektong tumutugma sa iyong mga filter.",
-        csv: "I-export bilang CSV",
-        pdf: "I-export bilang PDF",
-        generating: "Bino-buo ang export file...",
-      },
-      view: {
-        label: "Pumili ng view:",
-        grid: "Grid View",
-        table: "Table View",
-        map: "Maps View",
-      },
-      pagination: {
-        showing: "Ipinapakita ang {start} hanggang {end} ng {total} na resulta",
-        perPage: "Bawat pahina",
-        prev: "Nakaraan",
-        next: "Susunod",
-        page: "Pahina {current} ng {total}",
+        loading: "Naglo-load ng mga project...",
       },
     },
     projectDetail: {
-      backToProjects: "Bumalik sa mga Proyekto",
-      monitoringFallback: "Sinusubaybayan ang konstruksyon at pag-unlad ng {name} sa {location}.",
-      title: "Detalye ng Proyekto",
-      overview: {
-        title: "Pangkalahatang-ideya ng Proyekto",
-        highlights: "Mga Tampok ng Proyekto",
-        projectType: "Uri ng Proyekto",
-        projectTypeTooltip: "Standardisadong kategorya ng imprastraktura para sa proyektong ito",
-        projectCode: "Code ng Proyekto",
-        projectCodeTooltip: "Natatanging identification code para sa proyekto",
-        location: "Lokasyon ng Proyekto",
-        locationTooltip: "Pisikal na lokasyon kung saan matatagpuan ang proyekto",
-        implementingAgency: "Ahensyang Nagpapatupad",
-        implementingAgencyTooltip: "Organisasyong responsable sa pagpapatupad ng proyekto",
-        coordinates: "Latitude at Longitude ng Proyekto",
-        coordinatesTooltip: "Geographic coordinates ng lugar ng proyekto",
-        contractor: "Kontratista",
-        contractorTooltip: "Kompanya na binigyan ng kontrata para sa proyekto",
-        budget: "Kabuuang Badyet",
-        budgetTooltip: "Kabuuang pondong nakalaan para sa proyekto",
-        abc: "Bidded Amount",
-        abcTooltip: "Kabuuang halaga ng bidded amount para sa proseso ng procurement",
-        startDate: "Petsa ng Pagsisimula",
-        startDateTooltip: "Opisyal na petsa ng pagsisimula ng proyekto",
-        targetCompletion: "Target na Pagkumpleto",
-        targetCompletionTooltip: "Inaasahang petsa kung kailan dapat matapos ang proyekto",
-        actualCompletion: "Aktwal na Petsa ng Pagkumpleto",
-        actualCompletionTooltip: "Ang petsa kung kailan opisyal na natapos ang proyekto",
-        turnOverDate: "Petsa ng Turnover",
-        turnOverDateTooltip: "Petsa kung kailan opisyal na ibinigay ang proyekto sa benepisyaryo",
-        duration: "Tagal",
-        durationTooltip: "Kabuuang oras na lumipas para sa konstruksyon ng proyekto",
-        contractDuration: "Tagal ng Kontrata",
-        contractDurationTooltip: "Tinukoy na yugto ng panahon sa kontrata ng proyekto",
-        calendarDays: "{days} calendar days",
-        targetLength: "Target na Haba",
-        targetLengthTooltip: "Iminungkahing kabuuang distansya o haba ng proyekto",
-        postGeotaggedLength: "Aktwal na Haba",
-        postGeotaggedLengthTooltip: "Ang aktwal na haba ng kalsada na napatunayan sa pamamagitan ng geotagging",
-        roadClass: "Uri ng Daan",
-        roadClassTooltip: "Klasipikasyon ng daan (hal. Barangay, Municipal)",
-        roadType: "Klase ng Daan",
-        roadTypeTooltip: "Uri ng materyales na ginamit sa daan (hal. Semento, Aspalto)",
-        farmOperation: "Operasyong Pansakahan",
-        farmOperationTooltip: "Kategorya ng gawaing pang-agrikultura na sinusuportahan ng pasilidad na ito (hal. Produksyon, Post Harvest, Imbakan)",
-        commodities: "Mgaproduktong Sinusuportahan",
-        commoditiesTooltip: "Mga produktong agrikultural na makikinabang sa proyektong ito",
-        bannerProgram: "Banner Program",
-        bannerProgramTooltip: "Ang pangunahing programa ng gobyerno na nagpopondo sa proyekto",
-        yearFunded: "Taon na Pinondohan",
-        yearFundedTooltip: "Ang taon ng pananalapi kung kailan inilaan ang badyet para sa proyektong ito",
-        status: "Katayuan",
-        statusTooltip: "Kasalukuyang yugto ng pag-unlad ng proyekto",
-        description: "Paglalarawan ng Proyekto",
-        descriptionTooltip: "Karagdagdagang detalye tungkol sa mga layunin at background ng proyekto",
-        notAvailable: "Hindi available",
-        notCompleted: "Hindi pa tapos",
-        scanToView: "I-scan para makita ang proyekto",
-        downloadQR: "I-download ang QR",
-      },
-      sidebar: {
-        details: "Mga Detalye ng Proyekto",
-        articles: "Mga Artikulo at Publikasyon",
-        photos: "Mga Larawan",
-        videos: "Mga Video",
-        documents: "Mga Dokumento",
-        pow: "Program of Works",
-        procurement: "Procurement",
-        feedback: "Feedback",
-      },
       feedback: {
         title: "Feedback ng Komunidad",
-        share: "Ibahagi ang Iyong Feedback",
+        share: "Magbigay ng Feedback",
         edit: "I-edit ang Feedback",
-        shareDesc: "Tumulong na mapabuti ang proyektong ito sa pamamagitan ng pagbabahagi ng iyong mga kaisipan at obserbasyon.",
-        editDesc: "I-update ang iyong feedback tungkol sa proyektong ito.",
-        signIn: "Mag-sign In para Magbahagi ng Feedback",
+        shareDesc: "Tumulong na gumanda ang project na ito. Sabihin ang napansin at opinyon mo.",
+        editDesc: "I-update ang feedback mo tungkol sa project na ito.",
+        signIn: "Mag-login para Magbigay ng Feedback",
         deleteTitle: "I-delete ang Feedback",
-        deleteDesc: "Sigurado ka bang gusto mong i-delete ang feedback na ito? Ang aksyong ito ay hindi na mababawi.",
+        deleteDesc: "Sigurado ka bang ide-delete mo ang feedback na ito? Hindi na ito maibabalik.",
         confirmDelete: "I-delete",
-        deleting: "Dini-delete...",
-        cancel: "Kanselahin",
+        deleting: "Dine-delete...",
+        cancel: "Cancel",
       },
-      tabs: {
-        videos: {
-          title: "Mga Video ng Proyekto",
-          empty: "Ang mga video ay ipapakita rito kapag na-upload na.",
+      feedbackForm: {
+        progressLabel: "Progress ng feedback",
+        next: "Susunod",
+        back: "Bumalik",
+        steps: {
+          sentiment: "Karanasan",
+          category: "Kategorya",
+          details: "Detalye",
+          consent: "Pahintulot",
+          review: "I-review",
         },
-        photos: {
-          title: "Mga Larawan ng Proyekto",
-          geotagged: "Mga Geotagged na Larawan ({count})",
-          empty: "Wala Pang Larawan",
-          emptyDesc: "Ang mga geotagged na larawan ay lalabas dito kapag na-upload na.",
-          grid: "Grid",
-          map: "Mga Mapa",
-          loadingMap: "Naglo-load ng mapa...",
-          preparingSatellite: "Inihahanda ang satellite view",
+        categories: {
+          quality: { label: "Kalidad ng Project", description: "Materyales, pagkakagawa, at standard ng construction" },
+          progress: { label: "Progress ng Project", description: "Schedule, gaano na katapos, at bilis ng trabaho" },
+          concerns: { label: "Mga Concern at Problema", description: "Problema, delay, o bagay na kailangang tingnan" },
+          general: { label: "Iba pang Feedback", description: "Kahit ano pa tungkol sa project na ito" },
         },
-        articles: {
-          title: "Mga Artikulo ng Proyekto",
-          empty: "Wala Pang Artikulo",
-          emptyDesc: "Ang mga artikulo at publikasyon ay lalabas dito kapag nailathala na.",
+        sentiment: {
+          title: "Kumusta ang karanasan mo?",
+          body: "Makakatulong ito para mapunta ang feedback mo sa tamang tao. Puwede mo itong i-skip.",
+          positive: "Maganda",
+          positiveDesc: "Maayos ang takbo",
+          negative: "Hindi maganda",
+          negativeDesc: "May kailangang ayusin",
+          skip: "Ayokong sabihin",
         },
-        documents: {
-          title: "Mga Dokumento ng Proyekto",
-          empty: "Wala Pang Dokumento",
-          emptyDesc: "Ang mga dokumento ng proyekto ay ililista rito kapag available na.",
-          item: "Dokumento {index}",
+        category: {
+          title: "Tungkol saan ito?",
+          body: "Piliin ang kategoryang pinakabagay sa feedback mo.",
+          recommended: "Rekomendado",
         },
-        pow: {
-          title: "Program of Works",
-          empty: "Walang Data ng POW",
-          emptyDesc: "Ang mga detalye ng Program of Works ay lalabas dito kapag available na.",
-          quantity: "Kabuuang Dami",
-          cost: "Halaga ng Kontrata",
-          date: "Petsa",
-          targetProgress: "Target na Pag-unlad",
-          actualProgress: "Aktwal na Pag-unlad",
-          viewAttachment: "Tingnan ang Attachment",
-          sCurveTitle: "Pisikal na Pag-unlad (S-Curve)",
-          insufficientData: "Kulang ang data para sa S-curve visualization",
+        details: {
+          title: "Ikuwento pa",
+          body: "Ilagay ang mga detalye, mag-attach ng ebidensya, at mag-rate kung gusto mo.",
+          commentLabel: "Feedback Mo",
+          commentPlaceholder: "Ano'ng masasabi mo tungkol sa project na ito...",
+          evidenceLabel: "Mga ebidensya (Opsyonal)",
+          evidenceHint: "Mag-upload ng photo o video na meron ka na, o kumuha ng bagong geotagged photo o GeoVideo.",
+          removeMedia: "Alisin ang file",
+          uploading: "Ina-upload ang ebidensya…",
         },
-        procurement: {
-          title: "Procurement",
-          empty: "Walang Data ng Procurement",
-          emptyDesc: "Ang mga rekord ng procurement ay ililista rito kapag available na.",
-          stage: "Yugto ng Procurement",
-          date: "Petsa",
-          status: "Katayuan",
-          remarks: "Mga Tala",
-          targetDate: "Target na Petsa",
-          actualDate: "Aktwal na Petsa",
-          factors: "Mga Salik na Nakaaapekto sa Pag-unlad",
-          measures: "Mga Hakbang na Isinagawa",
-          item: "Milestone {index}",
-          milestone: "Milestone",
+        rating: {
+          label: "Rating (Opsyonal)",
+          rateOne: "Bigyan ng 1 star",
+          rateMany: "Bigyan ng {count} star",
+          starsOne: "1 star",
+          starsMany: "{count} star",
+        },
+        consent: {
+          body: "Piliin kung paano mo gustong i-submit ang feedback na ito.",
+          agreePrefix: "Pumapayag ako sa ",
+          agreeAnd: " at ",
+          agreeSuffix: " sa pag-submit ng feedback na ito",
+          anonymousLabel: "I-submit nang anonymous",
+          anonymousHint: "Hindi makikita ng ibang user kung sino ka",
+        },
+        review: {
+          title: "I-review ang feedback mo",
+          body: "Tingnan ang lahat sa ibaba, tapos i-confirm para i-submit.",
+          edit: "I-edit",
+          experience: "Karanasan Mo",
+          feedback: "Feedback",
+          sentiment: "Karanasan",
+          notSpecified: "Walang pinili",
+          issueType: "Uri ng Problema",
+          rating: "Rating",
+          notRated: "Walang rating",
+          attachments: "Mga Attachment",
+          noAttachments: "Wala",
+          filesOne: "1 file",
+          filesMany: "{count} file",
+          submittingAs: "Isu-submit bilang",
+          anonymous: "Anonymous",
+          yourAccount: "Account mo",
+          saving: "Sine-save ang feedback...",
+          submit: "I-confirm at I-submit",
+        },
+        errors: {
+          commentRequired: "Ilagay ang feedback mo",
+          mediaProcessing: "Sandali lang, pinoproseso pa ang location ng mga file.",
+          mediaMax: "Hanggang {max} file lang ang puwede.",
+          agreementRequired: "Kailangan mong pumayag sa Terms of Service at Privacy Policy",
+          uploadBlocked: "Hindi na-upload. Pumili ng tamang photo o video.",
+          uploadFailed: "Hindi na-upload ({status})",
+          uploadNoPath: "Natapos ang upload pero walang file path.",
+          submitFailed: "Hindi na-submit ang feedback",
+          updateFailed: "Hindi na-update ang feedback",
+        },
+        toast: {
+          updated: "Na-update na ang feedback mo!",
+          submitted: "Na-submit na ang feedback mo para i-review",
+          submittedDesc: "Na-save na ang feedback at mga attachment mo. Lalabas ito kapag na-approve na.",
+        },
+        notification: {
+          title: "Na-submit ang feedback",
+          message: "Na-submit na ang feedback mo para i-review ng moderator.",
         },
       },
-      common: {
-        noContent: "Walang available na nilalaman",
-      },
-    },
-    live: {
-      title: "Mga Live na Broadcast",
-      subtitle: "Manatiling updated sa mga real-time na ulat at mga highlight ng proyekto mula sa buong bansa.",
-      noBroadcasts: "Walang aktibong broadcast",
-      noBroadcastsDesc: "Sa kasalukuyan ay walang mga live o recorded na broadcast. Mangyari lamang na bumalik mamaya.",
-      moreBroadcasts: "Higit pang mga Broadcast",
-      videosCount: "{count} na video",
-      liveNow: "Live Ngayon",
-      recorded: "Recorded",
-      broadcastingLive: "Kasalukuyang Live",
-      searchPlaceholder: "Maghanap sa pamamagitan ng pamagat o paglalarawan...",
-      noResults: "Walang nahanap na resulta para sa \"{search}\"",
-      clearSearch: "I-clear ang paghahanap",
-      playingNow: "Pinapatugtog Ngayon",
     },
     footer: {
-      subtitle: "Transparency Portal ng DA-BAFE",
       links: {
         quick: {
-          title: "Mabilis na Links",
+          title: "Mga Link",
           projects: "Mga Proyekto",
-      checklists: "Mga Checklist",
-          statistics: "Istatistika",
           faq: "FAQ",
-          contact: "Kontak",
+          contact: "Kontakin Kami",
         },
         gov: {
           title: "Gobyerno",
         },
       },
+      govLinks: "Mga Link ng Gobyerno",
+      phones: "{first} o {second}",
       rights: "© 2026 Bureau of Agricultural and Fisheries Engineering. Nakalaan ang lahat ng karapatan.",
-      privacy: "Patakaran sa Privacy",
-      deletion: "Pagbura ng Data",
-      terms: "Mga Tuntunin ng Serbisyo",
+      privacy: "Privacy Policy",
+      deletion: "Pag-delete ng Data",
+      terms: "Terms of Service",
       seal: {
         title: "Republika ng Pilipinas",
-        desc: "Ang lahat ng nilalaman ay nasa public domain maliban kung iba ang nakasaad.",
+        desc: "Public domain ang lahat ng content dito maliban kung may ibang nakasaad.",
+        alt: "Seal ng Republika ng Pilipinas",
       },
       govph: {
         title: "Tungkol sa GOVPH",
-        desc: "Alamin ang higit pa tungkol sa gobyerno ng Pilipinas, ang istraktura nito, kung paano gumagana ang gobyerno at ang mga tao sa likod nito.",
+        desc: "Alamin ang tungkol sa gobyerno ng Pilipinas, kung paano ito nakaayos at gumagana, at ang mga taong nasa likod nito.",
       },
     },
+    landing: landing.tl,
+    directory: directory.tl,
+    eReport: eReport.tl,
+    community: community.tl,
+    site: site.tl,
+    account: account.tl,
   },
 } as const;
 

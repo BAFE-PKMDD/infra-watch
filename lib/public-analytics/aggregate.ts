@@ -165,8 +165,11 @@ export function byStage(rows: PublicProject[]) {
   return PUBLIC_STAGES.map((stage) => ({ label: stage, projects: counts[stage] }));
 }
 
+/** Recipient-chart bucket for projects without a recipient type; the page shows it in the visitor's language. */
+export const RECIPIENT_NOT_RECORDED = "Not recorded";
+
 export function byRecipient(rows: PublicProject[]) {
-  return sortedCountMap(groupBy(rows, (row) => row.recipientType ?? "Not recorded"))
+  return sortedCountMap(groupBy(rows, (row) => row.recipientType ?? RECIPIENT_NOT_RECORDED))
     .sort((a, b) => b.projects - a.projects);
 }
 

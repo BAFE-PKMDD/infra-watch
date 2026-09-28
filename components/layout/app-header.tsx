@@ -123,7 +123,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (showUserMenu && !target.closest('[aria-label="User menu"]') && !target.closest('.absolute')) {
+      if (showUserMenu && !target.closest("[data-user-menu-trigger]") && !target.closest('.absolute')) {
         setOpenOverlay(null);
       }
     };
@@ -140,7 +140,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
             <Link href="/" className="flex items-center gap-3">
               <Image
                 src="/infra-watch-logo.png"
-                alt="INFRA Watch logo"
+                alt={t("nav.logoAlt")}
                 width={96}
                 height={64}
                 className="h-10 w-auto flex-shrink-0 object-contain sm:h-12"
@@ -152,21 +152,21 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                   INFRA WATCH
                 </div>
                 <p className="max-w-[260px] truncate text-[10px] uppercase tracking-wide text-slate-600 dark:text-slate-300 lg:max-w-none">
-                  Public Transparency and Monitoring Portal
+                  {t("nav.tagline")}
                 </p>
               </div>
             </Link>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 lg:hidden">
+          <div className="flex items-center gap-2 sm:gap-3 xl:hidden">
             {mounted && user && <NotificationBell />}
             <LanguageToggle />
             <button
               type="button"
               onClick={toggleTheme}
               className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
-              aria-label="Toggle theme"
-              title="Toggle light/dark mode"
+              aria-label={t("nav.toggleTheme")}
+              title={t("nav.toggleThemeTitle")}
               suppressHydrationWarning
             >
               <Sun className="w-5 h-5 block dark:hidden" />
@@ -176,7 +176,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
               type="button"
               onClick={() => setMobileOpen((prev) => !prev)}
               className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
-              aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+              aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
               aria-expanded={mobileOpen}
               suppressHydrationWarning
             >
@@ -184,7 +184,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
             </button>
           </div>
 
-          <nav className="hidden lg:flex items-center gap-3">
+          <nav className="hidden xl:flex items-center gap-3">
             <div className="flex items-center gap-4 lg:gap-8">
               {translatedNavItems
                 .filter(item => (!item.requiresAuth || user || resolvedActiveItem === item.key) && !item.isSecondary)
@@ -260,7 +260,8 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                   <button
                     onClick={() => setOpenOverlay((current) => toggleHeaderOverlay(current, "user"))}
                     className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    aria-label="User menu"
+                    aria-label={t("nav.userMenu")}
+                    data-user-menu-trigger
                     suppressHydrationWarning
                   >
                     <div className="w-9 h-9 flex-shrink-0">
@@ -350,7 +351,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
               ) : (
                 <Link
                   href="/sign-in"
-                  className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/95 transition-colors shadow-sm"
+                  className="whitespace-nowrap px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/95 transition-colors shadow-sm"
                 >
                   {displayActionLabel}
                 </Link>
@@ -368,7 +369,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                 type="button"
                 onClick={toggleTheme}
                 className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
-                aria-label="Toggle theme"
+                aria-label={t("nav.toggleTheme")}
                 suppressHydrationWarning
               >
                 <Sun className="w-5 h-5 block dark:hidden" />
@@ -380,7 +381,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
 
         {/* Mobile menu panel */}
         {mobileOpen && (
-          <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 pt-4 pb-6 space-y-4">
+          <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 pt-4 pb-6 space-y-4">
             <div className="flex flex-col space-y-3">
               {translatedNavItems
                 .filter(item => !item.requiresAuth || user || resolvedActiveItem === item.key)

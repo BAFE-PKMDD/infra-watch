@@ -3,25 +3,26 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
 import type { PowPoint } from "@/lib/public-analytics/rules";
-import { publicAnalyticsStrings as S } from "@/lib/public-analytics/strings";
+import { format } from "@/lib/public-analytics/strings";
 
-const t = S.en;
+import { usePublicAnalyticsStrings } from "../use-strings";
 
 const monthFormatter = new Intl.DateTimeFormat("en-PH", { month: "short", year: "2-digit", timeZone: "UTC" });
 const formatMonth = (value: string) => monthFormatter.format(new Date(`${value}T00:00:00Z`));
 
 export function PlannedVsActual({ points }: { points: PowPoint[] }) {
+  const t = usePublicAnalyticsStrings();
   const last = points[points.length - 1];
   return (
     <div>
       <ul className="mb-2 flex flex-wrap gap-x-5 gap-y-1 text-base text-pa-ink">
         <li className="flex items-center gap-2">
           <span aria-hidden="true" className="inline-block h-0.5 w-6" style={{ background: "var(--context)" }} />
-          {t.project.planned}: {last.target} out of 100
+          {t.project.planned}: {format(t.project.outOf100, { value: last.target })}
         </li>
         <li className="flex items-center gap-2">
           <span aria-hidden="true" className="inline-block h-0.5 w-6" style={{ background: "var(--series)" }} />
-          {t.project.actual}: {last.actual} out of 100
+          {t.project.actual}: {format(t.project.outOf100, { value: last.actual })}
         </li>
       </ul>
       <div className="h-64 w-full" aria-hidden="true">
@@ -44,7 +45,7 @@ export function PlannedVsActual({ points }: { points: PowPoint[] }) {
           <table className="w-full min-w-[18rem] border-collapse text-left text-sm">
             <thead className="bg-pa-surface-2 text-pa-ink-2">
               <tr>
-                <th scope="col" className="px-3 py-2 font-medium">Month</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t.project.month}</th>
                 <th scope="col" className="px-3 py-2 text-right font-medium">{t.project.planned}</th>
                 <th scope="col" className="px-3 py-2 text-right font-medium">{t.project.actual}</th>
               </tr>

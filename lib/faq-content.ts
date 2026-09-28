@@ -1,3 +1,5 @@
+import type { Language } from "@/i18n/translations";
+
 export interface FaqEntry {
   question: string;
   answer: string;
@@ -6,6 +8,7 @@ export interface FaqEntry {
 /**
  * Single source of truth for the public FAQ - rendered on the /faq page and
  * inlined into ARIA's system prompt so the two never drift out of sync.
+ * FAQ_ENTRIES_TL below is the everyday-Tagalog version, in the same order.
  */
 export const FAQ_ENTRIES: FaqEntry[] = [
   {
@@ -89,6 +92,115 @@ export const FAQ_ENTRIES: FaqEntry[] = [
       "Send a message through the Contact Us page (/contact), email bafe@da.gov.ph, or call the hotline at 0949-842-9485 or 0956-234-9888, Monday to Friday, 8 AM to 5 PM. BAFE staff reply to the email address you provide. To report a problem with a specific project, use an E-Report instead so it gets a tracked ticket.",
   },
 ];
+
+/**
+ * Everyday Tagalog (see i18n/TAGALOG_STYLE.md) for the /faq page, one entry per English
+ * entry in the same order. ARIA's prompt keeps using the English FAQ_ENTRIES.
+ */
+export const FAQ_ENTRIES_TL: FaqEntry[] = [
+  {
+    question: "Ano ang InfraWatch?",
+    answer:
+      "Ang InfraWatch ay platform ng BAFE para makita ng publiko ang mga infrastructure project at makapagbigay ng feedback ang mga tao. Dito mo makikita ang available na info ng mga project, mga mapa, progreso, at feedback ng komunidad na na-review ng moderator.",
+  },
+  {
+    question: "Anong mga project ang sakop ng InfraWatch?",
+    answer:
+      "Sakop ng InfraWatch ang mga AMEFIP project sa ilalim ng Agricultural Machinery, Equipment and Facilities Support Services at Irrigation Network Services, ayon sa record sa ABEMIS para sa fiscal year 2021 hanggang 2026. Hindi nakalista ang mga project na labas dito.",
+  },
+  {
+    question: "Saan galing ang info ng mga project?",
+    answer:
+      "Naka-sync mula sa ABEMIS ang mga record ng project. Ang ABEMIS ang opisyal na pinagkukunan ng mga record. Hindi binabago ng InfraWatch ang mga value mula sa source. Kung may mukhang mali sa detalye ng project, i-report ito para ma-check at maitama ng opisinang in-charge ang record sa source.",
+  },
+  {
+    question: "Bakit wala sa mapa ang ilang project?",
+    answer:
+      "Lumalabas lang sa mapa ang mga project na may magagamit na coordinates na galing mismo sa source. Hindi gumagawa ang InfraWatch ng sariling lokasyon para sa mga record na kulang o mali ang coordinates.",
+  },
+  {
+    question: "Sigurado bang kumpleto ang mga detalye ng project?",
+    answer:
+      "Ipinapakita ng InfraWatch ang mga record na available sa source, at malinaw nitong sinasabi kung aling info ang wala. Puwedeng kulang ang approved budget, supplier bid, progreso, at lokasyon, o hinihintay pang maitama sa source.",
+  },
+  {
+    question: "Aling paraan ng pag-report ang dapat kong gamitin?",
+    answer:
+      "Gamitin ang Citizen Feed para sa public na rating, photo, o obserbasyon tungkol sa isang project. Gamitin ang Online E-Report para sa isang partikular na problema na kailangan ng ticket na puwedeng i-track at sagot mula sa moderator, gaya ng delay, sira, o panganib sa kaligtasan. Gamitin ang SMS Grievance kung wala kang mobile data o internet.",
+  },
+  {
+    question: "Paano ako magre-report ng problema sa isang project?",
+    answer:
+      "Gamitin ang Mag-report ng Problema (nasa E-Reports menu, o sa /report-issue/new). Puwede mong hanapin muna ang project, o ilarawan ang farm operation at lokasyon kung hindi mo alam kung aling project ito. Pagka-submit, bibigyan ka ng ticket number.",
+  },
+  {
+    question: "Puwede ba akong mag-report kahit walang internet?",
+    answer:
+      "Oo. Mag-text ng SMS grievance sa opisyal na number gamit ang format na nasa page ng SMS instructions (/report-issue/sms). May automatic na reply na magkukumpirma ng report mo at magbibigay ng ticket number.",
+  },
+  {
+    question: "Paano ko makikita ang status ng report ko?",
+    answer:
+      "Itabi ang ticket number na matatanggap mo pagka-submit. Kung naka-sign in ka noong nag-report ka, puwede mo ring sundan ang mga update sa status at sagot ng moderator sa Mga Ini-report Ko (/my-issues).",
+  },
+  {
+    question: "Paano ako magbibigay ng feedback sa isang project?",
+    answer:
+      "Buksan ang page ng project at gamitin ang feedback section, o mag-post ng general na feedback sa Citizen Feed (/citizen-feed). Puwede kang mag-attach ng photo o video, at puwede kang mag-post nang anonymous.",
+  },
+  {
+    question: "Puwede ba akong mag-submit ng feedback nang anonymous?",
+    answer:
+      "Oo. Kapag pinili mo ang anonymous, hindi makikita ng publiko kung sino ka. Pero puwede pa ring i-proseso ng mga awtorisadong staff ang submission mo para sa moderation, seguridad, at accountability.",
+  },
+  {
+    question: "Bakit hindi agad lumalabas ang feedback na na-submit ko?",
+    answer:
+      "Puwedeng kailangan munang i-review ng moderator ang feedback at ebidensya bago ito ipakita sa publiko. Nakakatulong ito para maprotektahan ang personal na info at para hindi lumabas ang content na delikado, labag sa batas, o walang kinalaman.",
+  },
+  {
+    question: "Anong ebidensya ang puwede kong i-upload?",
+    answer:
+      "Puwede kang mag-attach ng photo o video, sa format na tinatanggap ng site, na may kinalaman sa napiling project. Ang ebidensyang may geotag ay puwedeng may kasamang tantyang coordinates at accuracy na galing sa device mo. Huwag mag-upload ng confidential na info o content na wala kang permisong i-share.",
+  },
+  {
+    question: "Maaasahan ba ang mga sagot ng ARIA?",
+    answer:
+      "Ang ARIA ay AI assistant na sumasagot gamit ang mga record sa InfraWatch na may access kang makita. AI ang gumawa ng mga sagot nito at puwedeng kulang o mali, kaya i-check muna sa page ng project o sa dashboard bago ka umasa rito o gumawa ng opisyal na desisyon.",
+  },
+  {
+    question: "Paano ko ipapabura ang personal data ko?",
+    answer:
+      "Sundin ang mga hakbang sa Request Data Deletion page (/data-deletion). Sabihin kung aling account o submission ang tinutukoy mo, pero huwag kailanman magpadala ng password o ID na hindi kailangan. Puwedeng i-verify muna ng BAFE kung ikaw talaga iyan bago nila baguhin ang mga record.",
+  },
+  {
+    question: "Paano ko makokontak ang BAFE tungkol sa InfraWatch?",
+    answer:
+      "Magpadala ng message sa Contact Us page (/contact), mag-email sa bafe@da.gov.ph, o tumawag sa hotline na 0949-842-9485 o 0956-234-9888, Lunes hanggang Biyernes, 8 AM hanggang 5 PM. Sasagot ang BAFE staff sa email address na ibibigay mo. Kung problema sa isang partikular na project ang ire-report mo, gumamit na lang ng E-Report para magkaroon ito ng ticket na puwedeng i-track.",
+  },
+];
+
+export function getFaqEntries(language: Language): FaqEntry[] {
+  return language === "tl" ? FAQ_ENTRIES_TL : FAQ_ENTRIES;
+}
+
+/** Heading, intro and browser-tab text for the /faq page. */
+export const FAQ_PAGE_COPY: Record<Language, { metaTitle: string; metaDescription: string; eyebrow: string; title: string; description: string }> = {
+  en: {
+    metaTitle: "Frequently Asked Questions | InfraWatch",
+    metaDescription: "Answers to common questions about InfraWatch projects, maps, feedback, evidence, and accounts.",
+    eyebrow: "Help center",
+    title: "Frequently Asked Questions",
+    description: "Learn how InfraWatch presents infrastructure information and how citizens can participate responsibly.",
+  },
+  tl: {
+    metaTitle: "Mga Madalas Itanong | InfraWatch",
+    metaDescription: "Mga sagot sa mga karaniwang tanong tungkol sa mga project, mapa, feedback, ebidensya, at account sa InfraWatch.",
+    eyebrow: "Tulong",
+    title: "Mga Madalas Itanong",
+    description: "Alamin kung paano ipinapakita ng InfraWatch ang info tungkol sa mga infrastructure project, at kung paano ka makakasali nang responsable.",
+  },
+};
 
 export function formatFaqForPrompt(entries: FaqEntry[] = FAQ_ENTRIES): string {
   return entries.map((entry) => `Q: ${entry.question}\nA: ${entry.answer}`).join("\n\n");

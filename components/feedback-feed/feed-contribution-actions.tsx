@@ -11,10 +11,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useTranslation } from "@/i18n";
 
 export function FeedContributionActions() {
+  const { t } = useTranslation();
+
   return (
-    <section aria-label="Create a Citizen Feed post" className="mb-6">
+    <section aria-label={t("community.contribute.sectionLabel")} className="mb-6">
       <Dialog>
         <DialogTrigger
           render={
@@ -29,10 +32,10 @@ export function FeedContributionActions() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold text-slate-950 dark:text-white">
-              Write a post
+              {t("community.contribute.writePost")}
             </span>
             <span className="mt-0.5 block text-sm text-slate-600 dark:text-slate-300">
-              Share project feedback or report an issue
+              {t("community.contribute.writePostHint")}
             </span>
           </span>
         </DialogTrigger>
@@ -40,10 +43,10 @@ export function FeedContributionActions() {
         <DialogContent className="gap-0 overflow-hidden bg-white p-0 dark:bg-[#0d1526] sm:max-w-md">
           <DialogHeader className="border-b border-slate-200 px-5 py-5 pr-12 text-left dark:border-slate-800">
             <DialogTitle className="text-lg font-bold text-slate-950 dark:text-white">
-              What would you like to post?
+              {t("community.contribute.dialogTitle")}
             </DialogTitle>
             <DialogDescription className="leading-6 text-slate-600 dark:text-slate-300">
-              Choose the option that matches what you want InfraWatch to do with your submission.
+              {t("community.contribute.dialogDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -58,10 +61,10 @@ export function FeedContributionActions() {
               />
               <span>
                 <span className="block text-sm font-bold text-slate-950 dark:text-white">
-                  Share project feedback
+                  {t("community.contribute.feedbackTitle")}
                 </span>
                 <span className="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-300">
-                  Choose a project, then post an observation, rating, or progress update to the public feed.
+                  {t("community.contribute.feedbackBody")}
                 </span>
               </span>
             </Link>
@@ -76,10 +79,10 @@ export function FeedContributionActions() {
               />
               <span>
                 <span className="block text-sm font-bold text-slate-950 dark:text-white">
-                  Submit an e-Report
+                  {t("community.contribute.reportTitle")}
                 </span>
                 <span className="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-300">
-                  Report a problem that may require review or action, then track it under My Issues.
+                  {t("community.contribute.reportBody")}
                 </span>
               </span>
             </Link>

@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { CommentMedia } from "@/types/feedback.types";
+import { useTranslation } from "@/i18n";
 
 interface Comment {
   id: string;
@@ -78,21 +79,23 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function formatFbTime(dateInput: Date | string): string {
+type Translate = (path: string, variables?: Record<string, string | number>) => string;
+
+function formatFbTime(dateInput: Date | string, t: Translate): string {
   const date = new Date(dateInput);
   const now = Date.now();
   const diffInSeconds = Math.max(0, Math.floor((now - date.getTime()) / 1000));
 
-  if (diffInSeconds < 60) return "Just now";
+  if (diffInSeconds < 60) return t("site.comments.time.justNow");
   const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes}m`;
+  if (diffInMinutes < 60) return t("site.comments.time.minutes", { count: diffInMinutes });
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours}h`;
+  if (diffInHours < 24) return t("site.comments.time.hours", { count: diffInHours });
   const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) return `${diffInDays}d`;
+  if (diffInDays < 7) return t("site.comments.time.days", { count: diffInDays });
   const diffInWeeks = Math.floor(diffInDays / 7);
-  if (diffInWeeks < 52) return `${diffInWeeks}w`;
-  return `${Math.floor(diffInWeeks / 52)}y`;
+  if (diffInWeeks < 52) return t("site.comments.time.weeks", { count: diffInWeeks });
+  return t("site.comments.time.years", { count: Math.floor(diffInWeeks / 52) });
 }
 
 function renderCommentBody(text: string) {
@@ -119,6 +122,7 @@ export function FeedbackCommentList({
   highlightCommentId,
 }: FeedbackCommentListProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const currentUserId = user?.id;
   const [votingComment, setVotingComment] = useState<string | null>(null);
   const [voteCounts, setVoteCounts] = useState<
@@ -225,7 +229,7 @@ export function FeedbackCommentList({
       });
 
       if (!result.success) {
-        toast.error("Comment blocked", {
+        toast.error(t("site.comments.blocked"), {
           description: result.message,
           duration: 6500,
         });
@@ -237,7 +241,7 @@ export function FeedbackCommentList({
       onCommentUpdated?.();
     } catch (error) {
       console.error("Error updating comment:", error);
-      toast.error("Failed to update comment. Please try again.");
+      toast.error(t("site.comments.updateFailed"));
     } finally {
       setIsUpdating(false);
     }
@@ -260,7 +264,7 @@ export function FeedbackCommentList({
       onCommentUpdated?.();
     } catch (error) {
       console.error("Error deleting comment:", error);
-      toast.error("Failed to delete comment. Please try again.");
+      toast.error(t("site.comments.deleteFailed"));
     } finally {
       setIsDeleting(false);
     }
@@ -308,7 +312,7 @@ export function FeedbackCommentList({
     return (
       <div className="text-center py-6">
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          No comments yet. Be the first to share your thoughts!
+          {t("site.comments.empty")}
         </p>
       </div>
     );
@@ -328,12 +332,12 @@ export function FeedbackCommentList({
             {sortOrder === "asc" ? (
               <>
                 <ArrowUp className="w-3 h-3 mr-1 text-slate-400" />
-                Oldest First
+                {t("site.comments.oldestFirst")}
               </>
             ) : (
               <>
                 <ArrowDown className="w-3 h-3 mr-1 text-slate-400" />
-                Newest First
+                {t("site.comments.newestFirst")}
               </>
             )}
           </Button>
@@ -418,7 +422,7 @@ export function FeedbackCommentList({
                           disabled={isUpdating || !editText.trim()}
                           className="h-6 px-3 text-[11px] bg-[#1877F2] hover:bg-[#166fe5] text-white"
                         >
-                          {isUpdating ? "Saving..." : "Save"}
+                          {isUpdating ? t("site.comments.saving") : t("site.comments.save")}
                         </Button>
                         <Button
                           onClick={handleCancelEdit}
@@ -426,7 +430,7 @@ export function FeedbackCommentList({
                           variant="ghost"
                           className="h-6 px-2 text-[11px] text-slate-600 dark:text-slate-400"
                         >
-                          Cancel
+                          {t("site.comments.cancel")}
                         </Button>
                       </div>
                     </div>
@@ -457,7 +461,7 @@ export function FeedbackCommentList({
                             type="button"
                             onClick={() => setVotersModalCommentId(comment.id)}
                             className="absolute -bottom-2 right-2 bg-white dark:bg-[#242526] border border-slate-200/90 dark:border-slate-700 shadow-xs rounded-full px-1.5 py-0.5 flex items-center gap-1 cursor-pointer hover:scale-105 transition-transform"
-                            title={`${helpfulTotal} people found this helpful`}
+                            title={t("site.comments.helpfulCount", { count: helpfulTotal })}
                           >
                             <span className="w-3.5 h-3.5 rounded-full bg-[#1877F2] flex items-center justify-center text-white">
                               <ThumbsUp className="w-2 h-2 fill-current" />
@@ -477,7 +481,7 @@ export function FeedbackCommentList({
                               <button
                                 type="button"
                                 className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors opacity-70 hover:opacity-100 cursor-pointer"
-                                aria-label="Comment options"
+                                aria-label={t("site.comments.options")}
                               >
                                 <MoreHorizontal className="w-4 h-4" />
                               </button>
@@ -489,14 +493,14 @@ export function FeedbackCommentList({
                               className="cursor-pointer text-xs"
                             >
                               <Pencil className="mr-2 h-3.5 w-3.5" />
-                              Edit
+                              {t("site.comments.edit")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDeleteClick(comment.id)}
                               className="cursor-pointer text-red-600 dark:text-red-400 text-xs"
                             >
                               <Trash2 className="mr-2 h-3.5 w-3.5" />
-                              Delete
+                              {t("site.comments.delete")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -528,7 +532,7 @@ export function FeedbackCommentList({
                               {item.type === "image" && mediaUrl ? (
                                 <Image
                                   src={mediaUrl}
-                                  alt={item.caption || `Attachment ${index + 1}`}
+                                  alt={item.caption || t("site.comments.attachmentAlt", { number: index + 1 })}
                                   fill
                                   className="object-cover"
                                   sizes="120px"
@@ -574,7 +578,7 @@ export function FeedbackCommentList({
                             : "hover:text-slate-800 dark:hover:text-slate-200"
                         }`}
                       >
-                        Like
+                        {t("site.comments.like")}
                       </button>
 
                       {/* Reply Action */}
@@ -585,7 +589,7 @@ export function FeedbackCommentList({
                         }
                         className="py-1.5 px-1.5 -my-1 -mx-0.5 rounded hover:underline cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 inline-flex items-center"
                       >
-                        Reply
+                        {t("site.comments.reply")}
                       </button>
 
                       {/* Optional discreet unhelpful toggle */}
@@ -598,7 +602,7 @@ export function FeedbackCommentList({
                             ? "text-rose-600 dark:text-rose-400 font-bold"
                             : "text-slate-400 dark:text-slate-400 hover:text-rose-600"
                         }`}
-                        title="Mark as unhelpful"
+                        title={t("site.comments.markUnhelpful")}
                       >
                         <ThumbsDown
                           className={`w-3 h-3 ${
@@ -615,7 +619,7 @@ export function FeedbackCommentList({
                           "MMM d, yyyy 'at' h:mm a"
                         )}
                       >
-                        {formatFbTime(comment.createdAt)}
+                        {formatFbTime(comment.createdAt, t)}
                       </span>
                     </div>
                   )}
@@ -666,19 +670,19 @@ export function FeedbackCommentList({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Comment</AlertDialogTitle>
+            <AlertDialogTitle>{t("site.comments.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this comment? This action cannot be undone.
+              {t("site.comments.deleteBody")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{t("site.comments.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? t("site.comments.deleting") : t("site.comments.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

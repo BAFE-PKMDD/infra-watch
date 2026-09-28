@@ -59,7 +59,7 @@ import type { IssueEvidenceItem } from "@/types/geo-evidence.types";
 import { dispatchClientNotification } from "@/lib/client-notifications";
 import { useAuth } from "@/providers/auth-provider";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
-import { getUploadErrorTitle } from "@/lib/upload-errors";
+import { getUploadErrorText } from "@/lib/upload-errors";
 import { safePublicSourceMediaUrl } from "@/lib/public-source-media";
 import { buildReportIssuePath, projectPreviewToSelectedProject } from "@/lib/report-issue-project-link";
 import {
@@ -71,8 +71,9 @@ import {
 } from "@/actions/query/get-location-options";
 import { FARM_OPERATIONS, getProjectTypesForFarmOperation } from "@/lib/abemis/project-type-map";
 import { parseIssueTypeValue } from "@/lib/abemis/issue-type-map";
-import { IssueTypePicker } from "@/components/report-issue/issue-type-picker";
+import { IssueTypePicker, issueTypeText } from "@/components/report-issue/issue-type-picker";
 import { useSubmissionSurveyGate } from "@/hooks/use-submission-survey-gate";
+import { useTranslation } from "@/i18n";
 
 type FlowPath = "knows-project" | "no-project" | null;
 type StepId =
@@ -88,12 +89,15 @@ type StepId =
 
 type StepDefinition = {
   id: StepId;
-  label: string;
+  /** Read as t(`eReport.form.steps.${labelKey}`). */
+  labelKey: string;
   icon: LucideIcon;
 };
 
 export type ReportCategory = "quality" | "progress" | "general" | "concerns";
 
+// `label` is the English name sent to the API as the stored category; what the visitor reads
+// comes from t("eReport.categories.<value>.label" / ".description").
 export const categoryOptions: Array<{ value: ReportCategory; label: string; icon: LucideIcon; description: string }> = [
   { value: "quality", label: "Project Quality", icon: HardHat, description: "Materials, workmanship, and construction standards" },
   { value: "progress", label: "Project Progress", icon: BarChart3, description: "Timeline, completion status, and pacing" },
@@ -122,22 +126,22 @@ type ProjectDetails = {
 };
 
 const stepsKnowsProject: StepDefinition[] = [
-  { id: "project-search", label: "Project", icon: Search },
-  { id: "category", label: "Category", icon: LayoutGrid },
-  { id: "issue-details", label: "Details", icon: FileText },
-  { id: "contact", label: "Contact", icon: User },
-  { id: "review", label: "Review", icon: ClipboardCheck },
+  { id: "project-search", labelKey: "project", icon: Search },
+  { id: "category", labelKey: "category", icon: LayoutGrid },
+  { id: "issue-details", labelKey: "details", icon: FileText },
+  { id: "contact", labelKey: "contact", icon: User },
+  { id: "review", labelKey: "review", icon: ClipboardCheck },
 ];
 
 const stepsNoProject: StepDefinition[] = [
-  { id: "farm-operation", label: "Farm Operation", icon: Sprout },
-  { id: "project-type", label: "Project Type", icon: Tag },
-  { id: "location", label: "Location", icon: MapPin },
-  { id: "match", label: "Match", icon: Search },
-  { id: "category", label: "Category", icon: LayoutGrid },
-  { id: "issue-details", label: "Details", icon: FileText },
-  { id: "contact", label: "Contact", icon: User },
-  { id: "review", label: "Review", icon: ClipboardCheck },
+  { id: "farm-operation", labelKey: "farmOperation", icon: Sprout },
+  { id: "project-type", labelKey: "projectType", icon: Tag },
+  { id: "location", labelKey: "location", icon: MapPin },
+  { id: "match", labelKey: "match", icon: Search },
+  { id: "category", labelKey: "category", icon: LayoutGrid },
+  { id: "issue-details", labelKey: "details", icon: FileText },
+  { id: "contact", labelKey: "contact", icon: User },
+  { id: "review", labelKey: "review", icon: ClipboardCheck },
 ];
 
 const MATCH_PAGE_SIZE = 5;
@@ -156,6 +160,7 @@ const reducedStepVariants = {
 };
 
 export default function ReportIssuePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedProjectId = searchParams.get("projectId")?.trim() || "";
@@ -416,15 +421,15 @@ export default function ReportIssuePage() {
 
   const validateIssueDetails = () => {
     if (!form.issueType) {
-      toast.error("Please select at least one issue type.");
+      toast.error(t("eReport.form.toasts.selectIssueType"));
       return false;
     }
     if (form.issueDescription.trim().length < 20) {
-      toast.error("Description must be at least 20 characters.");
+      toast.error(t("eReport.form.toasts.descriptionMin"));
       return false;
     }
     if (!form.dateNoticed) {
-      toast.error("Please provide the date noticed.");
+      toast.error(t("eReport.form.toasts.dateNoticed"));
       return false;
     }
     return true;
@@ -432,15 +437,15 @@ export default function ReportIssuePage() {
 
   const validateContactStep = () => {
     if (!form.contactNumber.trim()) {
-      toast.error("Contact number is required.");
+      toast.error(t("eReport.form.toasts.contactRequired"));
       return false;
     }
     if (!form.confirmAccuracy || !form.agreeToTerms) {
-      toast.error("Please confirm accuracy and agree to the terms.");
+      toast.error(t("eReport.form.toasts.confirmTerms"));
       return false;
     }
     if (isEvidenceProcessing) {
-      toast.error("Please wait for location metadata to finish processing.");
+      toast.error(t("eReport.form.toasts.waitEvidence"));
       return false;
     }
     return true;
@@ -482,7 +487,7 @@ export default function ReportIssuePage() {
         });
         const uploadResult = await uploadResponse.json();
         if (!uploadResponse.ok || !uploadResult.success) {
-          throw new Error(uploadResult.error || "Failed to upload " + item.file.name);
+          throw new Error(uploadResult.error || t("eReport.form.toasts.uploadFailed", { name: item.file.name }));
         }
 
         const uploadedItem: IssueEvidenceItem = {
@@ -526,13 +531,13 @@ export default function ReportIssuePage() {
       });
 
       const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || data.details || "Failed to submit issue");
+      if (!response.ok || !data.success) throw new Error(data.error || data.details || t("eReport.form.toasts.submitFailed"));
 
-      toast.success("Issue reported successfully");
+      toast.success(t("eReport.form.toasts.success"));
       dispatchClientNotification({
         type: "issue_created",
-        title: "E-Report submitted",
-        message: data.message || "Your issue report was submitted for review.",
+        title: t("eReport.form.notification.title"),
+        message: data.message || t("eReport.form.notification.message"),
         metadata: {
           issueId: data.data?.id,
           ticketNumber: data.data?.ticketNumber,
@@ -542,12 +547,15 @@ export default function ReportIssuePage() {
       router.push("/report-issue/" + (data.data?.id || ""));
     } catch (error) {
 
-      const message = error instanceof Error ? error.message : "Failed to submit issue";
-      toast.error(getUploadErrorTitle(message), { description: message, duration: 6500 });
+      const message = error instanceof Error ? error.message : t("eReport.form.toasts.submitFailed");
+      const { title, description } = getUploadErrorText(message, t);
+      toast.error(title, { description, duration: 6500 });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const categoryDisplay = form.category ? t(`eReport.categories.${form.category}.label`) : t("eReport.form.values.notSelected");
 
   if (isSessionLoading || !user) {
     return (
@@ -566,12 +574,12 @@ export default function ReportIssuePage() {
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <Link href="/report-issue" className="mb-6 inline-flex items-center gap-2 text-sm text-slate-500 transition-colors hover:text-slate-950 dark:text-slate-400 dark:hover:text-white">
           <ArrowLeft className="size-4" />
-          Back to Reported Issues
+          {t("eReport.common.backToList")}
         </Link>
 
         <div className="mb-6">
-          <h1 className="mb-1 text-2xl font-bold text-slate-950 dark:text-white">Report an Issue</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Help us improve by reporting issues you&apos;ve noticed in your community</p>
+          <h1 className="mb-1 text-2xl font-bold text-slate-950 dark:text-white">{t("eReport.form.title")}</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">{t("eReport.form.subtitle")}</p>
         </div>
 
         {flowPath && <StepProgress steps={activeSteps} currentStepIndex={currentStepIndex} />}
@@ -589,7 +597,7 @@ export default function ReportIssuePage() {
             >
               {currentStep === "project-search" && (
                 <div className="space-y-5">
-                  <StepHeader title="Find the related project" body="Search by project name, code, municipality, or province." />
+                  <StepHeader title={t("eReport.form.projectSearch.title")} body={t("eReport.form.projectSearch.body")} />
                   <ProjectSearchInput value={selectedProject} onSelect={handleProjectSelect} onClear={() => setSelectedProject(null)} autoFocus />
                   {selectedProject && (
                     <ProjectSuggestionCard
@@ -598,103 +606,103 @@ export default function ReportIssuePage() {
                       expanded
                       onToggle={() => undefined}
                       onSelect={() => goToStep("category")}
-                      actionLabel="Continue with this Project"
+                      actionLabel={t("eReport.form.projectSearch.continue")}
                     />
                   )}
                   <div className="flex items-center justify-end pt-2">
-                    <Button type="button" onClick={() => goToStep("category")} disabled={!selectedProject} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                    <Button type="button" onClick={() => goToStep("category")} disabled={!selectedProject} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
                   </div>
                 </div>
               )}
 
               {currentStep === "farm-operation" && (
                 <div className="space-y-5">
-                  <StepHeader title="What kind of agricultural operation is it?" body="Choose the category that best matches the facility." />
+                  <StepHeader title={t("eReport.form.farmOperation.title")} body={t("eReport.form.farmOperation.body")} />
                   <LocationSelect
-                    label="Farm Operation"
+                    label={t("eReport.form.fields.farmOperation")}
                     required
                     value={form.farmOperation}
-                    placeholder="Select farm operation"
+                    placeholder={t("eReport.form.placeholders.farmOperation")}
                     options={FARM_OPERATIONS.map((value) => ({ value, label: value }))}
                     onChange={handleFarmOperationChange}
                   />
                   <div className="flex items-center justify-end pt-2">
-                    <Button type="button" onClick={() => goToStep("project-type")} disabled={!form.farmOperation} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                    <Button type="button" onClick={() => goToStep("project-type")} disabled={!form.farmOperation} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
                   </div>
                 </div>
               )}
 
               {currentStep === "project-type" && (
                 <div className="space-y-5">
-                  <StepHeader title="What type of project is it?" body="Choose the specific project type under that operation." />
+                  <StepHeader title={t("eReport.form.projectType.title")} body={t("eReport.form.projectType.body")} />
                   <LocationSelect
-                    label="Project Type"
+                    label={t("eReport.form.fields.projectType")}
                     required
                     value={form.projectType}
-                    placeholder="Select project type"
+                    placeholder={t("eReport.form.placeholders.projectType")}
                     options={projectTypeOptions.map((value) => ({ value, label: value }))}
                     onChange={(value) => setValue("projectType", value)}
                   />
                   <div className="flex items-center justify-between pt-2">
-                    <Button type="button" variant="ghost" onClick={() => goToStep("farm-operation", -1)}>Back</Button>
-                    <Button type="button" onClick={() => goToStep("location")} disabled={!form.projectType} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                    <Button type="button" variant="ghost" onClick={() => goToStep("farm-operation", -1)}>{t("eReport.form.back")}</Button>
+                    <Button type="button" onClick={() => goToStep("location")} disabled={!form.projectType} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
                   </div>
                 </div>
               )}
 
               {currentStep === "location" && (
                 <div className="space-y-5">
-                  <StepHeader title="Where did you notice the issue?" body="Provide the best location details you know." />
+                  <StepHeader title={t("eReport.form.location.title")} body={t("eReport.form.location.body")} />
                   <div className="grid gap-4 sm:grid-cols-2">
                     <LocationSelect
-                      label="Region"
+                      label={t("eReport.form.fields.region")}
                       required
                       value={selectedRegionCode}
-                      placeholder="Select region"
+                      placeholder={t("eReport.form.placeholders.region")}
                       options={regions}
                       onChange={handleRegionChange}
                     />
                     <LocationSelect
-                      label="Province"
+                      label={t("eReport.form.fields.province")}
                       required
                       value={selectedProvinceCode}
-                      placeholder={selectedRegionCode ? (isProvincesLoading ? "Loading provinces..." : "Select province") : "Select region first"}
+                      placeholder={selectedRegionCode ? (isProvincesLoading ? t("eReport.form.placeholders.provinceLoading") : t("eReport.form.placeholders.province")) : t("eReport.form.placeholders.provinceFirst")}
                       options={provinces}
                       onChange={handleProvinceChange}
                       disabled={!selectedRegionCode || isProvincesLoading}
                     />
                     <LocationSelect
-                      label="City / Municipality"
+                      label={t("eReport.form.fields.city")}
                       required
                       value={selectedCityCode}
-                      placeholder={selectedProvinceCode ? (isCitiesLoading ? "Loading cities..." : "Select city") : "Select province first"}
+                      placeholder={selectedProvinceCode ? (isCitiesLoading ? t("eReport.form.placeholders.cityLoading") : t("eReport.form.placeholders.city")) : t("eReport.form.placeholders.cityFirst")}
                       options={municipalities}
                       onChange={handleCityChange}
                       disabled={!selectedProvinceCode || isCitiesLoading}
                     />
                     <LocationSelect
-                      label="Barangay"
+                      label={t("eReport.form.fields.barangay")}
                       required
                       value={selectedBarangayCode}
-                      placeholder={selectedCityCode ? (isBarangaysLoading ? "Loading barangays..." : "Select barangay") : "Select city first"}
+                      placeholder={selectedCityCode ? (isBarangaysLoading ? t("eReport.form.placeholders.barangayLoading") : t("eReport.form.placeholders.barangay")) : t("eReport.form.placeholders.barangayFirst")}
                       options={barangays}
                       onChange={handleBarangayChange}
                       disabled={!selectedCityCode || isBarangaysLoading}
                     />
                   </div>
-                  <Field label="Street / Landmark" value={form.streetLandmark} onChange={(value) => setValue("streetLandmark", value)} />
+                  <Field label={t("eReport.form.fields.streetLandmark")} value={form.streetLandmark} onChange={(value) => setValue("streetLandmark", value)} />
                   <div className="flex items-center justify-between pt-2">
-                    <Button type="button" variant="ghost" onClick={() => goToStep("project-type", -1)}>Back</Button>
-                    <Button type="button" onClick={() => goToStep("match")} disabled={!form.province || !form.city || !form.barangay || !form.streetLandmark} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                    <Button type="button" variant="ghost" onClick={() => goToStep("project-type", -1)}>{t("eReport.form.back")}</Button>
+                    <Button type="button" onClick={() => goToStep("match")} disabled={!form.province || !form.city || !form.barangay || !form.streetLandmark} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
                   </div>
                 </div>
               )}
 
               {currentStep === "match" && (
                 <div className="space-y-5">
-                  <StepHeader title="Match a nearby project" body="Select the related project if it appears below, or continue without a project match." />
+                  <StepHeader title={t("eReport.form.match.title")} body={t("eReport.form.match.body")} />
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/60">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Search area</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{t("eReport.form.match.searchArea")}</p>
                     <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{[form.barangay, form.city, form.province].filter(Boolean).join(", ")}</p>
                   </div>
 
@@ -728,7 +736,7 @@ export default function ReportIssuePage() {
                           onClick={() => setVisibleMatchCount((count) => count + MATCH_PAGE_SIZE)}
                           className="group w-full gap-2 rounded-full border-slate-300 dark:border-slate-700"
                         >
-                          See more projects
+                          {t("eReport.form.match.seeMore")}
                           <ChevronDown className="size-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
                         </Button>
                       )}
@@ -737,8 +745,8 @@ export default function ReportIssuePage() {
                     <div className="space-y-4">
                       <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
                         <Search className="mx-auto mb-3 size-8 text-slate-500" />
-                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No nearby project match found</p>
-                        <p className="mt-1 text-xs text-slate-500">You can still continue and submit this report without linking it to a project.</p>
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("eReport.form.match.noMatchTitle")}</p>
+                        <p className="mt-1 text-xs text-slate-500">{t("eReport.form.match.noMatchBody")}</p>
                       </div>
 
                       {isTypeSuggestionsLoading ? (
@@ -751,7 +759,7 @@ export default function ReportIssuePage() {
                         <div className="space-y-3">
                           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
                             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                            <p>These are other &ldquo;{form.projectType}&rdquo; projects, shown because none matched your location. <strong>They are not based on your description.</strong> Only select one if you&apos;re sure it&apos;s the same project.</p>
+                            <p>{t("eReport.form.match.typeNoticeIntro", { projectType: form.projectType })} <strong>{t("eReport.form.match.typeNoticeStrong")}</strong> {t("eReport.form.match.typeNoticeOutro")}</p>
                           </div>
                           <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
                             {typeSuggestedProjects.slice(0, visibleTypeMatchCount).map((project) => (
@@ -774,7 +782,7 @@ export default function ReportIssuePage() {
                                 onClick={() => setVisibleTypeMatchCount((count) => count + MATCH_PAGE_SIZE)}
                                 className="group w-full gap-2 rounded-full border-slate-300 dark:border-slate-700"
                               >
-                                See more projects
+                                {t("eReport.form.match.seeMore")}
                                 <ChevronDown className="size-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
                               </Button>
                             )}
@@ -785,13 +793,13 @@ export default function ReportIssuePage() {
                   )}
 
                   <div className="flex items-center justify-between pt-2">
-                    <Button type="button" variant="ghost" onClick={() => goToStep("location", -1)}>Back</Button>
+                    <Button type="button" variant="ghost" onClick={() => goToStep("location", -1)}>{t("eReport.form.back")}</Button>
                     <div className="flex items-center gap-2">
                       {selectedProject && (
-                        <Button type="button" variant="ghost" onClick={() => setSelectedProject(null)}>Clear Match</Button>
+                        <Button type="button" variant="ghost" onClick={() => setSelectedProject(null)}>{t("eReport.form.match.clear")}</Button>
                       )}
                       <Button type="button" onClick={() => goToStep("category")} className="bg-emerald-600 text-white hover:bg-emerald-700">
-                        {selectedProject ? "Use Match" : "None of these, continue"}
+                        {selectedProject ? t("eReport.form.match.use") : t("eReport.form.match.none")}
                       </Button>
                     </div>
                   </div>
@@ -801,12 +809,12 @@ export default function ReportIssuePage() {
               {currentStep === "category" && (
                 <div className="space-y-5">
                   <StepHeader
-                    title="What's this about?"
-                    body="Choose the category that best fits your feedback."
+                    title={t("eReport.form.category.title")}
+                    body={t("eReport.form.category.body")}
                   />
                   <div
                     role="radiogroup"
-                    aria-label="Issue category"
+                    aria-label={t("eReport.form.category.groupLabel")}
                     className="grid gap-3 sm:grid-cols-2"
                   >
                     {categoryOptions.map((option) => (
@@ -833,7 +841,7 @@ export default function ReportIssuePage() {
                       variant="ghost"
                       onClick={() => goToStep(flowPath === "knows-project" ? "project-search" : "match", -1)}
                     >
-                      Back
+                      {t("eReport.form.back")}
                     </Button>
                     <Button
                       type="button"
@@ -841,7 +849,7 @@ export default function ReportIssuePage() {
                       disabled={!form.category}
                       className="bg-emerald-600 text-white hover:bg-emerald-700"
                     >
-                      Next
+                      {t("eReport.form.next")}
                     </Button>
                   </div>
                 </div>
@@ -849,7 +857,7 @@ export default function ReportIssuePage() {
 
               {currentStep === "issue-details" && (
                 <div className="space-y-5">
-                  <StepHeader title="Issue details" body="Describe what happened and attach photos or videos when available." />
+                  <StepHeader title={t("eReport.form.details.title")} body={t("eReport.form.details.body")} />
                   <IssueTypePicker
                     value={form.issueType}
                     category={form.category}
@@ -861,14 +869,19 @@ export default function ReportIssuePage() {
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-3">
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Description <span className="text-red-500 dark:text-red-400">*</span></Label>
+                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">{t("eReport.form.fields.description")} <span className="text-red-500 dark:text-red-400">*</span></Label>
                       <span className={`text-xs font-medium ${form.issueDescription.trim().length >= 20 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-300"}`}>
                         {form.issueDescription.trim().length >= 20
-                          ? "Minimum met"
-                          : `${20 - form.issueDescription.trim().length} more character${20 - form.issueDescription.trim().length === 1 ? "" : "s"} required`}
+                          ? t("eReport.form.details.minimumMet")
+                          : t(
+                            20 - form.issueDescription.trim().length === 1
+                              ? "eReport.form.details.charsNeededOne"
+                              : "eReport.form.details.charsNeededOther",
+                            { count: 20 - form.issueDescription.trim().length },
+                          )}
                       </span>
                     </div>
-                    <Textarea value={form.issueDescription} onChange={(event) => setValue("issueDescription", event.target.value)} placeholder="Provide clear details about the issue..." className="min-h-32 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+                    <Textarea value={form.issueDescription} onChange={(event) => setValue("issueDescription", event.target.value)} placeholder={t("eReport.form.placeholders.description")} className="min-h-32 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
                     <p className="text-right text-xs text-slate-500">{form.issueDescription.length}/1000</p>
                   </div>
                   <GeoEvidenceUpload
@@ -879,26 +892,26 @@ export default function ReportIssuePage() {
                     onProcessingChange={handleEvidenceProcessingChange}
                   />
                   <div className="flex items-center justify-between pt-2">
-                    <Button type="button" variant="ghost" onClick={() => goToStep("category", -1)}>Back</Button>
-                    <Button type="button" disabled={isEvidenceProcessing} onClick={() => validateIssueDetails() && goToStep("contact")} className="bg-emerald-600 text-white hover:bg-emerald-700">Next</Button>
+                    <Button type="button" variant="ghost" onClick={() => goToStep("category", -1)}>{t("eReport.form.back")}</Button>
+                    <Button type="button" disabled={isEvidenceProcessing} onClick={() => validateIssueDetails() && goToStep("contact")} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
                   </div>
                 </div>
               )}
 
               {currentStep === "contact" && (
                 <div className="space-y-5">
-                  <StepHeader title="Contact and consent" body="Your contact information helps moderators validate the report." />
+                  <StepHeader title={t("eReport.form.contact.title")} body={t("eReport.form.contact.body")} />
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Contact Number" required value={form.contactNumber} onChange={(value) => setValue("contactNumber", value)} />
-                    <Field label="Email Address (Optional)" type="email" value={form.email} onChange={(value) => setValue("email", value)} />
+                    <Field label={t("eReport.form.fields.contactNumber")} required value={form.contactNumber} onChange={(value) => setValue("contactNumber", value)} />
+                    <Field label={t("eReport.form.fields.emailOptional")} type="email" value={form.email} onChange={(value) => setValue("email", value)} />
                   </div>
-                  <CheckRow checked={form.isAnonymous} onChange={(value) => setValue("isAnonymous", value)} label="Submit as anonymous" />
-                  <CheckRow checked={form.confirmAccuracy} onChange={(value) => setValue("confirmAccuracy", value)} label="I confirm that the information provided is accurate." />
-                  <CheckRow checked={form.agreeToTerms} onChange={(value) => setValue("agreeToTerms", value)} label="I agree to the Terms of Service and Privacy Policy." />
+                  <CheckRow checked={form.isAnonymous} onChange={(value) => setValue("isAnonymous", value)} label={t("eReport.form.contact.anonymous")} />
+                  <CheckRow checked={form.confirmAccuracy} onChange={(value) => setValue("confirmAccuracy", value)} label={t("eReport.form.contact.confirmAccuracy")} />
+                  <CheckRow checked={form.agreeToTerms} onChange={(value) => setValue("agreeToTerms", value)} label={t("eReport.form.contact.agreeToTerms")} />
                   <div className="flex items-center justify-between border-t border-slate-200 pt-5 dark:border-slate-800">
-                    <Button type="button" variant="ghost" onClick={() => goToStep("issue-details", -1)}>Back</Button>
+                    <Button type="button" variant="ghost" onClick={() => goToStep("issue-details", -1)}>{t("eReport.form.back")}</Button>
                     <Button type="button" size="lg" onClick={handleGoToReview} disabled={isEvidenceProcessing} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
-                      Review Report
+                      {t("eReport.form.contact.review")}
                     </Button>
                   </div>
                 </div>
@@ -906,49 +919,49 @@ export default function ReportIssuePage() {
 
               {currentStep === "review" && (
                 <div className="space-y-5">
-                  <StepHeader title="Review your report" body="Check everything below, then confirm to submit." />
+                  <StepHeader title={t("eReport.form.review.title")} body={t("eReport.form.review.body")} />
 
                   {flowPath === "knows-project" ? (
                     <>
-                      <ReviewSection title="Project" onEdit={() => goToStep("project-search", -1)}>
-                        <ReviewRow label="Project" value={selectedProject?.name || "Not selected"} />
-                        <ReviewRow label="Farm Operation" value={form.farmOperation || selectedProject?.farmOperation || "Not specified"} />
+                      <ReviewSection title={t("eReport.form.review.sections.project")} onEdit={() => goToStep("project-search", -1)}>
+                        <ReviewRow label={t("eReport.form.review.project")} value={selectedProject?.name || t("eReport.form.values.notSelected")} />
+                        <ReviewRow label={t("eReport.form.fields.farmOperation")} value={form.farmOperation || selectedProject?.farmOperation || t("eReport.form.values.notSpecified")} />
                       </ReviewSection>
-                      <ReviewSection title="Category" onEdit={() => goToStep("category", -1)}>
-                        <ReviewRow label="Category" value={getCategoryLabel(form.category)} />
+                      <ReviewSection title={t("eReport.form.review.sections.category")} onEdit={() => goToStep("category", -1)}>
+                        <ReviewRow label={t("eReport.form.review.category")} value={categoryDisplay} />
                       </ReviewSection>
                     </>
                   ) : (
                     <>
-                      <ReviewSection title="Farm operation" onEdit={() => goToStep("farm-operation", -1)}>
-                        <ReviewRow label="Farm Operation" value={form.farmOperation || "Not selected"} />
-                        <ReviewRow label="Project Type" value={form.projectType || "Not selected"} />
+                      <ReviewSection title={t("eReport.form.review.sections.farmOperation")} onEdit={() => goToStep("farm-operation", -1)}>
+                        <ReviewRow label={t("eReport.form.fields.farmOperation")} value={form.farmOperation || t("eReport.form.values.notSelected")} />
+                        <ReviewRow label={t("eReport.form.fields.projectType")} value={form.projectType || t("eReport.form.values.notSelected")} />
                       </ReviewSection>
-                      <ReviewSection title="Location" onEdit={() => goToStep("location", -1)}>
-                        <ReviewRow label="Region" value={form.region || "Not provided"} />
-                        <ReviewRow label="Province" value={form.province || "Not provided"} />
-                        <ReviewRow label="City / Municipality" value={form.city || "Not provided"} />
-                        <ReviewRow label="Barangay" value={form.barangay || "Not provided"} />
-                        <ReviewRow label="Street / Landmark" value={form.streetLandmark || "Not provided"} />
-                        <ReviewRow label="Matched Project" value={selectedProject?.name || "None - submitted without a project match"} />
+                      <ReviewSection title={t("eReport.form.review.sections.location")} onEdit={() => goToStep("location", -1)}>
+                        <ReviewRow label={t("eReport.form.fields.region")} value={form.region || t("eReport.form.values.notProvided")} />
+                        <ReviewRow label={t("eReport.form.fields.province")} value={form.province || t("eReport.form.values.notProvided")} />
+                        <ReviewRow label={t("eReport.form.fields.city")} value={form.city || t("eReport.form.values.notProvided")} />
+                        <ReviewRow label={t("eReport.form.fields.barangay")} value={form.barangay || t("eReport.form.values.notProvided")} />
+                        <ReviewRow label={t("eReport.form.fields.streetLandmark")} value={form.streetLandmark || t("eReport.form.values.notProvided")} />
+                        <ReviewRow label={t("eReport.form.review.matchedProject")} value={selectedProject?.name || t("eReport.form.review.noMatch")} />
                       </ReviewSection>
-                      <ReviewSection title="Category" onEdit={() => goToStep("category", -1)}>
-                        <ReviewRow label="Category" value={getCategoryLabel(form.category)} />
+                      <ReviewSection title={t("eReport.form.review.sections.category")} onEdit={() => goToStep("category", -1)}>
+                        <ReviewRow label={t("eReport.form.review.category")} value={categoryDisplay} />
                       </ReviewSection>
                     </>
                   )}
 
-                  <ReviewSection title="Issue details" onEdit={() => goToStep("issue-details", -1)}>
-                    <ReviewRow label="Issue Type" value={parseIssueTypeValue(form.issueType).join(", ") || "Not selected"} />
-                    <ReviewRow label="Date Noticed" value={form.dateNoticed || "Not provided"} />
+                  <ReviewSection title={t("eReport.form.review.sections.details")} onEdit={() => goToStep("issue-details", -1)}>
+                    <ReviewRow label={t("eReport.form.review.issueType")} value={parseIssueTypeValue(form.issueType).map((label) => issueTypeText(label, t)).join(", ") || t("eReport.form.values.notSelected")} />
+                    <ReviewRow label={t("eReport.form.fields.dateNoticed")} value={form.dateNoticed || t("eReport.form.values.notProvided")} />
                     <div>
-                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Description</p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{form.issueDescription || "Not provided"}</p>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t("eReport.form.fields.description")}</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{form.issueDescription || t("eReport.form.values.notProvided")}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Evidence ({evidence.length})</p>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t("eReport.form.review.evidence", { count: evidence.length })}</p>
                       {evidence.length === 0 ? (
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">No photos or videos attached</p>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("eReport.form.review.noEvidence")}</p>
                       ) : (
                         <ul className="mt-1 space-y-1">
                           {evidence.map((item, index) => {
@@ -958,7 +971,7 @@ export default function ReportIssuePage() {
                                 <EvidenceIcon className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />
                                 <span className="truncate">{item.file.name}</span>
                                 {item.lat !== null && item.lon !== null && (
-                                  <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">Geotagged</span>
+                                  <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">{t("eReport.form.review.geotagged")}</span>
                                 )}
                               </li>
                             );
@@ -968,16 +981,16 @@ export default function ReportIssuePage() {
                     </div>
                   </ReviewSection>
 
-                  <ReviewSection title="Contact and consent" onEdit={() => goToStep("contact", -1)}>
-                    <ReviewRow label="Contact Number" value={form.contactNumber || "Not provided"} />
-                    <ReviewRow label="Email Address" value={form.email || "Not provided"} />
-                    <ReviewRow label="Submitting as" value={form.isAnonymous ? "Anonymous" : user?.name || "Signed-in citizen"} />
+                  <ReviewSection title={t("eReport.form.review.sections.contact")} onEdit={() => goToStep("contact", -1)}>
+                    <ReviewRow label={t("eReport.form.fields.contactNumber")} value={form.contactNumber || t("eReport.form.values.notProvided")} />
+                    <ReviewRow label={t("eReport.form.fields.email")} value={form.email || t("eReport.form.values.notProvided")} />
+                    <ReviewRow label={t("eReport.form.review.submittingAs")} value={form.isAnonymous ? t("eReport.form.review.anonymous") : user?.name || t("eReport.form.review.signedInCitizen")} />
                   </ReviewSection>
 
                   <div className="flex items-center justify-between border-t border-slate-200 pt-5 dark:border-slate-800">
-                    <Button type="button" variant="ghost" onClick={() => goToStep("contact", -1)}>Back</Button>
+                    <Button type="button" variant="ghost" onClick={() => goToStep("contact", -1)}>{t("eReport.form.back")}</Button>
                     <Button type="button" size="lg" onClick={handleSubmitClick} disabled={isSubmitting || isEvidenceProcessing || showPreSubmitSurvey} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
-                      {isSubmitting ? "Uploading & submitting..." : "Confirm & Submit"}
+                      {isSubmitting ? t("eReport.form.review.submitting") : t("eReport.form.review.submit")}
                     </Button>
                   </div>
                 </div>
@@ -1004,13 +1017,14 @@ export default function ReportIssuePage() {
 
 
 function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; currentStepIndex: number }) {
+  const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const lineDuration = prefersReducedMotion ? 0 : 0.4;
   const nodeDuration = prefersReducedMotion ? 0 : 0.25;
   const dotDuration = prefersReducedMotion ? 0 : 0.3;
 
   return (
-    <nav aria-label="Report progress" className="mb-8 w-full">
+    <nav aria-label={t("eReport.form.progressLabel")} className="mb-8 w-full">
       <ol className="relative hidden items-center justify-between md:flex">
         <div className="absolute left-0 right-0 top-5 h-0.5 bg-slate-200 dark:bg-slate-700" />
         <motion.div
@@ -1043,7 +1057,7 @@ function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; cu
                 {isCompleted ? <Check className="size-4" aria-hidden="true" /> : <StepIcon className="size-4" aria-hidden="true" />}
               </motion.div>
               <span className={`max-w-20 text-center text-xs font-medium leading-tight ${isCurrent ? "text-emerald-600 dark:text-emerald-400" : isCompleted ? "text-slate-700 dark:text-slate-300" : "text-slate-500"}`}>
-                {step.label}
+                {t(`eReport.form.steps.${step.labelKey}`)}
               </span>
             </li>
           );
@@ -1069,14 +1083,14 @@ function StepProgress({ steps, currentStepIndex }: { steps: StepDefinition[]; cu
             );
           })}
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">{steps[currentStepIndex]?.label} ({currentStepIndex + 1}/{steps.length})</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{steps[currentStepIndex] ? t(`eReport.form.steps.${steps[currentStepIndex].labelKey}`) : null} ({currentStepIndex + 1}/{steps.length})</p>
       </div>
     </nav>
   );
 }
 
-function formatBudget(value?: number) {
-  if (!value || value <= 0) return "Unavailable";
+function formatBudget(value: number | undefined, unavailable: string) {
+  if (!value || value <= 0) return unavailable;
   return new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
@@ -1116,7 +1130,7 @@ function ProjectSuggestionCard({
   expanded,
   onToggle,
   onSelect,
-  actionLabel = "Select this Project",
+  actionLabel,
 }: {
   project: SelectedProject;
   selected: boolean;
@@ -1125,6 +1139,7 @@ function ProjectSuggestionCard({
   onSelect: () => void;
   actionLabel?: string;
 }) {
+  const { t } = useTranslation();
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -1181,7 +1196,7 @@ function ProjectSuggestionCard({
                     >
                       <Image
                         src={currentPhoto}
-                        alt={`${project.name} geotagged photo`}
+                        alt={t("eReport.form.projectCard.photoAlt", { name: project.name })}
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 100vw, 672px"
@@ -1236,17 +1251,17 @@ function ProjectSuggestionCard({
                   </div>
                 ) : (
                   <div className="flex h-32 items-center justify-center bg-slate-100 text-xs text-slate-500 dark:bg-slate-900">
-                    No geotagged photos available for this project
+                    {t("eReport.form.projectCard.noPhotos")}
                   </div>
                 )}
 
                 <div className="space-y-4 p-4">
-                  <h3 className="text-sm font-bold text-slate-950 dark:text-white">Project Details</h3>
+                  <h3 className="text-sm font-bold text-slate-950 dark:text-white">{t("eReport.form.projectCard.details")}</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <ProjectDetailItem icon={<MapPin className="size-4" />} label="Location" value={details?.location || [project.municipality, project.province].filter(Boolean).join(", ") || "Unavailable"} />
-                    <ProjectDetailItem icon={<Building2 className="size-4" />} label="Agency" value={details?.implementingAgency || "BAFE"} />
-                    <ProjectDetailItem icon={<Banknote className="size-4" />} label="Budget" value={formatBudget(details?.budget)} />
-                    <ProjectDetailItem icon={<Activity className="size-4" />} label="Status" value={details?.stage || details?.status || "Unavailable"} />
+                    <ProjectDetailItem icon={<MapPin className="size-4" />} label={t("eReport.form.projectCard.location")} value={details?.location || [project.municipality, project.province].filter(Boolean).join(", ") || t("eReport.form.values.unavailable")} />
+                    <ProjectDetailItem icon={<Building2 className="size-4" />} label={t("eReport.form.projectCard.agency")} value={details?.implementingAgency || "BAFE"} />
+                    <ProjectDetailItem icon={<Banknote className="size-4" />} label={t("eReport.form.projectCard.budget")} value={formatBudget(details?.budget, t("eReport.form.values.unavailable"))} />
+                    <ProjectDetailItem icon={<Activity className="size-4" />} label={t("eReport.form.projectCard.status")} value={details?.stage || details?.status || t("eReport.form.values.unavailable")} />
                   </div>
                 </div>
 
@@ -1257,12 +1272,12 @@ function ProjectSuggestionCard({
                     className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
                   >
                     <MessageSquare className="size-4 shrink-0" />
-                    <span className="flex-1">Leave feedback on this project instead</span>
+                    <span className="flex-1">{t("eReport.form.projectCard.leaveFeedback")}</span>
                     <ExternalLink className="size-3.5 shrink-0" />
                   </Link>
                   <Button type="button" onClick={onSelect} className="w-full bg-emerald-600 text-white hover:bg-emerald-700">
                     <AlertTriangle className="mr-2 size-3.5" />
-                    {actionLabel}
+                    {actionLabel ?? t("eReport.form.projectCard.select")}
                   </Button>
                 </div>
               </>
@@ -1297,6 +1312,7 @@ function StepHeader({ title, body }: { title: string; body: string }) {
 }
 
 function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () => void; children: ReactNode }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
       <div className="flex items-center justify-between">
@@ -1307,7 +1323,7 @@ function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () 
           className="flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
         >
           <Pencil className="size-3.5" aria-hidden="true" />
-          Edit
+          {t("eReport.form.review.edit")}
         </button>
       </div>
       <div className="space-y-2">{children}</div>
@@ -1339,6 +1355,7 @@ function Field({ label, value, onChange, type = "text", icon, required = false }
 }
 
 function DateField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const openPicker = () => {
@@ -1353,7 +1370,7 @@ function DateField({ value, onChange }: { value: string; onChange: (value: strin
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Date Noticed <span className="text-red-500 dark:text-red-400">*</span></Label>
+      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">{t("eReport.form.fields.dateNoticed")} <span className="text-red-500 dark:text-red-400">*</span></Label>
       <button type="button" onClick={openPicker} className="relative block w-full text-left">
         <Calendar className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
         <Input
@@ -1433,6 +1450,7 @@ function CategoryCard({
   disabled?: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useTranslation();
   const Icon = option.icon;
   return (
     <button
@@ -1451,14 +1469,14 @@ function CategoryCard({
       <Icon className="size-5 shrink-0" aria-hidden="true" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-sm font-bold">{option.label}</span>
+          <span className="text-sm font-bold">{t(`eReport.categories.${option.value}.label`)}</span>
           {isRecommended && (
             <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-              Suggested
+              {t("eReport.form.category.suggested")}
             </span>
           )}
         </div>
-        <p className="mt-0.5 text-xs font-medium opacity-80">{option.description}</p>
+        <p className="mt-0.5 text-xs font-medium opacity-80">{t(`eReport.categories.${option.value}.description`)}</p>
       </div>
       {isSelected && (
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white dark:bg-emerald-500">

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { MapPin, Play } from "lucide-react";
 
 import { MediaViewer } from "@/components/ui/media-viewer";
+import { useTranslation } from "@/i18n";
 import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
 import type { StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
 
@@ -19,8 +20,9 @@ export function IssueEvidenceGallery({
   evidence,
   photoUrls = [],
   videoUrls = [],
-  emptyLabel = "No evidence files attached",
+  emptyLabel,
 }: IssueEvidenceGalleryProps) {
+  const { t } = useTranslation();
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const media = useMemo<Array<StoredIssueEvidenceItem & { type: "image" | "video"; evidenceIndex: number }>>(() => {
     const stored = (evidence ?? []).flatMap((item, evidenceIndex) => (
@@ -43,7 +45,7 @@ export function IssueEvidenceGallery({
   if (media.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700">
-        {emptyLabel}
+        {emptyLabel ?? t("site.evidence.noFiles")}
       </div>
     );
   }
@@ -66,7 +68,7 @@ export function IssueEvidenceGallery({
                   <button type="button" onClick={() => setViewingIndex(index)} className="relative h-full w-full">
                     <Image
                       src={src || "/placeholder-image.jpg"}
-                      alt={item.name || `Evidence ${index + 1}`}
+                      alt={item.name || t("site.evidence.evidenceAlt", { number: index + 1 })}
                       fill
                       sizes="(max-width: 768px) 100vw, 33vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -80,7 +82,9 @@ export function IssueEvidenceGallery({
                   <button
                     type="button"
                     onClick={() => setViewingIndex(index)}
-                    aria-label={`Open ${item.name || `video evidence ${index + 1}`} in the full viewer`}
+                    aria-label={t("site.evidence.openInViewer", {
+                      name: item.name || t("site.evidence.videoFallbackName", { number: index + 1 }),
+                    })}
                     className="absolute left-2 top-2 grid size-11 place-items-center rounded-full bg-slate-950/75 text-white backdrop-blur transition hover:bg-slate-950/90"
                   >
                     <Play className="size-3.5 fill-current" />
@@ -89,7 +93,7 @@ export function IssueEvidenceGallery({
               </div>
               <div className="flex min-h-12 items-center gap-2 px-3 py-2">
                 <span className="min-w-0 flex-1 truncate text-xs font-bold text-slate-800 dark:text-slate-200">
-                  {item.name || `${item.type === "video" ? "Video" : "Photo"} evidence ${index + 1}`}
+                  {item.name || t(item.type === "video" ? "site.evidence.videoEvidence" : "site.evidence.photoEvidence", { number: index + 1 })}
                 </span>
                 {hasCoordinates ? (
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300" title={`${item.lat}, ${item.lon}`}>
@@ -97,7 +101,7 @@ export function IssueEvidenceGallery({
                     {item.lat?.toFixed(4)}, {item.lon?.toFixed(4)}
                   </span>
                 ) : (
-                  <span className="shrink-0 rounded-full bg-slate-200 px-2 py-1 text-xs font-bold text-slate-500 dark:bg-slate-800">GPS unavailable</span>
+                  <span className="shrink-0 rounded-full bg-slate-200 px-2 py-1 text-xs font-bold text-slate-500 dark:bg-slate-800">{t("site.evidence.gpsUnavailable")}</span>
                 )}
               </div>
             </article>

@@ -1,8 +1,9 @@
 import { Droplets, LayoutGrid, Sprout, SunMedium, Warehouse, type LucideIcon } from "lucide-react";
 
-import { filtersToSearchParams } from "@/lib/public-analytics/aggregate";
+import { RECIPIENT_NOT_RECORDED, filtersToSearchParams } from "@/lib/public-analytics/aggregate";
 import type { FacilityTileKey } from "@/lib/public-analytics/aggregate";
-import { publicAnalyticsStrings as S, format, formatCount, formatPesosShort, formatPublicDate } from "@/lib/public-analytics/strings";
+import { OTHER_PROGRAMS } from "@/lib/public-analytics/rules";
+import { format, formatCount, formatPesosShort, formatPublicDate, type PublicAnalyticsStrings } from "@/lib/public-analytics/strings";
 import type { Dashboard } from "@/lib/public-analytics/views";
 
 import { BarChartCard, Section } from "./chart-card";
@@ -11,8 +12,6 @@ import { FiltersBar } from "./filters-bar";
 import { MapSection } from "./map-section";
 import { ProjectList } from "./project-list";
 import { StageBar } from "./stage-bar";
-
-const t = S.en;
 
 const TILE_ICONS: Record<FacilityTileKey, LucideIcon> = {
   solarIrrigation: SunMedium,
@@ -32,12 +31,17 @@ function StatCard({ label, value, note }: { label: string; value: string; note?:
   );
 }
 
-export function PublicAnalyticsView({ dashboard }: { dashboard: Dashboard }) {
+/** Server-rendered page body; `t` holds the strings for the visitor's language. */
+export function PublicAnalyticsView({ dashboard, t }: { dashboard: Dashboard; t: PublicAnalyticsStrings }) {
   const query = filtersToSearchParams(dashboard.filters).toString();
   const { summary } = dashboard;
   const areaTitle = dashboard.area.level === "region" ? t.area.titleRegion : dashboard.area.level === "province" ? t.area.titleProvince : t.area.titleMunicipality;
   const areaLabel = dashboard.area.level === "region" ? t.filters.region : dashboard.area.level === "province" ? t.filters.province : t.filters.municipality;
   const toRows = (rows: Array<{ label: string; projects: number; pesos?: number }>) => rows.map((row) => ({ key: row.label, ...row }));
+  // The data layer keeps these two fixed English bucket names; show them in the visitor's language.
+  const bucketLabel = (label: string) => (label === OTHER_PROGRAMS ? t.program.other : label === RECIPIENT_NOT_RECORDED ? t.project.notRecorded : label);
+  const toBucketRows = (rows: Array<{ label: string; projects: number; pesos?: number }>) =>
+    rows.map((row) => ({ ...row, key: row.label, label: bucketLabel(row.label) }));
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
@@ -77,13 +81,13 @@ export function PublicAnalyticsView({ dashboard }: { dashboard: Dashboard }) {
 
           <CategoryChart rows={dashboard.categories} />
 
-          <BarChartCard title={t.program.title} rows={toRows(dashboard.programs)} measures={["projects", "pesos"]} />
+          <BarChartCard title={t.program.title} rows={toBucketRows(dashboard.programs)} measures={["projects", "pesos"]} />
 
           <Section title={t.stage.title}>
-            <StageBar rows={dashboard.stages} />
+            <StageBar rows={dashboard.stages} t={t} />
           </Section>
 
-          <BarChartCard title={t.recipient.title} rows={toRows(dashboard.recipients)}>
+          <BarChartCard title={t.recipient.title} rows={toBucketRows(dashboard.recipients)}>
             <div className="mt-4 inline-block rounded-md border border-pa-hair bg-pa-surface-2 px-4 py-3">
               <p className="text-3xl font-semibold text-pa-ink">{formatCount(summary.farmerGroups)}</p>
               <p className="text-base text-pa-ink-2">{t.recipient.farmerGroups}</p>

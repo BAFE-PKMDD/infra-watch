@@ -20,6 +20,8 @@ import {
 import { useVoiceAssistant } from "@/hooks/use-voice-assistant";
 import { AniaVoiceOrb } from "@/components/voice/ania-voice-orb";
 import type { VoiceAssistantClientConfig } from "@/lib/voice/config";
+import { useTranslation } from "@/i18n";
+import { translate } from "@/i18n/translate";
 
 const botImages = {
   closed: "/b-bot-close-eye.png",
@@ -65,13 +67,6 @@ function BotFace({
   );
 }
 
-const SUGGESTIONS = [
-  "Show ongoing projects in Aklan",
-  "Summarize projects by status",
-  "Show AMEFIP projects in Region VI",
-  "Show 10 ongoing projects with contractors",
-];
-
 export function AiAssistantWidget({
   voiceConfig,
   adminMode = false,
@@ -79,6 +74,11 @@ export function AiAssistantWidget({
   voiceConfig?: VoiceAssistantClientConfig;
   adminMode?: boolean;
 } = {}) {
+  const { t, language } = useTranslation();
+  // Product names stay as they are in both languages.
+  const assistantName = adminMode ? "ANIA" : "InfraWatch AI";
+  const suggestionList = t<readonly string[]>("site.aria.suggestions");
+  const suggestions = Array.isArray(suggestionList) ? suggestionList : [];
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -234,11 +234,11 @@ export function AiAssistantWidget({
 
         if (!response.ok) {
           const errorBody = await response.json().catch(() => null);
-          throw new Error(errorBody?.error ?? "Failed to send message. Please try again.");
+          throw new Error(errorBody?.error ?? translate(language, "site.aria.errors.sendFailed"));
         }
 
         const reader = response.body?.getReader();
-        if (!reader) throw new Error("No reader available");
+        if (!reader) throw new Error(translate(language, "site.aria.errors.noReader"));
 
         setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
@@ -261,11 +261,11 @@ export function AiAssistantWidget({
         if (activeRequestIdRef.current !== requestId) return;
         const errorMessage = controller.signal.aborted
           ? timedOut
-            ? "The response timed out. Please try again."
-            : "Response cancelled."
+            ? translate(language, "site.aria.errors.timeout")
+            : translate(language, "site.aria.errors.cancelled")
           : error instanceof Error
             ? error.message
-            : "Sorry, I encountered an error processing your request.";
+            : translate(language, "site.aria.errors.generic");
         setMessages((prev) => ensureAssistantMessage(prev, errorMessage));
       } finally {
         window.clearTimeout(timeoutId);
@@ -276,7 +276,7 @@ export function AiAssistantWidget({
         }
       }
     },
-    [adminMode, inputValue, messages, isLoading],
+    [adminMode, inputValue, messages, isLoading, language],
   );
 
   const handleClose = useCallback(() => {
@@ -375,12 +375,12 @@ export function AiAssistantWidget({
                 // Ignore storage errors
               }
             }}
-            title="Click to chat • Drag to move anywhere • Double-click to reset"
+            title={t("site.aria.launcherTitle")}
             className="group/fab fixed bottom-6 right-6 z-50 flex h-16 w-16 cursor-grab active:cursor-grabbing touch-none select-none items-center justify-center rounded-full bg-white shadow-[0_10px_25px_-5px_rgba(0,0,0,0.16),0_8px_10px_-6px_rgba(0,0,0,0.1)] hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.22)] dark:shadow-[0_12px_28px_-5px_rgba(0,0,0,0.6)] border border-slate-200/90 hover:bg-slate-50 transition-colors p-1 ring-2 ring-white/90 dark:ring-slate-800/90"
             aria-label={
               adminMode && safeVoiceConfig.enabled
-                ? `Open ARIA. ${voice.statusLabel}`
-                : "Open ARIA"
+                ? t("site.aria.openWithStatus", { status: voice.statusLabel })
+                : t("site.aria.open")
             }
           >
             <BotFace className="h-14 w-14" sizes="56px" priority />
@@ -424,10 +424,10 @@ export function AiAssistantWidget({
                     id={adminMode ? "ania-title" : "infra-watch-ai-title"}
                     className="font-semibold text-slate-900 dark:text-white"
                   >
-                    {adminMode ? "ANIA" : "InfraWatch AI"}
+                    {assistantName}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {adminMode ? "Agricultural Network Intelligence Assistant" : "Ask about projects"}
+                    {adminMode ? "Agricultural Network Intelligence Assistant" : t("site.aria.publicSubtitle")}
                   </p>
                 </div>
               </div>
@@ -440,7 +440,7 @@ export function AiAssistantWidget({
                     }}
                     disabled={isLoading}
                     className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus-visible:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-slate-300 dark:focus-visible:bg-slate-800"
-                    aria-label="Clear messages"
+                    aria-label={t("site.aria.clearMessages")}
                   >
                     <RotateCcw className="h-5 w-5" />
                   </button>
@@ -448,7 +448,7 @@ export function AiAssistantWidget({
                 <button
                   onClick={handleClose}
                   className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus-visible:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-300 dark:focus-visible:bg-slate-800"
-                  aria-label={adminMode ? "Close ANIA" : "Close InfraWatch AI"}
+                  aria-label={t("site.aria.close", { name: assistantName })}
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -460,18 +460,18 @@ export function AiAssistantWidget({
               className="flex-1 space-y-4 overflow-y-auto p-4 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]"
               role="log"
               aria-live="off"
-              aria-label={adminMode ? "ANIA conversation" : "InfraWatch AI conversation"}
+              aria-label={t("site.aria.conversation", { name: assistantName })}
             >
               {messages.length === 0 ? (
                 <div className="flex flex-col h-full items-center justify-center text-center space-y-6">
                   <div className="space-y-2">
-                    <h4 className="font-medium text-slate-900 dark:text-white">How can I help you today?</h4>
+                    <h4 className="font-medium text-slate-900 dark:text-white">{t("site.aria.emptyTitle")}</h4>
                     <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[250px]">
-                      Ask about project locations, status, budgets, or contractors.
+                      {t("site.aria.emptyBody")}
                     </p>
                   </div>
                   <div className="flex flex-wrap justify-center gap-2">
-                    {SUGGESTIONS.map((suggestion) => (
+                    {suggestions.map((suggestion) => (
                       <button
                         key={suggestion}
                         onClick={() => handleSuggestionClick(suggestion)}
@@ -559,10 +559,10 @@ export function AiAssistantWidget({
 
             <span className="sr-only" role="status" aria-live="polite">
               {isLoading
-                ? `${adminMode ? "ANIA" : "InfraWatch AI"} is responding.`
+                ? t("site.aria.status.responding", { name: assistantName })
                 : messages.at(-1)?.role === "assistant"
-                  ? `${adminMode ? "ANIA" : "InfraWatch AI"} response complete.`
-                  : `${adminMode ? "ANIA" : "InfraWatch AI"} is ready.`}
+                  ? t("site.aria.status.complete", { name: assistantName })
+                  : t("site.aria.status.ready", { name: assistantName })}
             </span>
 
             {/* Input Area */}
@@ -574,8 +574,8 @@ export function AiAssistantWidget({
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask a question..."
-                  aria-label={adminMode ? "Ask ANIA a question" : "Ask InfraWatch AI a question"}
+                  placeholder={t("site.aria.inputPlaceholder")}
+                  aria-label={t("site.aria.inputLabel", { name: assistantName })}
                   disabled={isLoading}
                   maxLength={4_000}
                   className={cn(
@@ -593,9 +593,9 @@ export function AiAssistantWidget({
                         ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300"
                         : "text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800",
                     )}
-                    aria-label={voice.enabled ? "Disable ANIA voice mode" : "Enable ANIA voice mode"}
+                    aria-label={voice.enabled ? t("site.aria.voice.disable") : t("site.aria.voice.enable")}
                     aria-pressed={voice.enabled}
-                    title="Toggle ANIA voice mode (Ctrl+Shift+V)"
+                    title={t("site.aria.voice.toggleTitle")}
                   >
                     {voice.enabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
                   </button>
@@ -604,7 +604,7 @@ export function AiAssistantWidget({
                   onClick={() => handleSend()}
                   disabled={isLoading || !inputValue.trim()}
                   className="absolute right-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600"
-                  aria-label="Send message"
+                  aria-label={t("site.aria.send")}
                 >
                   <Send className="h-4 w-4" />
                 </button>
@@ -623,12 +623,11 @@ export function AiAssistantWidget({
               )}
               <p className="mt-2 text-center text-[10px] font-medium leading-4 text-amber-700 dark:text-amber-400">
                 {adminMode
-                  ? "AI-generated answers. Verify against the dashboard before making official decisions."
-                  : "AI-generated answers. Verify against the project page before relying on them."}
+                  ? t("site.aria.verifyAdmin")
+                  : t("site.aria.verifyPublic")}
               </p>
               <p className="mt-1 text-center text-[10px] leading-4 text-slate-400 dark:text-slate-500">
-                Messages are retained for service quality and analysis. Do not share
-                passwords or sensitive personal information.
+                {t("site.aria.retention")}
               </p>
             </div>
           </motion.div>

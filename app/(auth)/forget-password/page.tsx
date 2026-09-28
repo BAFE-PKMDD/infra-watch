@@ -13,9 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { OTPVerificationForm } from "@/components/auth/otp-verification-form";
+import { useTranslation } from "@/i18n";
 
 function ForgetPasswordContent() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const initialEmail = searchParams.get("email") || "";
 
@@ -40,12 +42,12 @@ function ForgetPasswordContent() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Failed to send reset code");
+        setError(result.error.message || t("account.forgotPassword.errors.sendFailed"));
       } else {
         setStep("otp");
       }
     } catch {
-      setError("An unexpected error occurred");
+      setError(t("account.auth.unexpectedError"));
     } finally {
       setLoading(false);
     }
@@ -54,12 +56,12 @@ function ForgetPasswordContent() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("account.auth.passwordMismatch"));
       return;
     }
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t("account.auth.passwordMin"));
       return;
     }
 
@@ -74,12 +76,12 @@ function ForgetPasswordContent() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Failed to reset password");
+        setError(result.error.message || t("account.forgotPassword.errors.resetFailed"));
       } else {
         router.push("/sign-in?reset=success");
       }
     } catch {
-      setError("An unexpected error occurred");
+      setError(t("account.auth.unexpectedError"));
     } finally {
       setLoading(false);
     }
@@ -87,7 +89,7 @@ function ForgetPasswordContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary/5 to-slate-50 dark:from-slate-950 dark:via-primary/5 dark:to-slate-950 flex flex-col justify-between">
-      <AppHeader activeItem="home" actionLabel="Sign In" />
+      <AppHeader activeItem="home" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col items-center justify-center flex-1 w-full">
         <motion.div
@@ -102,28 +104,24 @@ function ForgetPasswordContent() {
               className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
-              Back to sign in
+              {t("account.forgotPassword.backToSignIn")}
             </Link>
           </div>
 
           <Card className="shadow-2xl border border-slate-200 dark:border-slate-800/50 dark:bg-slate-900/80 backdrop-blur-xl">
             <CardHeader className="space-y-2 text-center">
               <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                {step === "email" ? "Reset Password" :
-                  step === "otp" ? "Verify Code" :
-                    "New Password"}
+                {t(`account.forgotPassword.titles.${step}`)}
               </CardTitle>
               <p className="text-sm text-slate-600 dark:text-slate-300 pb-3">
-                {step === "email" ? "Enter your email to receive a password reset code." :
-                  step === "otp" ? `Enter the code we sent to ${email}` :
-                    "Choose a strong new password for your account."}
+                {t(`account.forgotPassword.descriptions.${step}`, { email })}
               </p>
             </CardHeader>
             <CardContent>
               {step === "email" && (
                 <form onSubmit={handleRequestReset} className="space-y-4">
                   <div className="space-y-1">
-                    <Label htmlFor="email" className="font-semibold text-xs text-slate-700 dark:text-slate-300">Email Address</Label>
+                    <Label htmlFor="email" className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t("account.auth.emailLabel")}</Label>
                     <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary dark:border-slate-700 dark:bg-slate-800 transition-shadow">
                       <Mail className="w-4 h-4 text-slate-400" />
                       <Input
@@ -154,10 +152,10 @@ function ForgetPasswordContent() {
                     {loading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Sending...
+                        {t("account.forgotPassword.sending")}
                       </>
                     ) : (
-                      "Send Reset Code"
+                      t("account.forgotPassword.sendCode")
                     )}
                   </Button>
                 </form>
@@ -178,7 +176,7 @@ function ForgetPasswordContent() {
               {step === "reset" && (
                 <form onSubmit={handleResetPassword} className="space-y-4">
                   <div className="space-y-1">
-                    <Label htmlFor="password" className="font-semibold text-xs text-slate-700 dark:text-slate-300">New Password</Label>
+                    <Label htmlFor="password" className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t("account.forgotPassword.newPasswordLabel")}</Label>
                     <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary dark:border-slate-700 dark:bg-slate-800 transition-shadow">
                       <Lock className="w-4 h-4 text-slate-400" />
                       <Input
@@ -195,7 +193,7 @@ function ForgetPasswordContent() {
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="confirmPassword" className="font-semibold text-xs text-slate-700 dark:text-slate-300">Confirm New Password</Label>
+                    <Label htmlFor="confirmPassword" className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t("account.forgotPassword.confirmNewPasswordLabel")}</Label>
                     <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary dark:border-slate-700 dark:bg-slate-800 transition-shadow">
                       <Lock className="w-4 h-4 text-slate-400" />
                       <Input
@@ -226,10 +224,10 @@ function ForgetPasswordContent() {
                     {loading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Resetting...
+                        {t("account.forgotPassword.resetting")}
                       </>
                     ) : (
-                      "Update Password"
+                      t("account.forgotPassword.submit")
                     )}
                   </Button>
                 </form>

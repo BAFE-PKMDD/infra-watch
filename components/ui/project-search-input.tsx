@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Search, MapPin, Loader2, X, CheckCircle2 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "@/i18n";
 
 export interface ProjectResult {
   id: string;
@@ -56,7 +57,8 @@ interface ProjectSearchInputProps {
   onSelect: (project: SelectedProject) => void;
   /** Callback when selection is cleared */
   onClear: () => void;
-  /** Placeholder text for the search input */
+  /** Placeholder text for the search input. Defaults to "Search for a project..." in the
+   * visitor's language. */
   placeholder?: string;
   /** Visual variant — "default" shows a bordered input, "compact" shows a pill-style chip */
   variant?: "default" | "compact";
@@ -75,13 +77,14 @@ export function ProjectSearchInput({
   value,
   onSelect,
   onClear,
-  placeholder = "Search for a project...",
+  placeholder,
   variant = "default",
   autoFocus = false,
   searchFn,
   queryKeyPrefix = "projects",
   initialQuery,
 }: ProjectSearchInputProps) {
+  const { t } = useTranslation();
   const [searchInput, setSearchInput] = useState(initialQuery ?? "");
   const [showDropdown, setShowDropdown] = useState(Boolean(initialQuery));
   const debouncedSearch = useDebounce(searchInput, 300);
@@ -255,7 +258,7 @@ export function ProjectSearchInput({
             setShowDropdown(true);
           }}
           onFocus={() => setShowDropdown(true)}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t("site.projectSearch.placeholder")}
           className="pl-9"
           autoComplete="off"
           autoFocus={autoFocus}
@@ -282,18 +285,18 @@ export function ProjectSearchInput({
                 <div className="p-4 text-center">
                   <div className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                     <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    Searching...
+                    {t("site.projectSearch.searching")}
                   </div>
                 </div>
               ) : searchResults.length === 0 ? (
                 <div className="p-4 text-center text-sm text-slate-600 dark:text-slate-400">
-                  No projects found
+                  {t("site.projectSearch.noResults")}
                 </div>
               ) : (
                 <div className="max-h-64 overflow-y-auto">
                   {searchResults[0]?.matchType === "nearby" && (
                     <div className="px-3 py-2 text-xs font-semibold text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/20 border-b border-slate-200 dark:border-slate-700">
-                      No exact match for that location — showing nearby projects instead.
+                      {t("site.projectSearch.nearbyNotice")}
                     </div>
                   )}
                   {searchResults.map((project) => (
@@ -309,7 +312,7 @@ export function ProjectSearchInput({
                           {project.name}
                           {project.matchType === "nearby" && (
                             <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                              Nearby
+                              {t("site.projectSearch.nearby")}
                             </span>
                           )}
                         </div>

@@ -1,16 +1,17 @@
 import type { PublicStageKey } from "@/lib/public-analytics/rules";
-import { publicAnalyticsStrings as S, format, formatCount } from "@/lib/public-analytics/strings";
+import { format, formatCount, type PublicAnalyticsStrings } from "@/lib/public-analytics/strings";
 
 import { STAGE_COLOR, STAGE_DISPLAY_ORDER } from "./stage-colors";
-
-const t = S.en;
 
 export function StageSwatch({ stage }: { stage: PublicStageKey }) {
   return <span aria-hidden="true" className="inline-block size-3.5 shrink-0 rounded-sm" style={{ background: STAGE_COLOR[stage] }} />;
 }
 
-/** One stacked bar of the five public stages, with a legend that carries the numbers. */
-export function StageBar({ rows }: { rows: Array<{ label: PublicStageKey; projects: number }> }) {
+/**
+ * One stacked bar of the five public stages, with a legend that carries the numbers.
+ * Rendered on the server, so it takes the strings for the visitor's language as a prop.
+ */
+export function StageBar({ rows, t }: { rows: Array<{ label: PublicStageKey; projects: number }>; t: PublicAnalyticsStrings }) {
   const total = rows.reduce((sum, row) => sum + row.projects, 0);
   const ordered = STAGE_DISPLAY_ORDER.map((stage) => rows.find((row) => row.label === stage) ?? { label: stage, projects: 0 });
 
@@ -37,7 +38,7 @@ export function StageBar({ rows }: { rows: Array<{ label: PublicStageKey; projec
                 <span className="font-medium">{t.stages[row.label]}</span>
                 <span className="text-pa-ink-2">
                   {" "}· {formatCount(row.projects)}
-                  {row.projects > 0 ? ` (${format(t.chart.outOf, { part: perHundred < 1 ? "less than 1" : perHundred })})` : ""}
+                  {row.projects > 0 ? ` (${format(t.chart.outOf, { part: perHundred < 1 ? t.chart.lessThanOne : perHundred })})` : ""}
                 </span>
               </span>
             </li>

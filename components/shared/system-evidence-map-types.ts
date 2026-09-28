@@ -1,4 +1,8 @@
 export type SystemEvidenceMediaType = "image" | "video";
+
+/** English fallbacks the parser and location label use; the map UI swaps them for translated text. */
+export const SYSTEM_EVIDENCE_NO_DESCRIPTION = "No description provided.";
+export const SYSTEM_EVIDENCE_NO_LOCATION = "Location not specified";
 export type SystemEvidenceSourceType = "issue" | "feedback";
 
 export type SystemEvidencePoint = {
@@ -128,7 +132,7 @@ export function parseSystemEvidenceResponse(payload: unknown): SystemEvidenceIss
       ticketNumber: asText(row.ticketNumber, "Unnumbered report"),
       category: asText(row.category ?? row.issueType, "Uncategorized"),
       status: asText(row.status, "pending").toLowerCase(),
-      description: asText(row.description ?? row.issueDescription, "No description provided."),
+      description: asText(row.description ?? row.issueDescription, SYSTEM_EVIDENCE_NO_DESCRIPTION),
       createdAt: parseDate(row.createdAt),
       location: {
         region: asText(location?.region ?? row.region),
@@ -157,5 +161,5 @@ export function getSystemEvidenceLocationLabel(issue: SystemEvidenceIssue) {
     issue.location.municipality,
     issue.location.province,
     issue.location.region,
-  ].filter(Boolean).join(", ") || "Location not specified";
+  ].filter(Boolean).join(", ") || SYSTEM_EVIDENCE_NO_LOCATION;
 }

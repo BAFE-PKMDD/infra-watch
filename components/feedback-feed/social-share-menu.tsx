@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { useTranslation } from "@/i18n";
 
 const FacebookIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -56,6 +57,7 @@ export function SocialShareMenu({
   text,
   className,
 }: SocialShareMenuProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const mounted = useSyncExternalStore(subscribe, () => true, () => false);
 
@@ -63,7 +65,7 @@ export function SocialShareMenu({
     ? (url ? (url.startsWith("http") ? url : `${window.location.origin}${url}`) : window.location.href)
     : "";
 
-  const shareText = text || title || "Check out this update on INFRA Watch";
+  const shareText = text || title || t("community.share.defaultText");
 
   const handleShareFacebook = () => {
     const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
@@ -101,7 +103,7 @@ export function SocialShareMenu({
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           console.error("Native share failed:", error);
-          toast.error("Failed to share");
+          toast.error(t("community.share.failed"));
         }
       }
     }
@@ -112,11 +114,11 @@ export function SocialShareMenu({
       try {
         await navigator.clipboard.writeText(shareUrl);
         setCopied(true);
-        toast.success("Link copied to clipboard!");
+        toast.success(t("community.common.linkCopiedToast"));
         setTimeout(() => setCopied(false), 2000);
       } catch (error) {
         console.error("Copy link failed:", error);
-        toast.error("Failed to copy link");
+        toast.error(t("community.common.copyLinkFailed"));
       }
     }
   };
@@ -130,10 +132,10 @@ export function SocialShareMenu({
           className ||
           "flex-1 flex items-center justify-center gap-2 py-2 px-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#1877F2]"
         }
-        aria-label="Share post"
+        aria-label={t("community.share.menuLabel")}
       >
         <Share2 className="w-4.5 h-4.5" />
-        <span>Share</span>
+        <span>{t("community.share.share")}</span>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
@@ -142,7 +144,7 @@ export function SocialShareMenu({
         className="w-56 p-1.5 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1526] z-[9999]"
       >
         <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-          Share to other platforms
+          {t("community.share.heading")}
         </div>
 
         {/* Facebook */}
@@ -152,7 +154,7 @@ export function SocialShareMenu({
         >
           <FacebookIcon className="w-4 h-4 text-[#1877F2]" />
           <span className="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200">
-            Share on Facebook
+            {t("community.share.shareOn", { platform: "Facebook" })}
           </span>
         </DropdownMenuItem>
 
@@ -163,7 +165,7 @@ export function SocialShareMenu({
         >
           <XTwitterIcon className="w-4 h-4 text-slate-900 dark:text-slate-100" />
           <span className="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200">
-            Share on X (Twitter)
+            {t("community.share.shareOn", { platform: "X (Twitter)" })}
           </span>
         </DropdownMenuItem>
 
@@ -174,7 +176,7 @@ export function SocialShareMenu({
         >
           <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
           <span className="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200">
-            Share on WhatsApp
+            {t("community.share.shareOn", { platform: "WhatsApp" })}
           </span>
         </DropdownMenuItem>
 
@@ -185,7 +187,7 @@ export function SocialShareMenu({
         >
           <LinkedinIcon className="w-4 h-4 text-[#0A66C2]" />
           <span className="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200">
-            Share on LinkedIn
+            {t("community.share.shareOn", { platform: "LinkedIn" })}
           </span>
         </DropdownMenuItem>
 
@@ -196,7 +198,7 @@ export function SocialShareMenu({
         >
           <TelegramIcon className="w-4 h-4 text-[#229ED9]" />
           <span className="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200">
-            Share on Telegram
+            {t("community.share.shareOn", { platform: "Telegram" })}
           </span>
         </DropdownMenuItem>
 
@@ -208,7 +210,7 @@ export function SocialShareMenu({
           >
             <Share2 className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             <span className="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200">
-              More options...
+              {t("community.share.moreOptions")}
             </span>
           </DropdownMenuItem>
         )}
@@ -224,14 +226,14 @@ export function SocialShareMenu({
             <>
               <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span className="text-xs sm:text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                Link copied!
+                {t("community.common.linkCopied")}
               </span>
             </>
           ) : (
             <>
               <LinkIcon className="w-4 h-4 text-slate-500" />
               <span className="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200">
-                Copy link
+                {t("community.common.copyLink")}
               </span>
             </>
           )}

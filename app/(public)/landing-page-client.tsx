@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 import type { InfraAnalyticsResult } from "@/actions/query/analytics.query";
 import { PublicPortfolioStatistics } from "@/components/public/public-portfolio-statistics";
 import { CitizenFeedbackSpotlight } from "@/components/public/citizen-feedback-spotlight";
@@ -32,30 +33,31 @@ export function LandingPageClient({
   feedbackHighlights?: FeedbackActivityItem[];
   provincesMap?: GeoFeatureCollection | null;
 }) {
+  const { t } = useTranslation();
   const programs = [
     {
       code: "AMEFSS",
       icon: Tractor,
       title: "Agricultural Machinery, Equipment and Facilities Support Services",
-      desc: "Provision of post-harvest facilities, grain dryers, storage warehouses, tractors, and sorting/processing equipment directly to farmer cooperatives to secure food supply chains.",
+      desc: t("landing.programs.amefss.description"),
       href: "/projects?program=amefip",
-      cta: "View AMEFSS Projects",
+      cta: t("landing.programs.amefss.cta"),
       topBar: "from-indigo-600 via-sky-500 to-indigo-600",
       medallion: "bg-indigo-50 text-primary dark:bg-indigo-950/60 dark:text-indigo-300",
       chip: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/60 dark:bg-indigo-950/50 dark:text-indigo-300",
-      btn: "w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold h-10 rounded-lg flex items-center justify-center",
+      btn: "w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold h-auto min-h-10 whitespace-normal py-2 text-center rounded-lg flex items-center justify-center",
     },
     {
       code: "INS",
       icon: Droplets,
       title: "Irrigation Network Services",
-      desc: "Rehabilitation and construction of diversion dams, concrete distribution canals, solar powered water pumps, and local irrigation systems supporting farmer fields.",
+      desc: t("landing.programs.ins.description"),
       href: "/projects?program=ins",
-      cta: "View INS Projects",
+      cta: t("landing.programs.ins.cta"),
       topBar: "from-indigo-600 via-sky-500 to-indigo-600",
       medallion: "bg-indigo-50 text-primary dark:bg-indigo-950/60 dark:text-indigo-300",
       chip: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/60 dark:bg-indigo-950/50 dark:text-indigo-300",
-      btn: "w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold h-10 rounded-lg flex items-center justify-center",
+      btn: "w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold h-auto min-h-10 whitespace-normal py-2 text-center rounded-lg flex items-center justify-center",
     },
   ];
 
@@ -67,7 +69,7 @@ export function LandingPageClient({
         <div className="absolute inset-0">
           <Image
             src="/hero/main-background.png"
-            alt="Infrastructure project corridor"
+            alt={t("landing.hero.backgroundAlt")}
             fill
             className="object-cover"
             priority
@@ -249,7 +251,7 @@ export function LandingPageClient({
                 >
                   <Image
                     src="/bagong-pilipinas-logo.png"
-                    alt="Bagong Pilipinas Seal"
+                    alt={t("landing.hero.sealAlt")}
                     width={300}
                     height={120}
                     className="h-14 w-auto sm:h-16 md:h-24 lg:h-28"
@@ -280,7 +282,7 @@ export function LandingPageClient({
                 >
                   <Image
                     src="/bafe-logo.png"
-                    alt="DA-BAFE Logo"
+                    alt={t("landing.hero.bafeLogoAlt")}
                     width={300}
                     height={120}
                     className="h-14 w-auto sm:h-16 md:h-24 lg:h-28"
@@ -350,7 +352,7 @@ export function LandingPageClient({
                 >
                   <div className="rounded bg-amber-400 px-4 py-2.5 shadow-md dark:bg-blue-600 sm:px-6 md:px-8 md:py-3">
                     <h2 className="text-xs font-bold uppercase leading-relaxed tracking-wide text-blue-950 dark:text-white sm:text-base md:text-lg lg:text-xl">
-                      Agricultural and Fisheries Infrastructure Projects
+                      {t("landing.hero.subtitle")}
                     </h2>
                   </div>
                 </motion.div>
@@ -397,7 +399,7 @@ export function LandingPageClient({
                     href="/projects"
                     className="group inline-flex w-[min(100%,20rem)] items-center justify-center gap-2 rounded-lg bg-white px-8 py-3.5 text-sm font-bold text-blue-950 shadow-xl transition-all duration-200 hover:bg-gray-50 hover:shadow-2xl dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500 sm:w-auto sm:min-w-[200px] md:px-10 md:py-4 md:text-base"
                   >
-                    <span>Explore Projects</span>
+                    <span>{t("landing.hero.explore")}</span>
                     <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </motion.div>
@@ -414,7 +416,7 @@ export function LandingPageClient({
                     href="/report-issue"
                     className="group inline-flex w-[min(100%,20rem)] items-center justify-center gap-2 rounded-lg border border-white/30 bg-white/10 px-8 py-3.5 text-sm font-bold text-white shadow-lg backdrop-blur-md transition-all duration-200 hover:bg-white/20 hover:shadow-xl sm:w-auto sm:min-w-[200px] md:px-10 md:py-4 md:text-base"
                   >
-                    <span>E-Reports</span>
+                    <span>{t("landing.hero.eReports")}</span>
                     <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform opacity-70" />
                   </Link>
                 </motion.div>
@@ -443,9 +445,9 @@ export function LandingPageClient({
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         >
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Scope & Coverage</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">{t("landing.programs.title")}</h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            INFRA Watch gives the public a direct way to track and verify agricultural and fisheries infrastructure projects under AMEFIP, from budget allocation to on-the-ground progress.
+            {t("landing.programs.description")}
           </p>
         </motion.div>
 

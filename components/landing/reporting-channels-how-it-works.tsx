@@ -5,66 +5,50 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, FileText, MessageSquareText, Rss, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
-
-type ChannelStep = {
-  title: string;
-  desc: string;
-};
 
 type Channel = {
   id: "citizen-feed" | "online-report" | "sms-grievance";
+  /** Key under landing.channels for the purpose, best-for, CTA and step copy. */
+  key: "citizenFeed" | "onlineReport" | "smsGrievance";
+  /** Channel name; a product name, so it stays the same in every language. */
   label: string;
   icon: LucideIcon;
-  purpose: string;
-  bestFor: string;
-  steps: ChannelStep[];
-  cta: { label: string; href: string };
+  /** Keys under landing.channels.<key>.steps, in display order. */
+  steps: string[];
+  href: string;
 };
 
 const CHANNELS: Channel[] = [
   {
     id: "citizen-feed",
+    key: "citizenFeed",
     label: "Citizen Feed",
     icon: Rss,
-    purpose: "A public feed for quick, visible feedback that other citizens and moderators can see right away.",
-    bestFor: "Best for a rating, a geotagged photo, or an observation on a project you're currently looking at.",
-    steps: [
-      { title: "Find the project", desc: "Search or select the project you want to comment on." },
-      { title: "Post your observation", desc: "Rate it, tag a category, and attach geotagged photos or video." },
-      { title: "Goes public", desc: "Your post appears on the feed for other citizens and moderators to see." },
-    ],
-    cta: { label: "Open Citizen Feed", href: "/citizen-feed" },
+    steps: ["find", "post", "public"],
+    href: "/citizen-feed",
   },
   {
     id: "online-report",
+    key: "onlineReport",
     label: "Online E-Report",
     icon: FileText,
-    purpose: "A structured form for a specific problem that needs a written record and a moderator response.",
-    bestFor: "Best for delays, quality defects, safety hazards, or anything that needs formal follow-up.",
-    steps: [
-      { title: "Identify the project", desc: "Search for it by name, or describe it if you don't know which one it is." },
-      { title: "Describe the issue", desc: "Select an issue type, add details, and upload evidence." },
-      { title: "Add contact info & submit", desc: "Confirm your details and review before submitting for a tracked ticket." },
-    ],
-    cta: { label: "Open Online E-Report", href: "/report-issue/new" },
+    steps: ["identify", "describe", "submit"],
+    href: "/report-issue/new",
   },
   {
     id: "sms-grievance",
+    key: "smsGrievance",
     label: "SMS Grievance",
     icon: MessageSquareText,
-    purpose: "A text-message channel for reporting without data or an internet connection.",
-    bestFor: "Best for areas with weak signal, or citizens without a smartphone or mobile data.",
-    steps: [
-      { title: "Send the SMS", desc: "Text the official number using the required format: project type, name (optional), age, gender, location, concern." },
-      { title: "Get a ticket number", desc: "An automatic reply confirms your report and gives you a ticket number to track." },
-      { title: "Moderator review", desc: "Government moderators review submitted grievances and follow up." },
-    ],
-    cta: { label: "View SMS Instructions", href: "/report-issue/sms" },
+    steps: ["send", "ticket", "review"],
+    href: "/report-issue/sms",
   },
 ];
 
 export function ReportingChannelsHowItWorks() {
+  const { t } = useTranslation();
   const [activeId, setActiveId] = useState<Channel["id"]>(CHANNELS[0].id);
   const reduceMotion = useReducedMotion();
   const active = CHANNELS.find((channel) => channel.id === activeId) ?? CHANNELS[0];
@@ -81,17 +65,16 @@ export function ReportingChannelsHowItWorks() {
             id="reporting-channels-title"
             className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl"
           >
-            How Each Reporting Channel Works
+            {t("landing.channels.title")}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            Citizen Feed, Online E-Report, and SMS Grievance serve different purposes. Pick the one that fits what
-            you need to say.
+            {t("landing.channels.description")}
           </p>
         </div>
 
         <div
           role="tablist"
-          aria-label="Reporting channel"
+          aria-label={t("landing.channels.tablistLabel")}
           className="mx-auto mt-8 flex max-w-xl flex-col gap-2 sm:flex-row sm:rounded-xl sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-1 dark:sm:border-slate-800 dark:sm:bg-slate-900"
         >
           {CHANNELS.map((channel) => {
@@ -135,12 +118,14 @@ export function ReportingChannelsHowItWorks() {
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-primary bg-white text-primary dark:bg-slate-950 dark:text-indigo-300">
                   <active.icon className="h-5 w-5" aria-hidden />
                 </div>
-                <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{active.purpose}</p>
-                <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{active.bestFor}</p>
+                <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{t(`landing.channels.${active.key}.purpose`)}</p>
+                <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  {t(`landing.channels.${active.key}.bestFor`)}
+                </p>
               </div>
-              <Button asChild className="min-h-11 shrink-0 px-5">
-                <Link href={active.cta.href}>
-                  {active.cta.label}
+              <Button asChild className="h-auto min-h-11 shrink-0 whitespace-normal px-5 py-2 text-center">
+                <Link href={active.href}>
+                  {t(`landing.channels.${active.key}.cta`)}
                   <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
                 </Link>
               </Button>
@@ -148,13 +133,17 @@ export function ReportingChannelsHowItWorks() {
 
             <ol className="mt-8 grid gap-6 sm:grid-cols-3">
               {active.steps.map((step, index) => (
-                <li key={step.title} className="flex gap-3">
+                <li key={step} className="flex gap-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 font-mono text-xs font-bold text-white dark:bg-indigo-500">
                     {index + 1}
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{step.title}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{step.desc}</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {t(`landing.channels.${active.key}.steps.${step}.title`)}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                      {t(`landing.channels.${active.key}.steps.${step}.description`)}
+                    </p>
                   </div>
                 </li>
               ))}

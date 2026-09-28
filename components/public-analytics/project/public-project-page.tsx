@@ -2,8 +2,9 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 import { ProjectFeedback } from "@/components/projects/project-feedback";
+import { INDIVIDUAL_FARMER, OTHER_PROGRAMS } from "@/lib/public-analytics/rules";
 import type { PublicProjectDetail } from "@/lib/public-analytics/service";
-import { publicAnalyticsStrings as S, format, formatPesos, formatPublicDate } from "@/lib/public-analytics/strings";
+import { format, formatPesos, formatPublicDate, type PublicAnalyticsStrings } from "@/lib/public-analytics/strings";
 
 import { StageSwatch } from "../stage-bar";
 import { LocationMapLoader } from "./location-map-loader";
@@ -11,13 +12,11 @@ import { PhotoGallery } from "./photo-gallery";
 import { PlannedVsActual } from "./planned-vs-actual";
 import { ProjectViewTracker } from "./view-tracker";
 
-const t = S.en;
-
-function Fact({ label, value }: { label: string; value: string | null }) {
+function Fact({ label, value, notRecorded }: { label: string; value: string | null; notRecorded: string }) {
   return (
     <div className="border-t border-pa-hair py-3">
       <dt className="text-sm text-pa-ink-2">{label}</dt>
-      <dd className="mt-0.5 text-base text-pa-ink">{value ?? <span className="text-pa-ink-2">{t.project.notRecorded}</span>}</dd>
+      <dd className="mt-0.5 text-base text-pa-ink">{value ?? <span className="text-pa-ink-2">{notRecorded}</span>}</dd>
     </div>
   );
 }
@@ -31,12 +30,15 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+/** Server-rendered project page; `t` holds the strings for the visitor's language. */
 export function PublicProjectPage({
   project,
+  t,
   highlightFeedbackId,
   highlightCommentId,
 }: {
   project: PublicProjectDetail;
+  t: PublicAnalyticsStrings;
   highlightFeedbackId?: string;
   highlightCommentId?: string;
 }) {
@@ -49,6 +51,18 @@ export function PublicProjectPage({
     { key: "finished", label: t.project.timeline.finished, date: project.timeline.finished },
     { key: "handedOver", label: t.project.timeline.handedOver, date: project.timeline.handedOver },
   ].flatMap((step) => (step.date ? [{ key: step.key, label: step.label as string, date: step.date }] : []));
+  const facts: Array<{ label: string; value: string | null }> = [
+    { label: t.project.type, value: project.projectType },
+    { label: t.project.location, value: place },
+    // The data layer uses fixed English labels for unnamed individual beneficiaries and "Other programs".
+    { label: t.project.beneficiary, value: project.beneficiary === INDIVIDUAL_FARMER ? t.project.individualFarmer : project.beneficiary },
+    { label: t.project.budget, value: project.budget !== null ? formatPesos(project.budget) : null },
+    { label: t.project.contractBudget, value: project.contractBudget !== null ? formatPesos(project.contractBudget) : null },
+    { label: t.project.contractor, value: project.contractor },
+    { label: t.project.budgetYear, value: project.year ? String(project.year) : null },
+    { label: t.project.program, value: project.program === OTHER_PROGRAMS ? t.program.other : project.program },
+    ...(project.commodities.length > 0 ? [{ label: t.project.commodities, value: project.commodities.join(", ") }] : []),
+  ];
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
@@ -74,15 +88,7 @@ export function PublicProjectPage({
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title={t.project.stage}>
           <dl>
-            <Fact label={t.project.type} value={project.projectType} />
-            <Fact label={t.project.location} value={place} />
-            <Fact label={t.project.beneficiary} value={project.beneficiary} />
-            <Fact label={t.project.budget} value={project.budget !== null ? formatPesos(project.budget) : null} />
-            <Fact label={t.project.contractBudget} value={project.contractBudget !== null ? formatPesos(project.contractBudget) : null} />
-            <Fact label={t.project.contractor} value={project.contractor} />
-            <Fact label={t.project.budgetYear} value={project.year ? String(project.year) : null} />
-            <Fact label={t.project.program} value={project.program} />
-            {project.commodities.length > 0 ? <Fact label={t.project.commodities} value={project.commodities.join(", ")} /> : null}
+            {facts.map((fact) => <Fact key={fact.label} label={fact.label} value={fact.value} notRecorded={t.project.notRecorded} />)}
           </dl>
         </Card>
 

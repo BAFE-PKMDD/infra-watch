@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 
+import { categoryText, issueTypeValueText } from "@/components/report-issue/issue-type-picker";
 import { ReportingMethods } from "@/components/report-issue/reporting-methods";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useTranslation } from "@/i18n";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -70,24 +72,21 @@ type IssuesResponse = {
   };
 };
 
-const statusConfig: Record<IssueStatus, { label: string; color: string; icon: typeof Clock }> = {
+// Labels are read as t("eReport.status.<status>").
+const statusConfig: Record<IssueStatus, { color: string; icon: typeof Clock }> = {
   pending: {
-    label: "Pending Review",
     color: "border-amber-200 bg-amber-50 text-amber-700",
     icon: Clock,
   },
   reviewing: {
-    label: "Under Review",
     color: "border-blue-200 bg-blue-50 text-blue-700",
     icon: AlertCircle,
   },
   resolved: {
-    label: "Resolved",
     color: "border-emerald-200 bg-emerald-50 text-emerald-700",
     icon: CheckCircle2,
   },
   closed: {
-    label: "Closed",
     color: "border-slate-200 bg-slate-50 text-slate-700",
     icon: XCircle,
   },
@@ -107,6 +106,7 @@ async function fetchIssues(params: URLSearchParams) {
 }
 
 export default function IssuesPage() {
+  const { t } = useTranslation();
   const smsPrototypeEnabled = process.env.NODE_ENV !== "production";
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<IssueStatus | "all">("all");
@@ -144,7 +144,7 @@ export default function IssuesPage() {
       <section className="relative h-[280px] overflow-hidden bg-slate-950">
         <Image
           src="/hero/main-background.png"
-          alt="Infrastructure project"
+          alt={t("eReport.list.heroAlt")}
           fill
           className="object-cover opacity-45"
           priority
@@ -153,14 +153,14 @@ export default function IssuesPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-slate-950/90" />
         <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-center px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber-300">Community Reporting</p>
-            <h1 className="mb-3 text-3xl font-bold text-white md:text-4xl">Reported Issues</h1>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber-300">{t("eReport.list.eyebrow")}</p>
+            <h1 className="mb-3 text-3xl font-bold text-white md:text-4xl">{t("eReport.list.title")}</h1>
             <p className="max-w-3xl text-sm text-slate-100 md:text-base">
-              Track and monitor issues reported by citizens across INFRA projects
+              {t("eReport.list.description")}
             </p>
             <Button asChild className="mt-5 min-h-11 bg-emerald-600 px-4 text-white hover:bg-emerald-700">
               <Link href={smsPrototypeEnabled ? "#reporting-methods" : "/report-issue/new"}>
-                {smsPrototypeEnabled ? "Choose reporting method" : "Report new issue"}
+                {smsPrototypeEnabled ? t("eReport.list.chooseMethod") : t("eReport.list.reportNew")}
               </Link>
             </Button>
           </motion.div>
@@ -176,7 +176,7 @@ export default function IssuesPage() {
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <Input
                 type="text"
-                placeholder="Search by description or location..."
+                placeholder={t("eReport.list.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(event) => {
                   setSearchQuery(event.target.value);
@@ -220,15 +220,15 @@ export default function IssuesPage() {
                 <SelectTrigger className="h-10 w-full border-slate-200 bg-white text-slate-900 sm:w-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                   <div className="flex items-center gap-2">
                     <Filter className="size-3.5 text-slate-400" />
-                    <SelectValue />
+                    <SelectValue>{(value: string) => t(`eReport.status.${value}`)}</SelectValue>
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending Review</SelectItem>
-                  <SelectItem value="reviewing">Under Review</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="all">{t("eReport.status.all")}</SelectItem>
+                  <SelectItem value="pending">{t("eReport.status.pending")}</SelectItem>
+                  <SelectItem value="reviewing">{t("eReport.status.reviewing")}</SelectItem>
+                  <SelectItem value="resolved">{t("eReport.status.resolved")}</SelectItem>
+                  <SelectItem value="closed">{t("eReport.status.closed")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -252,8 +252,8 @@ export default function IssuesPage() {
               <div className="mb-6 flex size-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                 <Search className="size-10 text-slate-400" />
               </div>
-              <h3 className="mb-2 text-xl font-bold text-slate-950 dark:text-white">No reported issues found</h3>
-              <p className="mx-auto max-w-md text-center text-slate-500 dark:text-slate-400">Try changing the search, date range, or status filter.</p>
+              <h3 className="mb-2 text-xl font-bold text-slate-950 dark:text-white">{t("eReport.list.emptyTitle")}</h3>
+              <p className="mx-auto max-w-md text-center text-slate-500 dark:text-slate-400">{t("eReport.list.emptyBody")}</p>
             </div>
           ) : (
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -261,11 +261,11 @@ export default function IssuesPage() {
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/70">
                     <tr>
-                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">Status</th>
-                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">Date Reported</th>
-                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">Issue Details</th>
-                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">Location</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">Action</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">{t("eReport.list.columns.status")}</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">{t("eReport.list.columns.dateReported")}</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">{t("eReport.list.columns.details")}</th>
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">{t("eReport.list.columns.location")}</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">{t("eReport.list.columns.action")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -286,7 +286,11 @@ export default function IssuesPage() {
             className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-200 pt-6 sm:flex-row dark:border-slate-800"
           >
             <div className="order-2 text-sm text-slate-600 sm:order-1 dark:text-slate-400">
-              Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+              {t("eReport.list.showing", {
+                from: (pagination.page - 1) * pagination.limit + 1,
+                to: Math.min(pagination.page * pagination.limit, pagination.total),
+                total: pagination.total,
+              })}
             </div>
 
             <div className="order-1 flex items-center gap-2 sm:order-2">
@@ -325,6 +329,7 @@ export default function IssuesPage() {
 }
 
 const IssueRow = memo(({ issue }: { issue: IssueItem }) => {
+  const { t } = useTranslation();
   const status = normalizeIssueStatus(issue);
   const StatusIcon = statusConfig[status].icon;
 
@@ -333,7 +338,7 @@ const IssueRow = memo(({ issue }: { issue: IssueItem }) => {
       <td className="whitespace-nowrap px-6 py-4">
         <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${statusConfig[status].color}`}>
           <StatusIcon className="size-3.5" />
-          {statusConfig[status].label}
+          {t(`eReport.status.${status}`)}
         </span>
       </td>
       <td className="whitespace-nowrap px-6 py-4 text-slate-600 dark:text-slate-400">
@@ -348,10 +353,10 @@ const IssueRow = memo(({ issue }: { issue: IssueItem }) => {
           <div className="flex flex-wrap items-center gap-1.5">
             {issue.category && (
               <span className="inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                {issue.category}
+                {categoryText(issue.category, t)}
               </span>
             )}
-            <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-500">{issue.issueType}</span>
+            <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-500">{issueTypeValueText(issue.issueType, t)}</span>
           </div>
         </div>
       </td>
@@ -359,7 +364,7 @@ const IssueRow = memo(({ issue }: { issue: IssueItem }) => {
         <div className="flex items-start gap-1.5">
           <MapPin className="mt-0.5 size-4 shrink-0 text-slate-400 dark:text-slate-500" />
           <div className="flex flex-col">
-            <span className="font-medium">{[issue.barangay, issue.city].filter(Boolean).join(", ") || "Not provided"}</span>
+            <span className="font-medium">{[issue.barangay, issue.city].filter(Boolean).join(", ") || t("eReport.common.notProvided")}</span>
             {issue.farmOperation && (
               <span className="text-xs text-slate-500 dark:text-slate-400">{issue.farmOperation}</span>
             )}
@@ -368,7 +373,7 @@ const IssueRow = memo(({ issue }: { issue: IssueItem }) => {
       </td>
       <td className="whitespace-nowrap px-6 py-4 text-right">
         <Link href={`/report-issue/${issue.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300">
-          Open report
+          {t("eReport.list.openReport")}
           <ArrowUpRight className="size-3.5" />
         </Link>
       </td>

@@ -32,17 +32,24 @@ import {
 } from "@/components/shared/evidence-basemap";
 import type { EvidenceMapTrack } from "@/components/shared/leaflet-evidence-map";
 import type { SystemEvidenceIssue } from "@/components/shared/system-evidence-map-types";
+import { useTranslation } from "@/i18n";
+import { translate } from "@/i18n/translate";
 import { interpolateGeoTrackPoint } from "@/lib/geo-track-playback";
+
+function RouteMapLoading() {
+  const { t } = useTranslation();
+  return (
+    <div className="grid h-full min-h-0 place-items-center bg-slate-100 text-sm font-bold text-slate-500">
+      {t("site.splitView.preparingMap")}
+    </div>
+  );
+}
 
 const LeafletEvidenceMap = dynamic(
   () => import("@/components/shared/leaflet-evidence-map"),
   {
     ssr: false,
-    loading: () => (
-      <div className="grid h-full min-h-0 place-items-center bg-slate-100 text-sm font-bold text-slate-500">
-        Preparing synchronized route map&hellip;
-      </div>
-    ),
+    loading: () => <RouteMapLoading />,
   },
 );
 
@@ -75,6 +82,7 @@ export function GeoVideoSplitViewer({
   onBasemapChange,
   onClose,
 }: GeoVideoSplitViewerProps) {
+  const { t, language } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const initialPositionAppliedRef = useRef(false);
@@ -92,10 +100,10 @@ export function GeoVideoSplitViewer({
   const tracks = useMemo<EvidenceMapTrack[]>(
     () => [{
       id: `${issue.issueId}-split-route`,
-      label: `${issue.ticketNumber} GeoVideo route`,
+      label: translate(language, "site.splitView.trackLabel", { ticket: issue.ticketNumber }),
       points: issue.geoVideoTrack,
     }],
-    [issue.geoVideoTrack, issue.issueId, issue.ticketNumber],
+    [issue.geoVideoTrack, issue.issueId, issue.ticketNumber, language],
   );
   const isTimestampAligned = issue.geoVideoTrack.length > 1
     && issue.geoVideoTrack.every(
@@ -184,15 +192,15 @@ export function GeoVideoSplitViewer({
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">
                   <DialogTitle className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">
-                    Synchronized GeoVideo Review
+                    {t("site.splitView.title")}
                   </DialogTitle>
                   <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.13em] text-emerald-300 sm:inline-flex">
                     <span className="size-1.5 rounded-full bg-emerald-400" />
-                    Synced
+                    {t("site.splitView.synced")}
                   </span>
                 </div>
                 <DialogDescription className="mt-0.5 truncate text-[11px] text-slate-400 sm:text-xs">
-                  {issue.ticketNumber} &middot; The amber marker follows the video timeline.
+                  {issue.ticketNumber} &middot; {t("site.splitView.description")}
                 </DialogDescription>
               </div>
             </div>
@@ -203,42 +211,42 @@ export function GeoVideoSplitViewer({
                   type="button"
                   onClick={toggleFullscreen}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-xs font-bold text-slate-200 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                  aria-label={isFullscreen ? "Exit browser fullscreen" : "Enter browser fullscreen"}
-                  title={isFullscreen ? "Exit browser fullscreen" : "Enter browser fullscreen"}
+                  aria-label={t(isFullscreen ? "site.splitView.exitFullscreenLabel" : "site.splitView.enterFullscreenLabel")}
+                  title={t(isFullscreen ? "site.splitView.exitFullscreenLabel" : "site.splitView.enterFullscreenLabel")}
                 >
                   {isFullscreen
                     ? <Minimize2 className="size-4" aria-hidden="true" />
                     : <Maximize2 className="size-4" aria-hidden="true" />}
-                  <span className="hidden lg:inline">{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</span>
+                  <span className="hidden lg:inline">{t(isFullscreen ? "site.splitView.exitFullscreen" : "site.splitView.fullscreen")}</span>
                 </button>
               ) : null}
               <button
                 type="button"
                 onClick={handleClose}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-400 px-3 text-xs font-extrabold text-slate-950 transition-colors hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                aria-label="Exit split view"
+                aria-label={t("site.splitView.exitSplitView")}
               >
                 <X className="size-4" aria-hidden="true" />
-                <span className="hidden sm:inline">Exit split view</span>
+                <span className="hidden sm:inline">{t("site.splitView.exitSplitView")}</span>
               </button>
             </div>
           </header>
 
           <div className="grid min-h-0 flex-1 grid-rows-2 md:grid-cols-2 md:grid-rows-1">
             <section
-              aria-label="GeoVideo playback"
+              aria-label={t("site.splitView.playback")}
               className="flex min-h-0 min-w-0 flex-col border-b border-white/10 bg-black md:border-r md:border-b-0"
             >
               <div className="flex h-10 shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-slate-950/95 px-4">
                 <span className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-300">
                   <Video className="size-3.5 text-amber-300" aria-hidden="true" />
-                  GeoVideo playback
+                  {t("site.splitView.playback")}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-400">
                   {isTimestampAligned
                     ? <Clock3 className="size-3 text-amber-300" aria-hidden="true" />
                     : <Route className="size-3 text-amber-300" aria-hidden="true" />}
-                  {isTimestampAligned ? "Metadata timing" : "Proportional timing"}
+                  {t(isTimestampAligned ? "site.splitView.metadataTiming" : "site.splitView.proportionalTiming")}
                 </span>
               </div>
 
@@ -251,7 +259,7 @@ export function GeoVideoSplitViewer({
                   muted
                   playsInline
                   preload="metadata"
-                  aria-label={`GeoVideo playback for ${issue.ticketNumber}`}
+                  aria-label={t("site.splitView.videoLabel", { ticket: issue.ticketNumber })}
                   className="h-full w-full bg-black object-contain"
                   onLoadedMetadata={handleLoadedMetadata}
                   onDurationChange={reportPlayback}
@@ -262,7 +270,7 @@ export function GeoVideoSplitViewer({
                   onPause={reportPlayback}
                   onEnded={reportPlayback}
                 >
-                  Your browser does not support embedded video playback.
+                  {t("site.splitView.videoUnsupported")}
                 </video>
               </div>
 
@@ -272,7 +280,7 @@ export function GeoVideoSplitViewer({
                   <span className="truncate font-mono">
                     {activePoint
                       ? `${activePoint.lat.toFixed(6)}, ${activePoint.lon.toFixed(6)}`
-                      : "Waiting for location"}
+                      : t("site.splitView.waitingForLocation")}
                   </span>
                 </span>
                 <span className="shrink-0 font-mono text-slate-400">
@@ -282,7 +290,7 @@ export function GeoVideoSplitViewer({
             </section>
 
             <section
-              aria-label="Synchronized route map"
+              aria-label={t("site.splitView.routeMap")}
               className="relative min-h-0 min-w-0 overflow-hidden bg-slate-200"
             >
               <LeafletEvidenceMap
@@ -296,9 +304,9 @@ export function GeoVideoSplitViewer({
 
               <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between gap-3 p-3 sm:p-4">
                 <div className="rounded-xl border border-white/60 bg-white/90 px-3 py-2 text-slate-900 shadow-lg shadow-slate-900/10 backdrop-blur-md">
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-slate-500">Synchronized route map</p>
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-slate-500">{t("site.splitView.routeMap")}</p>
                   <p className="mt-0.5 text-xs font-bold text-slate-900">
-                    {issue.geoVideoTrack.length} GPS point{issue.geoVideoTrack.length === 1 ? "" : "s"}
+                    {t(issue.geoVideoTrack.length === 1 ? "site.splitView.gpsPoints.one" : "site.splitView.gpsPoints.other", { count: issue.geoVideoTrack.length })}
                   </p>
                 </div>
 
@@ -312,16 +320,16 @@ export function GeoVideoSplitViewer({
                     type="button"
                     onClick={() => setFitRequestKey((key) => key + 1)}
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/60 bg-white/95 px-3 text-xs font-extrabold text-slate-800 shadow-lg shadow-slate-900/10 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-                    aria-label="Fit the complete GeoVideo route on the map"
+                    aria-label={t("site.splitView.fitRouteLabel")}
                   >
                     <Route className="size-4 text-sky-700" aria-hidden="true" />
-                    <span className="hidden sm:inline">Fit route</span>
+                    <span className="hidden sm:inline">{t("site.splitView.fitRoute")}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setFollowPin((value) => !value)}
                     aria-pressed={followPin}
-                    aria-label={followPin ? "Disable follow pin" : "Enable follow pin"}
+                    aria-label={t(followPin ? "site.splitView.disableFollow" : "site.splitView.enableFollow")}
                     className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold shadow-lg shadow-slate-900/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                       followPin
                         ? "border-amber-300 bg-amber-400 text-slate-950 hover:bg-amber-300"
@@ -329,7 +337,7 @@ export function GeoVideoSplitViewer({
                     }`}
                   >
                     <LocateFixed className="size-4" aria-hidden="true" />
-                    <span className="hidden sm:inline">Follow pin</span>
+                    <span className="hidden sm:inline">{t("site.splitView.followPin")}</span>
                   </button>
                 </div>
               </div>

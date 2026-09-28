@@ -4,10 +4,12 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useTranslation } from "@/i18n";
 import type { FeedbackActivityItem } from "@/types/activity-feed.types";
 import { CitizenFeedbackBubbles } from "./citizen-feedback-bubbles";
 
 export function CitizenFeedbackSpotlight({ items }: { items: FeedbackActivityItem[] }) {
+  const { t } = useTranslation();
   const usable = useMemo(
     () => items.filter((item) => item.comment && item.comment.trim().length > 0),
     [items],
@@ -26,10 +28,10 @@ export function CitizenFeedbackSpotlight({ items }: { items: FeedbackActivityIte
       >
 
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-          Reported by Citizens
+          {t("landing.feedback.title")}
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-          Comments submitted by citizens on monitored projects, pulled directly from the Citizen Feed.
+          {t("landing.feedback.description")}
         </p>
       </motion.div>
 
@@ -48,7 +50,7 @@ export function CitizenFeedbackSpotlight({ items }: { items: FeedbackActivityIte
           href="/citizen-feed"
           className="inline-flex h-11 items-center gap-2 rounded-md px-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-indigo-300"
         >
-          <span>View Citizen Feed</span>
+          <span>{t("landing.feedback.viewFeed")}</span>
           <ArrowRight className="h-4 w-4" aria-hidden />
         </Link>
       </div>

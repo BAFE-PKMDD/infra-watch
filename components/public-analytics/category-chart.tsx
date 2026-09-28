@@ -3,11 +3,10 @@
 import { useState } from "react";
 
 import type { FacilityCategoryKey } from "@/lib/public-analytics/rules";
-import { publicAnalyticsStrings as S, format, formatCount } from "@/lib/public-analytics/strings";
+import { format, formatCount } from "@/lib/public-analytics/strings";
 
 import { DataTable, HorizontalBars, MeasureToggle, Section, type Measure } from "./chart-card";
-
-const t = S.en;
+import { usePublicAnalyticsStrings } from "./use-strings";
 
 type CategoryRow = {
   label: FacilityCategoryKey;
@@ -17,6 +16,7 @@ type CategoryRow = {
 };
 
 export function CategoryChart({ rows }: { rows: CategoryRow[] }) {
+  const t = usePublicAnalyticsStrings();
   const [measure, setMeasure] = useState<Measure>("projects");
   const [selected, setSelected] = useState<FacilityCategoryKey | null>(null);
   const chartRows = rows.map((row) => ({ key: row.label, label: t.categories[row.label], projects: row.projects, pesos: row.pesos }));

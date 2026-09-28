@@ -5,12 +5,11 @@ import { useEffect, useId, useState } from "react";
 
 import type { ListSortKey } from "@/lib/public-analytics/aggregate";
 import type { PublicStageKey } from "@/lib/public-analytics/rules";
-import { publicAnalyticsStrings as S, format, formatCount, formatPesos } from "@/lib/public-analytics/strings";
+import { format, formatCount, formatPesos } from "@/lib/public-analytics/strings";
 
 import { Section } from "./chart-card";
 import { StageSwatch } from "./stage-bar";
-
-const t = S.en;
+import { usePublicAnalyticsStrings } from "./use-strings";
 
 type Row = {
   id: string;
@@ -37,6 +36,7 @@ const COLUMNS: Array<{ key: ListSortKey; numeric?: boolean }> = [
 ];
 
 export function ProjectList({ query }: { query: string }) {
+  const t = usePublicAnalyticsStrings();
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [sort, setSort] = useState<{ key: ListSortKey; direction: "asc" | "desc" }>({ key: "year", direction: "desc" });

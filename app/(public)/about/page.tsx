@@ -23,7 +23,7 @@ export default function AboutPage() {
         <div className="absolute inset-0">
           <Image
             src="/irrigation.png"
-            alt="About Infra Watch"
+            alt={t("about.heroImageAlt")}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover opacity-60 dark:opacity-10 contrast-[1.05] transition-opacity duration-300"
@@ -93,7 +93,7 @@ export default function AboutPage() {
               <div className="relative w-14 h-14 flex-shrink-0">
                 <Image
                   src="/bafe-logo.png"
-                  alt="BAFE Seal"
+                  alt={t("about.sealAlt")}
                   fill
                   sizes="56px"
                   className="object-contain"
@@ -146,7 +146,7 @@ export default function AboutPage() {
             <div className="relative w-12 h-12 flex-shrink-0">
               <Image
                 src="/bafe-logo.png"
-                alt="BAFE Seal"
+                alt={t("about.sealAlt")}
                 fill
                 sizes="48px"
                 className="object-contain"
@@ -154,10 +154,10 @@ export default function AboutPage() {
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                Do you want to know more about BAFE?
+                {t("about.bafeSite.title")}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5">
-                Please check our official website for agency announcements, program updates, and engineering standards.
+                {t("about.bafeSite.desc")}
               </p>
             </div>
           </div>
@@ -167,7 +167,7 @@ export default function AboutPage() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all transform active:scale-95 whitespace-nowrap self-start sm:self-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
           >
-            <span>Visit BAFE Website</span>
+            <span>{t("about.bafeSite.cta")}</span>
             <ExternalLink className="w-4 h-4" />
           </a>
         </div>
@@ -175,10 +175,10 @@ export default function AboutPage() {
         {/* Reference Publications Section Header */}
         <div className="pt-2">
           <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-            Official Publications & Reference Guidelines
+            {t("about.publications.title")}
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Access statutory frameworks, network plans, and implementation guidebooks issued by DA-BAFE.
+            {t("about.publications.desc")}
           </p>
         </div>
 
@@ -194,21 +194,21 @@ export default function AboutPage() {
         {/* CTA Section */}
         <div className="rounded-xl bg-white border border-slate-200 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30">
           <div>
-            <h3 className="text-xl font-semibold mb-1 text-slate-900 dark:text-white">Ready to report?</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-300">Join other citizens in monitoring infrastructure in your area.</p>
+            <h3 className="text-xl font-semibold mb-1 text-slate-900 dark:text-white">{t("about.cta.title")}</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300">{t("about.cta.desc")}</p>
           </div>
           <div className="flex gap-3">
             <Link
               href="/report-issue"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 transition-colors shadow-sm"
             >
-              Start Reporting
+              {t("about.cta.report")}
             </Link>
             <Link
               href="/projects"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition-colors dark:border-[#1e3a5f]/40 dark:text-slate-300 dark:hover:bg-[#13233c]/50"
             >
-              View Projects
+              {t("about.cta.projects")}
             </Link>
           </div>
         </div>

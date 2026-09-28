@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Cookie, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { useTranslation } from "@/i18n";
 
 const CONSENT_STORAGE_KEY = "cookie_consent";
 
@@ -41,6 +42,7 @@ function storeConsent(analytics: boolean) {
 }
 
 export function CookieConsentBanner() {
+  const { t } = useTranslation();
   const storedConsent = useSyncExternalStore(
     subscribeToStorage,
     getStoredConsentSnapshot,
@@ -63,7 +65,7 @@ export function CookieConsentBanner() {
   return (
     <div
       role="region"
-      aria-label="Cookie preferences"
+      aria-label={t("site.cookies.regionLabel")}
       className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.08)] dark:border-slate-800 dark:bg-slate-950"
     >
       <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6">
@@ -73,43 +75,42 @@ export function CookieConsentBanner() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Cookie Preferences</h2>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">{t("site.cookies.title")}</h2>
               <button
                 type="button"
                 onClick={() => setDismissedThisVisit(true)}
                 className="flex size-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:hover:bg-slate-900 dark:hover:text-slate-300"
-                aria-label="Dismiss cookie preferences for now"
+                aria-label={t("site.cookies.dismiss")}
               >
                 <X className="size-4" aria-hidden="true" />
               </button>
             </div>
             <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
-              We use essential cookies to keep you signed in and to protect features such as the AI assistant from abuse.
-              InfraWatch does not currently use analytics or advertising cookies; the toggle below is provided in case that changes.
+              {t("site.cookies.body")}
             </p>
 
             {isCustomizing && (
               <div className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Essential</p>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{t("site.cookies.essential")}</p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Sign-in and abuse-prevention cookies. Required for the site to function.
+                      {t("site.cookies.essentialDesc")}
                     </p>
                   </div>
-                  <Switch checked disabled aria-label="Essential cookies (always on)" />
+                  <Switch checked disabled aria-label={t("site.cookies.essentialSwitch")} />
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Analytics</p>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{t("site.cookies.analytics")}</p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Not currently used by InfraWatch. Your choice is saved for if this changes.
+                      {t("site.cookies.analyticsDesc")}
                     </p>
                   </div>
                   <Switch
                     checked={analyticsEnabled}
                     onCheckedChange={setAnalyticsEnabled}
-                    aria-label="Analytics cookies"
+                    aria-label={t("site.cookies.analyticsSwitch")}
                   />
                 </div>
               </div>
@@ -122,7 +123,7 @@ export function CookieConsentBanner() {
                 onClick={() => finish(true)}
                 className="h-9 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                Accept All
+                {t("site.cookies.acceptAll")}
               </Button>
               <Button
                 type="button"
@@ -131,11 +132,11 @@ export function CookieConsentBanner() {
                 onClick={() => finish(false)}
                 className="h-9"
               >
-                Essential Only
+                {t("site.cookies.essentialOnly")}
               </Button>
               {isCustomizing ? (
                 <Button type="button" size="sm" variant="ghost" onClick={() => finish(analyticsEnabled)} className="h-9">
-                  Save Preferences
+                  {t("site.cookies.save")}
                 </Button>
               ) : (
                 <button
@@ -143,7 +144,7 @@ export function CookieConsentBanner() {
                   onClick={() => setIsCustomizing(true)}
                   className="inline-flex h-9 items-center gap-1 px-2 text-xs font-semibold text-slate-600 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-slate-400 dark:hover:text-white"
                 >
-                  Customize
+                  {t("site.cookies.customize")}
                   <ChevronDown className="size-3.5" aria-hidden="true" />
                 </button>
               )}
@@ -153,16 +154,16 @@ export function CookieConsentBanner() {
                   onClick={() => setIsCustomizing(false)}
                   className="inline-flex h-9 items-center gap-1 px-2 text-xs font-semibold text-slate-500 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-slate-400 dark:hover:text-white"
                 >
-                  Hide options
+                  {t("site.cookies.hideOptions")}
                   <ChevronUp className="size-3.5" aria-hidden="true" />
                 </button>
               )}
             </div>
 
             <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
-              For more information, please read our{" "}
+              {t("site.cookies.privacyLead")}{" "}
               <Link href="/data-privacy" className="underline hover:text-slate-600 dark:hover:text-slate-300">
-                Privacy Notice
+                {t("site.cookies.privacyLink")}
               </Link>
               .
             </p>

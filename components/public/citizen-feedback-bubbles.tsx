@@ -5,7 +5,10 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, MapPin, Star, User, X } from "lucide-react";
+import { useTranslation } from "@/i18n";
 import type { FeedbackActivityItem } from "@/types/activity-feed.types";
+
+type Translate = ReturnType<typeof useTranslation>["t"];
 
 // --- Layout Presets for Speech Bubbles ---
 
@@ -19,14 +22,18 @@ const CARD_LAYOUTS = [
 
 // --- helpers ---
 
-function timeAgo(date: Date | string): string {
+function timeAgo(date: Date | string, t: Translate): string {
   const diff = Date.now() - new Date(date).getTime();
   const days = Math.floor(diff / 86_400_000);
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days}d ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  return `${Math.floor(days / 30)}mo ago`;
+  if (days <= 0) return t("landing.feedback.time.today");
+  if (days === 1) return t("landing.feedback.time.yesterday");
+  if (days < 7) return t("landing.feedback.time.daysAgo", { count: days });
+  if (days < 30) return t("landing.feedback.time.weeksAgo", { count: Math.floor(days / 7) });
+  return t("landing.feedback.time.monthsAgo", { count: Math.floor(days / 30) });
+}
+
+function authorName(item: FeedbackActivityItem, t: Translate): string {
+  return item.isAnonymous ? t("landing.feedback.anonymous") : item.user?.name || t("landing.feedback.citizen");
 }
 
 function getInitials(name: string): string {
@@ -42,7 +49,8 @@ function ExpandedCard({
   item: FeedbackActivityItem;
   onClose: () => void;
 }) {
-  const name = item.isAnonymous ? "Anonymous Citizen" : item.user?.name || "Citizen";
+  const { t } = useTranslation();
+  const name = authorName(item, t);
 
   return (
     <motion.div
@@ -69,7 +77,7 @@ function ExpandedCard({
           type="button"
           onClick={onClose}
           className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          aria-label="Close report view"
+          aria-label={t("landing.feedback.closeReport")}
         >
           <X className="h-4 w-4" />
         </button>
@@ -100,13 +108,13 @@ function ExpandedCard({
               <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{name}</p>
               {item.isAnonymous && (
                 <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                  Verified Contributor
+                  {t("landing.feedback.verifiedContributor")}
                 </span>
               )}
             </div>
 
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <span>{timeAgo(item.createdAt)}</span>
+              <span>{timeAgo(item.createdAt, t)}</span>
               {typeof item.rating === "number" && item.rating > 0 && (
                 <div className="flex items-center gap-0.5 text-amber-500">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -137,7 +145,7 @@ function ExpandedCard({
               href={item.project.id ? `/projects/${item.project.id}` : "/citizen-feed"}
               className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-primary hover:underline dark:text-indigo-400"
             >
-              <span>View details</span>
+              <span>{t("landing.feedback.viewDetails")}</span>
               <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
@@ -160,7 +168,8 @@ function SpeechBubbleCard({
   containerRef: React.RefObject<HTMLDivElement | null>;
   onExpand: (id: string) => void;
 }) {
-  const name = item.isAnonymous ? "Anonymous Citizen" : item.user?.name || "Citizen";
+  const { t } = useTranslation();
+  const name = authorName(item, t);
   const [isDragging, setIsDragging] = useState(false);
 
   return (
@@ -235,7 +244,7 @@ function SpeechBubbleCard({
                 </span>
               </div>
             )}
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">{timeAgo(item.createdAt)}</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">{timeAgo(item.createdAt, t)}</span>
           </div>
         </div>
 
@@ -265,6 +274,7 @@ function SpeechBubbleCard({
 // --- Main Component ---
 
 export function CitizenFeedbackBubbles({ items }: { items: FeedbackActivityItem[] }) {
+  const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -284,7 +294,7 @@ export function CitizenFeedbackBubbles({ items }: { items: FeedbackActivityItem[
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {featured.map((item) => {
-          const name = item.isAnonymous ? "Anonymous Citizen" : item.user?.name || "Citizen";
+          const name = authorName(item, t);
           return (
             <div
               key={item.id}
@@ -292,7 +302,7 @@ export function CitizenFeedbackBubbles({ items }: { items: FeedbackActivityItem[
             >
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold text-slate-900 dark:text-white">{name}</p>
-                <span className="text-[10px] text-slate-400">{timeAgo(item.createdAt)}</span>
+                <span className="text-[10px] text-slate-400">{timeAgo(item.createdAt, t)}</span>
               </div>
               <p className="mt-2 line-clamp-3 text-xs text-slate-600 dark:text-slate-300">
                 &ldquo;{item.comment}&rdquo;

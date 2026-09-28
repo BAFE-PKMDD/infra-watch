@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, type FormatDistanceFn } from "date-fns";
 import {
   Bell,
   Check,
@@ -23,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslation } from "@/i18n";
+import type { Language } from "@/i18n/translations";
 import { useAuth } from "@/providers/auth-provider";
 import { useNotifications } from "@/providers/notification-provider";
 
@@ -35,9 +37,28 @@ function getMetadataString(notification: NotificationItem, key: string) {
   return typeof value === "string" ? value : null;
 }
 
-function formatNotificationTime(value: NotificationItem["createdAt"]) {
+type Translate = (path: string, variables?: Record<string, string | number>) => string;
+
+/** Tagalog wording for date-fns relative times, read from account.notifications.time.*. */
+function tagalogFormatDistance(t: Translate): FormatDistanceFn {
+  return (token, count, options) => {
+    const isPast = options?.addSuffix && (options.comparison ?? -1) <= 0;
+    if (isPast && (token === "lessThanXSeconds" || token === "halfAMinute" || token === "lessThanXMinutes")) {
+      return t("account.notifications.time.justNow");
+    }
+    const time = t(`account.notifications.time.${token}`, { count });
+    if (!options?.addSuffix) return time;
+    return t(isPast ? "account.notifications.time.past" : "account.notifications.time.future", { time });
+  };
+}
+
+// English keeps date-fns's own wording ("about 3 hours ago").
+function formatNotificationTime(value: NotificationItem["createdAt"], language: Language, t: Translate) {
   if (!value) return "";
-  return formatDistanceToNow(new Date(value), { addSuffix: true });
+  return formatDistanceToNow(new Date(value), {
+    addSuffix: true,
+    ...(language === "tl" ? { locale: { formatDistance: tagalogFormatDistance(t) } } : {}),
+  });
 }
 
 function LoadingSkeleton() {
@@ -63,36 +84,38 @@ function LoadingSkeleton() {
 }
 
 function EmptyState() {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
         <Bell className="h-8 w-8 text-slate-400" />
       </div>
       <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">
-        No Notifications Yet
+        {t("account.notifications.emptyTitle")}
       </h3>
       <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
-        Updates for your feedback and reported issues will appear here.
+        {t("account.notifications.emptyBody")}
       </p>
       <Link
         href="/projects"
         className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
       >
-        Browse Projects
+        {t("account.common.browseProjects")}
       </Link>
     </div>
   );
 }
 
 function NoResultsState() {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
       <Search className="mx-auto mb-3 h-12 w-12 text-slate-400" />
       <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">
-        No Results Found
+        {t("account.common.noResultsTitle")}
       </h3>
       <p className="text-sm text-slate-600 dark:text-slate-400">
-        Try adjusting your search or filter criteria.
+        {t("account.common.noResultsBody")}
       </p>
     </div>
   );
@@ -129,6 +152,7 @@ function NotificationCard({
   notification: NotificationItem;
   onClick: () => void;
 }) {
+  const { t, language } = useTranslation();
   const projectId = getMetadataString(notification, "projectId");
   const projectName = getMetadataString(notification, "projectName");
   const link = projectId ? `/projects/${projectId}` : null;
@@ -182,7 +206,7 @@ function NotificationCard({
                 </span>
               )}
               <span className="text-blue-500 dark:text-blue-400">
-                {formatNotificationTime(notification.createdAt)}
+                {formatNotificationTime(notification.createdAt, language, t)}
               </span>
             </div>
           </div>
@@ -215,10 +239,11 @@ function Pagination({
   totalItems: number;
   onPageChange: (page: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-slate-600 dark:text-slate-400">
-        Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
+        {t("account.common.showing", { from: startIndex + 1, to: Math.min(endIndex, totalItems), total: totalItems })}
       </p>
       <div className="flex items-center gap-2">
         <button
@@ -226,19 +251,19 @@ function Pagination({
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className="rounded-lg border border-slate-200 p-2 text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          aria-label="Previous page"
+          aria-label={t("account.common.previousPage")}
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <span className="text-sm text-slate-700 dark:text-slate-300">
-          Page {currentPage} of {totalPages}
+          {t("account.common.pageOf", { current: currentPage, total: totalPages })}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           className="rounded-lg border border-slate-200 p-2 text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          aria-label="Next page"
+          aria-label={t("account.common.nextPage")}
         >
           <ChevronRight className="h-5 w-5" />
         </button>
@@ -249,6 +274,7 @@ function Pagination({
 
 export default function MyNotificationsPage() {
   const { user, isLoading: isAuthPending } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const { notifications, isLoading, markAsRead, markAllAsRead } = useNotifications();
   const [searchQuery, setSearchQuery] = useState("");
@@ -319,10 +345,10 @@ export default function MyNotificationsPage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-                  My Notifications
+                  {t("account.notifications.title")}
                 </h1>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Stay updated on your feedback, E-Reports, and project activity.
+                  {t("account.notifications.subtitle")}
                 </p>
               </div>
             </div>
@@ -333,7 +359,7 @@ export default function MyNotificationsPage() {
                 className="hidden items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:flex"
               >
                 <CheckCircle className="h-4 w-4" />
-                Mark All as Read
+                {t("account.notifications.markAllRead")}
               </button>
             )}
           </div>
@@ -349,7 +375,7 @@ export default function MyNotificationsPage() {
                 <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search notifications..."
+                  placeholder={t("account.notifications.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(event) => {
                     setSearchQuery(event.target.value);
@@ -366,12 +392,14 @@ export default function MyNotificationsPage() {
                 }}
               >
                 <SelectTrigger className="h-10 w-full bg-white sm:w-48 dark:bg-slate-900">
-                  <SelectValue placeholder="Filter by status" />
+                  <SelectValue placeholder={t("account.common.filterByStatus")}>
+                    {(value: string) => t(value === "all" ? "account.notifications.filterAll" : `account.notifications.${value}`)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Notifications</SelectItem>
-                  <SelectItem value="unread">Unread</SelectItem>
-                  <SelectItem value="read">Read</SelectItem>
+                  <SelectItem value="all">{t("account.notifications.filterAll")}</SelectItem>
+                  <SelectItem value="unread">{t("account.notifications.unread")}</SelectItem>
+                  <SelectItem value="read">{t("account.notifications.read")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -384,7 +412,7 @@ export default function MyNotificationsPage() {
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                 >
                   <CheckCircle className="h-4 w-4" />
-                  Mark All as Read
+                  {t("account.notifications.markAllRead")}
                 </button>
               </div>
             )}
@@ -393,19 +421,19 @@ export default function MyNotificationsPage() {
               <StatsCard
                 icon={Bell}
                 count={stats.total}
-                label="Total Notifications"
+                label={t("account.notifications.total")}
                 className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200"
               />
               <StatsCard
                 icon={Check}
                 count={stats.unread}
-                label="Unread"
+                label={t("account.notifications.unread")}
                 className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
               />
               <StatsCard
                 icon={CheckCheck}
                 count={stats.read}
-                label="Read"
+                label={t("account.notifications.read")}
                 className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200"
               />
             </div>

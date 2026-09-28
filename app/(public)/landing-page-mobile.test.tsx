@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
+import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 import { aggregateInfraAnalyticsRows } from "@/actions/query/analytics.query";
+import { LanguageProvider } from "@/providers/language-provider";
 import { LandingPageClient } from "./landing-page-client";
+
+// The landing page reads its copy through useTranslation(), so render inside the app's
+// LanguageProvider (which needs an app router); the language defaults to English.
+const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {} } as unknown as AppRouterInstance;
 
 const analytics = aggregateInfraAnalyticsRows([
   {
@@ -23,7 +29,13 @@ const analytics = aggregateInfraAnalyticsRows([
   },
 ]);
 
-const html = renderToStaticMarkup(<LandingPageClient initialAnalytics={analytics} />);
+const html = renderToStaticMarkup(
+  <AppRouterContext.Provider value={router}>
+    <LanguageProvider>
+      <LandingPageClient initialAnalytics={analytics} />
+    </LanguageProvider>
+  </AppRouterContext.Provider>,
+);
 
 test("keeps animated hero words intact at narrow widths", () => {
   const nonWrappingWordGroups = html.match(/class="inline-block whitespace-nowrap"/g) ?? [];

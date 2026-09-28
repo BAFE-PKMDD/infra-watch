@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn } from "@/actions/mutation/auth.mutation";
 import { authClient } from "@/lib/auth-client";
+import { useTranslation } from "@/i18n";
 import { useAuth } from "@/providers/auth-provider";
 import { OTPVerificationForm } from "@/components/auth/otp-verification-form";
 
@@ -49,6 +50,7 @@ function SignInContent() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
   const { refreshAuth } = useAuth();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -77,12 +79,12 @@ function SignInContent() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Failed to send code");
+        setError(result.error.message || t("account.signIn.errors.sendCodeFailed"));
       } else {
         setStep("otp");
       }
     } catch {
-      setError("An unexpected error occurred");
+      setError(t("account.auth.unexpectedError"));
     } finally {
       setLoading(false);
     }
@@ -103,7 +105,7 @@ function SignInContent() {
         window.location.href = redirect;
       }
     } catch {
-      setError("An unexpected error occurred");
+      setError(t("account.auth.unexpectedError"));
     } finally {
       setLoading(false);
     }
@@ -117,16 +119,16 @@ function SignInContent() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Google sign-in is not configured. Add Google OAuth credentials and restart the dev server.");
+        setError(result.error.message || t("account.signIn.errors.googleNotConfigured"));
       }
     } catch {
-      setError("Failed to sign in with Google");
+      setError(t("account.signIn.errors.googleFailed"));
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary/5 to-slate-50 dark:from-slate-950 dark:via-primary/5 dark:to-slate-950 flex flex-col justify-between">
-      <AppHeader activeItem="home" actionLabel="Sign In" />
+      <AppHeader activeItem="home" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col items-center justify-center flex-1 w-full">
         <motion.div
@@ -148,10 +150,10 @@ function SignInContent() {
                 >
                   <CardHeader className="space-y-2 text-center">
                     <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                      Sign in to INFRA Watch
+                      {t("account.signIn.title")}
                     </CardTitle>
                     <p className="text-sm text-slate-600 dark:text-slate-300 pb-3">
-                      Sign in to continue and access your account features.
+                      {t("account.signIn.subtitle")}
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -160,14 +162,14 @@ function SignInContent() {
                           <Button
                             type="button"
                             variant="outline"
-                            className="w-full h-11 rounded-xl text-sm font-semibold relative flex items-center justify-center gap-2 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            className="w-full h-auto min-h-11 whitespace-normal rounded-xl text-sm font-semibold relative flex flex-wrap items-center justify-center gap-2 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                             onClick={handleGoogleSignIn}
                           >
                             <GoogleIcon />
-                            <span className="text-slate-755 dark:text-white">Continue with Google</span>
+                            <span className="text-slate-755 dark:text-white">{t("account.signIn.continueWithGoogle")}</span>
                             {lastMethod === "google" && (
                               <Badge variant="secondary" className="ml-2 bg-primary/10 text-primary border-none px-2 h-5 text-[10px]">
-                                Last used
+                                {t("account.signIn.lastUsed")}
                               </Badge>
                             )}
                           </Button>
@@ -179,7 +181,7 @@ function SignInContent() {
                           </div>
                           <div className="relative flex justify-center text-xs uppercase">
                             <span className="bg-white dark:bg-slate-900 px-3 text-slate-500 dark:text-slate-400">
-                              Or continue with
+                              {t("account.signIn.orContinueWith")}
                             </span>
                           </div>
                         </div>
@@ -187,7 +189,7 @@ function SignInContent() {
 
                     <form onSubmit={handleContinue} className="space-y-5">
                       <div className="space-y-1.5">
-                        <Label htmlFor="email" className="font-semibold text-xs text-slate-700 dark:text-slate-300">Email Address</Label>
+                        <Label htmlFor="email" className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t("account.auth.emailLabel")}</Label>
                         <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary focus-within:border-primary dark:border-slate-700 dark:bg-slate-800 transition-shadow">
                           <Mail className="w-4 h-4 text-slate-400" />
                           <Input
@@ -202,7 +204,7 @@ function SignInContent() {
                         </div>
                       </div>
                       <Button className="w-full h-11 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/95 text-white shadow-sm transition-colors mt-2">
-                        Continue
+                        {t("account.signIn.continue")}
                       </Button>
                     </form>
                   </CardContent>
@@ -220,33 +222,33 @@ function SignInContent() {
                 >
                   <CardHeader className="space-y-2 text-center">
                     <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                      Choose method
+                      {t("account.signIn.chooseMethod")}
                     </CardTitle>
                     <p className="text-sm text-slate-600 dark:text-slate-300 pb-3">
-                      Signing in as <span className="font-semibold text-slate-900 dark:text-white">{email}</span>
-                      <button onClick={() => setStep("email")} className="ml-2 text-primary hover:underline text-xs font-semibold">Change</button>
+                      {t("account.signIn.signingInAs")} <span className="font-semibold text-slate-900 dark:text-white">{email}</span>
+                      <button onClick={() => setStep("email")} className="ml-2 text-primary hover:underline text-xs font-semibold">{t("account.signIn.change")}</button>
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <Button
                       variant="outline"
-                      className="w-full h-16 rounded-xl flex items-center justify-between px-4 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left"
+                      className="w-full h-auto min-h-16 py-2 whitespace-normal rounded-xl flex items-center justify-between gap-3 px-4 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left"
                       onClick={() => setStep("password")}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="w-10 h-10 shrink-0 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
                           <Lock className="w-5 h-5" />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">Sign in with Password</span>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">{t("account.signIn.passwordMethod")}</span>
                             {lastMethod === "email" && (
                               <Badge variant="secondary" className="bg-primary/10 text-primary text-xs">
-                                Last used
+                                {t("account.signIn.lastUsed")}
                               </Badge>
                             )}
                           </div>
-                          <div className="text-[11px] text-slate-500">Access using your account password</div>
+                          <div className="text-[11px] text-slate-500">{t("account.signIn.passwordMethodHint")}</div>
                         </div>
                       </div>
                       <span className="text-primary text-lg font-bold">→</span>
@@ -254,24 +256,24 @@ function SignInContent() {
 
                     <Button
                       variant="outline"
-                      className="w-full h-16 rounded-xl flex items-center justify-between px-4 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left"
+                      className="w-full h-auto min-h-16 py-2 whitespace-normal rounded-xl flex items-center justify-between gap-3 px-4 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left"
                       disabled={loading}
                       onClick={handleSendOTP}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="w-10 h-10 shrink-0 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
                           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">Sign in with Email Code</span>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">{t("account.signIn.codeMethod")}</span>
                             {lastMethod === "otp" && (
                               <Badge variant="secondary" className="bg-primary/10 text-primary text-xs">
-                                Last used
+                                {t("account.signIn.lastUsed")}
                               </Badge>
                             )}
                           </div>
-                          <div className="text-[11px] text-slate-500">Use a temporary code sent to your inbox</div>
+                          <div className="text-[11px] text-slate-500">{t("account.signIn.codeMethodHint")}</div>
                         </div>
                       </div>
                       <span className="text-primary text-lg font-bold">→</span>
@@ -291,17 +293,17 @@ function SignInContent() {
                 >
                   <CardHeader className="space-y-2 text-center">
                     <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                      Enter password
+                      {t("account.signIn.enterPassword")}
                     </CardTitle>
                     <p className="text-sm text-slate-600 dark:text-slate-300 pb-3">
-                      Welcome back, <span className="font-semibold text-slate-900 dark:text-white">{email}</span>
-                      <button onClick={() => setStep("choice")} className="ml-2 text-primary hover:underline text-xs font-semibold">Back</button>
+                      {t("account.signIn.welcomeBack")} <span className="font-semibold text-slate-900 dark:text-white">{email}</span>
+                      <button onClick={() => setStep("choice")} className="ml-2 text-primary hover:underline text-xs font-semibold">{t("account.auth.back")}</button>
                     </p>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleEmailPasswordSignIn} className="space-y-5">
                       <div className="space-y-1.5">
-                        <Label htmlFor="password" className="font-semibold text-xs text-slate-700 dark:text-slate-300">Password</Label>
+                        <Label htmlFor="password" className="font-semibold text-xs text-slate-700 dark:text-slate-300">{t("account.auth.passwordLabel")}</Label>
                         <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary dark:border-slate-700 dark:bg-slate-800 transition-shadow">
                           <Lock className="w-4 h-4 text-slate-400" />
                           <Input
@@ -332,7 +334,7 @@ function SignInContent() {
                         disabled={loading}
                         className="w-full h-11 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/95 text-white transition-colors mt-2"
                       >
-                        {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Sign In"}
+                        {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : t("account.signIn.submit")}
                       </Button>
                     </form>
                   </CardContent>
@@ -350,7 +352,7 @@ function SignInContent() {
                 >
                   <CardHeader className="space-y-2 text-center">
                     <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                      Check your email
+                      {t("account.auth.checkEmail")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -368,11 +370,11 @@ function SignInContent() {
               )}
             </AnimatePresence>
 
-            <div className="px-8 py-6 bg-slate-50/50 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between text-sm">
+            <div className="px-8 py-6 bg-slate-50/50 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between gap-3 text-sm">
               <p className="text-slate-500 dark:text-slate-400">
-                New here?{" "}
+                {t("account.signIn.newHere")}{" "}
                 <Link href="/sign-up" className="text-primary hover:underline dark:text-primary font-semibold">
-                  Create an account
+                  {t("account.signIn.createAccount")}
                 </Link>
               </p>
               <Link href="/forget-password" onClick={(e) => {
@@ -381,7 +383,7 @@ function SignInContent() {
                   router.push(`/forget-password?email=${encodeURIComponent(email)}`);
                 }
               }} className="text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary transition-colors">
-                Forgot password?
+                {t("account.signIn.forgotPassword")}
               </Link>
             </div>
           </Card>

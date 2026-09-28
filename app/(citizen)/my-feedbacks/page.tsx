@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { AppHeader } from "@/components/layout/app-header";
+import { categoryText } from "@/components/report-issue/issue-type-picker";
 import {
   Select,
   SelectContent,
@@ -29,8 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FEEDBACK_AUTO_ACKNOWLEDGMENT_MESSAGE } from "@/lib/feedback-auto-acknowledgment-message";
 import { getFullUrl } from "@/lib/minio-url";
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -62,17 +63,10 @@ interface FeedbackItem {
   } | null;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  quality: "Project Quality",
-  progress: "Project Progress",
-  concerns: "Concerns & Issues",
-  general: "General Feedback",
-};
-
+// Status labels are read as t("account.feedbacks.status.<status>").
 const STATUS_CONFIG: Record<
   FeedbackStatus,
   {
-    label: string;
     icon: LucideIcon;
     color: string;
     bgColor: string;
@@ -80,21 +74,18 @@ const STATUS_CONFIG: Record<
   }
 > = {
   pending: {
-    label: "Pending Review",
     icon: Clock,
     color: "text-amber-600 dark:text-amber-400",
     bgColor: "bg-amber-50 dark:bg-amber-900/20",
     borderColor: "border-amber-200 dark:border-amber-800",
   },
   approved: {
-    label: "Approved",
     icon: CheckCircle2,
     color: "text-emerald-600 dark:text-emerald-400",
     bgColor: "bg-emerald-50 dark:bg-emerald-900/20",
     borderColor: "border-emerald-200 dark:border-emerald-800",
   },
   rejected: {
-    label: "Rejected",
     icon: XCircle,
     color: "text-rose-600 dark:text-rose-400",
     bgColor: "bg-rose-50 dark:bg-rose-900/20",
@@ -103,6 +94,23 @@ const STATUS_CONFIG: Record<
 };
 
 const ITEMS_PER_PAGE = 10;
+
+// Thrown by the list query; the message is looked up when shown, so it follows the EN/TL switch.
+class FeedbacksLoadError extends Error {
+  key: "signIn" | "loadFailed";
+
+  constructor(key: "signIn" | "loadFailed") {
+    super(key);
+    this.key = key;
+  }
+}
+
+/** Label for a value of the status filter. */
+function statusFilterLabel(value: string, t: (path: string) => string) {
+  if (value === "all") return t("account.common.allStatus");
+  if (value === "pending") return t("account.common.pending");
+  return t(`account.feedbacks.status.${value}`);
+}
 
 function LoadingSkeleton() {
   return (
@@ -143,22 +151,23 @@ function LoadingSkeleton() {
 }
 
 function EmptyState() {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
         <MessageSquareDot className="h-8 w-8 text-slate-400" />
       </div>
       <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">
-        No Feedback Yet
+        {t("account.feedbacks.emptyTitle")}
       </h3>
       <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
-        You have not submitted feedback yet. Share your observations on infrastructure projects.
+        {t("account.feedbacks.emptyBody")}
       </p>
       <Link
         href="/projects"
         className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
       >
-        Browse Projects
+        {t("account.common.browseProjects")}
         <ArrowRight className="h-4 w-4" />
       </Link>
     </div>
@@ -166,11 +175,12 @@ function EmptyState() {
 }
 
 function ErrorState({ message }: { message: string }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-center dark:border-rose-800 dark:bg-rose-900/20">
       <XCircle className="mx-auto mb-3 h-12 w-12 text-rose-600 dark:text-rose-400" />
       <h3 className="mb-2 text-lg font-semibold text-rose-900 dark:text-rose-100">
-        Failed to Load Feedback
+        {t("account.feedbacks.errorTitle")}
       </h3>
       <p className="text-sm text-rose-700 dark:text-rose-300">{message}</p>
     </div>
@@ -178,14 +188,15 @@ function ErrorState({ message }: { message: string }) {
 }
 
 function NoResultsState() {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
       <Search className="mx-auto mb-3 h-12 w-12 text-slate-400" />
       <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">
-        No Results Found
+        {t("account.common.noResultsTitle")}
       </h3>
       <p className="text-sm text-slate-600 dark:text-slate-400">
-        Try adjusting your search or filter criteria.
+        {t("account.common.noResultsBody")}
       </p>
     </div>
   );
@@ -241,6 +252,7 @@ function MediaAttachment({
   index: number;
   onView: (type: "image" | "video", url: string) => void;
 }) {
+  const { t } = useTranslation();
   const mediaUrl = getFullUrl(media.url);
 
   if (!mediaUrl) return null;
@@ -254,7 +266,7 @@ function MediaAttachment({
       {media.type === "image" ? (
         <Image
           src={mediaUrl}
-          alt={media.caption || `Attachment ${index + 1}`}
+          alt={media.caption || t("account.feedbacks.attachmentAlt", { number: index + 1 })}
           fill
           className="object-cover"
           sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
@@ -285,6 +297,7 @@ function FeedbackCard({
   onToggleMedia: () => void;
   onViewMedia: (type: "image" | "video", url: string) => void;
 }) {
+  const { t } = useTranslation();
   const status = STATUS_CONFIG[item.status];
   const StatusIcon = status.icon;
   const projectHref = `/projects/${item.project?.id ?? item.projectId}?tab=feedback`;
@@ -295,7 +308,7 @@ function FeedbackCard({
         <div className="min-w-0 flex-1">
           <Link href={projectHref} className="group">
             <h3 className="text-lg font-semibold text-slate-900 transition-colors group-hover:text-primary dark:text-white">
-              {item.project?.name || "Unknown Project"}
+              {item.project?.name || t("account.feedbacks.unknownProject")}
             </h3>
             <p className="font-mono text-sm text-slate-500 dark:text-slate-400">
               {item.project?.code || item.projectId}
@@ -304,17 +317,17 @@ function FeedbackCard({
         </div>
         <div className={`flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 ${status.bgColor} ${status.borderColor}`}>
           <StatusIcon className={`h-4 w-4 ${status.color}`} />
-          <span className={`text-sm font-medium ${status.color}`}>{status.label}</span>
+          <span className={`text-sm font-medium ${status.color}`}>{t(`account.feedbacks.status.${item.status}`)}</span>
         </div>
       </div>
 
       {item.autoAcknowledgedAt && (
         <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
           <p className="mb-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-            Automatic acknowledgment:
+            {t("account.feedbacks.autoAckTitle")}
           </p>
           <p className="text-sm text-slate-700 dark:text-slate-300">
-            {FEEDBACK_AUTO_ACKNOWLEDGMENT_MESSAGE}
+            {t("account.feedbacks.autoAckMessage")}
           </p>
         </div>
       )}
@@ -331,7 +344,7 @@ function FeedbackCard({
           )}
         >
           <p className="mb-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-            {item.status === "rejected" ? "Rejection Reason:" : "Moderator's Note:"}
+            {item.status === "rejected" ? t("account.feedbacks.rejectionReason") : t("account.feedbacks.moderatorNote")}
           </p>
           <p className="text-sm text-slate-700 dark:text-slate-300">
             {item.moderationNote}
@@ -341,7 +354,7 @@ function FeedbackCard({
 
       <div className="mb-3 flex flex-wrap items-center gap-4">
         <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-          {CATEGORY_LABELS[item.category] || item.category}
+          {categoryText(item.category, t)}
         </span>
         {item.rating ? <RatingStars rating={item.rating} /> : null}
       </div>
@@ -358,7 +371,7 @@ function FeedbackCard({
             className="flex items-center gap-2 text-sm font-medium text-slate-700 transition-colors hover:text-primary dark:text-slate-300 dark:hover:text-blue-300"
           >
             <ChevronDown className={`h-4 w-4 transition-transform ${isMediaExpanded ? "rotate-180" : ""}`} />
-            {item.media.length} Attachment{item.media.length > 1 ? "s" : ""}
+            {t(item.media.length > 1 ? "account.feedbacks.attachmentsMany" : "account.feedbacks.attachmentsOne", { count: item.media.length })}
           </button>
           {isMediaExpanded && (
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -372,10 +385,10 @@ function FeedbackCard({
 
       <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <span>Submitted {format(new Date(item.createdAt), "MMM d, yyyy")}</span>
+          <span>{t("account.feedbacks.submitted", { date: format(new Date(item.createdAt), "MMM d, yyyy") })}</span>
           {item.isAnonymous && (
             <span className="rounded bg-slate-100 px-2 py-0.5 text-xs dark:bg-slate-800">
-              Anonymous
+              {t("account.feedbacks.anonymous")}
             </span>
           )}
         </div>
@@ -383,7 +396,7 @@ function FeedbackCard({
           href={projectHref}
           className="flex items-center gap-1 font-medium text-primary hover:text-primary/80 dark:text-blue-300"
         >
-          View Project
+          {t("eReport.detail.viewProject")}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -406,10 +419,11 @@ function Pagination({
   totalItems: number;
   onPageChange: (page: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-slate-600 dark:text-slate-400">
-        Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
+        {t("account.common.showing", { from: startIndex + 1, to: Math.min(endIndex, totalItems), total: totalItems })}
       </p>
       <div className="flex items-center gap-2">
         <button
@@ -417,19 +431,19 @@ function Pagination({
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className="rounded-lg border border-slate-200 p-2 text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          aria-label="Previous page"
+          aria-label={t("account.common.previousPage")}
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <span className="text-sm text-slate-700 dark:text-slate-300">
-          Page {currentPage} of {totalPages}
+          {t("account.common.pageOf", { current: currentPage, total: totalPages })}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           className="rounded-lg border border-slate-200 p-2 text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          aria-label="Next page"
+          aria-label={t("account.common.nextPage")}
         >
           <ChevronRight className="h-5 w-5" />
         </button>
@@ -445,6 +459,7 @@ function MediaViewer({
   media: { type: "image" | "video"; url: string } | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   if (!media) return null;
 
   return (
@@ -456,7 +471,7 @@ function MediaViewer({
         {media.type === "image" ? (
           <Image
             src={media.url}
-            alt="Full size attachment"
+            alt={t("account.feedbacks.fullSizeAlt")}
             width={1920}
             height={1080}
             className="h-full w-full rounded-lg object-contain"
@@ -473,6 +488,7 @@ function MediaViewer({
 
 export default function MyFeedbacksPage() {
   const { user, isLoading: isAuthPending } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -485,8 +501,7 @@ export default function MyFeedbacksPage() {
     queryFn: async () => {
       const response = await fetch("/api/my-feedbacks");
       if (!response.ok) {
-        if (response.status === 401) throw new Error("Please sign in to view your feedback.");
-        throw new Error("Failed to fetch feedback.");
+        throw new FeedbacksLoadError(response.status === 401 ? "signIn" : "loadFailed");
       }
       return (await response.json()) as { data: FeedbackItem[] };
     },
@@ -555,17 +570,27 @@ export default function MyFeedbacksPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-                My Feedbacks
+                {t("account.feedbacks.title")}
               </h1>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                View and manage all feedback you submitted.
+                {t("account.feedbacks.subtitle")}
               </p>
             </div>
           </div>
         </div>
 
         {isLoading && <LoadingSkeleton />}
-        {error && <ErrorState message={error instanceof Error ? error.message : "An error occurred."} />}
+        {error && (
+          <ErrorState
+            message={
+              error instanceof FeedbacksLoadError
+                ? t(`account.feedbacks.errors.${error.key}`)
+                : error instanceof Error
+                  ? error.message
+                  : t("account.common.genericError")
+            }
+          />
+        )}
         {!isLoading && !error && data && allFeedbacks.length === 0 && <EmptyState />}
 
         {!isLoading && !error && data && allFeedbacks.length > 0 && (
@@ -575,7 +600,7 @@ export default function MyFeedbacksPage() {
                 <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search by project name, code, or comment..."
+                  placeholder={t("account.feedbacks.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(event) => {
                     setSearchQuery(event.target.value);
@@ -592,13 +617,16 @@ export default function MyFeedbacksPage() {
                 }}
               >
                 <SelectTrigger className="h-10 w-full bg-white sm:w-48 dark:bg-slate-900">
-                  <SelectValue placeholder="Filter by status" />
+                  <SelectValue placeholder={t("account.common.filterByStatus")}>
+                    {(value: string) => statusFilterLabel(value, t)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                  {["all", "pending", "approved", "rejected"].map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {statusFilterLabel(value, t)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -607,19 +635,19 @@ export default function MyFeedbacksPage() {
               <StatsCard
                 icon={Clock}
                 count={stats.pending}
-                label="Pending Review"
+                label={t("account.feedbacks.status.pending")}
                 className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
               />
               <StatsCard
                 icon={CheckCircle2}
                 count={stats.approved}
-                label="Approved"
+                label={t("account.feedbacks.status.approved")}
                 className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200"
               />
               <StatsCard
                 icon={XCircle}
                 count={stats.rejected}
-                label="Rejected"
+                label={t("account.feedbacks.status.rejected")}
                 className="border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-200"
               />
             </div>

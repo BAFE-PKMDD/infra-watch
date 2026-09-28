@@ -3,9 +3,11 @@
 import { ArrowRight, BookOpen, Download } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/i18n";
 
 export function LguGuidebook() {
   const pdfUrl = "/LGU-Guidebook-v2.0-FINALb.pdf";
+  const { t } = useTranslation();
 
   return (
     <div className="w-full flex flex-col md:flex-row items-center gap-8 md:gap-12 p-6 md:p-8 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 relative overflow-hidden group">
@@ -13,7 +15,7 @@ export function LguGuidebook() {
       <div className="absolute inset-0 left-1/2 opacity-20 dark:opacity-10 pointer-events-none">
         <Image
           src="/irrigation.png"
-          alt="Agricultural Infrastructure Background"
+          alt={t("about.publications.lgu.backgroundAlt")}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover pointer-events-none"
@@ -30,7 +32,7 @@ export function LguGuidebook() {
           href={pdfUrl}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Open LGU GUIDEBOOK in a new tab"
+          aria-label={t("about.publications.openInNewTab", { title: "LGU GUIDEBOOK" })}
           className="block relative w-[180px] h-[260px] md:w-[220px] md:h-[320px] transform-style-3d rotate-y-[-25deg] rotate-x-[10deg] group-hover:rotate-y-[-15deg] group-hover:rotate-x-[5deg] transition-all duration-500 ease-out shadow-2xl focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none rounded-r-md rounded-l-sm"
           style={{ transformStyle: "preserve-3d" }}
         >
@@ -42,7 +44,7 @@ export function LguGuidebook() {
             {/* Cover Image */}
             <Image
               src="/lgu-guidebook-cover.jpg"
-              alt="LGU Guidebook Cover"
+              alt={t("about.publications.lgu.coverAlt")}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover"
@@ -69,7 +71,7 @@ export function LguGuidebook() {
         </h2>
 
         <p className="text-slate-700 dark:text-slate-300 text-sm md:text-base leading-relaxed mb-6 max-w-xl">
-          The official reference manual for Local Government Units (LGUs) issued by the Department of Agriculture through BAFE. This guidebook assists provinces, cities, and municipalities in operationalizing Agricultural and Biosystems Engineering (ABE) offices, managing devolved agricultural and biosystems infrastructure functions, and adhering to national standards in compliance with Republic Act No. 10601.
+          {t("about.publications.lgu.desc")}
         </p>
 
         <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
@@ -79,7 +81,7 @@ export function LguGuidebook() {
           >
             <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
               <BookOpen className="w-4 h-4" />
-              <span>Open Guidebook</span>
+              <span>{t("about.publications.lgu.open")}</span>
               <ArrowRight className="w-4 h-4 opacity-80" />
             </a>
           </Button>
@@ -91,7 +93,7 @@ export function LguGuidebook() {
           >
             <a href={pdfUrl} download="LGU-Guidebook-v2.0.pdf">
               <Download className="w-4 h-4 mr-1" />
-              Download PDF
+              {t("about.publications.download")}
             </a>
           </Button>
         </div>

@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 
 import { getActiveLiveVideos } from "@/actions/query/live-videos.query";
 import { LiveBroadcastsClient } from "@/components/live/live-broadcasts-client";
+import { getServerTranslator } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Live Broadcasts | INFRA Watch",
-  description: "Watch live and published INFRA Watch project monitoring broadcasts.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslator();
+  return {
+    title: t("site.live.meta.title"),
+    description: t("site.live.meta.description"),
+  };
+}
 
 export const dynamic = "force-dynamic";
 

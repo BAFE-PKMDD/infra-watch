@@ -12,6 +12,7 @@ import {
   Bookmark,
 } from "lucide-react";
 import { getActivityFeed } from "@/actions/query/activity-feed.query";
+import { useTranslation } from "@/i18n";
 import { useNotifications } from "@/providers/notification-provider";
 import { getUserPostInteractionsAction } from "@/actions/mutation/post-interactions.mutation";
 import { FeedbackFeedCard } from "./feedback-feed-card";
@@ -19,16 +20,17 @@ import { FeedContributionActions } from "./feed-contribution-actions";
 import { IssueFeedCard } from "./issue-feed-card";
 import type { ActivityFeedFilter } from "@/types/activity-feed.types";
 
-const TYPE_FILTERS: { value: ActivityFeedFilter; label: string; icon: typeof Layers | typeof Bookmark }[] = [
-  { value: "all", label: "All", icon: Layers },
-  { value: "feedback", label: "Feedback", icon: MessageSquare },
-  { value: "issue", label: "Reported Issues", icon: AlertTriangle },
-  { value: "saved", label: "Saved", icon: Bookmark },
+const TYPE_FILTERS: { value: ActivityFeedFilter; labelKey: string; icon: typeof Layers | typeof Bookmark }[] = [
+  { value: "all", labelKey: "community.feed.filterAll", icon: Layers },
+  { value: "feedback", labelKey: "community.feed.filterFeedback", icon: MessageSquare },
+  { value: "issue", labelKey: "community.feed.filterIssues", icon: AlertTriangle },
+  { value: "saved", labelKey: "community.feed.filterSaved", icon: Bookmark },
 ] as const;
 
 const ITEMS_PER_PAGE = 10;
 
 export function FeedbackFeedClient() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ActivityFeedFilter>("all");
@@ -191,7 +193,7 @@ export function FeedbackFeedClient() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search feedback, issues, or projects..."
+              placeholder={t("community.feed.searchPlaceholder")}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
             />
           </div>
@@ -227,7 +229,7 @@ export function FeedbackFeedClient() {
                     }`}
                   >
                     <tf.icon className="w-3.5 h-3.5" />
-                    {tf.label}
+                    {t(tf.labelKey)}
                     {countBadge}
                   </button>
                 );
@@ -239,7 +241,7 @@ export function FeedbackFeedClient() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors self-start sm:self-auto cursor-pointer"
             >
               <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              {sort === "newest" ? "Newest" : "Oldest"}
+              {sort === "newest" ? t("community.feed.sortNewest") : t("community.feed.sortOldest")}
             </button>
           </div>
         </div>
@@ -295,14 +297,14 @@ export function FeedbackFeedClient() {
               )}
             </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-              {typeFilter === "saved" ? "No Saved Posts Yet" : "No Activity Found"}
+              {typeFilter === "saved" ? t("community.feed.emptySavedTitle") : t("community.feed.emptyTitle")}
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm mx-auto mb-5 leading-relaxed">
               {typeFilter === "saved"
-                ? "Posts you mark as Interested or save will appear here so you can easily return to them."
+                ? t("community.feed.emptySavedBody")
                 : debouncedSearch
-                ? `No items match "${debouncedSearch}". Try another search term.`
-                : "Once citizens submit feedback or report issues on INFRA projects, they will appear here."}
+                ? t("community.feed.emptySearchBody", { search: debouncedSearch })
+                : t("community.feed.emptyBody")}
             </p>
             {typeFilter === "saved" && (
               <button
@@ -310,7 +312,7 @@ export function FeedbackFeedClient() {
                 onClick={() => setTypeFilter("all")}
                 className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-700 text-white hover:bg-emerald-800 transition-colors cursor-pointer inline-flex items-center gap-2"
               >
-                Browse All Posts
+                {t("community.feed.browseAll")}
               </button>
             )}
           </div>
@@ -332,7 +334,7 @@ export function FeedbackFeedClient() {
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="w-5 h-5 animate-spin text-emerald-600 dark:text-emerald-400" />
                 <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">
-                  Loading more...
+                  {t("community.feed.loadingMore")}
                 </span>
               </div>
             )}
@@ -340,7 +342,10 @@ export function FeedbackFeedClient() {
             {/* End of feed indicator */}
             {!hasNextPage && feedItems.length > 0 && (
               <p className="text-center text-xs font-semibold text-slate-600 dark:text-slate-400 pb-4 pt-2">
-                Showing {feedItems.length} of {totalCount} item{totalCount === 1 ? "" : "s"}
+                {t(totalCount === 1 ? "community.feed.showingOne" : "community.feed.showingMany", {
+                  shown: feedItems.length,
+                  total: totalCount,
+                })}
               </p>
             )}
           </>
