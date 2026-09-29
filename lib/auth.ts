@@ -4,10 +4,12 @@ import { nextCookies } from "better-auth/next-js";
 import { admin as adminPlugin, emailOTP } from "better-auth/plugins";
 
 import * as authSchema from "@/auth-schema";
+import { deliverAuthCode } from "@/lib/auth-otp-email";
 import { db } from "@/lib/db";
 import { ac, admin, citizen, moderator, regionalAdmin } from "@/lib/permissions";
 
 const isProductionRuntime = process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build";
+const otpExpirySeconds = Number(process.env.EMAIL_OTP_EXPIRY ?? 180);
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 const socialProviders = googleClientId && googleClientSecret
@@ -138,13 +140,15 @@ export const auth = betterAuth({
     emailOTP({
       overrideDefaultEmailVerification: false,
       otpLength: 6,
-      expiresIn: Number(process.env.EMAIL_OTP_EXPIRY ?? 180),
+      expiresIn: otpExpirySeconds,
       sendVerificationOnSignUp: true,
       disableSignUp: true,
       async sendVerificationOTP({ email, otp, type }) {
         if (process.env.NODE_ENV !== "production") {
           console.info(`[INFRA Watch OTP] ${type} code for ${email}: ${otp}`);
+          return;
         }
+        await deliverAuthCode({ email, otp, type, expiresInSeconds: otpExpirySeconds });
       },
     }),
     nextCookies(),
