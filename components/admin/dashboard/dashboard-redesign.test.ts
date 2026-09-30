@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import test from "node:test";
+import { test } from "bun:test";
 
 const pageSource = readFileSync(new URL("../../../app/(admin)/dashboard/page.tsx", import.meta.url), "utf8");
 const dashboardSource = readFileSync(new URL("./managerial-dashboard-client.tsx", import.meta.url), "utf8");

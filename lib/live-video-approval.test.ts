@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 import { assertVideoApproved, assertVideoRequestAccess, assertVideoReviewer, canReviewLiveVideos } from "./live-video-approval";
 
 const requester = { id: "requester", role: "regional_admin", region: "R8" };

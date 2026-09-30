@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 
 import { SMS_MOCK_SCENARIOS } from "./mock-fixtures";
 import {

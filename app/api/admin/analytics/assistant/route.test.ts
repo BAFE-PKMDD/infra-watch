@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 import {
   MANAGERIAL_AI_MAX_OUTPUT_TOKENS,
   MANAGERIAL_AI_MAX_STEPS,

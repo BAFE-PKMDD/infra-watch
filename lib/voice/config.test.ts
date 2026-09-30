@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 import { getVoiceAssistantConfig, isVoiceAssistantEnabled } from "./config";
 
 test("voice assistant is disabled unless explicitly enabled", () => {

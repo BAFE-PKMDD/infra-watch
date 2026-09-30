@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import test from "node:test";
+import { test } from "bun:test";
 
 const desktopSource = readFileSync(new URL("./admin-sidebar.tsx", import.meta.url), "utf8");
 const mobileSource = readFileSync(new URL("./admin-mobile-nav.tsx", import.meta.url), "utf8");

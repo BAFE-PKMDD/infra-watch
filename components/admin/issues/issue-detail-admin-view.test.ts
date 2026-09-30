@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import test from "node:test";
+import { test } from "bun:test";
 
 const source = readFileSync(new URL("./issue-detail-admin-view.tsx", import.meta.url), "utf8");
 const actionSource = readFileSync(new URL("./issue-review-action.ts", import.meta.url), "utf8");

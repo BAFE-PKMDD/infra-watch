@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import test from "node:test";
+import { test } from "bun:test";
 
 import { geolocationMessageText } from "./geo-evidence-upload";
 import { site } from "@/i18n/sections/site";

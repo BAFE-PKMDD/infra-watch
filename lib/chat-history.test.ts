@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 import { getTableColumns } from "drizzle-orm";
 
 import { chatHistory } from "./db/schema";

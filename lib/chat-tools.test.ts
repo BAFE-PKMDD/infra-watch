@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 
 import { ADMIN_ONLY_TOOL_NAMES, createChatTools } from "./chat-tools";
 
