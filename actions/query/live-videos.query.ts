@@ -71,22 +71,27 @@ export async function getFeaturedVideo(): Promise<LiveVideo | null> {
 export async function getCurrentLiveVideo(): Promise<LiveVideo | null> {
   const now = new Date();
 
-  const [video] = await db
-    .select()
-    .from(liveVideos)
-    .where(
-      and(
-        eq(liveVideos.isActive, true),
-        eq(liveVideos.isLive, true),
-        eq(liveVideos.approvalStatus, "approved"),
-        ne(liveVideos.videoType, "recorded"),
-        or(isNull(liveVideos.publishedAt), lte(liveVideos.publishedAt, now)),
-        or(isNull(liveVideos.expiresAt), gte(liveVideos.expiresAt, now)),
-      ),
-    )
-    .limit(1);
+  try {
+    const [video] = await db
+      .select()
+      .from(liveVideos)
+      .where(
+        and(
+          eq(liveVideos.isActive, true),
+          eq(liveVideos.isLive, true),
+          eq(liveVideos.approvalStatus, "approved"),
+          ne(liveVideos.videoType, "recorded"),
+          or(isNull(liveVideos.publishedAt), lte(liveVideos.publishedAt, now)),
+          or(isNull(liveVideos.expiresAt), gte(liveVideos.expiresAt, now)),
+        ),
+      )
+      .limit(1);
 
-  return video ?? null;
+    return video ?? null;
+  } catch (error) {
+    console.error("Failed to fetch current live video", error);
+    return null;
+  }
 }
 
 export async function getLiveVideoStats() {
