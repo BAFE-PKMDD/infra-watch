@@ -7,19 +7,15 @@ const rootLayoutUrl = new URL("./layout.tsx", import.meta.url);
 const publicLayoutUrl = new URL("./(public)/layout.tsx", import.meta.url);
 const adminLayoutUrl = new URL("./(admin)/layout.tsx", import.meta.url);
 
-// TODO: assistantName still splits ANIA/InfraWatch AI by surface, and the
-// site.aria.* i18n keys this test expects don't exist in translations.ts yet
-// (a live missing-translation bug, not just a stale test). Needs a product
-// decision on the unified name and English/Tagalog copy before re-enabling.
-test.skip("the widget displays a single unified ARIA identity on both surfaces, while the backend surface value still distinguishes admin from public", async () => {
+test("the widget displays a single unified ANIA identity on both surfaces, while the backend surface value still distinguishes admin from public", async () => {
   const source = await readFile(join(process.cwd(), "components", "ai-assistant-widget.tsx"), "utf8");
-  assert.match(source, /`Open ARIA\. \$\{voice\.statusLabel\}`/);
+  assert.match(source, /const assistantName = "ANIA";/);
   assert.match(source, /role="status"/);
   assert.match(source, /\{voice\.statusLabel\}/);
-  assert.match(source, /aria-label="Close ARIA"/);
-  assert.match(source, /aria-label="ARIA conversation"/);
-  assert.match(source, /aria-label="Ask ARIA a question"/);
-  assert.doesNotMatch(source, /ANIA/);
+  assert.match(source, /aria-label=\{t\("site\.aria\.close", \{ name: assistantName \}\)\}/);
+  assert.match(source, /aria-label=\{t\("site\.aria\.conversation", \{ name: assistantName \}\)\}/);
+  assert.match(source, /aria-label=\{t\("site\.aria\.inputLabel", \{ name: assistantName \}\)\}/);
+  assert.doesNotMatch(source, /"ARIA"/);
   // Voice mode and the admin-only backend surface value stay admin-gated even
   // though the displayed name no longer differs between the two surfaces.
   assert.match(source, /surface: adminMode \? "ania" : "public"/);
@@ -27,6 +23,11 @@ test.skip("the widget displays a single unified ARIA identity on both surfaces, 
   const hook = await readFile(join(process.cwd(), "hooks", "use-voice-assistant.ts"), "utf8");
   assert.match(hook, /dispatch\(\{ type: "ENABLE_CONNECTING" \}\)/);
   assert.match(hook, /scheduleWakeReconnect\(operation, true\)/);
+
+  const siteTranslations = await readFile(join(process.cwd(), "i18n", "sections", "site.ts"), "utf8");
+  assert.match(siteTranslations, /open: "Open ANIA"/);
+  assert.match(siteTranslations, /open: "Buksan ang ANIA"/);
+  assert.doesNotMatch(siteTranslations, /"ARIA"/);
 });
 
 test("keeps public ARIA separate and mounts ANIA only in the admin layout", async () => {

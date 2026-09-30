@@ -75,8 +75,10 @@ export function AiAssistantWidget({
   adminMode?: boolean;
 } = {}) {
   const { t, language } = useTranslation();
-  // Product names stay as they are in both languages.
-  const assistantName = adminMode ? "ANIA" : "InfraWatch AI";
+  // Product name stays as-is in both languages, and is unified across the
+  // admin and public surfaces - only the backend `surface` value (below)
+  // still distinguishes admin from public.
+  const assistantName = "ANIA";
   const suggestionList = t<readonly string[]>("site.aria.suggestions");
   const suggestions = Array.isArray(suggestionList) ? suggestionList : [];
   const [isOpen, setIsOpen] = useState(false);
