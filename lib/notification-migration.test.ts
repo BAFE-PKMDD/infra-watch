@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import test from "node:test";
+import { test } from "bun:test";
 
 const migration = readFileSync(
   new URL("../drizzle/0012_last_obadiah_stane.sql", import.meta.url),

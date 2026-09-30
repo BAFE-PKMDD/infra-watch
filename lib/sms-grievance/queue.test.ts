@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 
 import { SMS_MOCK_SCENARIOS } from "@/lib/sms-grievance/mock-fixtures";
 import { filterSmsReviewRecords, smsStatusLabel } from "@/lib/sms-grievance/queue";

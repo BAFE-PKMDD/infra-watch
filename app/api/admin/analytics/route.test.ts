@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 
 import { DashboardScopeTooLargeError } from "@/lib/analytics/managerial-dashboard-query";
 import { createAnalyticsGetHandler } from "./route";

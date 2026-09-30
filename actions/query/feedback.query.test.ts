@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import test from "node:test";
+import { test } from "bun:test";
 
 const feedbackQuerySource = readFileSync(new URL("./feedback.query.ts", import.meta.url), "utf8");
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 
 import type { AbemisProject } from "@/types/api.types";
 import { isInfraWatchProject, transformAbemisProject } from "./transform";

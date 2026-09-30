@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 import { canSelectVideoRegion, resolveVideoRegion } from "./live-video-region";
 
 test("NCR admins must select a valid video region", () => {

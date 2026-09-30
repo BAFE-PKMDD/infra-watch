@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 import { PgDialect } from "drizzle-orm/pg-core";
 
 import { chatHistory } from "@/lib/db/schema";
