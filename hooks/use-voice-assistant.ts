@@ -213,8 +213,18 @@ export function useVoiceAssistant({
       generate: (text) => {
         const result = queue.then(async () => {
           const tts = await loadKokoro();
-          const audio = await tts.generate(text, { voice });
-          return audio.toBlob();
+          try {
+            const audio = await tts.generate(text, { voice });
+            return audio.toBlob();
+          } catch (error) {
+            // A generate() failure can leave the cached session's WASM/ONNX
+            // state corrupted (e.g. after the tab was suspended mid-run -
+            // "invalid data location" on input_ids). Drop the cached
+            // instance so the next call reloads a fresh one instead of
+            // repeating the same failure forever.
+            kokoroRef.current = null;
+            throw error;
+          }
         });
         queue = result.then(
           () => undefined,
