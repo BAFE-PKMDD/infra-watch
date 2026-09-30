@@ -173,9 +173,15 @@ test("translates Unknown dimension filters to null-or-blank SQL predicates", () 
   const query = new PgDialect().sqlToQuery(condition!);
   assert.equal((query.sql.match(/is null/g) ?? []).length, 5);
   assert.equal((query.sql.match(/btrim/g) ?? []).length, 5);
-  // Every dashboard query is always bounded to the 2021-2026 ABEMIS sync scope,
-  // regardless of role or filters, so those are the only bound params here.
-  assert.deepEqual(query.params, ABEMIS_SYNC_YEARS);
+  // Every dashboard query is bounded to the 2021-2026 ABEMIS sync scope and also
+  // excludes ghost records (blank/invalid/unclassified stage, cancelled/archived,
+  // or proposal/pre-implementation stalled through 2024) via projectYearScopeCondition.
+  assert.deepEqual(query.params, [
+    ...ABEMIS_SYNC_YEARS,
+    "", "0", "invalid", "unclassified",
+    "proposal", "pre-implementation", "2021", "2022", "2023", "2024",
+    "%cancel%", "%archiv%",
+  ]);
 });
 
 test("sums decimal currency through integer cent arithmetic", () => {

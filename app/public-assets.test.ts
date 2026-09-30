@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 
 // A literal "/something.jpg" in a component is served from public/. A missing file renders
 // as a broken image (the Contact hero once pointed at /hero-road.jpg, which never existed).
