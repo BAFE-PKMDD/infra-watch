@@ -41,7 +41,7 @@ export const submissionSurveySchema = z
 
 export type SubmissionSurveyInput = z.infer<typeof submissionSurveySchema>;
 
-type SaveSurveyInput = {
+export type SaveSurveyInput = {
   sourceType: "feedback" | "e_report";
   sourceId: string | null;
   userId: string | null;

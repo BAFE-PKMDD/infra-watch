@@ -5,7 +5,7 @@ import { getBlurDataURL } from "@/lib/image-utils";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useForm } from "@tanstack/react-form";
-import { AlertTriangle, Mail, MapPin, Phone, Send, User, MessageSquare, Clock, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, Mail, MapPin, Phone, Send, User, MessageSquare, Clock, CheckCircle2, ExternalLink } from "lucide-react";
 import { useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,8 @@ import { OfficeLocationMapLoader } from "@/components/contact/office-location-ma
 import { useTranslation } from "@/i18n";
 
 const BAFE_CONTACT_EMAIL = "bafe@da.gov.ph";
+const OFFICE_MAPS_URL =
+  "https://www.google.com/maps/search/?api=1&query=Two%20Cyberpod%20Centris%2C%20EDSA%20Quezon%20Avenue%2C%20Quezon%20City";
 
 const HOTLINES = [
   { label: "0949-842-9485", href: "tel:+639498429485" },
@@ -108,13 +110,13 @@ export default function ContactPage() {
       {/* Hero Section */}
       <div className="relative h-[280px] overflow-hidden bg-blue-950 dark:bg-[#0d1526]">
         <div className="absolute inset-0">
+          {/* Same hero photo as the E-Reports page. */}
           <Image
             src="/hero/main-background.png"
             alt=""
             fill
             className="object-cover opacity-60 dark:opacity-10 contrast-[1.05] transition-opacity duration-300"
             priority
-            quality={90}
             placeholder="blur"
             blurDataURL={getBlurDataURL(1920, 1080)}
             sizes="100vw"
@@ -427,10 +429,18 @@ export default function ContactPage() {
                 address="BAFE - Two Cyberpod Centris, EDSA Quezon Avenue, Brgy. Pinyahan, QC"
               />
             </div>
+            <a
+              href={OFFICE_MAPS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-semibold text-blue-700 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:text-blue-400"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              {t("contact.office.openInMaps")}
+            </a>
           </motion.div>
         </div>
       </div>
     </div>
   );
 }
-

@@ -306,6 +306,7 @@ export const site = {
     },
     evidence: {
       loadingMap: "Loading evidence map…",
+      previewUnavailable: "Preview unavailable",
       locationsTitle: "Evidence locations",
       locationsHint: "Select a pin to jump to its evidence file.",
       photoPins: "{count} photo pins",
@@ -729,6 +730,7 @@ export const site = {
     },
     evidence: {
       loadingMap: "Nilo-load ang evidence map…",
+      previewUnavailable: "Walang preview",
       locationsTitle: "Lokasyon ng mga ebidensya",
       locationsHint: "Pumili ng pin para mapunta sa evidence file nito.",
       photoPins: "{count} photo pin",

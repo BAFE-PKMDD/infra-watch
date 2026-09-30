@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { MapPin, Play } from "lucide-react";
+import { ImageOff, MapPin, Play } from "lucide-react";
 
 import { MediaViewer } from "@/components/ui/media-viewer";
 import { useTranslation } from "@/i18n";
@@ -64,10 +64,15 @@ export function IssueEvidenceGallery({
               className="group overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition-shadow dark:border-slate-700 dark:bg-slate-950"
             >
               <div className="relative aspect-video overflow-hidden bg-slate-950">
-                {item.type === "image" ? (
+                {item.type === "image" && !src ? (
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-sm font-semibold text-slate-300">
+                    <ImageOff className="size-6" aria-hidden="true" />
+                    {t("site.evidence.previewUnavailable")}
+                  </div>
+                ) : item.type === "image" ? (
                   <button type="button" onClick={() => setViewingIndex(index)} className="relative h-full w-full">
                     <Image
-                      src={src || "/placeholder-image.jpg"}
+                      src={src}
                       alt={item.name || t("site.evidence.evidenceAlt", { number: index + 1 })}
                       fill
                       sizes="(max-width: 768px) 100vw, 33vw"

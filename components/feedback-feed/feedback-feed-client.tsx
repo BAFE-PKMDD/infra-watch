@@ -54,6 +54,10 @@ export function FeedbackFeedClient() {
           localIds.push(key.replace("post_interested_", ""));
         }
       }
+      // Deliberately synchronous: this must run after mount, not as a lazy useState
+      // initializer, or the client's first render (reading real localStorage) would
+      // mismatch the server-rendered (window-less) HTML during hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSavedPostIds(localIds);
 
       // Check URL query parameters for ?filter=saved
