@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 import { NextRequest } from "next/server";
-import { createSubmissionSurveyHandler } from "./route";
+import { createSubmissionSurveyHandler, type SaveSurveyInput } from "./route";
 
 test("submission-survey route: rejects non-object or invalid JSON body", async () => {
   const handler = createSubmissionSurveyHandler({
@@ -89,7 +89,7 @@ test("submission-survey route: a non-skipped submission requires respondentType 
 });
 
 test("submission-survey route: a skipped submission needs no respondentType or referralSource", async () => {
-  let captured: any = null;
+  let captured: SaveSurveyInput | null = null;
   const handler = createSubmissionSurveyHandler({
     saveSurvey: async (data) => {
       captured = data;
@@ -109,7 +109,7 @@ test("submission-survey route: a skipped submission needs no respondentType or r
 });
 
 test("submission-survey route: accepts valid payload with Facebook, Website, and Instagram", async () => {
-  const savedData: any[] = [];
+  const savedData: SaveSurveyInput[] = [];
   const handler = createSubmissionSurveyHandler({
     saveSurvey: async (data) => {
       savedData.push(data);
@@ -144,7 +144,7 @@ test("submission-survey route: accepts valid payload with Facebook, Website, and
 });
 
 test("submission-survey route: handles optional name as null when omitted", async () => {
-  let captured: any = null;
+  let captured: SaveSurveyInput | null = null;
   const handler = createSubmissionSurveyHandler({
     saveSurvey: async (data) => {
       captured = data;

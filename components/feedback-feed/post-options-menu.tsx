@@ -56,6 +56,9 @@ export function PostOptionsMenu({
     if (typeof window !== "undefined") {
       try {
         const savedInterested = localStorage.getItem(`post_interested_${postId}`);
+        // Deliberately synchronous: runs post-mount so the client's first render
+        // (reading real localStorage) doesn't mismatch the window-less server render.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (savedInterested === "true") setIsInterested(true);
 
         const savedNotifs = localStorage.getItem(`post_notifications_${postId}`);
