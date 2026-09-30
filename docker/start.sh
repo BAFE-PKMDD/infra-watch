@@ -15,7 +15,7 @@ done
 if [ "${RUN_DB_MIGRATIONS:-true}" = "true" ]; then
   bun scripts/prepare-migrations.ts
   echo "Applying database migrations..."
-  bun run drizzle-kit migrate
+  bun scripts/migrate.mjs
 fi
 
 echo "Starting InfraWatch..."
