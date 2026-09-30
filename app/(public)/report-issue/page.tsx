@@ -107,7 +107,6 @@ async function fetchIssues(params: URLSearchParams) {
 
 export default function IssuesPage() {
   const { t } = useTranslation();
-  const smsPrototypeEnabled = process.env.NODE_ENV !== "production";
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<IssueStatus | "all">("all");
   const [startDate, setStartDate] = useState("");
@@ -159,15 +158,15 @@ export default function IssuesPage() {
               {t("eReport.list.description")}
             </p>
             <Button asChild className="mt-5 min-h-11 bg-emerald-600 px-4 text-white hover:bg-emerald-700">
-              <Link href={smsPrototypeEnabled ? "#reporting-methods" : "/report-issue/new"}>
-                {smsPrototypeEnabled ? t("eReport.list.chooseMethod") : t("eReport.list.reportNew")}
+              <Link href="#reporting-methods">
+                {t("eReport.list.chooseMethod")}
               </Link>
             </Button>
           </motion.div>
         </div>
       </section>
 
-      {smsPrototypeEnabled && <ReportingMethods />}
+      <ReportingMethods />
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/70">

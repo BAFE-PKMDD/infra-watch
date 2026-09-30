@@ -5,9 +5,7 @@ import { test } from "bun:test";
 const guidePage = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
 const directoryPage = readFileSync(new URL("../page.tsx", import.meta.url), "utf8");
 
-test("public SMS prototype fails closed in production", () => {
-  assert.match(guidePage, /process\.env\.NODE_ENV === "production"/);
-  assert.match(guidePage, /notFound\(\)/);
-  assert.match(directoryPage, /process\.env\.NODE_ENV !== "production"/);
-  assert.match(directoryPage, /smsPrototypeEnabled && <ReportingMethods/);
+test("public SMS guide and reporting-methods chooser are always rendered, not fetched or hardcoded elsewhere", () => {
+  assert.match(guidePage, /SmsGrievanceGuide/);
+  assert.match(directoryPage, /<ReportingMethods \/>/);
 });

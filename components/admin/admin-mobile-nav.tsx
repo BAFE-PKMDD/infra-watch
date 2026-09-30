@@ -129,21 +129,19 @@ export function AdminMobileNav({ role, region, assignedAgency }: AdminMobileNavP
               <FileText aria-hidden="true" className="size-4" />
               E-Report
             </Link>
-            {process.env.NODE_ENV !== "production" && (
-              <Link
-                href="/issues/sms-review"
-                aria-current={pathname.startsWith("/issues/sms-review") ? "page" : undefined}
-                className={cn(
-                  "flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                  pathname.startsWith("/issues/sms-review")
-                    ? "bg-primary text-white"
-                    : "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100",
-                )}
-              >
-                <MessageSquareText aria-hidden="true" className="size-4" />
-                SMS Grievance
-              </Link>
-            )}
+            <Link
+              href="/issues/sms-review"
+              aria-current={pathname.startsWith("/issues/sms-review") ? "page" : undefined}
+              className={cn(
+                "flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                pathname.startsWith("/issues/sms-review")
+                  ? "bg-primary text-white"
+                  : "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100",
+              )}
+            >
+              <MessageSquareText aria-hidden="true" className="size-4" />
+              SMS Grievance
+            </Link>
           </div>
         )}
       </nav>

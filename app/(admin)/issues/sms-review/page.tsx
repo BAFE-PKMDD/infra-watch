@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { SmsGrievanceTable } from "@/components/admin/issues/sms-grievance-table";
@@ -13,8 +12,6 @@ export const metadata: Metadata = {
 };
 
 export default async function SmsReviewPage() {
-  if (process.env.NODE_ENV === "production") notFound();
-
   const { records, dataSource, liveFetchError } = await getSmsGrievanceQueue();
 
   return (
