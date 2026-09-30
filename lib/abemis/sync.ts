@@ -432,16 +432,24 @@ async function upsertProjectValues(values: ProjectInsert[]) {
   });
 }
 
-function getReadableError(error: unknown) {
+export function getReadableError(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unknown sync error";
   const cause = typeof error === "object" && error && "cause" in error
     ? (error as { cause?: unknown }).cause
     : null;
   const causeMessage = typeof cause === "object" && cause && "message" in cause
     ? String((cause as { message?: unknown }).message)
     : null;
-  const message = causeMessage || (error instanceof Error ? error.message : "Unknown sync error");
 
-  return message.replace(/\s+/g, " ").slice(0, 500);
+  // Drizzle wraps every failed query as "Failed query: <sql> params: [...]", which just
+  // shows the statement, not the reason it failed -- unwrap to the underlying Postgres
+  // message (e.g. a constraint violation detail) when there is one. But some errors here
+  // are deliberately re-thrown with their own specific explanation and a raw query error
+  // only as `cause` (see renameProjectByRawId); for those, the outer message is already
+  // the readable one and reaching into `cause` would surface the less useful wrapper text.
+  const readable = /^Failed query:/i.test(message) && causeMessage ? causeMessage : message;
+
+  return readable.replace(/\s+/g, " ").slice(0, 500);
 }
 
 function getDurationSeconds(startedAtMs: number, completedAtMs = Date.now()) {

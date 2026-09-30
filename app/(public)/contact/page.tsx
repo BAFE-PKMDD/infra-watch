@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 
 import { createContactMessage } from "@/actions/mutation/contact.mutation";
+import { OfficeLocationMapLoader } from "@/components/contact/office-location-map-loader";
 import { useTranslation } from "@/i18n";
 
 const BAFE_CONTACT_EMAIL = "bafe@da.gov.ph";
@@ -105,13 +106,13 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Hero Section */}
-      <div className="relative h-[280px] overflow-hidden bg-blue-700 dark:bg-slate-950">
+      <div className="relative h-[280px] overflow-hidden bg-blue-950 dark:bg-[#0d1526]">
         <div className="absolute inset-0">
           <Image
-            src="/hero-road.jpg"
+            src="/hero/main-background.png"
             alt=""
             fill
-            className="object-cover"
+            className="object-cover opacity-60 dark:opacity-10 contrast-[1.05] transition-opacity duration-300"
             priority
             quality={90}
             placeholder="blur"
@@ -119,7 +120,7 @@ export default function ContactPage() {
             sizes="100vw"
           />
         </div>
-        <div className="absolute inset-0 bg-slate-950/70 dark:bg-slate-950/85" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0d1526]/90 via-[#13233c]/85 to-[#1e3a5f]/90 dark:from-[#0d1526]/95 dark:via-[#0d1526]/90 dark:to-[#1e3a5f]/95" />
         <div className="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: "easeOut" }}>
             <p className="text-amber-300 text-xs font-semibold tracking-[0.3em] uppercase mb-2">{t("contact.hero.subtitle")}</p>
@@ -418,16 +419,12 @@ export default function ContactPage() {
             <p className="text-sm text-slate-700 dark:text-slate-300">
               BAFE - Two Cyberpod Centris, EDSA Quezon Avenue, Brgy. Pinyahan, QC
             </p>
-            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-              <iframe
-                title={t("contact.office.mapTitle")}
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3854.494532314407!2d121.0396378!3d14.6419531!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397b700a33f912b%3A0xc13f2e3ebcc6f2fd!2sCyberpod%20Centris%20Two%20-%20Eton%20Centris!5e0!3m2!1sen!2sph!4v1700000000000!5m2!1sen!2sph"
-                width="100%"
-                height="340"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="w-full"
+            <div className="h-[340px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+              <OfficeLocationMapLoader
+                latitude={14.6419531}
+                longitude={121.0396378}
+                label={t("contact.office.mapTitle")}
+                address="BAFE - Two Cyberpod Centris, EDSA Quezon Avenue, Brgy. Pinyahan, QC"
               />
             </div>
           </motion.div>

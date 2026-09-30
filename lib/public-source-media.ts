@@ -45,8 +45,8 @@ export function sanitizePublicSourceGeotags(value: unknown) {
       photo_url: safeUrl,
     };
     copyScalar(record, publicTag, "photo_name");
-    copyScalar(record, publicTag, "latitude", "lat");
-    copyScalar(record, publicTag, "longitude", "lng");
+    copyCoordinate(record.latitude ?? record.lat, publicTag, "latitude");
+    copyCoordinate(record.longitude ?? record.lng, publicTag, "longitude");
     copyScalar(record, publicTag, "timestamp");
     copyScalar(record, publicTag, "category");
     return [publicTag];
@@ -72,7 +72,7 @@ export function sanitizePublicProjectMetadata(
     ),
     powRelation: sanitizeRecords(
       metadata.powRelation ?? metadata.pow_relation,
-      ["total_quantity", "contract_cost", "date", "target", "actual"],
+      ["total_quantity", "contract_cost", "date", "target", "actual", "remark"],
       ["attachment_url"],
     ),
     procurementRelation: sanitizeRecords(
@@ -128,6 +128,14 @@ function copyScalar(
   const value = source[key] ?? (alias ? source[alias] : undefined);
   if (typeof value === "string" || (typeof value === "number" && Number.isFinite(value))) {
     target[key] = value;
+  }
+}
+
+function copyCoordinate(value: unknown, target: Record<string, string | number>, key: string) {
+  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) {
+    target[key] = value.trim();
+  } else if (typeof value === "number" && Number.isFinite(value)) {
+    target[key] = String(value);
   }
 }
 

@@ -1,43 +1,31 @@
-import type { Metadata } from "next";
+import React from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { ProjectDetailClient } from "@/components/projects/project-detail-client";
+import { getPublicProjectById } from "@/actions/query/public-projects.query";
+import type { ProjectDetail } from "@/types";
 
-import { publicAnalyticsFontClassName } from "@/components/public-analytics/fonts";
-import { PublicProjectPage } from "@/components/public-analytics/project/public-project-page";
-import { getServerLanguage } from "@/i18n/server";
-import { getPublicProjectDetail } from "@/lib/public-analytics/service";
-import { getPublicAnalyticsStrings } from "@/lib/public-analytics/strings";
+// In Next.js App Router, dynamic params are available via the params prop.
+export default async function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const project = await getPublicProjectById(id);
 
-type Props = {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-};
+  if (!project) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <h2 className="text-xl font-extrabold mb-4 dark:text-white">Project Not Found</h2>
+        <p className="text-slate-500 text-sm mb-6 dark:text-slate-400">The requested infrastructure project code ({id}) could not be found.</p>
+        <Link
+          href="/projects"
+          className={cn(buttonVariants({ variant: "default" }), "bg-primary text-white hover:bg-primary/90 flex items-center justify-center")}
+        >
+          <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Catalog
+        </Link>
+      </div>
+    );
+  }
 
-const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ id }, language] = await Promise.all([params, getServerLanguage()]);
-  const project = await getPublicProjectDetail(id).catch(() => null);
-  return { title: project ? `${project.name} | InfraWatch` : `${getPublicAnalyticsStrings(language).project.notFound} | InfraWatch` };
-}
-
-export default async function ProjectDetailsPage({ params, searchParams }: Props) {
-  const [{ id }, query, language] = await Promise.all([params, searchParams, getServerLanguage()]);
-  const project = await getPublicProjectDetail(id);
-  const t = getPublicAnalyticsStrings(language);
-
-  return (
-    <div className={`public-analytics ${publicAnalyticsFontClassName} min-h-screen`}>
-      {project ? (
-        <PublicProjectPage project={project} t={t} highlightFeedbackId={first(query.feedbackId)} highlightCommentId={first(query.commentId)} />
-      ) : (
-        <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-          <h1 className="pa-heading mb-4 text-2xl font-semibold text-pa-ink">{t.project.notFound}</h1>
-          <p className="mb-6 text-base text-pa-ink-2">{t.project.notFoundBody}</p>
-          <Link href="/infra-analytics" className="inline-flex min-h-11 items-center rounded-md bg-pa-accent px-4 text-base font-medium text-pa-surface">
-            {t.project.back}
-          </Link>
-        </div>
-      )}
-    </div>
-  );
+  return <ProjectDetailClient project={project as ProjectDetail} />;
 }

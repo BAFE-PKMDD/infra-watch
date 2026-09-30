@@ -6,6 +6,7 @@ import {
   sanitizePublicProjectMetadata,
   sanitizePublicSourceGeotags,
 } from "./public-source-media";
+import { buildPlannedVsActual } from "./public-analytics/rules";
 
 test("allows only approved HTTPS source-media hosts", () => {
   assert.equal(
@@ -91,4 +92,20 @@ test("constructs an explicit public metadata DTO and drops personal or internal 
       procurementRelation: [],
     },
   );
+});
+
+test("preserves POW classification so the public curve excludes revisions", () => {
+  const metadata = sanitizePublicProjectMetadata({ powRelation: [
+    { date: "2025-01-31", target: 40, actual: 30, remark: "Original POW" },
+    { date: "2025-02-28", target: 60, actual: 50, remark: "Original POW" },
+    { date: "2025-01-31", target: 90, actual: 25, remark: "Revised POW" },
+  ] });
+  assert.deepEqual(buildPlannedVsActual(metadata.powRelation), [
+    { date: "2025-01-31", target: 40, actual: 30 },
+    { date: "2025-02-28", target: 100, actual: 80 },
+  ]);
+  const incomplete = sanitizePublicProjectMetadata({ powRelation: [
+    { date: "2025-01-31", target: 40, actual: 30, remark: "Original POW" },
+  ] });
+  assert.equal(buildPlannedVsActual(incomplete.powRelation), null);
 });

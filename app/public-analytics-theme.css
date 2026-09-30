@@ -111,6 +111,11 @@
   font-family: inherit;
 }
 
+/* Leaflet's own CSS sets the zoom control glyphs in Lucida Console; keep the page's type. */
+.public-analytics .pa-map .leaflet-control-zoom a {
+  font-family: inherit;
+}
+
 .public-analytics .pa-map .leaflet-tile-pane {
   filter: saturate(0.35);
 }

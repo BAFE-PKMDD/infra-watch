@@ -1,8 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import type { Article } from "./article.types";
+import type { PublicStageKey } from "@/lib/public-analytics/rules";
 
 export type ViewMode = "table" | "grid" | "maps" | "list";
 export type PhotoViewMode = "grid" | "maps";
+export type ProjectTabKey = "overview" | "articles" | "updates" | "feedback" | "photos" | "videos" | "documents" | "pow" | "procurement";
 
 export interface LocationFilters {
   region: string;
@@ -61,6 +63,7 @@ export interface ProjectUpdate {
 }
 
 export interface ProjectDetail extends Omit<ProjectDisplayItem, "budget"> {
+  publicStage?: PublicStageKey;
   budget: number | null; // Approved budget only; null when the source allocation is unavailable
   completionDate: string; // Target completion date
   actualCompletionDate?: string; // Actual completion date

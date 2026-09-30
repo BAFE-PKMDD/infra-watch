@@ -115,6 +115,8 @@ export function ProjectList({ query }: { query: string }) {
         {failed ? t.page.unavailable : data ? format(t.list.showing, { count: formatCount(data.total) }) : t.list.loading}
       </p>
 
+      <p className="mt-2 text-sm text-pa-ink-2 sm:hidden">{t.list.scrollHint}</p>
+
       <div className="mt-2 max-w-full overflow-x-auto rounded-md border border-pa-hair" tabIndex={0} role="region" aria-label={t.list.title}>
         <table className="w-full min-w-[52rem] border-collapse text-left text-base">
           <thead className="bg-pa-surface-2 text-sm text-pa-ink-2">
