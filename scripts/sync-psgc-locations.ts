@@ -1,4 +1,4 @@
-import { syncPsgcLocations } from "./lib/locations/sync";
+import { syncPsgcLocations } from "@/lib/locations/sync";
 
 async function main() {
   console.log("Starting PSGC Locations sync...");
