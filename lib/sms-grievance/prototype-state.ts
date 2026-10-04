@@ -1,18 +1,7 @@
+import { buildBafeCaseOpenedReply, buildNotBafeProjectReply, mintSmsGrievanceCaseId } from "@/lib/sms-grievance/auto-response";
+import { getSmsCategoryLabel } from "@/lib/sms-grievance/categories";
 import { canTransitionSmsCase } from "@/lib/sms-grievance/policy";
-import type { SmsCaseStatus, SmsCategory, SmsMockScenario, SmsProjectTag } from "@/types/sms-grievance.types";
-
-export const SMS_CATEGORY_LABELS: Record<SmsCategory, string> = {
-  project_delay: "Project delay or stopped work",
-  damaged_infrastructure: "Damaged or defective infrastructure",
-  construction_quality: "Construction quality concern",
-  safety_hazard: "Safety hazard",
-  flooding_drainage: "Flooding or drainage concern",
-  blocked_access: "Blocked access or public inconvenience",
-  budget_procurement_payment: "Budget, procurement, supplier, or payment concern",
-  misconduct_corruption: "Misconduct, improper request, or suspected corruption",
-  incorrect_project_information: "Incorrect or missing project information",
-  other_infrastructure: "Other infrastructure concern",
-};
+import type { SmsCaseStatus, SmsCategory, SmsMockScenario, SmsNotBafeCategory, SmsProjectTag } from "@/types/sms-grievance.types";
 
 export type PrototypeAction =
   | {
@@ -26,7 +15,7 @@ export type PrototypeAction =
       confirmed: boolean;
       certainty?: "confirmed" | "possible";
     }
-  | { type: "mark_not_bafe_project"; reason: string }
+  | { type: "mark_not_bafe_project"; reason: string; category: SmsNotBafeCategory }
   | { type: "mark_unrelated"; reason: string }
   | { type: "mark_duplicate"; reason: string; duplicateOf: string }
   | { type: "assign"; unit: string; region: string; confirmed: boolean }
@@ -56,40 +45,72 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
     const assignedUnit = requireText(action.unit, "Responsible office or review team");
     const assignedRegion = requireText(action.region, "Region tag");
     if (!action.confirmed) throw new Error("Moderator or admin confirmation is required before creating the sample case.");
-    const project = requireProject(action.project);
     const certainty = action.certainty ?? "confirmed";
+    // A "confirmed" BAFE project still needs an actual matched project record. A
+    // "possible" tag can proceed without one — e.g. a report about distributed farm
+    // equipment (a hand tractor) that was never a built infrastructure project in the
+    // first place — and gets routed for follow-up checking instead of blocking staff.
+    const project = certainty === "possible" && !action.project ? null : requireProject(action.project);
+    const smsGrievanceCaseId = mintSmsGrievanceCaseId(candidate);
     return {
       ...candidate,
       relevance: certainty === "possible" ? "uncertain" : "confirmed_in_scope",
       relevanceReason: requireText(action.relevanceReason, "Relevance reason"),
-      status: "pending_review",
+      // Accepting already means the case is tagged, routed to a region, and ready for
+      // staff to act on — there's no separate "waiting" stop before "being reviewed".
+      status: "under_review",
       category: action.category,
-      categoryLabel: SMS_CATEGORY_LABELS[action.category],
+      categoryLabel: getSmsCategoryLabel(action.category),
       locationLabel: location,
       assignedUnit,
       assignedRegion,
-      projectMatch: certainty === "possible" ? "candidate" : "confirmed",
-      projectId: project.id,
-      projectCode: project.code,
-      projectProvince: project.province,
-      projectMunicipality: project.municipality,
-      projectLabel: project.name,
+      smsGrievanceCaseId,
+      projectMatch: project ? (certainty === "possible" ? "candidate" : "confirmed") : "not_identified",
+      projectId: project?.id,
+      projectCode: project?.code,
+      projectProvince: project?.province,
+      projectMunicipality: project?.municipality,
+      projectLabel: project?.name ?? "Not yet identified — needs further checking",
+      deliveryStatus: "simulated_delivered",
+      conversation: [
+        ...candidate.conversation,
+        {
+          id: `${candidate.id}-prototype-event-${candidate.conversation.length + 1}`,
+          kind: "outbound_sms",
+          body: buildBafeCaseOpenedReply(smsGrievanceCaseId),
+          occurredAt: "2026-09-19T09:15:00.000Z",
+          deliveryStatus: "simulated_delivered",
+        },
+      ],
     };
   }
 
   if (action.type === "mark_not_bafe_project") {
     if (candidate.status !== "needs_relevance_review") throw new Error("This action is available only while the sample needs checking.");
+    const reason = requireText(action.reason, "Reason");
     return {
       ...candidate,
       relevance: "out_of_scope",
-      relevanceReason: requireText(action.reason, "Reason"),
+      relevanceReason: reason,
       status: "closed",
       projectMatch: "not_bafe_project",
       projectLabel: "Not a BAFE project",
+      notBafeCategory: action.category,
       projectId: undefined,
       projectCode: undefined,
       projectProvince: undefined,
       projectMunicipality: undefined,
+      deliveryStatus: "simulated_delivered",
+      conversation: [
+        ...candidate.conversation,
+        {
+          id: `${candidate.id}-prototype-event-${candidate.conversation.length + 1}`,
+          kind: "outbound_sms",
+          body: buildNotBafeProjectReply(reason, action.category),
+          occurredAt: "2026-09-19T09:15:00.000Z",
+          deliveryStatus: "simulated_delivered",
+        },
+      ],
     };
   }
 
@@ -109,6 +130,9 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
       relevance: "duplicate",
       relevanceReason: requireText(action.reason, "Reason"),
       duplicateOf: requireText(action.duplicateOf, "Existing sample case reference"),
+      // Its content now lives in the case it's linked to, so it drops out of "Needs
+      // checking" instead of sitting there as a second, now-redundant item to review.
+      status: "closed",
     };
   }
 

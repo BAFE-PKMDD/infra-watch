@@ -1,4 +1,6 @@
 "use client";
+import { CitizenGuideNotice, CitizenGuideReceipt, useCitizenGuide } from "@/components/citizen/tour/citizen-guide-context";
+import { simulateCitizenSubmission } from "@/lib/tours/citizen";
 
 import Image from "next/image";
 import { getBlurDataURL } from "@/lib/image-utils";
@@ -31,14 +33,21 @@ const linkClassName =
   "inline-flex min-h-11 items-center font-medium text-blue-700 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded dark:text-sky-300";
 
 export default function ContactPage() {
+  const guide = useCitizenGuide();
+  return <ContactContent key={guide?.session?.id ?? "live"} />;
+}
+
+function ContactContent() {
+  const citizenGuide = useCitizenGuide();
+  const example = citizenGuide?.session?.guide === "citizen-contact";
   const { t } = useTranslation();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const form = useForm({
     defaultValues: {
-      name: "",
-      email: "",
+      name: example ? "Example citizen" : "",
+      email: example ? "citizen@example.invalid" : "",
       subject: "",
       message: "",
       website: ""
@@ -46,6 +55,11 @@ export default function ContactPage() {
     onSubmit: async ({ value, formApi }) => {
       setErrorMessage(null);
       try {
+        if (example) {
+          simulateCitizenSubmission("citizen-contact", { message: value.message });
+          citizenGuide.submitted("citizen-contact");
+          return;
+        }
         const result = await createContactMessage(value);
 
         if (result.success) {
@@ -105,6 +119,8 @@ export default function ContactPage() {
     }
   ];
 
+  if (example && citizenGuide.session?.submitted) return <div className="mx-auto max-w-3xl px-4 py-8"><CitizenGuideNotice /><CitizenGuideReceipt /></div>;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Hero Section */}
@@ -135,6 +151,7 @@ export default function ContactPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
+        <CitizenGuideNotice />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {infoCards.map((card, index) => {
             const Icon = card.icon;
@@ -224,6 +241,7 @@ export default function ContactPage() {
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t("contact.form.title")}</h2>
                   </div>
                   <form
+                    data-citizen="contact-form"
                     className="relative space-y-4"
                     onSubmit={(event) => {
                       event.preventDefault();
@@ -231,7 +249,7 @@ export default function ContactPage() {
                     }}
                   >
                     <FieldGroup>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div data-citizen="contact-details" className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <form.Field
                           name="name"
                           validators={{
@@ -393,6 +411,7 @@ export default function ContactPage() {
                         {([isSubmitting]) => (
                           <Button
                             type="submit"
+                            data-citizen="contact-send"
                             className="inline-flex min-h-11 shrink-0 items-center gap-2 px-4 py-2 min-w-[140px] justify-center bg-blue-700 hover:bg-blue-800 text-white"
                             disabled={isSubmitting}
                           >

@@ -69,6 +69,7 @@ test("mapRawGrievanceToRecord produces an untriaged record staff must review", (
   assert.equal(record.relevance, "uncertain");
   assert.equal(record.category, null);
   assert.equal(record.projectMatch, "not_identified");
+  assert.deepEqual(record.coordinates, { lat: 6.99607, lng: 125.0715867 });
   assert.equal(record.language, "Unknown");
   assert.equal(record.conversation.length, 1);
   assert.equal(record.conversation[0].body, RAW_MESSAGE.sms_content);
@@ -77,6 +78,13 @@ test("mapRawGrievanceToRecord produces an untriaged record staff must review", (
 test("mapRawGrievanceToRecord treats the literal string \"null\" as no sender number", () => {
   const record = mapRawGrievanceToRecord({ ...RAW_MESSAGE, sms_number: "null", sms_id: "null" });
   assert.equal(record.contactNumber, "Not provided");
+});
+
+test("a live SMS without valid coordinates remains available for review", () => {
+  const record = mapRawGrievanceToRecord({ ...RAW_MESSAGE, location: "91,125" });
+  assert.equal(record.coordinates, null);
+  assert.equal(record.originalText, RAW_MESSAGE.sms_content);
+  assert.equal(record.status, "needs_relevance_review");
 });
 
 test("fetchLiveSmsGrievanceRecords maps every well-formed message from the live feed", async () => {

@@ -1,6 +1,11 @@
 "use client";
 
+import { notifyTutorialAction } from "@/lib/tours/events";
+import { isTutorialRecord, runTutorialMutation } from "@/lib/tours/sandbox";
+import { TutorialModeNotice, useTutorialSandbox, type TutorialSandboxContextValue } from "@/components/admin/tour/tutorial-sandbox";
+
 import type { AdminFeedbackItem } from "@/actions/query/feedback.query";
+import { FeedbackResponses } from "@/components/admin/feedback/feedback-responses";
 import { parseIssueTypeValue } from "@/lib/abemis/issue-type-map";
 import { Button } from "@/components/ui/button";
 import {
@@ -169,6 +174,11 @@ function projectHref(feedback: AdminFeedbackItem) {
 }
 
 export function FeedbackManagementView({ initialData }: FeedbackManagementViewProps) {
+  const sandbox = useTutorialSandbox();
+  return <FeedbackManagementContent key={sandbox?.state.id ?? "live"} initialData={initialData} sandbox={sandbox} />;
+}
+
+function FeedbackManagementContent({ initialData, sandbox }: FeedbackManagementViewProps & { sandbox: TutorialSandboxContextValue | null }) {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [sentimentFilter, setSentimentFilter] = useState<FilterSentiment>("all");
   const [search, setSearch] = useState("");
@@ -199,6 +209,7 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
   const shouldUseInitialData = statusFilter === "all" && sentimentFilter === "all" && page === 1 && !debouncedSearch;
 
   const { data: statsData } = useQuery<FeedbackStatsResponse>({
+    enabled: !sandbox,
     queryKey: ["admin-feedback-stats"],
     queryFn: async () => {
       const response = await fetch("/api/admin/feedback/stats");
@@ -208,7 +219,8 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
     initialData: { success: true, data: initialData.stats },
   });
 
-  const { data: feedbackData, isLoading } = useQuery<FeedbackListResponse>({
+  const { data: feedbackData, isLoading: queryLoading } = useQuery<FeedbackListResponse>({
+    enabled: !sandbox,
     queryKey: ["admin-feedback", statusFilter, sentimentFilter, page, debouncedSearch],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -233,9 +245,11 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
       : undefined,
   });
 
-  const stats = statsData?.data ?? initialData.stats;
-  const feedbacks = useMemo(() => feedbackData?.data ?? [], [feedbackData?.data]);
-  const pagination = feedbackData?.pagination ?? initialData.pagination;
+  const isLoading = !sandbox && queryLoading;
+  const example = sandbox?.state.feedback;
+  const stats = sandbox ? { total: example ? 1 : 0, pending: Number(example?.status === "pending"), approved: Number(example?.status === "approved"), rejected: Number(example?.status === "rejected"), averageRating: example?.rating ?? 0, positiveSentiment: Number(example?.sentiment === "positive"), negativeSentiment: Number(example?.sentiment === "negative") } : statsData?.data ?? initialData.stats;
+  const feedbacks = useMemo(() => sandbox ? (example ? [example] : []).filter((item) => (statusFilter === "all" || item.status === statusFilter) && (sentimentFilter === "all" || item.sentiment === sentimentFilter) && `${item.comment} ${item.user?.name} ${item.project?.name}`.toLowerCase().includes(debouncedSearch.toLowerCase())) : feedbackData?.data ?? [], [sandbox, example, statusFilter, sentimentFilter, debouncedSearch, feedbackData?.data]);
+  const pagination = sandbox ? { page: 1, limit: ITEMS_PER_PAGE, total: feedbacks.length, totalPages: 1 } : feedbackData?.pagination ?? initialData.pagination;
   const selectedFeedback = useMemo(
     () => feedbacks.find((item) => item.id === selectedFeedbackId) ?? null,
     [feedbacks, selectedFeedbackId],
@@ -249,49 +263,63 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
   };
 
   const moderateMutation = useMutation({
-    mutationFn: async (payload: { feedbackId: string; status: "approved" | "rejected"; moderationNote?: string }) => {
-      const response = await fetch(`/api/admin/feedback/${payload.feedbackId}/moderate`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: payload.status,
-          moderationNote: payload.moderationNote,
-        }),
-      });
+    onMutate: (payload) => { notifyTutorialAction({ resource: "feedback", recordId: payload.feedbackId, action: payload.status, outcome: "pending", simulated: Boolean(sandbox) }); },
+    mutationFn: (payload: { feedbackId: string; status: "approved" | "rejected"; moderationNote?: string }) => runTutorialMutation({
+      sandbox: Boolean(sandbox), recordId: payload.feedbackId,
+      simulate: () => { sandbox!.apply({ resource: "feedback", recordId: payload.feedbackId, action: payload.status, moderationNote: payload.moderationNote }); return { message: "Tutorial moderation complete. No real feedback was changed." }; },
+      persist: async () => {
+        const response = await fetch(`/api/admin/feedback/${payload.feedbackId}/moderate`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: payload.status,
+            moderationNote: payload.moderationNote,
+          }),
+        });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to moderate feedback");
-      return result as { message?: string };
-    },
-    onSuccess: (result) => {
-      invalidateFeedback();
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Failed to moderate feedback");
+        return result as { message?: string };
+      },
+    }),
+    onSuccess: (result, payload) => {
+      notifyTutorialAction({ resource: "feedback", recordId: payload.feedbackId, action: payload.status, outcome: "success", simulated: result.simulated });
+      if (!result.simulated) invalidateFeedback();
       setModerationDialog(null);
       setModerationNote("");
       setSelectedFeedbackId(null);
-      toast.success(result.message || "Feedback moderated successfully");
+      toast.success(result.data.message || "Feedback moderated successfully");
     },
-    onError: (error: Error) => {
+    onError: (error: Error, payload) => {
+      notifyTutorialAction({ resource: "feedback", recordId: payload.feedbackId, action: payload.status, outcome: "error", simulated: Boolean(sandbox) });
       toast.error(error.message);
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (feedbackId: string) => {
-      const response = await fetch(`/api/admin/feedback/${feedbackId}`, {
-        method: "DELETE",
-      });
+    onMutate: (feedbackId: string) => { notifyTutorialAction({ resource: "feedback", recordId: feedbackId, action: "delete", outcome: "pending", simulated: Boolean(sandbox) }); },
+    mutationFn: (feedbackId: string) => runTutorialMutation({
+      sandbox: Boolean(sandbox), recordId: feedbackId,
+      simulate: () => { sandbox!.apply({ resource: "feedback", recordId: feedbackId, action: "delete" }); return { message: "Tutorial deletion complete. No real feedback was deleted." }; },
+      persist: async () => {
+        const response = await fetch(`/api/admin/feedback/${feedbackId}`, {
+          method: "DELETE",
+        });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to delete feedback");
-      return result as { message?: string };
-    },
-    onSuccess: (result) => {
-      invalidateFeedback();
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Failed to delete feedback");
+        return result as { message?: string };
+      },
+    }),
+    onSuccess: (result, feedbackId) => {
+      notifyTutorialAction({ resource: "feedback", recordId: feedbackId, action: "delete", outcome: "success", simulated: result.simulated });
+      if (!result.simulated) invalidateFeedback();
       setDeleteFeedbackId(null);
       setSelectedFeedbackId(null);
-      toast.success(result.message || "Feedback deleted successfully");
+      toast.success(result.data.message || "Feedback deleted successfully");
     },
-    onError: (error: Error) => {
+    onError: (error: Error, feedbackId) => {
+      notifyTutorialAction({ resource: "feedback", recordId: feedbackId, action: "delete", outcome: "error", simulated: Boolean(sandbox) });
       toast.error(error.message);
     },
   });
@@ -317,7 +345,8 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      {sandbox ? <TutorialModeNotice /> : null}
+      <section data-tour="feedback-summary" className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Metric label="Total" value={stats.total.toLocaleString()} icon={<MessageSquare className="size-4" />} />
         <Metric label="Pending" value={stats.pending.toLocaleString()} icon={<Clock className="size-4" />} tone="amber" />
         <Metric label="Approved" value={stats.approved.toLocaleString()} icon={<CheckCircle2 className="size-4" />} tone="green" />
@@ -326,7 +355,7 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
         <Metric label="Negative" value={stats.negativeSentiment.toLocaleString()} icon={<ThumbsDown className="size-4" />} tone="red" />
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+      <section data-tour="feedback-filters" className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -375,7 +404,7 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <section data-tour="feedback-list" className="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-1 border-b border-slate-200 p-4 dark:border-slate-800">
           <h2 className="text-base font-extrabold text-slate-950 dark:text-white">
             {statusFilter === "all" ? "All Feedback" : `${statusFilter.charAt(0).toUpperCase()}${statusFilter.slice(1)} Feedback`}
@@ -446,13 +475,13 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
           if (!open) setModerationDialog(null);
         }}
       >
-        <DialogContent>
+        <DialogContent data-tour="feedback-moderation-dialog" data-tour-record-id={moderationDialog?.feedbackId} data-tour-action={moderationDialog?.action}>
           <DialogHeader>
             <DialogTitle>
               {moderationDialog?.action === "approved" ? "Approve Feedback" : "Reject Feedback"}
             </DialogTitle>
             <DialogDescription>
-              {moderationDialog?.action === "approved"
+              {sandbox ? "Tutorial: confirm to preview this moderation decision. No real feedback will be changed or published." : moderationDialog?.action === "approved"
                 ? "Approved feedback will appear in the project feedback tab."
                 : "Rejected feedback stays hidden from public project pages."}
             </DialogDescription>
@@ -474,6 +503,7 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
               Cancel
             </Button>
             <Button
+              data-tour="feedback-moderation-confirm"
               type="button"
               variant={moderationDialog?.action === "rejected" ? "destructive" : "default"}
               onClick={confirmModeration}
@@ -486,16 +516,17 @@ export function FeedbackManagementView({ initialData }: FeedbackManagementViewPr
       </Dialog>
 
       <AlertDialog open={Boolean(deleteFeedbackId)} onOpenChange={(open) => !open && setDeleteFeedbackId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent data-tour="feedback-delete-dialog" data-tour-record-id={deleteFeedbackId ?? undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete feedback?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the feedback record and attempts to delete its uploaded attachments from MinIO.
+              {sandbox ? "Tutorial: confirm to remove the example feedback for this session. No real feedback or attachments will be deleted." : "This permanently removes the feedback record and attempts to delete its uploaded attachments from MinIO."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-tour="feedback-delete-cancel">Cancel</AlertDialogCancel>
             <AlertDialogAction
+              data-tour="feedback-delete-confirm"
               className="bg-red-600 text-white hover:bg-red-700"
               onClick={() => deleteFeedbackId && deleteMutation.mutate(deleteFeedbackId)}
               disabled={deleteMutation.isPending}
@@ -562,7 +593,7 @@ function FeedbackRow({
   isBusy?: boolean;
 }) {
   return (
-    <div className="p-4">
+    <div data-tour="feedback-row" data-tour-record-id={feedback.id} data-tour-status={feedback.status} className="p-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <button type="button" className="min-w-0 flex-1 text-left" onClick={onView}>
           <div className="flex items-start gap-3">
@@ -607,10 +638,11 @@ function FeedbackRow({
         </button>
 
         <div className="flex flex-wrap gap-2 lg:justify-end">
-          <Button type="button" variant="outline" onClick={onView}>
+          <Button data-tour="feedback-view" type="button" variant="outline" onClick={onView}>
             <Eye className="size-4" />
             View
           </Button>
+          {feedback.status === "approved" ? <Button data-tour="feedback-respond" type="button" onClick={onView} className="min-h-11">Respond</Button> : null}
           {feedback.status === "pending" && (
             <>
               <Button type="button" onClick={onApprove} disabled={isBusy}>
@@ -623,7 +655,7 @@ function FeedbackRow({
               </Button>
             </>
           )}
-          <Button type="button" variant="outline" onClick={onDelete} disabled={isBusy}>
+          <Button data-tour="feedback-delete" type="button" variant="outline" onClick={onDelete} disabled={isBusy || (isTutorialRecord(feedback.id) && feedback.status === "approved")}>
             <Trash2 className="size-4" />
             Delete
           </Button>
@@ -689,7 +721,7 @@ function FeedbackDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <SheetContent className="w-full overflow-y-auto p-0 sm:max-w-xl">
+      <SheetContent data-tour="feedback-detail" data-tour-record-id={feedback.id} className="w-full overflow-y-auto p-0 sm:max-w-xl">
         <SheetHeader className="border-b border-slate-200 pr-12 dark:border-slate-800">
           <SheetTitle>Feedback Details</SheetTitle>
           <SheetDescription>
@@ -719,9 +751,9 @@ function FeedbackDetailSheet({
           </DetailBlock>
 
           <DetailBlock title="Project">
-            <Link href={projectHref(feedback)} className="font-extrabold text-primary hover:underline">
+            {isTutorialRecord(feedback.id) ? <p className="font-extrabold">{projectLabel(feedback)}</p> : <Link href={projectHref(feedback)} className="font-extrabold text-primary hover:underline">
               {projectLabel(feedback)}
-            </Link>
+            </Link>}
             <p className="text-sm text-slate-600 dark:text-slate-300">
               {[feedback.project?.municipality, feedback.project?.province].filter(Boolean).join(", ") || feedback.projectId}
             </p>
@@ -799,20 +831,21 @@ function FeedbackDetailSheet({
             </DetailBlock>
           )}
 
+          {feedback.status === "approved" ? <FeedbackResponses key={feedback.id} feedbackId={feedback.id} /> : null}
           <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
             {feedback.status === "pending" && (
               <>
-                <Button type="button" onClick={() => onApprove(feedback.id)} disabled={isBusy}>
+                <Button data-tour="feedback-approve" type="button" onClick={() => onApprove(feedback.id)} disabled={isBusy}>
                   <CheckCircle2 className="size-4" />
                   Approve
                 </Button>
-                <Button type="button" variant="destructive" onClick={() => onReject(feedback.id)} disabled={isBusy}>
+                <Button data-tour="feedback-reject" type="button" variant="destructive" onClick={() => onReject(feedback.id)} disabled={isBusy}>
                   <XCircle className="size-4" />
                   Reject
                 </Button>
               </>
             )}
-            <Button type="button" variant="outline" onClick={() => onDelete(feedback.id)} disabled={isBusy}>
+            <Button type="button" variant="outline" onClick={() => onDelete(feedback.id)} disabled={isBusy || (isTutorialRecord(feedback.id) && feedback.status === "approved")}>
               <Trash2 className="size-4" />
               Delete
             </Button>

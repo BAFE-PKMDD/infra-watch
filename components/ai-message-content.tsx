@@ -348,13 +348,12 @@ export function AiMessageContent({
             if (className === "language-chart") {
               const chart = parseChartSpec(source);
               if (chart) return <ChartCard chart={chart} />;
-              if (isStreaming) return <PendingChart />;
+              return isStreaming ? <PendingChart /> : null;
             }
 
             if (className === "language-actions") {
               const spec = parseActionSpec(source);
-              if (spec) return <ActionButtons actions={spec.actions} />;
-              if (isStreaming) return null;
+              return spec ? <ActionButtons actions={spec.actions} /> : null;
             }
 
             if (className) {

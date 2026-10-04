@@ -59,9 +59,9 @@ export default async function LiveVideosPage() {
         </div>
 
         {/* Table */}
-        <Suspense fallback={<TableSkeleton columnCount={6} />}>
+        <div data-tour="videos-table"><Suspense fallback={<TableSkeleton columnCount={6} />}>
           <LiveVideoTable videos={videos} canReview={canReviewLiveVideos(user)} />
-        </Suspense>
+        </Suspense></div>
       </div>
     </AdminPageWrapper>
   );

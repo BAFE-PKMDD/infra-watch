@@ -1,5 +1,9 @@
 "use client";
 
+import { notifyTutorialAction } from "@/lib/tours/events";
+import { isTutorialRecord, runTutorialMutation, TUTORIAL_ISSUE_ID } from "@/lib/tours/sandbox";
+import { TutorialModeNotice, useTutorialSandbox, type TutorialSandboxContextValue } from "@/components/admin/tour/tutorial-sandbox";
+
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -63,7 +67,7 @@ type IssueResponse = {
   };
 };
 
-type AdminIssueDetail = {
+export type AdminIssueDetail = {
   id: string;
   ticketNumber: string;
   projectId: string | null;
@@ -158,12 +162,19 @@ function locationLabel(issue: AdminIssueDetail) {
 }
 
 export function IssueDetailAdminView({ issueId }: { issueId: string }) {
+  const sandbox = useTutorialSandbox();
+  if (!sandbox && isTutorialRecord(issueId)) return <AdminPageWrapper title="Tutorial ended" description="The example report has been cleared."><Link className="inline-flex min-h-11 items-center text-primary underline" href="/issues">Return to E-Reports</Link></AdminPageWrapper>;
+  return <IssueDetailContent key={sandbox?.state.id ?? issueId} issueId={sandbox ? TUTORIAL_ISSUE_ID : issueId} sandbox={sandbox} />;
+}
+
+function IssueDetailContent({ issueId, sandbox }: { issueId: string; sandbox: TutorialSandboxContextValue | null }) {
   const [draft, setDraft] = useState(() => createIssueReviewDraft("reply"));
   const [viewingMedia, setViewingMedia] = useState<number | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError, error } = useQuery<IssueDetailResponse>({
+  const { data, isLoading: queryLoading, isError: queryError, error } = useQuery<IssueDetailResponse>({
+    enabled: !sandbox && !isTutorialRecord(issueId),
     queryKey: ["admin-issue", issueId],
     queryFn: async () => {
       const response = await fetch(`/api/admin/issues/${issueId}`);
@@ -173,7 +184,9 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
     },
   });
 
-  const issue = data?.data;
+  const issue = sandbox ? sandbox.state.issue : data?.data;
+  const isLoading = !sandbox && queryLoading;
+  const isError = !sandbox && queryError;
 
   const media = useMemo<Array<StoredIssueEvidenceItem & { type: "image" | "video"; evidenceIndex: number }>>(() => {
     if (!issue) return [];
@@ -201,29 +214,39 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
   const selectedAction = ISSUE_REVIEW_ACTIONS[draft.mode];
 
   const responseMutation = useMutation({
-    mutationFn: async (submission: {
+    onMutate: (submission) => { notifyTutorialAction({ resource: "issues", recordId: submission.issueId, action: submission.mode, outcome: "pending", simulated: Boolean(sandbox) }); },
+    mutationFn: (submission: {
       issueId: string;
       mode: IssueReviewActionMode;
       payload: ReturnType<typeof buildIssueReviewPayload>;
-    }) => {
-      const response = await fetch(`/api/admin/issues/${submission.issueId}/responses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(submission.payload),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to save case update");
-      return result;
-    },
-    onSuccess: (_result, submission) => {
+    }) => runTutorialMutation({
+      sandbox: Boolean(sandbox), recordId: submission.issueId,
+      simulate: () => { sandbox!.apply({ resource: "issues", recordId: submission.issueId, action: submission.mode, payload: submission.payload }); return {}; },
+      persist: async () => {
+        const response = await fetch(`/api/admin/issues/${submission.issueId}/responses`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(submission.payload),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Failed to save case update");
+        return result;
+      },
+    }),
+    onSuccess: (result, submission) => {
+      notifyTutorialAction({ resource: "issues", recordId: submission.issueId, action: submission.mode, outcome: "success", simulated: result.simulated });
       setDraft((current) => current.mode === submission.mode ? createIssueReviewDraft(current.mode) : current);
+      if (result.simulated) { toast.success("Tutorial update complete. Nothing was sent or saved to real records."); return; }
       queryClient.invalidateQueries({ queryKey: ["admin-issue", submission.issueId] });
       queryClient.invalidateQueries({ queryKey: ["admin-issues"] });
       queryClient.invalidateQueries({ queryKey: ["admin-issue-stats"] });
       queryClient.invalidateQueries({ queryKey: ["public-issue", submission.issueId] });
       toast.success(getIssueReviewSuccessMessage(submission.mode));
     },
-    onError: (mutationError: Error) => toast.error(mutationError.message),
+    onError: (mutationError: Error, submission) => {
+      notifyTutorialAction({ resource: "issues", recordId: submission.issueId, action: submission.mode, outcome: "error", simulated: Boolean(sandbox) });
+      toast.error(mutationError.message);
+    },
   });
 
   return (
@@ -233,6 +256,7 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
       description="Understand the report, check its evidence, then record one clear next step."
     >
       <div className="space-y-4">
+        {sandbox ? <TutorialModeNotice /> : null}
         <Button asChild variant="ghost" className="min-h-11 w-fit px-3">
           <Link href="/issues">
             <ArrowLeft className="size-4" aria-hidden="true" />
@@ -253,7 +277,7 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
           </div>
         ) : (
           <>
-            <article className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <article data-tour="issue-detail" data-tour-record-id={issueId} className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
               <header className="border-b border-slate-200 px-4 py-5 sm:px-6 dark:border-slate-800">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 space-y-3">
@@ -329,7 +353,7 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                           className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-[15px] font-medium text-slate-900 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                         >
                           {Object.entries(ISSUE_REVIEW_ACTIONS).map(([value, option]) => (
-                            <option key={value} value={value}>{option.label}</option>
+                            <option key={value} value={value} disabled={Boolean(sandbox) && value !== "reply"}>{option.label}</option>
                           ))}
                         </select>
                         <span className="text-sm font-normal leading-5 text-slate-600 dark:text-slate-300">{selectedAction.description}</span>
@@ -417,7 +441,7 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                         </label>
                       )}
 
-                      <Button type="submit" className="min-h-11 w-full" disabled={responseMutation.isPending || !canSubmit}>
+                      <Button data-tour="issue-save" type="submit" className="min-h-11 w-full" disabled={responseMutation.isPending || !canSubmit}>
                         {responseMutation.isPending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}
                         {responseMutation.isPending ? "Saving..." : getIssueReviewActionLabel(draft.mode)}
                       </Button>
@@ -547,7 +571,7 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                     )}
                   </details>
 
-                  <Disclosure title={`Previous updates (${issue.responses.length})`} summary={issue.responses.length === 0 ? "No updates saved" : "Open case history"} icon={<MessageSquare className="size-4" />}>
+                  <div data-tour="issue-history"><Disclosure title={`Previous updates (${issue.responses.length})`} summary={issue.responses.length === 0 ? "No updates saved" : "Open case history"} icon={<MessageSquare className="size-4" />}>
                     {issue.responses.length === 0 ? (
                       <p className="text-sm text-slate-600 dark:text-slate-300">No replies, staff notes, or status updates have been recorded yet.</p>
                     ) : (
@@ -577,7 +601,7 @@ export function IssueDetailAdminView({ issueId }: { issueId: string }) {
                         })}
                       </div>
                     )}
-                  </Disclosure>
+                  </Disclosure></div>
                 </div>
               </div>
             </article>

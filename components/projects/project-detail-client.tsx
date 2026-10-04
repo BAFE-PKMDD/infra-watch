@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { CITIZEN_PROJECT_ID } from "@/lib/tours/citizen";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ProjectHero } from "@/components/projects/project-hero";
@@ -38,6 +39,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
   const viewTrackedRef = useRef(false);
 
   useEffect(() => {
+    if (project.id === CITIZEN_PROJECT_ID) return;
     if (viewTrackedRef.current) return;
     viewTrackedRef.current = true;
     const returnHref = searchParams.get("return");
@@ -63,6 +65,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
 
   // Navigate to photos tab with map view
   const handleShowOnMap = () => {
+    if (project.id === CITIZEN_PROJECT_ID) return;
 
     void sendCitizenEngagementEvent({
       eventName: "map_viewed",

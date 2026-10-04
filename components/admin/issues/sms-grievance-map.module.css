@@ -1,0 +1,61 @@
+.map {
+  container-type: inline-size;
+}
+
+.marker {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-poppins), sans-serif;
+}
+
+.marker span {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 1px 5px rgb(15 23 42 / 30%);
+}
+
+.selected span {
+  width: 24px;
+  height: 24px;
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.map :global(.leaflet-marker-icon:focus-visible),
+.map :global(.leaflet-control-zoom a:focus-visible) {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.map :global(.leaflet-control-zoom a) {
+  width: 44px;
+  height: 44px;
+  line-height: 44px;
+}
+
+.map :global(.leaflet-control-attribution) {
+  max-width: 100%;
+  font-size: 12px;
+}
+
+@container (max-width: 40rem) {
+  .map :global(.leaflet-bottom.leaflet-left) {
+    bottom: 3.5rem;
+  }
+}
+
+.map :global(.leaflet-tooltip) {
+  border: 0;
+  background: white;
+  color: #0f172a;
+  font-family: var(--font-poppins), sans-serif;
+  font-size: 12px;
+}

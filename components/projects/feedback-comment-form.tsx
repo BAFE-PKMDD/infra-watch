@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { Send, Image as ImageIcon, Video, X, Loader2 } from "lucide-react";
 import { createFeedbackComment } from "@/actions/mutation/feedback-comment.mutation";
 import { useAuth } from "@/providers/auth-provider";
@@ -12,6 +12,9 @@ import { isAllowedClientUploadType } from "@/lib/upload-policy";
 import { getAnonymousUser } from "@/lib/anonymous-identifier";
 import { AnonymousIcon } from "@/components/shared/anonymous-avatar";
 import { useTranslation } from "@/i18n";
+import { useTutorialSandbox } from "@/components/admin/tour/tutorial-sandbox";
+import { isTutorialRecord, runTutorialMutation } from "@/lib/tours/sandbox";
+import { notifyTutorialAction } from "@/lib/tours/events";
 
 interface FeedbackCommentFormProps {
   feedbackId: string;
@@ -21,6 +24,7 @@ interface FeedbackCommentFormProps {
   onCancelReply?: () => void;
   placeholder?: string;
   autoFocus?: boolean;
+  adminReply?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -40,8 +44,12 @@ export function FeedbackCommentForm({
   onCancelReply,
   placeholder,
   autoFocus = false,
+  adminReply = false,
 }: FeedbackCommentFormProps) {
-  const { user } = useAuth();
+  const { user: signedInUser } = useAuth();
+  const sandbox = useTutorialSandbox();
+  const user = sandbox ? { id: "tutorial-staff", name: "Tutorial staff", image: null } : signedInUser;
+  const inputId = useId();
   const { t } = useTranslation();
   const [comment, setComment] = useState("");
   const [media, setMedia] = useState<Array<{ type: "image" | "video"; url: string; caption?: string }>>([]);
@@ -56,6 +64,7 @@ export function FeedbackCommentForm({
   }, [autoFocus]);
 
   const handleFileUpload = async (files: FileList | null, type: "image" | "video") => {
+    if (sandbox || isTutorialRecord(feedbackId)) return;
     if (!files || files.length === 0) return;
 
     setUploadingFiles(true);
@@ -139,14 +148,19 @@ export function FeedbackCommentForm({
         : trimmedComment;
 
     setIsSubmitting(true);
+    notifyTutorialAction({ resource: "feedback", recordId: feedbackId, action: "reply", outcome: "pending", simulated: Boolean(sandbox) });
     try {
-      const result = await createFeedbackComment({
-        feedbackId,
-        comment: finalComment,
-        media,
+      const { data: result, simulated } = await runTutorialMutation<Awaited<ReturnType<typeof createFeedbackComment>>>({
+        sandbox: Boolean(sandbox), recordId: feedbackId,
+        simulate: () => {
+          sandbox!.apply({ resource: "feedback", recordId: feedbackId, action: "reply", body: finalComment });
+          return { success: true, data: null, message: "Example reply added. Nothing was posted or sent." };
+        },
+        persist: () => createFeedbackComment({ feedbackId, comment: finalComment, media }),
       });
 
       if (!result.success) {
+        notifyTutorialAction({ resource: "feedback", recordId: feedbackId, action: "reply", outcome: "error", simulated });
         toast.error(t("site.comments.blocked"), {
           description: result.message,
           duration: 6500,
@@ -160,8 +174,10 @@ export function FeedbackCommentForm({
         textareaRef.current.style.height = "auto";
       }
 
-      onCommentAdded?.();
+      notifyTutorialAction({ resource: "feedback", recordId: feedbackId, action: "reply", outcome: "success", simulated });
+      if (!simulated) onCommentAdded?.();
     } catch (error) {
+      notifyTutorialAction({ resource: "feedback", recordId: feedbackId, action: "reply", outcome: "error", simulated: Boolean(sandbox) });
       console.error("Error posting comment:", error);
       toast.error(t("site.comments.postFailed"));
     } finally {
@@ -217,6 +233,7 @@ export function FeedbackCommentForm({
 
       {/* Main Comment Input Pill Form */}
       <form onSubmit={handleSubmit} className="flex-1 min-w-0">
+        {adminReply ? <label htmlFor={inputId} className="mb-2 block text-sm font-semibold">Reply to the citizen</label> : null}
         {/* Reply To Banner */}
         {isReply && replyToName && (
           <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">
@@ -238,6 +255,9 @@ export function FeedbackCommentForm({
         <div className="bg-[#f0f2f5] dark:bg-[#242526] hover:bg-[#eaecee] dark:hover:bg-[#2a2b2c] focus-within:bg-white dark:focus-within:bg-[#1c1d1e] focus-within:ring-2 focus-within:ring-[#1877F2]/40 rounded-[20px] px-3.5 py-2 transition-all border border-slate-200/70 dark:border-slate-700/60 shadow-2xs">
           {/* Text Area */}
           <textarea
+            id={inputId}
+            data-tour="feedback-reply-input"
+            aria-label={adminReply ? "Reply to the citizen" : t("site.comments.writeComment")}
             ref={textareaRef}
             value={comment}
             onChange={handleTextChange}
@@ -246,7 +266,7 @@ export function FeedbackCommentForm({
               (isReply ? t("site.comments.writeReply") : t("site.comments.writeComment"))
             }
             rows={1}
-            className="w-full bg-transparent border-0 text-xs sm:text-[13px] text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 resize-none focus:outline-none leading-relaxed min-h-[22px] max-h-[120px]"
+            className={`w-full bg-transparent border-0 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 resize-none focus:outline-none leading-relaxed max-h-[120px] ${adminReply ? "min-h-28 text-sm" : "min-h-[22px] text-xs sm:text-[13px]"}`}
             disabled={isSubmitting || uploadingFiles}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -313,7 +333,7 @@ export function FeedbackCommentForm({
                   multiple
                   onChange={(e) => handleFileUpload(e.target.files, "image")}
                   className="hidden"
-                  disabled={isSubmitting || uploadingFiles}
+                  disabled={isSubmitting || uploadingFiles || Boolean(sandbox) || isTutorialRecord(feedbackId)}
                 />
               </label>
 
@@ -329,7 +349,7 @@ export function FeedbackCommentForm({
                   multiple
                   onChange={(e) => handleFileUpload(e.target.files, "video")}
                   className="hidden"
-                  disabled={isSubmitting || uploadingFiles}
+                  disabled={isSubmitting || uploadingFiles || Boolean(sandbox) || isTutorialRecord(feedbackId)}
                 />
               </label>
 
@@ -353,15 +373,17 @@ export function FeedbackCommentForm({
               )}
               <button
                 type="submit"
+                data-tour="feedback-reply-send"
                 disabled={isSubmitting || uploadingFiles || (!comment.trim() && media.length === 0)}
-                className="w-7 h-7 rounded-full bg-[#1877F2] hover:bg-[#166fe5] text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-xs active:scale-95 cursor-pointer"
-                title={t("site.comments.post")}
+                className={`${adminReply ? "min-h-11 gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground" : "w-7 h-7 rounded-full bg-[#1877F2] hover:bg-[#166fe5] text-white"} flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs active:scale-95 cursor-pointer`}
+                title={adminReply ? "Post reply" : t("site.comments.post")}
               >
                 {isSubmitting ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <Send className="w-3.5 h-3.5 ml-0.5" />
                 )}
+                {adminReply ? "Post reply" : null}
               </button>
             </div>
           </div>

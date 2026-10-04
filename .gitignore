@@ -23,6 +23,7 @@ package-lock.json
 
 # runtime uploads (may contain citizen personal data)
 /.storage/feedback/
+/.storage/issue-evidence/
 
 # misc
 .DS_Store
@@ -66,4 +67,3 @@ next-env.d.ts
 # local Hermes agent artifacts
 /.hermes/
 /skills-lock.json
-

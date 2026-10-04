@@ -45,6 +45,9 @@ import {
 import { safePublicSourceMediaUrl } from "@/lib/public-source-media";
 import { sendCitizenEngagementEvent } from "@/lib/analytics/citizen-event-client";
 import { useTranslation } from "@/i18n";
+import { CitizenGuideNotice, useCitizenGuide } from "@/components/citizen/tour/citizen-guide-context";
+import { CITIZEN_PROJECT_ID } from "@/lib/tours/citizen";
+import { CITIZEN_DIRECTORY_PROJECTS } from "@/lib/tours/citizen-directory";
 
 type CatalogMapPin = {
   id: string;
@@ -114,6 +117,8 @@ const GISMapCanvas = dynamic(() => import("@/components/map/gis-map-canvas"), {
 });
 export default function ProjectsCatalog() {
   const { t } = useTranslation();
+  const guide = useCitizenGuide();
+  const example = guide?.session?.guide === "citizen-feedback";
   const stageLabel = (status: string | null | undefined) => t(STAGE_LABEL_KEYS[mapInternalToPublicStage(status)]);
   const router = useRouter();
   const pathname = usePathname();
@@ -132,7 +137,8 @@ export default function ProjectsCatalog() {
   const [selectedFarmOperation, setSelectedFarmOperation] = useState(initialState.farmOperation || "all");
   const [selectedProjectType, setSelectedProjectType] = useState(initialState.projectType || "all");
   const [sort, setSort] = useState<PublicProjectSort>(initialState.sort);
-  const [viewMode, setViewMode] = useState(initialState.view);
+  const [selectedViewMode, setViewMode] = useState(initialState.view);
+  const viewMode = example ? "list" : selectedViewMode;
   const { theme } = useTheme();
   const [selectedPin, setSelectedPin] = useState<CatalogMapPin | null>(null);
   const [mapProjectType, setMapProjectType] = useState("all");
@@ -189,12 +195,12 @@ export default function ProjectsCatalog() {
 
   const {
     data: queryData,
-    isLoading,
+    isLoading: projectsLoading,
     isFetching,
     isError,
     refetch,
     fetchNextPage,
-    hasNextPage,
+    hasNextPage: moreProjects,
     isFetchingNextPage
   } = useInfiniteQuery({
     queryKey: ["public-projects", 5, searchQuery, activeProgram, selectedRegion, selectedProvince, selectedMunicipality, selectedBarangay, selectedStatus, selectedYear, selectedFarmOperation, selectedProjectType, sort],
@@ -214,6 +220,7 @@ export default function ProjectsCatalog() {
     }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage?.nextCursor,
+    enabled: !example,
   });
 
   const {
@@ -235,7 +242,7 @@ export default function ProjectsCatalog() {
       farmOperation: selectedFarmOperation,
       projectType: selectedProjectType,
     }),
-    enabled: viewMode === "map",
+    enabled: !example && viewMode === "map",
     staleTime: 5 * 60 * 1000,
   });
 
@@ -246,9 +253,11 @@ export default function ProjectsCatalog() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const filteredProjects = queryData?.pages.flatMap((page) => page.data) || [];
-  const directoryUnavailable = isError || (viewMode === "map" && isMapError);
-  const totalCount = queryData?.pages[0]?.totalCount || 0;
+  const isLoading = !example && projectsLoading;
+  const hasNextPage = !example && moreProjects;
+  const filteredProjects = example ? CITIZEN_DIRECTORY_PROJECTS : queryData?.pages.flatMap((page) => page.data) || [];
+  const directoryUnavailable = !example && (isError || (viewMode === "map" && isMapError));
+  const totalCount = example ? CITIZEN_DIRECTORY_PROJECTS.length : queryData?.pages[0]?.totalCount || 0;
   const directoryParams = React.useMemo(() => serializePublicProjectDirectoryState({
     searchQuery,
     program: activeProgram,
@@ -295,7 +304,7 @@ export default function ProjectsCatalog() {
   ].join("|");
 
   React.useEffect(() => {
-    if (!hasSearchIntent || isFetching || !queryData) return;
+    if (example || !hasSearchIntent || isFetching || !queryData) return;
     const timer = window.setTimeout(() => {
       if (trackedSearchStatesRef.current.has(searchIntentKey)) return;
       trackedSearchStatesRef.current.add(searchIntentKey);
@@ -307,20 +316,20 @@ export default function ProjectsCatalog() {
       });
     }, 800);
     return () => window.clearTimeout(timer);
-  }, [hasSearchIntent, isFetching, queryData, searchIntentKey, totalCount]);
+  }, [example, hasSearchIntent, isFetching, queryData, searchIntentKey, totalCount]);
 
   React.useEffect(() => {
-    if (viewMode !== "map" || mapViewTrackedRef.current) return;
+    if (example || viewMode !== "map" || mapViewTrackedRef.current) return;
     mapViewTrackedRef.current = true;
     void sendCitizenEngagementEvent({
       eventName: "map_viewed",
       routeTemplate: "/projects",
       entrySurface: "map",
     });
-  }, [viewMode]);
+  }, [example, viewMode]);
 
   const recordSearchProjectOpen = (projectId: string) => {
-    if (searchQuery.trim().length < 2) return;
+    if (example || projectId === CITIZEN_PROJECT_ID || searchQuery.trim().length < 2) return;
     void sendCitizenEngagementEvent({
       eventName: "project_opened_from_search",
       routeTemplate: "/projects",
@@ -360,6 +369,7 @@ export default function ProjectsCatalog() {
     return () => window.removeEventListener("popstate", syncFromHistory);
   }, []);
   React.useEffect(() => {
+    if (example) return;
     if (applyingUrlStateRef.current) {
       applyingUrlStateRef.current = false;
       return;
@@ -367,7 +377,7 @@ export default function ProjectsCatalog() {
     const nextUrl = directoryQueryString ? `${pathname}?${directoryQueryString}` : pathname;
     const currentUrl = searchParamsKey ? `${pathname}?${searchParamsKey}` : pathname;
     if (nextUrl !== currentUrl) router.replace(nextUrl, { scroll: false });
-  }, [directoryQueryString, pathname, router, searchParamsKey]);
+  }, [example, directoryQueryString, pathname, router, searchParamsKey]);
 
   // A plain string keeps the memo stable across renders (t itself is recreated every render).
   const locationUnavailableLabel = t("directory.card.locationUnavailable");
@@ -834,6 +844,7 @@ export default function ProjectsCatalog() {
         )}
 
         {/* Project Results Display */}
+        {example ? <CitizenGuideNotice /> : null}
         {!isLoading && !directoryUnavailable && filteredProjects.length > 0 && viewMode === "grid" && (
           <>
             <motion.div
@@ -925,7 +936,7 @@ export default function ProjectsCatalog() {
             <div className="space-y-3 md:hidden">
               {filteredProjects.map((project) => (
                 <Card key={project.id} className="overflow-hidden border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                  <Link href={projectHref(project.id)} onClick={() => recordSearchProjectOpen(project.id)} className="block p-5">
+                  <Link data-citizen={example ? "project-view-details" : undefined} href={projectHref(project.id, "feedback")} onClick={() => recordSearchProjectOpen(project.id)} className="block p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         {(() => {
@@ -949,6 +960,7 @@ export default function ProjectsCatalog() {
                       <div><dt className="text-slate-500">{t("directory.card.location")}</dt><dd className="mt-1 font-semibold text-slate-800 dark:text-slate-200">{projectLocation(project, locationUnavailableLabel)}</dd></div>
                       <div><dt className="text-slate-500">{t("directory.card.approvedBudget")}</dt><dd className="mt-1 font-semibold text-slate-800 dark:text-slate-200">{project.budget === null ? t("directory.card.notAvailable") : `₱${project.budget.toLocaleString()}`}</dd></div>
                     </dl>
+                    <span className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-primary">{t("directory.table.viewDetails")}</span>
                   </Link>
                 </Card>
               ))}
@@ -1028,9 +1040,9 @@ export default function ProjectsCatalog() {
                               </p>
                             </td>
                             <td className="px-6 py-5">
-                              <Link href={projectHref(project.id, "feedback")} onClick={() => recordSearchProjectOpen(project.id)} className="inline-block">
-                                <Button className="bg-[#16a34a] hover:bg-[#15803d] text-white text-sm font-semibold px-4 py-2 rounded-md">{t("directory.table.viewDetails")}</Button>
-                              </Link>
+                              <Button asChild className="min-h-11 bg-[#16a34a] hover:bg-[#15803d] text-white text-sm font-semibold px-4 py-2 rounded-md">
+                                <Link data-citizen={example ? "project-view-details" : undefined} href={projectHref(project.id, "feedback")} onClick={() => recordSearchProjectOpen(project.id)}>{t("directory.table.viewDetails")}</Link>
+                              </Button>
                             </td>
                           </motion.tr>
                         ))}

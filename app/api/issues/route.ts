@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getAuditContextFromRequest, logAudit, logBlockedUploadAttempt } from "@/lib/audit";
 import { db } from "@/lib/db";
-import { issues, projects } from "@/lib/db/schema";
+import { issues, issueResponses, projects } from "@/lib/db/schema";
+import { getAutoReplySettings } from "@/actions/query/settings.query";
 import { generateUniqueFileName, uploadFile } from "@/lib/minio";
 import { publishAndPersistNotification } from "@/lib/notification-persistence";
 import { formatPublicIssue } from "@/lib/public-issue-dto";
@@ -49,6 +50,52 @@ async function notifyStaffOfNewIssue(issue: {
       error: error instanceof Error ? error.name : "UnknownError",
     });
   }
+}
+
+const SYSTEM_AUTO_ACTOR_ID = "system-auto-acceptance";
+
+// Content (text + evidence) is already verified clean by assertCleanText/assertSafeImageUpload
+// before this is called, so "auto-accept" only needs to decide whether to skip the manual
+// staff acceptance/publish steps — no additional moderation check is needed here. The
+// citizen's own description already meets the same length/clean-text bar the manual
+// "publish to public" flow enforces, so it's safe to reuse verbatim as publicDescription.
+async function resolveInitialIssueStatus(description: string): Promise<{
+  status: "pending" | "reviewing";
+  autoAccepted: boolean;
+  message: string | null;
+  publicDescription: string | null;
+  publicApprovedAt: Date | null;
+  publicApprovedBy: string | null;
+}> {
+  const settings = await getAutoReplySettings();
+  if (settings.data.issues.enabled) {
+    // Mirrors the manual "publish to public" flow's own 20-char floor (responses/route.ts) —
+    // the formData submission path allows descriptions as short as 10 chars, which shouldn't
+    // bypass that bar just because auto-accept is on.
+    const canAutoPublish = description.trim().length >= 20;
+    return {
+      status: "reviewing",
+      autoAccepted: true,
+      message: settings.data.issues.message,
+      publicDescription: canAutoPublish ? description : null,
+      publicApprovedAt: canAutoPublish ? new Date() : null,
+      publicApprovedBy: canAutoPublish ? SYSTEM_AUTO_ACTOR_ID : null,
+    };
+  }
+  return { status: "pending", autoAccepted: false, message: null, publicDescription: null, publicApprovedAt: null, publicApprovedBy: null };
+}
+
+async function recordAutoAcceptance(issueId: string, message: string) {
+  await db.insert(issueResponses).values({
+    issueId,
+    responderId: SYSTEM_AUTO_ACTOR_ID,
+    responderName: "InfraWatch Automated System",
+    responderRole: "system",
+    message,
+    statusChange: null,
+    newStatus: null,
+    isInternalOnly: false,
+  });
 }
 
 const mediaPathSchema = z.string().trim().min(1, 'Evidence URL is required.').max(2048, 'Evidence URL is too long.');
@@ -316,6 +363,13 @@ function getUploadAuditCategory(message: string) {
   return "invalid_mime";
 }
 
+function buildIssueAuditNote(ticketNumber: string, status: Awaited<ReturnType<typeof resolveInitialIssueStatus>>) {
+  if (!status.autoAccepted) return `Issue ${ticketNumber} submitted`;
+  return status.publicDescription
+    ? `Issue ${ticketNumber} submitted, auto-accepted, and auto-published to the public directory (passed automated content checks)`
+    : `Issue ${ticketNumber} submitted and auto-accepted (passed automated content checks)`;
+}
+
 function toIssueAuditValues(issue: IssueRow): Record<string, unknown> {
   const evidence = Array.isArray(issue.evidence) ? issue.evidence : [];
 
@@ -472,6 +526,7 @@ export async function POST(request: NextRequest) {
 
       const { evidence, geoVideoTrack, geoVideoUrl } = evidencePayload;
       const ticketNumber = `INFRA-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+      const initialStatus = await resolveInitialIssueStatus(description);
 
       const [created] = await db
         .insert(issues)
@@ -485,9 +540,12 @@ export async function POST(request: NextRequest) {
           isAnonymous,
           category,
           issueType,
-          status: "pending",
+          status: initialStatus.status,
           priority: "normal",
           description,
+          publicDescription: initialStatus.publicDescription,
+          publicApprovedAt: initialStatus.publicApprovedAt,
+          publicApprovedBy: initialStatus.publicApprovedBy,
           reportedFarmOperation: body.farmOperation || null,
           reportedProjectType: body.projectType || null,
           region: body.region || null,
@@ -500,6 +558,10 @@ export async function POST(request: NextRequest) {
           geoVideoUrl,
         })
         .returning();
+
+      if (initialStatus.autoAccepted && initialStatus.message) {
+        await recordAutoAcceptance(created.id, initialStatus.message);
+      }
 
       await notifyStaffOfNewIssue({
         id: created.id,
@@ -514,7 +576,7 @@ export async function POST(request: NextRequest) {
         recordId: created.id,
         action: "CREATE",
         newValues: toIssueAuditValues(created),
-        notes: `Issue ${ticketNumber} submitted`,
+        notes: buildIssueAuditNote(ticketNumber, initialStatus),
         context: getAuditContextFromRequest(request, session?.user),
       });
 
@@ -557,6 +619,7 @@ export async function POST(request: NextRequest) {
 
     const evidence = await uploadEvidence(formData.get("evidence"), request, session?.user);
     const ticketNumber = `INFRA-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const initialStatus = await resolveInitialIssueStatus(description);
 
     const [created] = await db
       .insert(issues)
@@ -569,9 +632,12 @@ export async function POST(request: NextRequest) {
         reporterEmail: isAnonymous ? null : reporterEmail || null,
         isAnonymous,
         category,
-        status: "pending",
+        status: initialStatus.status,
         priority: "normal",
         description,
+        publicDescription: initialStatus.publicDescription,
+        publicApprovedAt: initialStatus.publicApprovedAt,
+        publicApprovedBy: initialStatus.publicApprovedBy,
         region: String(formData.get("region") || "").trim() || null,
         province: String(formData.get("province") || "").trim() || null,
         municipality: String(formData.get("municipality") || "").trim() || null,
@@ -580,6 +646,10 @@ export async function POST(request: NextRequest) {
         evidence,
       })
       .returning();
+
+    if (initialStatus.autoAccepted && initialStatus.message) {
+      await recordAutoAcceptance(created.id, initialStatus.message);
+    }
 
     await notifyStaffOfNewIssue({
       id: created.id,
@@ -594,7 +664,7 @@ export async function POST(request: NextRequest) {
       recordId: created.id,
       action: "CREATE",
       newValues: toIssueAuditValues(created),
-      notes: `Issue ${ticketNumber} submitted`,
+      notes: buildIssueAuditNote(ticketNumber, initialStatus),
       context: getAuditContextFromRequest(request, session?.user),
     });
 

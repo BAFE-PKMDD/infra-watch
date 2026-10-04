@@ -1,4 +1,5 @@
 import { SMS_MOCK_SCENARIOS } from "@/lib/sms-grievance/mock-fixtures";
+import { parseSmsCoordinates } from "@/lib/sms-grievance/location";
 import type { SmsMockScenario } from "@/types/sms-grievance.types";
 
 // Public, unauthenticated feed of raw inbound SMS text — see docs/current-system/feature-catalog.md
@@ -105,6 +106,7 @@ export function mapRawGrievanceToRecord(raw: RawSmsGrievanceMessage): SmsMockSce
     category: null,
     categoryLabel: "Not yet classified",
     locationLabel: formatLiveLocationLabel(raw.location),
+    coordinates: parseSmsCoordinates(raw.location),
     projectLabel: "Not yet identified",
     projectMatch: "not_identified",
     sensitive: false,

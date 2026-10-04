@@ -115,7 +115,7 @@ export default async function AuditLogsPage({
         </div>
       )}
 
-      <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <section data-tour="audit-filters" className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap gap-2">
           {quickFilters.map((item) => {
             const Icon = item.icon;
@@ -193,7 +193,7 @@ export default async function AuditLogsPage({
         </details>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <section data-tour="audit-trail" className="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-2 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
           <div>
             <h2 className="text-base font-extrabold text-slate-950 dark:text-white">Trail</h2>

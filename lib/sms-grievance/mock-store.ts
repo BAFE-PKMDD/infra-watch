@@ -1,9 +1,10 @@
+import { LOCAL_SIMULATED_ID_PREFIX } from "@/lib/sms-grievance/simulate-incoming";
 import type { SmsMockScenario } from "@/types/sms-grievance.types";
 
 // Bump this suffix whenever fixture content changes meaningfully (wording, masking
 // format, new fields) so browsers with an older cached prototype state fall back to the
 // fresh fixtures automatically instead of showing stale sample text indefinitely.
-export const SMS_PROTOTYPE_STORAGE_KEY = "infrawatch:sms-grievance-prototype:v5";
+export const SMS_PROTOTYPE_STORAGE_KEY = "infrawatch:sms-grievance-prototype:v9";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
@@ -36,14 +37,57 @@ function isControlledSampleRecord(value: unknown, knownIds: ReadonlySet<string>)
   return true;
 }
 
+// A record staff added at runtime via "Simulate incoming message" — never part of the
+// server-provided fallback, so it's checked on its own terms (id prefix + localSimulated
+// flag) instead of against the known-ids set.
+function isSimulatedIncomingRecord(value: unknown): value is SmsMockScenario {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Partial<SmsMockScenario>;
+  return record.prototype === true
+    && record.localSimulated === true
+    && typeof record.id === "string"
+    && record.id.startsWith(LOCAL_SIMULATED_ID_PREFIX)
+    && typeof record.originalText === "string"
+    && record.originalText.trim().length > 0
+    && typeof record.contactNumber === "string"
+    && record.contactNumber.trim().length > 0
+    && Array.isArray(record.conversation);
+}
+
 export function readSmsPrototypeRecords(storage: StorageLike, fallback: SmsMockScenario[]) {
   try {
     const raw = storage.getItem(SMS_PROTOTYPE_STORAGE_KEY);
     if (!raw) return fallback;
     const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return fallback;
+
     const knownIds = new Set(fallback.map((item) => item.id));
-    if (!Array.isArray(parsed) || parsed.length !== fallback.length || !parsed.every((item) => isControlledSampleRecord(item, knownIds))) return fallback;
-    return parsed;
+    const isRecordObject = (item: unknown): item is Partial<SmsMockScenario> => typeof item === "object" && item !== null;
+    const knownPart = parsed.filter((item) => isRecordObject(item) && knownIds.has(item.id as string));
+    const simulatedPart = parsed.filter((item) => isRecordObject(item) && !knownIds.has(item.id as string));
+
+    // Every saved record that still matches a known id must itself be a valid controlled
+    // sample/live record, but the saved snapshot no longer has to cover every id the live
+    // feed currently returns — the live feed grows on its own (new real SMS arrive between
+    // visits), and that shouldn't wipe a staff member's in-progress review of older
+    // messages or their staff-simulated test message.
+    if (!knownPart.every((item) => isControlledSampleRecord(item, knownIds))) return fallback;
+    if (!simulatedPart.every(isSimulatedIncomingRecord)) return fallback;
+
+    // Source coordinates are read-only and may be absent from older cached reviews.
+    // Refresh them without losing the staff member's local review decisions. Any id in
+    // `fallback` with no saved counterpart (a message that arrived since the last save)
+    // passes through untouched, still awaiting its first review.
+    const savedById = new Map(knownPart.map((item) => [(item as SmsMockScenario).id, item as SmsMockScenario]));
+    const mergedKnown = fallback.map((source) => {
+      const saved = savedById.get(source.id);
+      if (!saved) return source;
+      const review = { ...saved };
+      delete review.coordinates;
+      return source.coordinates === undefined ? review : { ...review, coordinates: source.coordinates };
+    });
+
+    return [...simulatedPart, ...mergedKnown] as SmsMockScenario[];
   } catch {
     return fallback;
   }

@@ -13,6 +13,7 @@ import {
 } from "react";
 import Link from "next/link";
 import type L from "leaflet";
+import type {} from "leaflet.markercluster";
 import { Camera, Check, Copy, Maximize2 } from "lucide-react";
 import {
   CircleMarker,

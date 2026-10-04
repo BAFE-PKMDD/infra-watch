@@ -12,19 +12,18 @@ import {
 
 test("SMS case transitions follow the approved adjacent workflow", () => {
   assert.equal(canTransitionSmsCase("imported", "needs_relevance_review"), true);
-  assert.equal(canTransitionSmsCase("needs_relevance_review", "pending_review"), true);
-  assert.equal(canTransitionSmsCase("pending_review", "under_review"), true);
+  assert.equal(canTransitionSmsCase("needs_relevance_review", "under_review"), true);
   assert.equal(canTransitionSmsCase("under_review", "resolved"), true);
   assert.equal(canTransitionSmsCase("resolved", "closed"), true);
   assert.equal(canTransitionSmsCase("closed", "under_review"), true);
 
   assert.equal(canTransitionSmsCase("needs_relevance_review", "resolved"), false);
-  assert.equal(canTransitionSmsCase("pending_review", "closed"), false);
-  assert.equal(canTransitionSmsCase("closed", "pending_review"), false);
+  assert.equal(canTransitionSmsCase("under_review", "closed"), false);
+  assert.equal(canTransitionSmsCase("closed", "resolved"), false);
 });
 
 test("nextSmsCaseStatuses backs the grievance status dropdown with the same adjacent-only rule", () => {
-  assert.deepEqual(nextSmsCaseStatuses("pending_review"), ["under_review"]);
+  assert.deepEqual(nextSmsCaseStatuses("needs_relevance_review"), ["under_review"]);
   assert.deepEqual(nextSmsCaseStatuses("under_review"), ["resolved"]);
   assert.deepEqual(nextSmsCaseStatuses("resolved"), ["closed", "under_review"]);
   assert.deepEqual(nextSmsCaseStatuses("closed"), ["under_review"]);
@@ -32,7 +31,7 @@ test("nextSmsCaseStatuses backs the grievance status dropdown with the same adja
 
 test("sensitive SMS actions require the approved evidence", () => {
   assert.deepEqual(getSmsActionRequirement("accept"), ["sourceBackedBafeProject", "category", "location", "responsibleOffice", "region", "relevanceReason", "staffConfirmation"]);
-  assert.deepEqual(getSmsActionRequirement("mark_not_bafe_project"), ["reason", "staffConfirmation"]);
+  assert.deepEqual(getSmsActionRequirement("mark_not_bafe_project"), ["category", "reason", "staffConfirmation"]);
   assert.deepEqual(getSmsActionRequirement("mark_unrelated"), ["reason"]);
   assert.deepEqual(getSmsActionRequirement("resolve"), ["outcomeSummary", "responsibleOffice"]);
   assert.deepEqual(getSmsActionRequirement("close"), ["closureReason", "supervisorAuthorization"]);
@@ -56,9 +55,9 @@ test("prototype mode fails closed in production and requires issue-management ac
 // two machine-checkable, always-present markers (prototype flag + masked contact), backed
 // by the persistent "SMS Grievance prototype" banner every page that renders these
 // records shows (see SmsPrototypeBanner, rendered on both the list and detail pages).
-test("the prototype contains exactly twelve deterministic scenarios, each flagged as prototype data with a masked contact", () => {
-  assert.equal(SMS_MOCK_SCENARIOS.length, 12);
-  assert.equal(new Set(SMS_MOCK_SCENARIOS.map((scenario) => scenario.id)).size, 12);
+test("the prototype contains exactly thirteen deterministic scenarios, each flagged as prototype data with a masked contact", () => {
+  assert.equal(SMS_MOCK_SCENARIOS.length, 13);
+  assert.equal(new Set(SMS_MOCK_SCENARIOS.map((scenario) => scenario.id)).size, 13);
   assert.ok(SMS_MOCK_SCENARIOS.every((scenario) => scenario.prototype === true));
   assert.ok(SMS_MOCK_SCENARIOS.every((scenario) => scenario.originalText.trim().length > 0));
   assert.ok(SMS_MOCK_SCENARIOS.every((scenario) => scenario.contactNumber === "09*******89"));

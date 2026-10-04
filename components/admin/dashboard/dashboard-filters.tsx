@@ -88,6 +88,7 @@ export function DashboardFilters({ filters, options, onChange }: DashboardFilter
   return (
     <section
       aria-label="Dashboard filters"
+      data-tour="dashboard-filters"
       className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900"
     >
       <details key={filterStateKey} open={activeFilters.length === 0} className="group">

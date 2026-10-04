@@ -89,10 +89,10 @@ test("submission-survey route: a non-skipped submission requires respondentType 
 });
 
 test("submission-survey route: a skipped submission needs no respondentType or referralSource", async () => {
-  let captured: SaveSurveyInput | null = null;
+  const saved: SaveSurveyInput[] = [];
   const handler = createSubmissionSurveyHandler({
     saveSurvey: async (data) => {
-      captured = data;
+      saved.push(data);
       return { id: "skip-uuid" };
     },
   });
@@ -103,6 +103,8 @@ test("submission-survey route: a skipped submission needs no respondentType or r
   });
   const res = await handler(req);
   assert.equal(res.status, 201);
+  assert.equal(saved.length, 1);
+  const captured = saved[0];
   assert.equal(captured.skipped, true);
   assert.equal(captured.respondentType, null);
   assert.equal(captured.referralSource, null);
@@ -144,10 +146,10 @@ test("submission-survey route: accepts valid payload with Facebook, Website, and
 });
 
 test("submission-survey route: handles optional name as null when omitted", async () => {
-  let captured: SaveSurveyInput | null = null;
+  const saved: SaveSurveyInput[] = [];
   const handler = createSubmissionSurveyHandler({
     saveSurvey: async (data) => {
-      captured = data;
+      saved.push(data);
       return { id: "survey-anon-uuid" };
     },
   });
@@ -166,6 +168,8 @@ test("submission-survey route: handles optional name as null when omitted", asyn
   });
   const res = await handler(req);
   assert.equal(res.status, 201);
+  assert.equal(saved.length, 1);
+  const captured = saved[0];
   assert.equal(captured.name, null);
   assert.equal(captured.age, 42);
   assert.equal(captured.gender, "Male");

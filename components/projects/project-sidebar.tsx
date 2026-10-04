@@ -40,6 +40,7 @@ export function ProjectSidebar({ activeTab, onTabChange, tabCounts = {} }: Proje
 
           return (
             <motion.button
+              data-citizen={tab.key === "feedback" ? "project-feedback-tab" : undefined}
               key={tab.key}
               onClick={() => onTabChange(tab.key)}
               className={`flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors border-l-4 ${isActive

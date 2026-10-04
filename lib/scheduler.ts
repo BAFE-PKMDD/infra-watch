@@ -6,7 +6,6 @@
 import cron from "node-cron";
 import { hasRecentSuccessfulSync, syncAbemisProjects } from "./abemis/sync";
 import { purgeExpiredChatHistory } from "./chat-history";
-import { runFeedbackAutoAcknowledgment } from "./feedback-auto-acknowledgment";
 import { runSlaFollowUpReminders } from "./sla-followup";
 import { runCitizenAnalyticsMaintenance } from "./analytics/citizen-analytics-maintenance";
 
@@ -124,29 +123,11 @@ export function initScheduler() {
     },
   );
 
-  // Runs every minute so a 5-minute-old pending feedback is caught within a minute of
-  // crossing the threshold, without needing a per-submission timer that wouldn't survive
-  // a restart.
-  cron.schedule(
-    "* * * * *",
-    async () => {
-      try {
-        const count = await runFeedbackAutoAcknowledgment();
-        if (count > 0) {
-          console.log(`[Scheduler] Sent ${count} automatic feedback acknowledgment(s).`);
-        }
-      } catch (error) {
-        console.error(
-          "[Scheduler] Feedback auto-acknowledgment run failed:",
-          error instanceof Error ? error.message : String(error),
-        );
-      }
-    },
-    {
-      timezone: "Asia/Manila",
-      name: "feedback-auto-acknowledgment",
-    },
-  );
+  // The 5-minute-delayed feedback auto-acknowledgment sweep (lib/feedback-auto-acknowledgment.ts)
+  // was retired here: feedback acknowledgment now happens instantly at submission time via the
+  // auto-accept toggle in /settings (see app/api/projects/[id]/feedback/route.ts), which also
+  // approves the feedback rather than just sending a courtesy notification. The old function is
+  // left in place, unscheduled, rather than deleted.
 
   // Runs every 15 minutes — the reminder checkpoints are hour-scale (24h/60h/72h), so
   // minute-level precision isn't needed the way it is for the 5-minute auto-acknowledgment.

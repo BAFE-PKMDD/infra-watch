@@ -1,4 +1,6 @@
 "use client";
+import { CitizenGuideNotice, CitizenGuideReceipt, useCitizenGuide } from "@/components/citizen/tour/citizen-guide-context";
+import { CITIZEN_PROJECT_ID, simulateCitizenSubmission } from "@/lib/tours/citizen";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
@@ -35,6 +37,7 @@ import {
   Tag,
   User,
   Video as VideoIcon,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
@@ -62,6 +65,7 @@ import { getFullUrl, isLocalMinIO } from "@/lib/minio-url";
 import { getUploadErrorText } from "@/lib/upload-errors";
 import { safePublicSourceMediaUrl } from "@/lib/public-source-media";
 import { buildReportIssuePath, projectPreviewToSelectedProject } from "@/lib/report-issue-project-link";
+import { reportIssueDetailsError } from "@/lib/report-issue-validation";
 import {
   getBarangays,
   getMunicipalities,
@@ -160,12 +164,19 @@ const reducedStepVariants = {
 };
 
 export default function ReportIssuePage() {
+  const guide = useCitizenGuide();
+  return <ReportIssueForm key={guide?.session?.id ?? "live"} />;
+}
+
+function ReportIssueForm() {
+  const citizenGuide = useCitizenGuide();
+  const example = citizenGuide?.session?.guide === "citizen-report";
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedProjectId = searchParams.get("projectId")?.trim() || "";
   const { user, isLoading: isSessionLoading } = useAuth();
-  const { needsSurvey } = useSubmissionSurveyGate(Boolean(user));
+  const { needsSurvey } = useSubmissionSurveyGate(Boolean(user) && !example);
   const prefersReducedMotion = useReducedMotion();
   const [currentStep, setCurrentStep] = useState<StepId>("farm-operation");
   const [flowPath, setFlowPath] = useState<FlowPath>("no-project");
@@ -174,6 +185,7 @@ export default function ReportIssuePage() {
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [visibleMatchCount, setVisibleMatchCount] = useState(MATCH_PAGE_SIZE);
   const [visibleTypeMatchCount, setVisibleTypeMatchCount] = useState(MATCH_PAGE_SIZE);
+  const [matchSearchQuery, setMatchSearchQuery] = useState("");
   const [evidence, setEvidence] = useState<GeoEvidenceReadyItem[]>([]);
   const [isEvidenceProcessing, setIsEvidenceProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -200,8 +212,8 @@ export default function ReportIssuePage() {
     issueType: "",
     issueDescription: "",
     dateNoticed: "",
-    contactNumber: "",
-    email: "",
+    contactNumber: example ? "09000000000" : "",
+    email: example ? "citizen@example.invalid" : "",
     isAnonymous: false,
     confirmAccuracy: false,
     agreeToTerms: false,
@@ -224,12 +236,12 @@ export default function ReportIssuePage() {
       };
       return result.data || null;
     },
-    enabled: Boolean(requestedProjectId),
+    enabled: Boolean(requestedProjectId) && !example,
     staleTime: 30_000,
   });
 
   useEffect(() => {
-    if (!linkedProject || linkedProjectInitialized.current) return;
+    if (example || !linkedProject || linkedProjectInitialized.current) return;
     linkedProjectInitialized.current = true;
     const selected = projectPreviewToSelectedProject(linkedProject);
     setSelectedProject(selected);
@@ -241,7 +253,7 @@ export default function ReportIssuePage() {
     }));
     setFlowPath("knows-project");
     setCurrentStep("project-search");
-  }, [linkedProject]);
+  }, [example, linkedProject]);
 
   const { data: regions = [] } = useQuery({
     queryKey: ["regions"],
@@ -278,6 +290,7 @@ export default function ReportIssuePage() {
   if (matchCriteriaKey !== lastMatchCriteriaKey) {
     setLastMatchCriteriaKey(matchCriteriaKey);
     setVisibleMatchCount(MATCH_PAGE_SIZE);
+    setMatchSearchQuery("");
   }
 
   const typeMatchCriteriaKey = `${form.projectType}|${form.province}`;
@@ -287,9 +300,17 @@ export default function ReportIssuePage() {
     setVisibleTypeMatchCount(MATCH_PAGE_SIZE);
   }
 
+  const [lastMatchSearchQuery, setLastMatchSearchQuery] = useState(matchSearchQuery);
+  if (matchSearchQuery !== lastMatchSearchQuery) {
+    setLastMatchSearchQuery(matchSearchQuery);
+    setVisibleMatchCount(MATCH_PAGE_SIZE);
+    setVisibleTypeMatchCount(MATCH_PAGE_SIZE);
+  }
+
   const { data: suggestedProjects = [], isFetching: isSuggestionsLoading } = useQuery({
-    queryKey: ["issue-project-suggestions", form.province, form.city],
+    queryKey: [example ? "citizen-guide-project-suggestions" : "issue-project-suggestions", form.province, form.city],
     queryFn: async (): Promise<SelectedProject[]> => {
+      if (example) return [{ id: CITIZEN_PROJECT_ID, name: "Example irrigation canal", farmOperation: form.farmOperation, province: form.province, municipality: form.city }];
       const searchTerm = form.city || form.province;
       if (!searchTerm) return [];
       const response = await fetch(`/api/projects?search=${encodeURIComponent(searchTerm)}&limit=20`);
@@ -310,7 +331,7 @@ export default function ReportIssuePage() {
   });
 
   const { data: typeSuggestedProjects = [], isFetching: isTypeSuggestionsLoading } = useQuery({
-    queryKey: ["issue-project-type-suggestions", form.projectType, form.province],
+    queryKey: [example ? "citizen-guide-project-type-suggestions" : "issue-project-type-suggestions", form.projectType, form.province],
     queryFn: async (): Promise<SelectedProject[]> => {
       const params = new URLSearchParams({ type: form.projectType, limit: "20" });
       if (form.province) params.set("province", form.province);
@@ -327,9 +348,29 @@ export default function ReportIssuePage() {
         farmOperation: project.farmOperation,
       }));
     },
-    enabled: currentStep === "match" && !isSuggestionsLoading && suggestedProjects.length === 0 && !!form.projectType,
+    enabled: !example && currentStep === "match" && !isSuggestionsLoading && suggestedProjects.length === 0 && !!form.projectType,
     staleTime: 30000,
   });
+
+  const normalizedMatchSearchQuery = matchSearchQuery.trim().toLowerCase();
+
+  const filterProjectsByQuery = useCallback((projects: SelectedProject[]) => {
+    if (!normalizedMatchSearchQuery) return projects;
+    return projects.filter((project) =>
+      project.name.toLowerCase().includes(normalizedMatchSearchQuery) ||
+      (project.sourceProjectId || "").toLowerCase().includes(normalizedMatchSearchQuery),
+    );
+  }, [normalizedMatchSearchQuery]);
+
+  const filteredSuggestedProjects = useMemo(
+    () => filterProjectsByQuery(suggestedProjects),
+    [filterProjectsByQuery, suggestedProjects],
+  );
+
+  const filteredTypeSuggestedProjects = useMemo(
+    () => filterProjectsByQuery(typeSuggestedProjects),
+    [filterProjectsByQuery, typeSuggestedProjects],
+  );
 
   const activeSteps = useMemo(() => {
     if (flowPath === "knows-project") return stepsKnowsProject;
@@ -419,17 +460,11 @@ export default function ReportIssuePage() {
     [],
   );
 
+  const issueDetailsError = reportIssueDetailsError(form);
+  const contactReady = Boolean(form.contactNumber.trim() && form.confirmAccuracy && form.agreeToTerms);
   const validateIssueDetails = () => {
-    if (!form.issueType) {
-      toast.error(t("eReport.form.toasts.selectIssueType"));
-      return false;
-    }
-    if (form.issueDescription.trim().length < 20) {
-      toast.error(t("eReport.form.toasts.descriptionMin"));
-      return false;
-    }
-    if (!form.dateNoticed) {
-      toast.error(t("eReport.form.toasts.dateNoticed"));
+    if (issueDetailsError) {
+      toast.error(t(`eReport.form.toasts.${issueDetailsError}`));
       return false;
     }
     return true;
@@ -458,6 +493,7 @@ export default function ReportIssuePage() {
 
   const handleSubmitClick = () => {
     if (!validateContactStep()) return;
+    if (example) { void submitIssueReport(); return; }
     if (needsSurvey) {
       setShowPreSubmitSurvey(true);
       return;
@@ -466,6 +502,12 @@ export default function ReportIssuePage() {
   };
 
   const submitIssueReport = async () => {
+    if (example) {
+      simulateCitizenSubmission("citizen-report", { comment: form.issueDescription });
+      citizenGuide.submitted("citizen-report");
+      return;
+    }
+    if (selectedProject?.id === CITIZEN_PROJECT_ID) return;
     try {
       setIsSubmitting(true);
       const uploadedEvidence: IssueEvidenceItem[] = [];
@@ -569,9 +611,12 @@ export default function ReportIssuePage() {
     );
   }
 
+  if (example && citizenGuide.session?.submitted) return <div className="mx-auto max-w-3xl px-4 py-8"><CitizenGuideNotice /><CitizenGuideReceipt /></div>;
+
   return (
     <div className="min-h-screen bg-white py-8 text-slate-950 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <CitizenGuideNotice />
         <Link href="/report-issue" className="mb-6 inline-flex items-center gap-2 text-sm text-slate-500 transition-colors hover:text-slate-950 dark:text-slate-400 dark:hover:text-white">
           <ArrowLeft className="size-4" />
           {t("eReport.common.backToList")}
@@ -587,6 +632,7 @@ export default function ReportIssuePage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-700 dark:bg-slate-900">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
+              data-citizen-step={`report-${currentStep}`}
               key={currentStep}
               custom={direction}
               variants={prefersReducedMotion ? reducedStepVariants : stepVariants}
@@ -598,7 +644,10 @@ export default function ReportIssuePage() {
               {currentStep === "project-search" && (
                 <div className="space-y-5">
                   <StepHeader title={t("eReport.form.projectSearch.title")} body={t("eReport.form.projectSearch.body")} />
-                  <ProjectSearchInput value={selectedProject} onSelect={handleProjectSelect} onClear={() => setSelectedProject(null)} autoFocus />
+                  <ProjectSearchInput value={selectedProject} onSelect={handleProjectSelect} onClear={() => setSelectedProject(null)} autoFocus
+                    queryKeyPrefix={example ? "citizen-guide-projects" : undefined}
+                    searchFn={example ? async () => [{ id: CITIZEN_PROJECT_ID, name: "Example irrigation canal", farmOperation: "Irrigation System", province: "Example province", municipality: "Example municipality" }] : undefined}
+                  />
                   {selectedProject && (
                     <ProjectSuggestionCard
                       project={selectedProject}
@@ -610,7 +659,7 @@ export default function ReportIssuePage() {
                     />
                   )}
                   <div className="flex items-center justify-end pt-2">
-                    <Button type="button" onClick={() => goToStep("category")} disabled={!selectedProject} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
+                    <Button data-citizen="form-next" type="button" onClick={() => goToStep("category")} disabled={!selectedProject} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
                   </div>
                 </div>
               )}
@@ -627,7 +676,7 @@ export default function ReportIssuePage() {
                     onChange={handleFarmOperationChange}
                   />
                   <div className="flex items-center justify-end pt-2">
-                    <Button type="button" onClick={() => goToStep("project-type")} disabled={!form.farmOperation} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
+                    <Button data-citizen="form-next" type="button" onClick={() => goToStep("project-type")} disabled={!form.farmOperation} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
                   </div>
                 </div>
               )}
@@ -645,7 +694,7 @@ export default function ReportIssuePage() {
                   />
                   <div className="flex items-center justify-between pt-2">
                     <Button type="button" variant="ghost" onClick={() => goToStep("farm-operation", -1)}>{t("eReport.form.back")}</Button>
-                    <Button type="button" onClick={() => goToStep("location")} disabled={!form.projectType} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
+                    <Button data-citizen="form-next" type="button" onClick={() => goToStep("location")} disabled={!form.projectType} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
                   </div>
                 </div>
               )}
@@ -693,7 +742,7 @@ export default function ReportIssuePage() {
                   <Field label={t("eReport.form.fields.streetLandmark")} value={form.streetLandmark} onChange={(value) => setValue("streetLandmark", value)} />
                   <div className="flex items-center justify-between pt-2">
                     <Button type="button" variant="ghost" onClick={() => goToStep("project-type", -1)}>{t("eReport.form.back")}</Button>
-                    <Button type="button" onClick={() => goToStep("match")} disabled={!form.province || !form.city || !form.barangay || !form.streetLandmark} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
+                    <Button data-citizen="form-next" type="button" onClick={() => goToStep("match")} disabled={!form.province || !form.city || !form.barangay || !form.streetLandmark} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
                   </div>
                 </div>
               )}
@@ -706,6 +755,29 @@ export default function ReportIssuePage() {
                     <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{[form.barangay, form.city, form.province].filter(Boolean).join(", ")}</p>
                   </div>
 
+                  {!isSuggestionsLoading && (suggestedProjects.length > 0 || typeSuggestedProjects.length > 0) && (
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                      <Input
+                        value={matchSearchQuery}
+                        onChange={(event) => setMatchSearchQuery(event.target.value)}
+                        placeholder={t("eReport.form.match.filterPlaceholder")}
+                        aria-label={t("eReport.form.match.filterPlaceholder")}
+                        className="pl-9 pr-9"
+                      />
+                      {matchSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setMatchSearchQuery("")}
+                          aria-label={t("eReport.form.match.filterClear")}
+                          className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                        >
+                          <X className="size-4" aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {isSuggestionsLoading ? (
                     <div className="space-y-3">
                       {[1, 2, 3].map((item) => (
@@ -713,34 +785,41 @@ export default function ReportIssuePage() {
                       ))}
                     </div>
                   ) : suggestedProjects.length > 0 ? (
-                    <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
-                      {suggestedProjects.slice(0, visibleMatchCount).map((project) => {
-                        return (
-                          <ProjectSuggestionCard
-                            key={project.id}
-                            project={project}
-                            selected={selectedProject?.id === project.id}
-                            expanded={expandedProjectId === project.id}
-                            onToggle={() => setExpandedProjectId(expandedProjectId === project.id ? null : project.id)}
-                            onSelect={() => {
-                              setSelectedProject(project);
-                              goToStep("category");
-                            }}
-                          />
-                        );
-                      })}
-                      {visibleMatchCount < suggestedProjects.length && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setVisibleMatchCount((count) => count + MATCH_PAGE_SIZE)}
-                          className="group w-full gap-2 rounded-full border-slate-300 dark:border-slate-700"
-                        >
-                          {t("eReport.form.match.seeMore")}
-                          <ChevronDown className="size-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
-                        </Button>
-                      )}
-                    </div>
+                    filteredSuggestedProjects.length > 0 ? (
+                      <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+                        {filteredSuggestedProjects.slice(0, visibleMatchCount).map((project) => {
+                          return (
+                            <ProjectSuggestionCard
+                              key={project.id}
+                              project={project}
+                              selected={selectedProject?.id === project.id}
+                              expanded={expandedProjectId === project.id}
+                              onToggle={() => setExpandedProjectId(expandedProjectId === project.id ? null : project.id)}
+                              onSelect={() => {
+                                setSelectedProject(project);
+                                goToStep("category");
+                              }}
+                            />
+                          );
+                        })}
+                        {visibleMatchCount < filteredSuggestedProjects.length && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setVisibleMatchCount((count) => count + MATCH_PAGE_SIZE)}
+                            className="group w-full gap-2 rounded-full border-slate-300 dark:border-slate-700"
+                          >
+                            {t("eReport.form.match.seeMore")}
+                            <ChevronDown className="size-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                        <Search className="mx-auto mb-3 size-8 text-slate-500" />
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("eReport.form.match.filterNoResults", { query: matchSearchQuery })}</p>
+                      </div>
+                    )
                   ) : (
                     <div className="space-y-4">
                       <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
@@ -756,38 +835,45 @@ export default function ReportIssuePage() {
                           ))}
                         </div>
                       ) : typeSuggestedProjects.length > 0 && (
-                        <div className="space-y-3">
-                          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-                            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                            <p>{t("eReport.form.match.typeNoticeIntro", { projectType: form.projectType })} <strong>{t("eReport.form.match.typeNoticeStrong")}</strong> {t("eReport.form.match.typeNoticeOutro")}</p>
+                        filteredTypeSuggestedProjects.length > 0 ? (
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                              <p>{t("eReport.form.match.typeNoticeIntro", { projectType: form.projectType })} <strong>{t("eReport.form.match.typeNoticeStrong")}</strong> {t("eReport.form.match.typeNoticeOutro")}</p>
+                            </div>
+                            <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+                              {filteredTypeSuggestedProjects.slice(0, visibleTypeMatchCount).map((project) => (
+                                <ProjectSuggestionCard
+                                  key={project.id}
+                                  project={project}
+                                  selected={selectedProject?.id === project.id}
+                                  expanded={expandedProjectId === project.id}
+                                  onToggle={() => setExpandedProjectId(expandedProjectId === project.id ? null : project.id)}
+                                  onSelect={() => {
+                                    setSelectedProject(project);
+                                    goToStep("category");
+                                  }}
+                                />
+                              ))}
+                              {visibleTypeMatchCount < filteredTypeSuggestedProjects.length && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => setVisibleTypeMatchCount((count) => count + MATCH_PAGE_SIZE)}
+                                  className="group w-full gap-2 rounded-full border-slate-300 dark:border-slate-700"
+                                >
+                                  {t("eReport.form.match.seeMore")}
+                                  <ChevronDown className="size-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1">
-                            {typeSuggestedProjects.slice(0, visibleTypeMatchCount).map((project) => (
-                              <ProjectSuggestionCard
-                                key={project.id}
-                                project={project}
-                                selected={selectedProject?.id === project.id}
-                                expanded={expandedProjectId === project.id}
-                                onToggle={() => setExpandedProjectId(expandedProjectId === project.id ? null : project.id)}
-                                onSelect={() => {
-                                  setSelectedProject(project);
-                                  goToStep("category");
-                                }}
-                              />
-                            ))}
-                            {visibleTypeMatchCount < typeSuggestedProjects.length && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setVisibleTypeMatchCount((count) => count + MATCH_PAGE_SIZE)}
-                                className="group w-full gap-2 rounded-full border-slate-300 dark:border-slate-700"
-                              >
-                                {t("eReport.form.match.seeMore")}
-                                <ChevronDown className="size-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
-                              </Button>
-                            )}
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                            <Search className="mx-auto mb-3 size-8 text-slate-500" />
+                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("eReport.form.match.filterNoResults", { query: matchSearchQuery })}</p>
                           </div>
-                        </div>
+                        )
                       )}
                     </div>
                   )}
@@ -798,7 +884,7 @@ export default function ReportIssuePage() {
                       {selectedProject && (
                         <Button type="button" variant="ghost" onClick={() => setSelectedProject(null)}>{t("eReport.form.match.clear")}</Button>
                       )}
-                      <Button type="button" onClick={() => goToStep("category")} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                      <Button data-citizen="form-next" type="button" onClick={() => goToStep("category")} className="bg-emerald-600 text-white hover:bg-emerald-700">
                         {selectedProject ? t("eReport.form.match.use") : t("eReport.form.match.none")}
                       </Button>
                     </div>
@@ -844,6 +930,7 @@ export default function ReportIssuePage() {
                       {t("eReport.form.back")}
                     </Button>
                     <Button
+                      data-citizen="form-next"
                       type="button"
                       onClick={() => goToStep("issue-details")}
                       disabled={!form.category}
@@ -858,13 +945,15 @@ export default function ReportIssuePage() {
               {currentStep === "issue-details" && (
                 <div className="space-y-5">
                   <StepHeader title={t("eReport.form.details.title")} body={t("eReport.form.details.body")} />
-                  <IssueTypePicker
-                    value={form.issueType}
-                    category={form.category}
-                    farmOperation={form.farmOperation}
-                    onChange={(value) => setValue("issueType", value)}
-                  />
-                  <div className="sm:max-w-xs">
+                  <div data-citizen="report-issue-types" data-citizen-ready={Boolean(form.issueType)}>
+                    <IssueTypePicker
+                      value={form.issueType}
+                      category={form.category}
+                      farmOperation={form.farmOperation}
+                      onChange={(value) => setValue("issueType", value)}
+                    />
+                  </div>
+                  <div data-citizen="report-date" data-citizen-ready={Boolean(form.dateNoticed)} className="sm:max-w-xs">
                     <DateField value={form.dateNoticed} onChange={(value) => setValue("dateNoticed", value)} />
                   </div>
                   <div className="space-y-1.5">
@@ -881,19 +970,19 @@ export default function ReportIssuePage() {
                           )}
                       </span>
                     </div>
-                    <Textarea value={form.issueDescription} onChange={(event) => setValue("issueDescription", event.target.value)} placeholder={t("eReport.form.placeholders.description")} className="min-h-32 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+                    <Textarea data-citizen="report-description" aria-label={t("eReport.form.fields.description")} value={form.issueDescription} onChange={(event) => setValue("issueDescription", event.target.value)} placeholder={t("eReport.form.placeholders.description")} className="min-h-32 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
                     <p className="text-right text-xs text-slate-500">{form.issueDescription.length}/1000</p>
                   </div>
                   <GeoEvidenceUpload
                     maxFiles={5}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || example}
                     initialItems={evidence}
                     onEvidenceReady={handleEvidenceReady}
                     onProcessingChange={handleEvidenceProcessingChange}
                   />
                   <div className="flex items-center justify-between pt-2">
                     <Button type="button" variant="ghost" onClick={() => goToStep("category", -1)}>{t("eReport.form.back")}</Button>
-                    <Button type="button" disabled={isEvidenceProcessing} onClick={() => validateIssueDetails() && goToStep("contact")} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
+                    <Button data-citizen="form-next" type="button" disabled={isEvidenceProcessing || (example && issueDetailsError !== null)} onClick={() => validateIssueDetails() && goToStep("contact")} className="bg-emerald-600 text-white hover:bg-emerald-700">{t("eReport.form.next")}</Button>
                   </div>
                 </div>
               )}
@@ -910,7 +999,7 @@ export default function ReportIssuePage() {
                   <CheckRow checked={form.agreeToTerms} onChange={(value) => setValue("agreeToTerms", value)} label={t("eReport.form.contact.agreeToTerms")} />
                   <div className="flex items-center justify-between border-t border-slate-200 pt-5 dark:border-slate-800">
                     <Button type="button" variant="ghost" onClick={() => goToStep("issue-details", -1)}>{t("eReport.form.back")}</Button>
-                    <Button type="button" size="lg" onClick={handleGoToReview} disabled={isEvidenceProcessing} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
+                    <Button data-citizen="form-next" type="button" size="lg" onClick={handleGoToReview} disabled={isEvidenceProcessing || (example && !contactReady)} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
                       {t("eReport.form.contact.review")}
                     </Button>
                   </div>
@@ -989,7 +1078,7 @@ export default function ReportIssuePage() {
 
                   <div className="flex items-center justify-between border-t border-slate-200 pt-5 dark:border-slate-800">
                     <Button type="button" variant="ghost" onClick={() => goToStep("contact", -1)}>{t("eReport.form.back")}</Button>
-                    <Button type="button" size="lg" onClick={handleSubmitClick} disabled={isSubmitting || isEvidenceProcessing || showPreSubmitSurvey} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
+                    <Button data-citizen="form-next" type="button" size="lg" onClick={handleSubmitClick} disabled={isSubmitting || isEvidenceProcessing || showPreSubmitSurvey} className="min-w-40 bg-emerald-600 text-white hover:bg-emerald-700">
                       {isSubmitting ? t("eReport.form.review.submitting") : t("eReport.form.review.submit")}
                     </Button>
                   </div>
@@ -1152,7 +1241,7 @@ function ProjectSuggestionCard({
       const result = await response.json();
       return result.data;
     },
-    enabled: expanded,
+    enabled: expanded && project.id !== CITIZEN_PROJECT_ID,
     staleTime: 60000,
   });
 

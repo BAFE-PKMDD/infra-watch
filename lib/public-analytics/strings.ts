@@ -41,7 +41,7 @@ const en = {
   },
   map: {
     title: "Find projects near you",
-    description: "Each pin is a project with a recorded location. Zoom in to separate grouped pins.",
+    description: "Each point is one project with a recorded location. Select a point to see project details.",
     searchLabel: "Search a province, municipality or barangay",
     searchPlaceholder: "e.g. Muñoz, Nueva Ecija",
     noPlaces: "No mapped projects in that place.",
@@ -250,7 +250,7 @@ const tl: PublicAnalyticsStrings = {
   },
   map: {
     title: "Hanapin ang mga project malapit sa iyo",
-    description: "Bawat pin ay isang project na may naka-record na lokasyon. Mag-zoom in para maghiwa-hiwalay ang mga pin na magkakadikit.",
+    description: "Bawat tuldok ay isang project na may naka-record na lokasyon. Pumili ng tuldok para makita ang detalye ng project.",
     searchLabel: "Maghanap ng province, bayan o barangay",
     searchPlaceholder: "hal. Muñoz, Nueva Ecija",
     noPlaces: "Walang project sa mapa sa lugar na iyan.",

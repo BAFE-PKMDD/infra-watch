@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { CITIZEN_PROJECT_ID } from "@/lib/tours/citizen";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LogIn, MessageSquarePlus } from "lucide-react";
 import { motion } from "motion/react";
@@ -87,6 +88,7 @@ export function ProjectFeedback({
     isLoading: isLoadingFeedback,
     refetch,
   } = useQuery({
+    enabled: projectId !== CITIZEN_PROJECT_ID,
     queryKey: ["project-feedback", projectId],
     queryFn: async () => {
       const response = await fetch(`/api/projects/${projectId}/feedback`);
@@ -122,6 +124,7 @@ export function ProjectFeedback({
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (feedbackId: string) => {
+      if (projectId === CITIZEN_PROJECT_ID) throw new Error("Example records cannot be changed.");
       const response = await fetch(`/api/projects/${projectId}/feedback/${feedbackId}`, {
         method: "DELETE",
       });
@@ -196,6 +199,7 @@ export function ProjectFeedback({
               <DialogTrigger
                 render={
                   <Button
+                    data-citizen="share-feedback"
                     variant="secondary"
                     className="bg-white/10 hover:bg-white/20 text-white border-white/20"
                   />

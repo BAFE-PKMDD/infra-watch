@@ -8,6 +8,7 @@ import { NotificationProvider } from "@/providers/notification-provider";
 import { LanguageDialog } from "@/components/language/language-dialog";
 import { CookieConsentBanner } from "@/components/cookie-consent/cookie-consent-banner";
 import { Toaster } from "@/components/ui/sonner";
+import { CitizenTourProvider } from "@/components/citizen/tour/citizen-tour-provider";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -46,7 +47,7 @@ export default function RootLayout({
               {/* Outside NotificationProvider so its toasts can use the visitor's language. */}
               <NotificationProvider>
               <LanguageDialog />
-              {children}
+              <CitizenTourProvider>{children}</CitizenTourProvider>
               <CookieConsentBanner />
               <Toaster />
               </NotificationProvider>
@@ -57,4 +58,3 @@ export default function RootLayout({
     </html>
   );
 }
-

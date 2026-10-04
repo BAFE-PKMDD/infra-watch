@@ -51,7 +51,7 @@ function IssuesReportContent() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between dark:border-slate-800 dark:bg-slate-900">
           <ReportDateFilter />
-          {data && <ReportDownloadButton data={data.tableData} moduleName="Issues" />}
+          {data && <div data-tour="report-download"><ReportDownloadButton data={data.tableData} moduleName="Issues" /></div>}
         </div>
 
         {isLoading ? (
@@ -75,7 +75,7 @@ function IssuesReportContent() {
           </div>
         ) : data ? (
           <>
-            <SlaSummaryCards summary={data.summary} title="Issue response SLA performance" />
+            <div data-tour="report-summary"><SlaSummaryCards summary={data.summary} title="Issue response SLA performance" /></div>
 
             <div className="grid gap-6 md:grid-cols-2">
               <SlaResponseChart data={data.trend} title="Response time trend" description="Average hours to first public response (daily)" />

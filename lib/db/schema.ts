@@ -695,3 +695,26 @@ export const analyticsDailyAggregates = pgTable(
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type NewAnalyticsEvent = typeof analyticsEvents.$inferInsert;
 export type AnalyticsDailyAggregate = typeof analyticsDailyAggregates.$inferSelect;
+
+/**
+ * System settings table - generic key/value store for admin-configurable settings
+ * (e.g. auto-reply/auto-accept configuration)
+ */
+export const systemSettings = pgTable("system_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(),
+  value: jsonb("value").notNull(),
+  description: text("description"),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type NewSystemSetting = typeof systemSettings.$inferInsert;
+
+export const userTourProgress = pgTable("user_tour_progress", {
+  userId: text("user_id").primaryKey(),
+  automatic: boolean("automatic").notNull().default(true),
+  seen: jsonb("seen").$type<Record<string, "completed" | "skipped">>().notNull().default({}),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});

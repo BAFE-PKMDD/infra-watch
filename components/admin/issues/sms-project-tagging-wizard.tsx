@@ -1,14 +1,44 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleHelp, XCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleHelp, SkipForward, XCircle } from "lucide-react";
 
+import { getProjectFarmOperations, getProjectProvinces, getProjectTypes } from "@/actions/query/get-location-options";
 import { Button } from "@/components/ui/button";
-import { ProjectSearchInput, type SelectedProject } from "@/components/ui/project-search-input";
+import { ProjectResult, ProjectSearchInput, type SelectedProject } from "@/components/ui/project-search-input";
 import { SmsRegionSelect } from "@/components/admin/issues/sms-region-select";
-import { SMS_CATEGORY_LABELS } from "@/lib/sms-grievance/prototype-state";
+import { SMS_CATEGORY_OPTIONS, getSmsCategoryLabel } from "@/lib/sms-grievance/categories";
 import { cn } from "@/lib/utils";
-import type { SmsCategory } from "@/types/sms-grievance.types";
+import type { SmsCategory, SmsNotBafeCategory } from "@/types/sms-grievance.types";
+
+interface ProjectsApiRow {
+  id: string;
+  name: string;
+  code?: string;
+  sourceId?: string;
+  province?: string;
+  municipality?: string;
+  barangay?: string;
+  region?: string;
+  farmOperation?: string;
+  matchType?: "exact" | "nearby" | "type";
+}
+
+function mapProjectsApiRow(row: ProjectsApiRow): ProjectResult {
+  return {
+    id: row.id,
+    name: row.name,
+    sourceProjectId: row.code,
+    sourceId: row.sourceId,
+    province: row.province,
+    municipality: row.municipality,
+    barangay: row.barangay,
+    region: row.region,
+    farmOperation: row.farmOperation,
+    matchType: row.matchType === "type" ? "exact" : row.matchType,
+  };
+}
 
 export type IntakeDecision = "bafe_project" | "possible_bafe_project" | "not_bafe_project";
 
@@ -41,8 +71,8 @@ export function SmsProjectTaggingWizard({
   onSelectedProjectChange,
   decisionReason,
   onDecisionReasonChange,
-  assignedUnit,
-  onAssignedUnitChange,
+  notBafeCategory,
+  onNotBafeCategoryChange,
   assignedRegion,
   onAssignedRegionChange,
   intakeButtonLabel,
@@ -58,8 +88,8 @@ export function SmsProjectTaggingWizard({
   onSelectedProjectChange: (value: SelectedProject | null) => void;
   decisionReason: string;
   onDecisionReasonChange: (value: string) => void;
-  assignedUnit: string;
-  onAssignedUnitChange: (value: string) => void;
+  notBafeCategory: SmsNotBafeCategory;
+  onNotBafeCategoryChange: (value: SmsNotBafeCategory) => void;
   assignedRegion: string;
   onAssignedRegionChange: (value: string) => void;
   intakeButtonLabel: string;
@@ -68,6 +98,41 @@ export function SmsProjectTaggingWizard({
   const steps = stepsForDecision(intakeDecision);
   const [stepIndex, setStepIndex] = useState(0);
   const currentStep = steps[Math.min(stepIndex, steps.length - 1)];
+  const [projectTypeFilter, setProjectTypeFilter] = useState("all");
+  const [farmOperationFilter, setFarmOperationFilter] = useState("all");
+  const [provinceFilter, setProvinceFilter] = useState("all");
+
+  const { data: projectTypeOptions = [] } = useQuery({
+    queryKey: ["sms-review-project-types"],
+    queryFn: () => getProjectTypes(),
+    staleTime: Infinity,
+  });
+  const { data: farmOperationOptions = [] } = useQuery({
+    queryKey: ["sms-review-farm-operations"],
+    queryFn: () => getProjectFarmOperations(),
+    staleTime: Infinity,
+  });
+  const { data: provinceOptions = [] } = useQuery({
+    queryKey: ["sms-review-provinces"],
+    queryFn: () => getProjectProvinces(),
+    staleTime: Infinity,
+  });
+
+  // Lets a search be narrowed by project type, farm-operation category, and/or province
+  // on top of the free-text query — most useful for a report with no obvious
+  // project-name keyword to search by (e.g. distributed farm equipment such as a hand
+  // tractor, which was never itself a built infrastructure project) where the plain text
+  // search otherwise falls back to location-only "nearby" matches that aren't related.
+  const searchBafeProjects = async (query: string): Promise<ProjectResult[]> => {
+    const params = new URLSearchParams({ search: query, limit: "20" });
+    if (projectTypeFilter !== "all") params.set("type", projectTypeFilter);
+    if (farmOperationFilter !== "all") params.set("farmOperation", farmOperationFilter);
+    if (provinceFilter !== "all") params.set("provinceExact", provinceFilter);
+    const response = await fetch(`/api/projects?${params.toString()}`);
+    if (!response.ok) throw new Error("Failed to search projects");
+    const result = (await response.json()) as { data?: ProjectsApiRow[] };
+    return (result.data ?? []).map(mapProjectsApiRow);
+  };
 
   function goNext() {
     setStepIndex((index) => Math.min(index + 1, steps.length - 1));
@@ -85,7 +150,9 @@ export function SmsProjectTaggingWizard({
   const canAdvance = currentStep === "region"
     ? assignedRegion.trim().length > 0
     : currentStep === "project"
-      ? Boolean(selectedProject)
+      // A "possible" tag can move on without a matched project record — see the "Not
+      // sure — possibly a BAFE project" decision and prototype-state.ts's accept action.
+      ? (Boolean(selectedProject) || intakeDecision === "possible_bafe_project")
       : currentStep === "reason"
         ? decisionReason.trim().length > 0
         : true;
@@ -156,6 +223,43 @@ export function SmsProjectTaggingWizard({
             Search actual BAFE projects and choose the matching source record. A typed project name alone is not accepted.
             {locationTag && " Pre-filled below with the location mentioned in the message — edit it or pick a different match."}
           </p>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="block text-sm font-semibold">
+              Project type
+              <select
+                value={projectTypeFilter}
+                onChange={(event) => setProjectTypeFilter(event.target.value)}
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              >
+                <option value="all">All types</option>
+                {projectTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="block text-sm font-semibold">
+              Farm operation category
+              <select
+                value={farmOperationFilter}
+                onChange={(event) => setFarmOperationFilter(event.target.value)}
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              >
+                <option value="all">All categories</option>
+                {farmOperationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="block text-sm font-semibold">
+              Province
+              <select
+                value={provinceFilter}
+                onChange={(event) => setProvinceFilter(event.target.value)}
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              >
+                <option value="all">All provinces</option>
+                {provinceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+          </div>
+
           <ProjectSearchInput
             value={selectedProject}
             onSelect={(project) => {
@@ -164,9 +268,21 @@ export function SmsProjectTaggingWizard({
             }}
             onClear={() => onSelectedProjectChange(null)}
             placeholder="Search actual BAFE projects by name, code, or location"
-            queryKeyPrefix="sms-review-bafe-projects"
+            queryKeyPrefix={`sms-review-bafe-projects-${projectTypeFilter}-${farmOperationFilter}-${provinceFilter}`}
             initialQuery={locationTag}
+            searchFn={searchBafeProjects}
           />
+
+          {intakeDecision === "possible_bafe_project" && (
+            <div className="border-t border-slate-200 pt-3 dark:border-slate-800">
+              <p className="mb-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                Some reports — like distributed farm equipment (e.g. a hand tractor) — were never a built infrastructure project in the first place, so no project record will ever match. Tag this for follow-up without one.
+              </p>
+              <Button type="button" variant="outline" className="min-h-11 w-full font-medium sm:w-auto" onClick={goNext}>
+                <SkipForward aria-hidden="true" className="size-4" /> No matching project — tag for follow-up
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -175,24 +291,48 @@ export function SmsProjectTaggingWizard({
           Concern category
           <select
             value={category}
-            onChange={(event) => onCategoryChange(event.target.value as SmsCategory)}
+            onChange={(event) => onCategoryChange(event.target.value)}
             className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
           >
-            {Object.entries(SMS_CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {SMS_CATEGORY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </label>
       )}
 
       {currentStep === "reason" && (
-        <label className="block text-sm font-semibold">
-          Reason
-          <textarea
-            value={decisionReason}
-            onChange={(event) => onDecisionReasonChange(event.target.value)}
-            placeholder="Record the moderator or admin decision"
-            className="mt-2 min-h-24 w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-950 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-          />
-        </label>
+        <div className="space-y-4">
+          {intakeDecision === "not_bafe_project" && (
+            <div>
+              <p className="mb-2 block text-sm font-semibold">Which best describes this?</p>
+              <p className="mb-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                The SMS line receives every text sent to it, not just BAFE ones — this changes what the auto-reply tells the sender.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <DecisionCard
+                  icon={<XCircle aria-hidden="true" className="size-4" />}
+                  label="Not related to InfraWatch or BAFE at all"
+                  active={notBafeCategory === "not_related_to_infrawatch"}
+                  onClick={() => onNotBafeCategoryChange("not_related_to_infrawatch")}
+                />
+                <DecisionCard
+                  icon={<Building2 aria-hidden="true" className="size-4" />}
+                  label="A real project complaint, but a different agency's project"
+                  active={notBafeCategory === "different_agency_project"}
+                  onClick={() => onNotBafeCategoryChange("different_agency_project")}
+                />
+              </div>
+            </div>
+          )}
+          <label className="block text-sm font-semibold">
+            Reason
+            <textarea
+              value={decisionReason}
+              onChange={(event) => onDecisionReasonChange(event.target.value)}
+              placeholder="Record the moderator or admin decision"
+              className="mt-2 min-h-24 w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-950 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            />
+          </label>
+        </div>
       )}
 
       {currentStep === "review" && (
@@ -206,8 +346,19 @@ export function SmsProjectTaggingWizard({
                   : "Not a BAFE project"
             } />
             {(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && <ReviewItem label="Region" value={assignedRegion || "Not set"} />}
-            {(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && <ReviewItem label="Project" value={selectedProject?.name ?? "Not selected"} />}
-            {(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && <ReviewItem label="Category" value={SMS_CATEGORY_LABELS[category]} />}
+            {(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && (
+              <ReviewItem
+                label="Project"
+                value={selectedProject?.name ?? (intakeDecision === "possible_bafe_project" ? "No match — flagged for follow-up" : "Not selected")}
+              />
+            )}
+            {(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && <ReviewItem label="Category" value={getSmsCategoryLabel(category)} />}
+            {intakeDecision === "not_bafe_project" && (
+              <ReviewItem
+                label="Why not BAFE"
+                value={notBafeCategory === "different_agency_project" ? "Different agency's project" : "Not related to InfraWatch/BAFE"}
+              />
+            )}
             <ReviewItem label="Reason" value={decisionReason || "(none entered)"} />
           </dl>
 
@@ -216,22 +367,13 @@ export function SmsProjectTaggingWizard({
               <summary className="min-h-11 cursor-pointer py-1 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 More routing details (optional)
               </summary>
-              <div className="mt-3 grid gap-4 md:grid-cols-2">
+              <div className="mt-3">
                 <label className="text-sm font-semibold">
                   Location tag
                   <input
                     value={locationTag}
                     onChange={(event) => onLocationTagChange(event.target.value)}
                     placeholder="Use only the location supported by the SMS or source"
-                    className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-                  />
-                </label>
-                <label className="text-sm font-semibold">
-                  Responsible office or review team
-                  <input
-                    value={assignedUnit}
-                    onChange={(event) => onAssignedUnitChange(event.target.value)}
-                    placeholder="e.g., Regional Field Office"
                     className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                   />
                 </label>
@@ -246,7 +388,15 @@ export function SmsProjectTaggingWizard({
           <ArrowLeft aria-hidden="true" className="size-4" /> Back
         </Button>
         {currentStep === "review" ? (
-          <Button type="button" className="min-h-11 flex-1 px-4" disabled={(intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && !selectedProject} onClick={onSaveIntakeDecision}>
+          <Button
+            type="button"
+            className="min-h-11 flex-1 px-4"
+            disabled={
+              (intakeDecision === "bafe_project" && !selectedProject)
+              || ((intakeDecision === "bafe_project" || intakeDecision === "possible_bafe_project") && !assignedRegion.trim())
+            }
+            onClick={onSaveIntakeDecision}
+          >
             <CheckCircle2 aria-hidden="true" className="size-4" /> {intakeButtonLabel}
           </Button>
         ) : (

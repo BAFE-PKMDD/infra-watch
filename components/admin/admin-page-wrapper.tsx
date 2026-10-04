@@ -1,4 +1,5 @@
 import type React from "react";
+import { TourLauncher } from "@/components/admin/tour/tour-launcher";
 
 type AdminPageWrapperProps = {
   title: string;
@@ -21,12 +22,15 @@ export function AdminPageWrapper({ title, description, breadcrumbs = [], childre
             ))}
           </div>
         )}
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl dark:text-white">{title}</h1>
-          <p className="mt-1.5 max-w-3xl text-base leading-7 text-slate-600 dark:text-slate-300">{description}</p>
+        <div data-tour="page-heading" className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl dark:text-white">{title}</h1>
+            <p className="mt-1.5 max-w-3xl text-base leading-7 text-slate-600 dark:text-slate-300">{description}</p>
+          </div>
+          <TourLauncher />
         </div>
       </div>
-      <div className="animate-in fade-in slide-in-from-bottom-1 duration-500 motion-reduce:animate-none">{children}</div>
+      <div data-tour="page-content" className="animate-in fade-in slide-in-from-bottom-1 duration-500 motion-reduce:animate-none">{children}</div>
     </div>
   );
 }

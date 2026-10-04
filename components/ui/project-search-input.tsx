@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
@@ -85,6 +85,7 @@ export function ProjectSearchInput({
   initialQuery,
 }: ProjectSearchInputProps) {
   const { t } = useTranslation();
+  const dropdownId = useId();
   const [searchInput, setSearchInput] = useState(initialQuery ?? "");
   const [showDropdown, setShowDropdown] = useState(Boolean(initialQuery));
   const debouncedSearch = useDebounce(searchInput, 300);
@@ -132,16 +133,35 @@ export function ProjectSearchInput({
   const canShowDropdown =
     debouncedSearch.trim().length >= 2 && !value && showDropdown;
 
-  // Calculate dropdown position from the input wrapper
+  // Calculate dropdown position from the input wrapper — clamped to whichever side of the
+  // input (below, or above when below doesn't have enough room) actually has space in the
+  // viewport, so the list's own scrollbar does the scrolling instead of the dropdown
+  // silently extending past the bottom of the window with no way to reach the rest of it.
   const updateDropdownPosition = useCallback(() => {
     if (!inputWrapperRef.current) return;
     const rect = inputWrapperRef.current.getBoundingClientRect();
-    setDropdownStyle({
-      position: "fixed",
-      top: rect.bottom + 8,
-      left: rect.left,
-      width: rect.width,
-    });
+    const margin = 8;
+    const preferredMaxHeight = 256;
+    const spaceBelow = window.innerHeight - rect.bottom - margin;
+    const spaceAbove = rect.top - margin;
+
+    if (spaceBelow >= 160 || spaceBelow >= spaceAbove) {
+      setDropdownStyle({
+        position: "fixed",
+        top: rect.bottom + margin,
+        left: rect.left,
+        width: rect.width,
+        maxHeight: Math.max(120, Math.min(preferredMaxHeight, spaceBelow)),
+      });
+    } else {
+      setDropdownStyle({
+        position: "fixed",
+        bottom: window.innerHeight - rect.top + margin,
+        left: rect.left,
+        width: rect.width,
+        maxHeight: Math.max(120, Math.min(preferredMaxHeight, spaceAbove)),
+      });
+    }
   }, []);
 
   // Update position when dropdown is shown, and on scroll/resize
@@ -252,6 +272,7 @@ export function ProjectSearchInput({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
         <Input
           type="text"
+          aria-controls={canShowDropdown ? dropdownId : undefined}
           value={searchInput}
           onChange={(e) => {
             setSearchInput(e.target.value);
@@ -273,13 +294,15 @@ export function ProjectSearchInput({
         createPortal(
           <AnimatePresence>
             <motion.div
+              id={dropdownId}
               ref={dropdownRef}
+              data-citizen-guide-options
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.12 }}
               style={dropdownStyle}
-              className="z-[9999] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden"
+              className="z-[9999] overflow-y-auto overscroll-contain rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800"
             >
               {isFetching ? (
                 <div className="p-4 text-center">
@@ -293,7 +316,7 @@ export function ProjectSearchInput({
                   {t("site.projectSearch.noResults")}
                 </div>
               ) : (
-                <div className="max-h-64 overflow-y-auto">
+                <div>
                   {searchResults[0]?.matchType === "nearby" && (
                     <div className="px-3 py-2 text-xs font-semibold text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/20 border-b border-slate-200 dark:border-slate-700">
                       {t("site.projectSearch.nearbyNotice")}

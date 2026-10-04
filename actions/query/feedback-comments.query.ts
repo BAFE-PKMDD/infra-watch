@@ -48,6 +48,10 @@ export async function getFeedbackComments(
       ORDER BY c.created_at ASC
     `);
 
+    // The auto-accept feedback flow (app/api/projects/[id]/feedback/route.ts) posts its
+    // acknowledgment as a feedback_comments row authored by this literal system actor ID,
+    // which has no matching "user" row — label it explicitly instead of falling back to
+    // the generic "Citizen" the LEFT JOIN would otherwise produce.
     const comments: FeedbackFeedComment[] = Array.from(rows).map((row) => ({
       id: row.id,
       feedbackId: row.feedback_id,
@@ -59,7 +63,7 @@ export async function getFeedbackComments(
       createdAt: new Date(row.created_at),
       user: {
         id: row.user_id,
-        name: row.user_name || "Citizen",
+        name: row.user_id === "system-auto-acceptance" ? "InfraWatch Automated System" : (row.user_name || "Citizen"),
         image: row.user_image,
       },
     }));

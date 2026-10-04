@@ -33,7 +33,7 @@ export function ReportingMethods() {
               </div>
             </div>
             <Button asChild className="min-h-11 w-full px-4 md:w-auto">
-              <Link href="/report-issue/new">{t("eReport.methods.onlineCta")}</Link>
+              <Link data-citizen="report-new" href="/report-issue/new">{t("eReport.methods.onlineCta")}</Link>
             </Button>
           </div>
 

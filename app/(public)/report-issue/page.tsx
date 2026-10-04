@@ -159,7 +159,7 @@ export default function IssuesPage() {
               {t("eReport.list.description")}
             </p>
             <Button asChild className="mt-5 min-h-11 bg-emerald-600 px-4 text-white hover:bg-emerald-700">
-              <Link href={smsPrototypeEnabled ? "#reporting-methods" : "/report-issue/new"}>
+              <Link data-citizen={smsPrototypeEnabled ? undefined : "report-new"} href={smsPrototypeEnabled ? "#reporting-methods" : "/report-issue/new"}>
                 {smsPrototypeEnabled ? t("eReport.list.chooseMethod") : t("eReport.list.reportNew")}
               </Link>
             </Button>

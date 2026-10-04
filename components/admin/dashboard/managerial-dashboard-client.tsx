@@ -120,9 +120,9 @@ export function ManagerialDashboardClient({
     : "/executive-brief";
   return (
     <div className="space-y-8" aria-busy={query.isFetching}>
-      <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+      <div data-tour="dashboard-freshness" className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
         <DataFreshness freshness={data.freshness} asOf={data.asOf} />
-        <div className="flex flex-wrap items-center gap-2">
+        <div data-tour="dashboard-actions" className="flex flex-wrap items-center gap-2">
           <OptionalManagerialAiCopilot
             enabled={managerialAiEnabled}
             filters={filters}
@@ -155,19 +155,25 @@ export function ManagerialDashboardClient({
         <DashboardState state="empty" />
       ) : (
         <>
-          <ExecutiveKpis
-            kpis={data.kpis}
-            coverage={data.coverage}
-            assessedProjects={data.scheduleHealth.reduce((total, entry) => entry.key === "notAssessed" ? total : total + entry.count, 0)}
-          />
-          <PriorityProjectsTable projects={data.priorityProjects} />
+          <div data-tour="dashboard-kpis">
+            <ExecutiveKpis
+              kpis={data.kpis}
+              coverage={data.coverage}
+              assessedProjects={data.scheduleHealth.reduce((total, entry) => entry.key === "notAssessed" ? total : total + entry.count, 0)}
+            />
+          </div>
+          <div data-tour="dashboard-priority">
+            <PriorityProjectsTable projects={data.priorityProjects} />
+          </div>
 
-          <RegionMapChart
-            data={data.regions}
-            onSelect={(region) => updateFilters(mergeDashboardFilter(filters, "region", region))}
-          />
+          <div data-tour="dashboard-map">
+            <RegionMapChart
+              data={data.regions}
+              onSelect={(region) => updateFilters(mergeDashboardFilter(filters, "region", region))}
+            />
+          </div>
 
-          <section aria-label="Primary charts" className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-300 duration-500 grid items-start gap-4 motion-reduce:animate-none lg:grid-cols-2">
+          <section data-tour="dashboard-charts" aria-label="Primary charts" className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-300 duration-500 grid items-start gap-4 motion-reduce:animate-none lg:grid-cols-2">
             <DelayedProjectsByRegionChart
               data={data.regions}
               filters={filters}
@@ -182,7 +188,7 @@ export function ManagerialDashboardClient({
             />
           </section>
 
-          <details className="group animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-500 duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900">
+          <details data-tour="dashboard-schedule" className="group animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-500 duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900">
             <summary className="cursor-pointer list-none px-4 py-3.5 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
               <span className="inline-flex items-center gap-2">
                 <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-90">›</span>
@@ -216,7 +222,7 @@ export function ManagerialDashboardClient({
             </div>
           </details>
 
-          <details className="group animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-700 duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900">
+          <details data-tour="dashboard-portfolio" className="group animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-700 duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900">
             <summary className="cursor-pointer list-none px-4 py-3.5 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
               <span className="inline-flex items-center gap-2">
                 <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-90">›</span>
@@ -232,7 +238,7 @@ export function ManagerialDashboardClient({
             </div>
           </details>
 
-          <details className="group animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-700 duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900">
+          <details data-tour="dashboard-delivery" className="group animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-700 duration-500 rounded-md border border-slate-200 bg-white motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900">
             <summary className="cursor-pointer list-none px-4 py-3.5 outline-none marker:hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
               <span className="inline-flex items-center gap-2">
                 <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-90">›</span>

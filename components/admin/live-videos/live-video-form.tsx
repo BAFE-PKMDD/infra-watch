@@ -188,7 +188,7 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
   return (
     <div className="w-full space-y-6">
       {!canReview && normalizeVideoRegion(userRegion) && <p className="text-sm text-slate-600 dark:text-slate-300">NCR approval is required before publication.</p>}
-      <form onSubmit={handleSubmit} className="w-full space-y-6">
+      <form data-tour="video-form" onSubmit={handleSubmit} className="w-full space-y-6">
         <Card className="w-full overflow-hidden border-slate-200/60 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <CardContent className="p-0">
             <div className="p-6 md:p-8 space-y-8">

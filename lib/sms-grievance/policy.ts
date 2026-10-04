@@ -2,8 +2,10 @@ import type { SmsAction, SmsCaseStatus, SmsConversationItem } from "@/types/sms-
 
 const ALLOWED_TRANSITIONS: Record<SmsCaseStatus, readonly SmsCaseStatus[]> = {
   imported: ["needs_relevance_review"],
-  needs_relevance_review: ["pending_review"],
-  pending_review: ["under_review"],
+  // Accepting a message (prototype-state.ts's "accept" action) already moves it straight
+  // to "under_review" — there's no separate "waiting for review" stop in between, since
+  // tagging a case to a project and region already means staff is actively on it.
+  needs_relevance_review: ["under_review"],
   under_review: ["resolved"],
   resolved: ["closed", "under_review"],
   closed: ["under_review"],
@@ -11,7 +13,7 @@ const ALLOWED_TRANSITIONS: Record<SmsCaseStatus, readonly SmsCaseStatus[]> = {
 
 const ACTION_REQUIREMENTS: Record<SmsAction, readonly string[]> = {
   accept: ["sourceBackedBafeProject", "category", "location", "responsibleOffice", "region", "relevanceReason", "staffConfirmation"],
-  mark_not_bafe_project: ["reason", "staffConfirmation"],
+  mark_not_bafe_project: ["category", "reason", "staffConfirmation"],
   mark_unrelated: ["reason"],
   assign_project: ["sourceBackedProject", "staffConfirmation"],
   resolve: ["outcomeSummary", "responsibleOffice"],

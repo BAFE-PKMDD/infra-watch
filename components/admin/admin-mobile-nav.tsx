@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
+  BookOpen,
   ChevronDown,
   CircleAlert,
   DatabaseZap,
@@ -17,6 +18,7 @@ import {
   Radio,
   RefreshCw,
   ScrollText,
+  Settings,
   Users,
 } from "lucide-react";
 
@@ -41,8 +43,10 @@ const items = [
   { label: "Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view", roles: ["admin"] },
   { label: "Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view", roles: ["admin"] },
   { label: "Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view", roles: ["admin"] },
+  { label: "Knowledge Base", href: "/knowledge-base", icon: BookOpen, resource: "knowledge_base", action: "list", roles: ["admin"] },
   // Admin and regional-admin.
   { label: "Live", href: "/live-videos", icon: Radio, resource: "system_settings", action: "read", roles: ["admin", "regional_admin"] },
+  { label: "Settings", href: "/settings", icon: Settings, resource: "system_settings", action: "read", roles: ["admin", "regional_admin"] },
   { label: "Users", href: "/user-management", icon: Users, resource: "user", action: "list", roles: ["admin", "regional_admin"] },
 ] as const;
 
@@ -85,6 +89,7 @@ export function AdminMobileNav({ role, region, assignedAgency }: AdminMobileNavP
                   type="button"
                   aria-expanded={issuesOpen}
                   aria-controls="mobile-reported-issues-menu"
+                  data-tour-nav="/issues"
                   onClick={() => setIssuesOpen((open) => !open)}
                   className={cn(
                     "flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
@@ -103,6 +108,7 @@ export function AdminMobileNav({ role, region, assignedAgency }: AdminMobileNavP
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour-nav={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
@@ -114,6 +120,7 @@ export function AdminMobileNav({ role, region, assignedAgency }: AdminMobileNavP
               </Link>
             );
           })}
+          <Link href="/" data-tour="public-portal" className="inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-slate-200">Public Portal</Link>
         </div>
 
         {canViewIssues && issuesOpen && (

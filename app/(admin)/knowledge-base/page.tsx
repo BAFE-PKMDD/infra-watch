@@ -360,7 +360,7 @@ export default function KnowledgeBasePage() {
       </section>
 
       {/* Main Controls Section */}
-      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section data-tour="knowledge-controls" className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -441,7 +441,7 @@ export default function KnowledgeBasePage() {
       </section>
 
       {/* Documents Table */}
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section data-tour="knowledge-repository" className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800">
           <div>
             <h2 className="text-base font-extrabold text-slate-950 dark:text-white">Document Repository</h2>

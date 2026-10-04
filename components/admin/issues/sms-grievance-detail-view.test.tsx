@@ -100,3 +100,41 @@ test("an unknown sample id shows a not-available state instead of crashing", () 
   assert.match(html, /not available/i);
   assert.match(html, /Back to sample messages/);
 });
+
+test("a fresh message from a number with an existing case offers to link them", () => {
+  const needsReview = SMS_MOCK_SCENARIOS.find((item) => item.status === "needs_relevance_review" && item.relevance === "uncertain")!;
+  const contactNumber = "09171234567";
+  const newer = { ...needsReview, id: "local-sms-newer", contactNumber, localSimulated: true, receivedAt: "2026-09-20T00:00:00.000Z" };
+  const older = { ...needsReview, id: "local-sms-older", contactNumber, localSimulated: true, receivedAt: "2026-09-19T00:00:00.000Z", status: "closed" as const };
+  const queryClient = new QueryClient();
+  const html = renderToStaticMarkup(
+    <QueryClientProvider client={queryClient}>
+      <SmsGrievanceDetailView id={newer.id} initialRecords={[newer, older]} />
+    </QueryClientProvider>,
+  );
+
+  assert.match(html, /Same sender as an existing case/);
+  assert.match(html, new RegExp(older.externalMessageId));
+});
+
+test("a message that already absorbed a follow-up (the main thread) doesn't get offered to link elsewhere", () => {
+  const needsReview = SMS_MOCK_SCENARIOS.find((item) => item.status === "needs_relevance_review" && item.relevance === "uncertain")!;
+  const contactNumber = "09171234567";
+  const alreadyMain = {
+    ...needsReview,
+    id: "local-sms-already-main",
+    contactNumber,
+    localSimulated: true,
+    receivedAt: "2026-09-20T00:00:00.000Z",
+    conversation: [...needsReview.conversation, { id: "extra-inbound", kind: "inbound_sms" as const, body: "follow up", occurredAt: "2026-09-20T00:01:00.000Z" }],
+  };
+  const older = { ...needsReview, id: "local-sms-older-2", contactNumber, localSimulated: true, receivedAt: "2026-09-19T00:00:00.000Z", status: "closed" as const };
+  const queryClient = new QueryClient();
+  const html = renderToStaticMarkup(
+    <QueryClientProvider client={queryClient}>
+      <SmsGrievanceDetailView id={alreadyMain.id} initialRecords={[alreadyMain, older]} />
+    </QueryClientProvider>,
+  );
+
+  assert.doesNotMatch(html, /Same sender as an existing case/);
+});

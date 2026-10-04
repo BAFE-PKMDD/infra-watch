@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { useNotifications } from "@/providers/notification-provider";
 
@@ -13,6 +13,7 @@ export function NotificationBell({ open: controlledOpen, onOpenChange }: Notific
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
   const open = controlledOpen ?? uncontrolledOpen;
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const setOpen = (nextOpen: boolean) => {
     if (controlledOpen === undefined) {
@@ -21,8 +22,22 @@ export function NotificationBell({ open: controlledOpen, onOpenChange }: Notific
     onOpenChange?.(nextOpen);
   };
 
+  // Closes the panel on any outside interaction (e.g. opening the AI
+  // assistant widget) so it doesn't linger on top of other floating UI.
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -37,7 +52,7 @@ export function NotificationBell({ open: controlledOpen, onOpenChange }: Notific
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950">
+        <div className="fixed inset-x-4 top-[4.5rem] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
             <div>
               <p className="text-sm font-bold text-slate-900 dark:text-white">Notifications</p>

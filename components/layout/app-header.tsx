@@ -1,4 +1,5 @@
 "use client";
+import { CitizenGuides } from "@/components/citizen/tour/citizen-guides";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -133,7 +134,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
   }, [showUserMenu]);
 
   return (
-    <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30 transition-all duration-300">
+    <><header data-citizen-nav="header" className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40 dark:bg-[#0d1526] dark:border-[#1e3a5f]/30 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between sm:h-20">
           <div className="flex items-center gap-3">
@@ -175,6 +176,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
             <button
               type="button"
               onClick={() => setMobileOpen((prev) => !prev)}
+              data-citizen-nav="menu"
               className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
               aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
               aria-expanded={mobileOpen}
@@ -192,6 +194,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                   <Link
                     key={item.key}
                     href={item.href}
+                    data-citizen-nav={item.href}
                     className={cn(
                       "text-[13px] lg:text-sm font-bold transition-colors whitespace-nowrap relative",
                       resolvedActiveItem === item.key
@@ -208,6 +211,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                   <DropdownMenuTrigger
                     render={
                       <button
+                        data-citizen-nav="more"
                         className={cn(
                           "flex items-center gap-1 text-[13px] lg:text-sm font-bold transition-colors whitespace-nowrap outline-none",
                           translatedNavItems.some(i => i.isSecondary && i.key === resolvedActiveItem)
@@ -228,6 +232,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                         <DropdownMenuItem key={item.key} className="focus:bg-slate-100 dark:focus:bg-[#13233c]/60">
                           <Link
                             href={item.href}
+                            data-citizen-nav={item.href}
                             className={cn(
                               "w-full cursor-pointer font-bold block py-1",
                               resolvedActiveItem === item.key ? "text-primary" : "text-slate-700 dark:text-slate-200"
@@ -389,6 +394,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                   <Link
                     key={item.key}
                     href={item.href}
+                    data-citizen-nav={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
                       "text-base font-medium px-3 py-2 rounded-lg transition-colors",
@@ -487,6 +493,6 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
           </div>
         )}
       </div>
-    </header>
+    </header><CitizenGuides /></>
   );
 }

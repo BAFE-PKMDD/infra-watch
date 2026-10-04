@@ -50,7 +50,7 @@ export function SmsGrievanceGuide({ initialLanguage = "en" }: { initialLanguage?
     <div lang={language === "tl" ? "fil" : "en"} className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
       <section className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-          <div className="border-l-4 border-orange-600 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-950 dark:bg-orange-950/30 dark:text-orange-100">
+          <div data-citizen="sms-notice" className="border-l-4 border-orange-600 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-950 dark:bg-orange-950/30 dark:text-orange-100">
             {copy.prototypeNotice}
           </div>
           <h1 className="mt-7 font-heading text-3xl font-bold tracking-tight sm:text-4xl">{copy.title}</h1>
@@ -114,12 +114,12 @@ export function SmsGrievanceGuide({ initialLanguage = "en" }: { initialLanguage?
                     {copyState === "failed" ? copy.copyFailed : copyState === "copied" ? copy.copied : ""}
                   </p>
                 </div>
-                <SmsPhoneMockup
+                <div data-citizen="sms-conversation"><SmsPhoneMockup
                   contactName="INFRAWATCH"
                   label={copy.sampleLabel}
                   message={copy.sample}
                   reply={copy.autoReply.replace(TICKET_PLACEHOLDER, EXAMPLE_TICKET_ID)}
-                />
+                /></div>
               </div>
             </div>
           </section>

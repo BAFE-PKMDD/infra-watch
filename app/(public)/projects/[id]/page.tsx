@@ -1,4 +1,6 @@
 import React from "react";
+import CitizenProjectExample from "@/components/citizen/tour/citizen-project-example";
+import { CITIZEN_PROJECT_ID } from "@/lib/tours/citizen";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
@@ -10,6 +12,7 @@ import type { ProjectDetail } from "@/types";
 // In Next.js App Router, dynamic params are available via the params prop.
 export default async function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (id === CITIZEN_PROJECT_ID) return <CitizenProjectExample />;
   const project = await getPublicProjectById(id);
 
   if (!project) {

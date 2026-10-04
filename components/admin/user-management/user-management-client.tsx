@@ -319,7 +319,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4 sm:mb-6">
+        <div data-tour="users-filters" className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
             <form onSubmit={handleSearchSubmit} className="flex-1 min-w-[200px] flex gap-2">
               <div className="flex-1 relative">
@@ -364,7 +364,7 @@ export function UserManagementClient({ initialUsers, stats, total, currentPage, 
         </div>
 
         {/* Users Table */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div data-tour="users-list" className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
             <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">All Users</h3>
             <button

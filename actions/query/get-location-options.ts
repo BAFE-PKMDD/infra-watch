@@ -247,3 +247,76 @@ export async function getProjectRegions() {
     { revalidate: CACHE_TTL }
   )();
 }
+
+/**
+ * Get distinct farm-operation categories for the /api/projects `farmOperation` filter —
+ * a much smaller, more filterable dimension (under ten values) than the 100+ distinct
+ * `projectType` values, useful for narrowing a project search by category rather than
+ * by a project-name or location keyword.
+ */
+export async function getProjectFarmOperations() {
+  return unstable_cache(
+    async (): Promise<LocationOption[]> => {
+      const rows = await db
+        .selectDistinct({ farmOperation: projects.farmOperation })
+        .from(projects)
+        .where(sql`${projects.farmOperation} IS NOT NULL AND btrim(${projects.farmOperation}) <> ''`);
+
+      return rows
+        .map((r) => r.farmOperation!)
+        .sort((a, b) => a.localeCompare(b))
+        .map((farmOperation) => ({ label: farmOperation, value: farmOperation }));
+    },
+    ["project-farm-operations-v1"],
+    { revalidate: CACHE_TTL }
+  )();
+}
+
+/**
+ * Get distinct project types for the /api/projects `type` filter — over a hundred
+ * distinct values (irrigation systems, warehouses, greenhouses, drying pavements, etc.),
+ * so this is a finer-grained companion to getProjectFarmOperations() above rather than a
+ * replacement for it.
+ */
+export async function getProjectTypes() {
+  return unstable_cache(
+    async (): Promise<LocationOption[]> => {
+      const rows = await db
+        .selectDistinct({ projectType: projects.projectType })
+        .from(projects)
+        .where(sql`${projects.projectType} IS NOT NULL AND btrim(${projects.projectType}) <> ''`);
+
+      return rows
+        .map((r) => r.projectType!)
+        .sort((a, b) => a.localeCompare(b))
+        .map((projectType) => ({ label: projectType, value: projectType }));
+    },
+    ["project-types-v1"],
+    { revalidate: CACHE_TTL }
+  )();
+}
+
+/**
+ * Get distinct provinces that actually have a project on record, for the /api/projects
+ * `provinceExact` filter. Sourced from projects.province (free text from ABEMIS sync)
+ * rather than the PSGC reference table used by getProvinces() above, since those two
+ * don't reliably share the same spelling and this filter must match projects.province
+ * exactly.
+ */
+export async function getProjectProvinces() {
+  return unstable_cache(
+    async (): Promise<LocationOption[]> => {
+      const rows = await db
+        .selectDistinct({ province: projects.province })
+        .from(projects)
+        .where(sql`${projects.province} IS NOT NULL AND btrim(${projects.province}) <> ''`);
+
+      return rows
+        .map((r) => r.province!)
+        .sort((a, b) => a.localeCompare(b))
+        .map((province) => ({ label: province, value: province }));
+    },
+    ["project-provinces-v1"],
+    { revalidate: CACHE_TTL }
+  )();
+}

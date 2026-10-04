@@ -7,9 +7,75 @@ import { feedback, projects } from "@/lib/db/schema";
 import { publishAndPersistNotification } from "@/lib/notification-persistence";
 import { getProjectNotificationRecipientIds } from "@/lib/staff-notification-recipients";
 import { assertCleanText } from "@/lib/services/content-moderation";
+import { getAutoReplySettings } from "@/actions/query/settings.query";
+import { ensurePostInteractionsTables } from "@/lib/post-interactions";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import type { FeedbackMedia } from "@/types/feedback.types";
 import type { GeoTrackPoint } from "@/types/geo-evidence.types";
+
+const SYSTEM_AUTO_ACTOR_ID = "system-auto-acceptance";
+
+// Text and media are already verified clean by assertCleanText/the upload endpoint's
+// assertSafeImageUpload before this is called, so auto-accept only needs to decide
+// whether to skip the manual moderateFeedback approve step — no extra moderation here.
+// This supersedes the old 5-minute-delayed runFeedbackAutoAcknowledgment sweep: that job
+// is no longer scheduled, so this is now the only acknowledgment path.
+async function resolveInitialFeedbackStatus(): Promise<{
+  status: "pending" | "approved";
+  autoAccepted: boolean;
+  message: string | null;
+}> {
+  const settings = await getAutoReplySettings();
+  if (settings.data.feedback.enabled) {
+    return { status: "approved", autoAccepted: true, message: settings.data.feedback.message };
+  }
+  return { status: "pending", autoAccepted: false, message: null };
+}
+
+async function notifyAutoAcceptedFeedback(feedbackItem: { id: string; projectId: string; userId: string | null }, message: string) {
+  if (!feedbackItem.userId) return;
+  try {
+    await publishAndPersistNotification(
+      {
+        type: "feedback_auto_acknowledged",
+        title: "Your feedback was approved",
+        message,
+        metadata: { feedbackId: feedbackItem.id, projectId: feedbackItem.projectId },
+      },
+      [feedbackItem.userId],
+    );
+  } catch (error) {
+    console.error("Failed to persist feedback auto-acceptance notification", {
+      feedbackId: feedbackItem.id,
+      error: error instanceof Error ? error.name : "UnknownError",
+    });
+  }
+}
+
+// Posts the acknowledgment as a public feedback_comments row — the same table/shape
+// createFeedbackComment (actions/mutation/feedback-comment.mutation.ts) uses — so it's
+// visible right under the feedback post itself (Citizen Feed, project page), not just in
+// the submitter's private /my-feedbacks view.
+async function postAutoAcceptanceComment(feedbackId: string, message: string) {
+  try {
+    await ensurePostInteractionsTables();
+    await db.execute(sql`
+      INSERT INTO feedback_comments (id, feedback_id, user_id, comment, media)
+      VALUES (
+        ${crypto.randomUUID()}::uuid,
+        ${feedbackId}::uuid,
+        ${SYSTEM_AUTO_ACTOR_ID},
+        ${message},
+        '[]'::jsonb
+      )
+    `);
+  } catch (error) {
+    console.error("Failed to post feedback auto-acceptance comment", {
+      feedbackId,
+      error: error instanceof Error ? error.name : "UnknownError",
+    });
+  }
+}
 
 export const runtime = "nodejs";
 
@@ -316,6 +382,9 @@ export async function POST(
       );
     }
 
+    const initialStatus = await resolveInitialFeedbackStatus();
+    const now = new Date();
+
     const [created] = await db
       .insert(feedback)
       .values({
@@ -329,7 +398,10 @@ export async function POST(
         media,
         isAnonymous: Boolean(body.isAnonymous),
         helpfulCount: 0,
-        status: "pending",
+        status: initialStatus.status,
+        ...(initialStatus.autoAccepted
+          ? { moderatedBy: SYSTEM_AUTO_ACTOR_ID, moderatedAt: now, autoAcknowledgedAt: now, moderationNote: initialStatus.message }
+          : {}),
       })
       .returning();
 
@@ -339,19 +411,28 @@ export async function POST(
       category,
     });
 
+    if (initialStatus.autoAccepted && initialStatus.message) {
+      await notifyAutoAcceptedFeedback({ id: created.id, projectId: projectKey, userId: session.user.id }, initialStatus.message);
+      await postAutoAcceptanceComment(created.id, initialStatus.message);
+    }
+
     await logAudit({
       tableName: "feedback",
       recordId: created.id,
       action: "CREATE",
       newValues: { ...created },
-      notes: "Feedback submitted for moderation",
+      notes: initialStatus.autoAccepted
+        ? "Feedback submitted and auto-accepted (passed automated content checks)"
+        : "Feedback submitted for moderation",
       context: getAuditContextFromRequest(request, session.user),
     });
 
     return NextResponse.json({
       success: true,
       data: { ...created, unhelpfulCount: 0, commentCount: 0 },
-      message: "Feedback submitted successfully and is pending review.",
+      message: initialStatus.autoAccepted
+        ? "Feedback submitted and approved automatically. It's now visible on the project page."
+        : "Feedback submitted successfully and is pending review.",
     }, { status: 201 });
   } catch (error) {
     console.error("Failed to submit feedback", error);

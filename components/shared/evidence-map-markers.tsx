@@ -1,4 +1,5 @@
 import L from "leaflet";
+import type {} from "leaflet.markercluster";
 
 export type EvidencePinKind = "image" | "video";
 

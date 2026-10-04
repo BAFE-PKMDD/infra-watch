@@ -1,11 +1,8 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import "leaflet.markercluster/dist/MarkerCluster.css";
 
-// leaflet must be evaluated first: the markercluster plugin attaches itself to the global L.
 import L from "leaflet";
-import "leaflet.markercluster";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { MapContainer, Popup, useMap } from "react-leaflet";
@@ -33,24 +30,6 @@ type PinDetail = {
   photos: Array<{ url: string }>;
 };
 
-function clusterIcon(cluster: L.MarkerCluster) {
-  const count = cluster.getChildCount();
-  const size = count < 100 ? 36 : count < 1000 ? 44 : 52;
-  return L.divIcon({
-    html: `<span>${count.toLocaleString("en-PH")}</span>`,
-    className: "pa-cluster",
-    iconSize: [size, size],
-  });
-}
-
-function pinIcon(stage: PublicStageKey) {
-  return L.divIcon({
-    html: `<span class="pa-pin" style="display:block;background:${STAGE_COLOR[stage]}"></span>`,
-    className: "",
-    iconSize: [14, 14],
-  });
-}
-
 function Pins({ points, onSelect }: { points: MapPoint[]; onSelect: (id: string, lat: number, lng: number) => void }) {
   const t = usePublicAnalyticsStrings();
   const map = useMap();
@@ -60,23 +39,41 @@ function Pins({ points, onSelect }: { points: MapPoint[]; onSelect: (id: string,
   }, [onSelect]);
 
   useEffect(() => {
-    const icons = Object.fromEntries(PUBLIC_STAGES.map((stage) => [stage, pinIcon(stage)])) as Record<PublicStageKey, L.DivIcon>;
-    const group = L.markerClusterGroup({
-      chunkedLoading: true,
-      showCoverageOnHover: false,
-      maxClusterRadius: 50,
-      iconCreateFunction: clusterIcon,
-    });
+    // One canvas keeps thousands of individual project points responsive.
+    const renderer = L.canvas({ padding: 0.3, tolerance: 16 });
+    const readColors = () => {
+      const styles = getComputedStyle(map.getContainer());
+      return Object.fromEntries(PUBLIC_STAGES.map((stage) => [
+        stage,
+        styles.getPropertyValue(STAGE_COLOR[stage].slice(4, -1)).trim(),
+      ])) as Record<PublicStageKey, string>;
+    };
+    const colors = readColors();
     const markers = points.map(([id, lat, lng, stageIndex]) => {
       const stage = PUBLIC_STAGES[stageIndex] ?? "construction";
-      const marker = L.marker([lat, lng], { icon: icons[stage], title: t.stages[stage], keyboard: false });
+      const marker = L.circleMarker([lat, lng], {
+        renderer,
+        radius: 5,
+        color: "#fbfcfa",
+        weight: 1.5,
+        fillColor: colors[stage],
+        fillOpacity: 1,
+      });
+      marker.bindTooltip(t.stages[stage], { direction: "top" });
       marker.on("click", () => onSelectRef.current(id, lat, lng));
-      return marker;
+      return { marker, stage };
     });
-    group.addLayers(markers);
-    map.addLayer(group);
+    const group = L.layerGroup(markers.map(({ marker }) => marker)).addTo(map);
+    // Canvas colors must be resolved again when the page changes theme.
+    const observer = new MutationObserver(() => {
+      const nextColors = readColors();
+      markers.forEach(({ marker, stage }) => marker.setStyle({ fillColor: nextColors[stage] }));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => {
-      map.removeLayer(group);
+      observer.disconnect();
+      group.remove();
+      renderer.remove();
     };
   }, [map, points, t]);
 
@@ -137,15 +134,16 @@ function PinCard({ id }: { id: string }) {
 export default function ProjectMap({ points, flyTo }: { points: MapPoint[]; flyTo: FlyTarget }) {
   const t = usePublicAnalyticsStrings();
   const [selected, setSelected] = useState<{ id: string; lat: number; lng: number } | null>(null);
+  const visibleSelection = selected && points.some(([id]) => id === selected.id) ? selected : null;
 
   return (
     <MapContainer center={PHILIPPINES_CENTER} zoom={5} minZoom={5} scrollWheelZoom={false} className="h-full w-full" aria-label={t.map.mapLabel}>
       <EvidenceBasemapLayer basemapId="satellite" />
       <Pins points={points} onSelect={(id, lat, lng) => setSelected({ id, lat, lng })} />
       <FlyTo target={flyTo} />
-      {selected ? (
-        <Popup position={[selected.lat, selected.lng]} eventHandlers={{ remove: () => setSelected(null) }}>
-          <PinCard key={selected.id} id={selected.id} />
+      {visibleSelection ? (
+        <Popup position={[visibleSelection.lat, visibleSelection.lng]} eventHandlers={{ remove: () => setSelected(null) }}>
+          <PinCard key={visibleSelection.id} id={visibleSelection.id} />
         </Popup>
       ) : null}
     </MapContainer>

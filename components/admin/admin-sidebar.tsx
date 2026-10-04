@@ -20,6 +20,7 @@ import {
   Radio,
   RefreshCw,
   ScrollText,
+  Settings,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -69,6 +70,7 @@ const menu = [
       { label: "Knowledge Base", href: "/knowledge-base", icon: BookOpen, resource: "knowledge_base", action: "list", roles: ["admin"] },
       // Admin and regional-admin.
       { label: "Live Videos", href: "/live-videos", icon: Radio, resource: "system_settings", action: "read", roles: ["admin", "regional_admin"] },
+      { label: "Settings", href: "/settings", icon: Settings, resource: "system_settings", action: "read", roles: ["admin", "regional_admin"] },
       { label: "User Management", href: "/user-management", icon: Users, resource: "user", action: "list", roles: ["admin", "regional_admin"] },
     ],
   },
@@ -129,6 +131,7 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
                           type="button"
                           aria-expanded={issuesOpen}
                           aria-controls="desktop-reported-issues-menu"
+                          data-tour-nav="/issues"
                           onClick={() => setIssuesOpen((open) => !open)}
                           className={cn(
                             "flex min-h-11 w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left text-[15px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
@@ -182,6 +185,7 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
                     <Link
                       key={item.href}
                       href={item.href}
+                      data-tour-nav={item.href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
                         "flex min-h-11 items-center gap-3 rounded-lg px-3.5 py-3 text-[15px] font-medium transition-colors motion-reduce:transition-none",
@@ -204,6 +208,7 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
       <div className="border-t border-slate-200 p-3 dark:border-slate-800">
         <Link
           href="/"
+          data-tour="public-portal"
           className="flex min-h-11 items-center gap-3 rounded-lg px-3.5 py-3 text-[15px] font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-slate-200 dark:hover:bg-slate-900"
         >
           <Home aria-hidden="true" className="size-5" />

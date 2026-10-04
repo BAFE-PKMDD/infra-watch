@@ -28,7 +28,7 @@ test("accepting a grievance stores the selected BAFE project identity", () => {
   });
 
   assert.equal(accepted.relevance, "confirmed_in_scope");
-  assert.equal(accepted.status, "pending_review");
+  assert.equal(accepted.status, "under_review");
   assert.equal(accepted.projectMatch, "confirmed");
   assert.equal(accepted.projectId, SAMPLE_BAFE_PROJECT.id);
   assert.equal(accepted.projectLabel, SAMPLE_BAFE_PROJECT.name);
@@ -37,6 +37,29 @@ test("accepting a grievance stores the selected BAFE project identity", () => {
   assert.equal(accepted.assignedUnit, "[SAMPLE REVIEW TEAM]");
   assert.equal(accepted.assignedRegion, "[SAMPLE REGION]");
   assert.equal(accepted.originalText, candidate.originalText);
+});
+
+test("accepting a grievance mints an SMS-grievance case ID and notifies the sender", () => {
+  const candidate = getSmsMockScenario("sample-sms-004");
+  assert.ok(candidate);
+
+  const accepted = applySmsPrototypeAction(candidate, {
+    type: "accept",
+    category: "flooding_drainage",
+    relevanceReason: "Sample location and infrastructure concern confirmed for prototype review.",
+    location: "[SAMPLE TAGGED LOCATION]",
+    unit: "[SAMPLE REVIEW TEAM]",
+    region: "[SAMPLE REGION]",
+    project: SAMPLE_BAFE_PROJECT,
+    confirmed: true,
+  });
+
+  assert.ok(accepted.smsGrievanceCaseId?.startsWith("SMS-GRIEVANCE-"));
+  const reply = accepted.conversation.at(-1);
+  assert.equal(reply?.kind, "outbound_sms");
+  assert.match(reply?.body ?? "", /^SAMPLE SMS ONLY\. No message was sent\./);
+  assert.match(reply?.body ?? "", new RegExp(accepted.smsGrievanceCaseId!));
+  assert.equal(reply?.deliveryStatus, "simulated_delivered");
 });
 
 test("accepting a grievance as a possible (unconfirmed) match keeps it flagged for confirmation", () => {
@@ -56,9 +79,36 @@ test("accepting a grievance as a possible (unconfirmed) match keeps it flagged f
   });
 
   assert.equal(accepted.relevance, "uncertain");
-  assert.equal(accepted.status, "pending_review");
+  assert.equal(accepted.status, "under_review");
   assert.equal(accepted.projectMatch, "candidate");
   assert.equal(accepted.projectId, SAMPLE_BAFE_PROJECT.id);
+});
+
+test("a possible BAFE project tag can proceed without a matched project record, for follow-up", () => {
+  const candidate = getSmsMockScenario("sample-sms-004");
+  assert.ok(candidate);
+
+  const accepted = applySmsPrototypeAction(candidate, {
+    type: "accept",
+    category: "equipment_malfunction",
+    relevanceReason: "Report about distributed farm equipment with no built-infrastructure project record.",
+    location: "[SAMPLE LOCATION]",
+    unit: "[SAMPLE REVIEW TEAM]",
+    region: "[SAMPLE REGION]",
+    project: null,
+    confirmed: true,
+    certainty: "possible",
+  });
+
+  assert.equal(accepted.relevance, "uncertain");
+  assert.equal(accepted.status, "under_review");
+  assert.equal(accepted.projectMatch, "not_identified");
+  assert.equal(accepted.projectId, undefined);
+  assert.equal(accepted.projectLabel, "Not yet identified — needs further checking");
+  assert.ok(accepted.smsGrievanceCaseId?.startsWith("SMS-GRIEVANCE-"));
+  const reply = accepted.conversation.at(-1);
+  assert.equal(reply?.kind, "outbound_sms");
+  assert.match(reply?.body ?? "", new RegExp(accepted.smsGrievanceCaseId!));
 });
 
 test("a grievance cannot become a case without selecting an actual BAFE project", () => {
@@ -84,13 +134,37 @@ test("marking a grievance as not a BAFE project closes it without creating a cas
   const outsideBafe = applySmsPrototypeAction(candidate, {
     type: "mark_not_bafe_project",
     reason: "The referenced infrastructure is not in the BAFE project registry.",
+    category: "not_related_to_infrawatch",
   });
 
   assert.equal(outsideBafe.relevance, "out_of_scope");
   assert.equal(outsideBafe.status, "closed");
   assert.equal(outsideBafe.projectMatch, "not_bafe_project");
   assert.equal(outsideBafe.projectLabel, "Not a BAFE project");
+  assert.equal(outsideBafe.notBafeCategory, "not_related_to_infrawatch");
   assert.equal(outsideBafe.originalText, candidate.originalText);
+
+  const reply = outsideBafe.conversation.at(-1);
+  assert.equal(reply?.kind, "outbound_sms");
+  assert.match(reply?.body ?? "", /^SAMPLE SMS ONLY\. No message was sent\./);
+  assert.match(reply?.body ?? "", /The referenced infrastructure is not in the BAFE project registry\./);
+  assert.equal(reply?.deliveryStatus, "simulated_delivered");
+});
+
+test("marking a grievance as a different agency's project points the sender elsewhere instead of saying the report was invalid", () => {
+  const candidate = getSmsMockScenario("sample-sms-004");
+  assert.ok(candidate);
+
+  const differentAgency = applySmsPrototypeAction(candidate, {
+    type: "mark_not_bafe_project",
+    reason: "This is a DPWH farm-to-market road project, not a BAFE irrigation or facility project.",
+    category: "different_agency_project",
+  });
+
+  assert.equal(differentAgency.notBafeCategory, "different_agency_project");
+  const reply = differentAgency.conversation.at(-1);
+  assert.match(reply?.body ?? "", /different government agency/);
+  assert.match(reply?.body ?? "", /reach out to the agency responsible/);
 });
 
 test("case creation requires an explicit moderator or admin confirmation", () => {
@@ -187,14 +261,16 @@ test("assignment requires staff confirmation and preserves placeholder-only labe
 });
 
 test("lifecycle actions enforce adjacent transitions and record reasons", () => {
-  const pending = getSmsMockScenario("sample-sms-001");
-  assert.ok(pending);
-  const reviewing = applySmsPrototypeAction(pending, { type: "transition", to: "under_review", reason: "Sample review started" });
-  assert.equal(reviewing.status, "under_review");
-  assert.equal(reviewing.conversation.at(-1)?.kind, "status_event");
-  assert.match(reviewing.conversation.at(-1)?.body ?? "", /Sample review started/);
+  const base = getSmsMockScenario("sample-sms-001");
+  assert.ok(base);
+  assert.equal(base.status, "under_review");
+  const reviewing = { ...base, assignedUnit: "[SAMPLE REVIEW TEAM]" };
+  const resolved = applySmsPrototypeAction(reviewing, { type: "transition", to: "resolved", reason: "Sample issue resolved" });
+  assert.equal(resolved.status, "resolved");
+  assert.equal(resolved.conversation.at(-1)?.kind, "status_event");
+  assert.match(resolved.conversation.at(-1)?.body ?? "", /Sample issue resolved/);
   assert.throws(
-    () => applySmsPrototypeAction(pending, { type: "transition", to: "closed", reason: "Invalid skip" }),
+    () => applySmsPrototypeAction(reviewing, { type: "transition", to: "closed", reason: "Invalid skip" }),
     /isn't available/,
   );
 });
@@ -213,4 +289,7 @@ test("duplicate classification requires a reason and sample case reference", () 
   });
   assert.equal(duplicate.relevance, "duplicate");
   assert.equal(duplicate.duplicateOf, "[SAMPLE EXISTING CASE]");
+  // Its content now lives in the linked case, so it must drop out of "Needs checking"
+  // instead of sitting there as a second, redundant item to review.
+  assert.equal(duplicate.status, "closed");
 });

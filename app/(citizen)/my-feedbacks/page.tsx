@@ -327,12 +327,15 @@ function FeedbackCard({
             {t("account.feedbacks.autoAckTitle")}
           </p>
           <p className="text-sm text-slate-700 dark:text-slate-300">
-            {t("account.feedbacks.autoAckMessage")}
+            {/* Auto-accepted feedback stores the admin-configured message in moderationNote;
+                fall back to the legacy static text for rows acknowledged by the old
+                5-minute sweep, which never set moderationNote. */}
+            {item.moderationNote || t("account.feedbacks.autoAckMessage")}
           </p>
         </div>
       )}
 
-      {item.moderationNote && (
+      {item.moderationNote && !item.autoAcknowledgedAt && (
         <div
           className={cn(
             "mb-4 rounded-lg border p-3",

@@ -44,7 +44,7 @@ export function ReportDateFilter({ initialRange }: { initialRange?: { from: Date
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div data-tour="report-dates" className="flex flex-wrap items-center gap-2">
       <div className="mr-2 flex items-center gap-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
         <CalendarIcon className="h-4 w-4" aria-hidden="true" />
         Period:

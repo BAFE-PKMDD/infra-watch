@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { DashboardSkeleton } from "@/components/admin/dashboard/dashboard-skeleton";
 import { ManagerialDashboardClient } from "@/components/admin/dashboard/managerial-dashboard-client";
+import { ResponseGuides } from "@/components/admin/tour/response-guides";
 
 export const DASHBOARD_TITLE = "Infrastructure Monitoring";
 
@@ -15,6 +16,7 @@ export default async function DashboardPage() {
       title={DASHBOARD_TITLE}
       description="Monitor project delivery, approved budgets, and regional performance."
     >
+      <ResponseGuides />
       <div className="analytics-scope">
         <Suspense fallback={<DashboardSkeleton />}>
           <ManagerialDashboardClient

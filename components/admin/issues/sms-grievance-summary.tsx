@@ -8,8 +8,10 @@ function deliveryLabel(value: SmsMockScenario["deliveryStatus"]) {
   return {
     not_requested: "No reply sent",
     simulated_pending: "Reply pending",
-    simulated_delivered: "Reply sent",
-    simulated_failed: "Reply failed",
+    simulated_delivered: "Reply sent (simulated)",
+    simulated_failed: "Reply failed (simulated)",
+    sent: "Reply sent (real SMS)",
+    send_failed: "Real SMS failed to send",
   }[value];
 }
 
@@ -29,6 +31,9 @@ export function SmsGrievanceHeader({ record }: { record: SmsMockScenario }) {
         <div>
           <p className="font-mono text-xs font-bold text-slate-600 dark:text-slate-300">{record.externalMessageId}</p>
           <h2 id="selected-sms-title" className="mt-1 font-heading text-xl font-semibold">{smsStatusLabel(record)}</h2>
+          {record.smsGrievanceCaseId && (
+            <p className="mt-1 font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-400">SMS-Grievance thread: {record.smsGrievanceCaseId}</p>
+          )}
         </div>
         <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Source: SMS Grievance</span>
       </div>

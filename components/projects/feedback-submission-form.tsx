@@ -1,4 +1,6 @@
 "use client";
+import { useCitizenGuide } from "@/components/citizen/tour/citizen-guide-context";
+import { CITIZEN_PROJECT_ID, simulateCitizenSubmission } from "@/lib/tours/citizen";
 
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -143,6 +145,8 @@ export function FeedbackSubmissionForm({
   editMode = false,
   initialData,
 }: FeedbackSubmissionFormProps) {
+  const citizenGuide = useCitizenGuide();
+  const example = projectId === CITIZEN_PROJECT_ID;
   const [currentStep, setCurrentStep] = useState<StepId>(editMode ? "review" : "sentiment");
   const [direction, setDirection] = useState(1);
   const prefersReducedMotion = useReducedMotion();
@@ -165,7 +169,7 @@ export function FeedbackSubmissionForm({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   // Editing existing feedback never re-asks the survey - it's not a first submission.
-  const { needsSurvey } = useSubmissionSurveyGate(!editMode);
+  const { needsSurvey } = useSubmissionSurveyGate(!editMode && !example);
 
   const localizedSteps: StepDefinition[] = steps.map((step) => ({ ...step, label: t(`projectDetail.feedbackForm.steps.${step.id}`) }));
   const categoryLabel = (value: FeedbackCategory) => t(`projectDetail.feedbackForm.categories.${value}.label`);
@@ -182,6 +186,7 @@ export function FeedbackSubmissionForm({
   // File upload mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      if (example) throw new Error("Uploads are disabled in this guide.");
       const formData = new FormData();
       formData.append('file', file);
 
@@ -204,6 +209,7 @@ export function FeedbackSubmissionForm({
   // Feedback submission mutation
   const submitMutation = useMutation({
     mutationFn: async (data: FeedbackFormData) => {
+      if (example) throw new Error("Example feedback cannot be submitted.");
       const url = editMode && initialData
         ? `/api/projects/${projectId}/feedback/${initialData.id}`
         : `/api/projects/${projectId}/feedback`;
@@ -326,6 +332,7 @@ export function FeedbackSubmissionForm({
   };
 
   const handleConfirmSubmit = async () => {
+    if (example) { await performSubmit(); return; }
     if (needsSurvey) {
       setShowPreSubmitSurvey(true);
       return;
@@ -334,6 +341,12 @@ export function FeedbackSubmissionForm({
   };
 
   const performSubmit = async () => {
+    if (example) {
+      if (citizenGuide?.session?.guide !== "citizen-feedback") return;
+      simulateCitizenSubmission("citizen-feedback", { comment });
+      citizenGuide.submitted("citizen-feedback");
+      return;
+    }
     commitRef.current = true;
     setIsCommitting(true);
     onBusyChange?.(true);
@@ -407,11 +420,12 @@ export function FeedbackSubmissionForm({
   const starsText = (count: number) => t(count === 1 ? "projectDetail.feedbackForm.rating.starsOne" : "projectDetail.feedbackForm.rating.starsMany", { count });
 
   return (
-    <>
+    <div className={example ? "pb-72" : undefined}>
       <StepProgress steps={localizedSteps} currentStepIndex={currentStepIndex} label={t("projectDetail.feedbackForm.progressLabel")} />
 
       <AnimatePresence mode="wait" custom={direction}>
         <motion.div
+          data-citizen-step={`feedback-${currentStep}`}
           key={currentStep}
           custom={direction}
           variants={prefersReducedMotion ? reducedStepVariants : stepVariants}
@@ -455,7 +469,7 @@ export function FeedbackSubmissionForm({
                 >
                   {t("projectDetail.feedbackForm.sentiment.skip")}
                 </button>
-                <Button type="button" onClick={() => goToStep("category")} disabled={formBusy}>
+                <Button data-citizen="form-next" type="button" onClick={() => goToStep("category")} disabled={formBusy}>
                   {t("projectDetail.feedbackForm.next")}
                 </Button>
               </div>
@@ -482,7 +496,7 @@ export function FeedbackSubmissionForm({
                 <Button type="button" variant="ghost" onClick={() => goToStep("sentiment", -1)} disabled={formBusy}>
                   {t("projectDetail.feedbackForm.back")}
                 </Button>
-                <Button type="button" onClick={() => goToStep("details")} disabled={formBusy}>
+                <Button data-citizen="form-next" type="button" onClick={() => goToStep("details")} disabled={formBusy}>
                   {t("projectDetail.feedbackForm.next")}
                 </Button>
               </div>
@@ -603,7 +617,7 @@ export function FeedbackSubmissionForm({
                   compact
                   initialItems={pendingEvidence}
                   maxFiles={Math.max(5 - media.length, 0)}
-                  disabled={formBusy}
+                  disabled={formBusy || example}
                   onEvidenceReady={handleEvidenceReady}
                   onProcessingChange={handleEvidenceProcessingChange}
                 />
@@ -654,8 +668,9 @@ export function FeedbackSubmissionForm({
                   {t("projectDetail.feedbackForm.back")}
                 </Button>
                 <Button
+                  data-citizen="form-next"
                   type="button"
-                  disabled={formBusy}
+                  disabled={formBusy || (example && !comment.trim())}
                   onClick={() => {
                     if (validateDetailsStep()) goToStep("consent");
                   }}
@@ -750,8 +765,9 @@ export function FeedbackSubmissionForm({
                   {t("projectDetail.feedbackForm.back")}
                 </Button>
                 <Button
+                  data-citizen="form-next"
                   type="button"
-                  disabled={formBusy}
+                  disabled={formBusy || (example && !agreeToTerms)}
                   onClick={() => {
                     if (validateConsentStep()) goToStep("review");
                   }}
@@ -817,6 +833,7 @@ export function FeedbackSubmissionForm({
                   {t("projectDetail.feedbackForm.back")}
                 </Button>
                 <Button
+                  data-citizen="form-next"
                   type="button"
                   onClick={handleConfirmSubmit}
                   disabled={formBusy}
@@ -848,7 +865,7 @@ export function FeedbackSubmissionForm({
         sourceType="feedback"
         sourceId={null}
       />
-    </>
+    </div>
   );
 }
 

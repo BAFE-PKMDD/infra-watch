@@ -75,7 +75,7 @@ export default function SyncPage() {
 
       {statistics && <SyncStatsCard statistics={statistics} />}
 
-      <section className="space-y-4">
+      <section data-tour="sync-history" className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-extrabold text-slate-950 dark:text-white">Sync History</h2>
@@ -83,7 +83,7 @@ export default function SyncPage() {
           </div>
 
           {canTrigger ? (
-            <Button type="button" onClick={handleSync} disabled={isSyncing}>
+            <Button data-tour="sync-start" type="button" onClick={handleSync} disabled={isSyncing}>
               <RefreshCw className={isSyncing ? "size-4 animate-spin" : "size-4"} />
               {isSyncing ? "Syncing..." : "Sync Now"}
             </Button>

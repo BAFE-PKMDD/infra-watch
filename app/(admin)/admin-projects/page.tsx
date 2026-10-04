@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
+import { ResponseGuides } from "@/components/admin/tour/response-guides";
 import { Pagination } from "@/components/admin/projects/pagination";
 import { ProjectStatsCard } from "@/components/admin/projects/project-stats-card";
 import { ProjectsFilters } from "@/components/admin/projects/projects-filters";
@@ -35,9 +36,10 @@ export default function AdminProjectsPage() {
       title="Synced Project Catalog"
       description="Read-only AMEFIP and INS project records mirrored from ABEMIS for search, reporting, and public feedback."
     >
+      <ResponseGuides fallbackOnly />
       {statsData?.statistics && <ProjectStatsCard statistics={statsData.statistics} />}
 
-      <ProjectsFilters
+      <div data-tour="projects-filters"><ProjectsFilters
         search={search}
         status={status}
         program={program}
@@ -54,7 +56,7 @@ export default function AdminProjectsPage() {
           setPage(1);
         }}
         onReset={resetFilters}
-      />
+      /></div>
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
@@ -62,8 +64,8 @@ export default function AdminProjectsPage() {
         </div>
       )}
 
-      <ProjectsTable projects={projects} isLoading={isLoading} />
-      <Pagination page={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.totalCount} onPageChange={setPage} />
+      <div data-tour="projects-table"><ProjectsTable projects={projects} isLoading={isLoading} /></div>
+      <div data-tour="projects-pagination"><Pagination page={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.totalCount} onPageChange={setPage} /></div>
     </AdminPageWrapper>
   );
 }

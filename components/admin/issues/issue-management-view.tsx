@@ -32,6 +32,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { notifyTutorialAction } from "@/lib/tours/events";
+import { runTutorialMutation } from "@/lib/tours/sandbox";
+import { TutorialModeNotice, useTutorialSandbox, type TutorialSandboxContextValue } from "@/components/admin/tour/tutorial-sandbox";
 
 type IssueStatus = "all" | "pending" | "reviewing" | "resolved" | "closed";
 
@@ -121,6 +124,11 @@ function locationLabel(issue: AdminIssue) {
 }
 
 export function IssueManagementView() {
+  const sandbox = useTutorialSandbox();
+  return <IssueManagementContent key={sandbox?.state.id ?? "live"} sandbox={sandbox} />;
+}
+
+function IssueManagementContent({ sandbox }: { sandbox: TutorialSandboxContextValue | null }) {
   const [statusFilter, setStatusFilter] = useState<IssueStatus>("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -137,7 +145,8 @@ export function IssueManagementView() {
     return () => window.clearTimeout(timeout);
   }, [search]);
 
-  const { data: statsData, isLoading: statsLoading } = useQuery<IssueStatsResponse>({
+  const { data: statsData, isLoading: statsQueryLoading } = useQuery<IssueStatsResponse>({
+    enabled: !sandbox,
     queryKey: ["admin-issue-stats"],
     queryFn: async () => {
       const response = await fetch("/api/admin/issues/stats");
@@ -147,7 +156,8 @@ export function IssueManagementView() {
     },
   });
 
-  const { data: issueData, isLoading } = useQuery<IssueListResponse>({
+  const { data: issueData, isLoading: issuesQueryLoading } = useQuery<IssueListResponse>({
+    enabled: !sandbox,
     queryKey: ["admin-issues", statusFilter, page, debouncedSearch],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -165,25 +175,38 @@ export function IssueManagementView() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (issueId: string) => {
-      const response = await fetch(`/api/admin/issues/${issueId}`, { method: "DELETE" });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to delete issue");
-      return result;
-    },
-    onSuccess: () => {
+    onMutate: (issueId: string) => { notifyTutorialAction({ resource: "issues", recordId: issueId, action: "delete", outcome: "pending", simulated: Boolean(sandbox) }); },
+    mutationFn: (issueId: string) => runTutorialMutation({
+      sandbox: Boolean(sandbox), recordId: issueId,
+      simulate: () => { sandbox!.apply({ resource: "issues", recordId: issueId, action: "delete" }); return {}; },
+      persist: async () => {
+        const response = await fetch(`/api/admin/issues/${issueId}`, { method: "DELETE" });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Failed to delete issue");
+        return result;
+      },
+    }),
+    onSuccess: (result, issueId) => {
+      notifyTutorialAction({ resource: "issues", recordId: issueId, action: "delete", outcome: "success", simulated: result.simulated });
       setDeleteIssue(null);
+      if (result.simulated) { toast.success("Tutorial deletion complete. No real report was deleted."); return; }
       queryClient.invalidateQueries({ queryKey: ["admin-issues"] });
       queryClient.invalidateQueries({ queryKey: ["admin-issue-stats"] });
       queryClient.invalidateQueries({ queryKey: ["public-issues"] });
       toast.success("Issue deleted");
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error, issueId) => {
+      notifyTutorialAction({ resource: "issues", recordId: issueId, action: "delete", outcome: "error", simulated: Boolean(sandbox) });
+      toast.error(error.message);
+    },
   });
 
-  const stats = statsData?.data ?? { total: 0, pending: 0, reviewing: 0, resolved: 0, closed: 0 };
-  const issues = issueData?.data ?? [];
-  const pagination = issueData?.pagination ?? { page, limit: ITEMS_PER_PAGE, total: 0, totalPages: 0 };
+  const statsLoading = !sandbox && statsQueryLoading;
+  const isLoading = !sandbox && issuesQueryLoading;
+  const example = sandbox?.state.issue;
+  const stats = sandbox ? { total: example ? 1 : 0, pending: Number(example?.status === "pending"), reviewing: Number(example?.status === "reviewing"), resolved: Number(example?.status === "resolved"), closed: Number(example?.status === "closed") } : statsData?.data ?? { total: 0, pending: 0, reviewing: 0, resolved: 0, closed: 0 };
+  const issues = sandbox ? (example ? [example] : []).filter((item) => (statusFilter === "all" || item.status === statusFilter) && `${item.issueDescription} ${item.ticketNumber} ${item.reporterName} ${item.projectName}`.toLowerCase().includes(debouncedSearch.toLowerCase())) : issueData?.data ?? [];
+  const pagination = sandbox ? { page: 1, limit: ITEMS_PER_PAGE, total: issues.length, totalPages: 1 } : issueData?.pagination ?? { page, limit: ITEMS_PER_PAGE, total: 0, totalPages: 0 };
   const emptyMessage = useMemo(() => {
     if (debouncedSearch) return "No E-Reports match your search.";
     if (statusFilter !== "all") return "No E-Reports have this status.";
@@ -192,14 +215,15 @@ export function IssueManagementView() {
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-3 md:grid-cols-4">
+      {sandbox ? <TutorialModeNotice /> : null}
+      <section data-tour="issues-summary" className="grid gap-3 md:grid-cols-4">
         <Metric label="Total E-Reports" value={stats.total} icon={<MessageSquare className="size-4" />} loading={statsLoading} />
         <Metric label="Waiting for review" value={stats.pending} icon={<Clock className="size-4" />} tone="amber" loading={statsLoading} />
         <Metric label="Being reviewed" value={stats.reviewing} icon={<AlertCircle className="size-4" />} tone="blue" loading={statsLoading} />
         <Metric label="Resolved" value={stats.resolved} icon={<CheckCircle2 className="size-4" />} tone="green" loading={statsLoading} />
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <section data-tour="issues-filters" className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -229,7 +253,7 @@ export function IssueManagementView() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <section data-tour="issues-list" className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <Table scrollRegionLabel="E-Report results. Use horizontal scrolling to view all columns.">
           <TableHeader>
             <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-950">
@@ -259,7 +283,7 @@ export function IssueManagementView() {
               </TableRow>
             ) : (
               issues.map((issue) => (
-                <TableRow key={issue.id} className="dark:border-slate-800">
+                <TableRow key={issue.id} data-tour="issue-row" data-tour-record-id={issue.id} className="dark:border-slate-800">
                   <TableCell className="max-w-[520px] whitespace-normal px-4 py-4">
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -305,12 +329,12 @@ export function IssueManagementView() {
                   <TableCell className="py-4">
                     <div className="flex flex-col gap-2">
                       <Button asChild variant="outline" className="min-h-11">
-                        <Link href={`/issues/${issue.id}`}>
+                        <Link data-tour="issue-respond" href={`/issues/${issue.id}`}>
                           <MessageSquare className="size-4" />
                           Respond
                         </Link>
                       </Button>
-                      <Button type="button" variant="destructive" className="min-h-11" onClick={() => setDeleteIssue(issue)}>
+                      <Button data-tour="issue-delete" type="button" variant="destructive" className="min-h-11" onClick={() => setDeleteIssue(issue)}>
                         <Trash2 className="size-4" />
                         Delete
                       </Button>
@@ -340,16 +364,17 @@ export function IssueManagementView() {
       </section>
 
       <AlertDialog open={Boolean(deleteIssue)} onOpenChange={(open) => !open && setDeleteIssue(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent data-tour="issue-delete-dialog" data-tour-record-id={deleteIssue?.id}>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete E-Report?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the issue record, evidence references, and response history.
+              {sandbox ? "Tutorial: confirm to remove the example report for this session. No real report, evidence, or history will be deleted." : "This permanently removes the issue record, evidence references, and response history."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-tour="issue-delete-cancel">Cancel</AlertDialogCancel>
             <AlertDialogAction
+              data-tour="issue-delete-confirm"
               className="bg-red-600 text-white hover:bg-red-700"
               onClick={() => deleteIssue && deleteMutation.mutate(deleteIssue.id)}
               disabled={deleteMutation.isPending}
