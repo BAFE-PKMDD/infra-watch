@@ -251,8 +251,12 @@ export function reconnectDelayMs(attempt: number) {
 }
 
 export function getKokoroInferenceOptions() {
+  // q8 is kokoro-js's own documented pairing for the "wasm" device (q4 was
+  // tried here once to silence a "mixed provider" console warning, but that
+  // combination is a known source of "invalid data location" ONNX errors -
+  // the tensor-allocation failure was worse than the warning it avoided).
   return {
-    dtype: "q4" as const,
+    dtype: "q8" as const,
     device: "wasm" as const,
   };
 }

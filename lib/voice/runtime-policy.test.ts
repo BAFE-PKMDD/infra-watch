@@ -185,9 +185,9 @@ test("an old playback cannot clear a newer playback settlement", () => {
   assert.equal(settlementRef.current, null);
 });
 
-test("uses stable WASM inference for Kokoro without mixed provider warnings", () => {
+test("uses kokoro-js's documented dtype/device pairing for stable WASM inference", () => {
   assert.deepEqual(getKokoroInferenceOptions(), {
-    dtype: "q4",
+    dtype: "q8",
     device: "wasm",
   });
 });

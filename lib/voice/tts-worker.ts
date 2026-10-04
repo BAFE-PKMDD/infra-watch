@@ -76,6 +76,13 @@ workerContext.onmessage = async (event) => {
     });
   } catch (error) {
     if (request.type === "generate") {
+      // A generate() failure can leave the cached session's WASM/ONNX state
+      // corrupted (e.g. after the tab was suspended mid-run - "invalid data
+      // location" on input_ids). Drop the cached instance so the next
+      // request reloads a fresh one instead of repeating the same failure
+      // forever.
+      loadedModel = null;
+      activeConfigKey = null;
       workerContext.postMessage({
         type: "generation-failed",
         requestId: request.requestId,

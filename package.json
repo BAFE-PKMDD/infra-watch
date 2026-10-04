@@ -14,7 +14,8 @@
         "db:migrate": "drizzle-kit migrate",
         "db:prepare-migrations": "bun scripts/prepare-migrations.ts",
         "db:push": "drizzle-kit push",
-        "db:studio": "drizzle-kit studio"
+        "db:studio": "drizzle-kit studio",
+        "locations:sync-psgc": "bun scripts/sync-psgc-locations.ts"
     },
     "overrides": {
         "adm-zip": "0.6.0",

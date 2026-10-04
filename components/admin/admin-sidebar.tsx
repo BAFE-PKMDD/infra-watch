@@ -159,21 +159,19 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
                               <FileText aria-hidden="true" className="size-4" />
                               E-Report
                             </Link>
-                            {process.env.NODE_ENV !== "production" && (
-                              <Link
-                                href="/issues/sms-review"
-                                aria-current={pathname.startsWith("/issues/sms-review") ? "page" : undefined}
-                                className={cn(
-                                  "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                                  pathname.startsWith("/issues/sms-review")
-                                    ? "bg-primary text-white"
-                                    : "text-slate-700 hover:bg-slate-100 hover:text-primary dark:text-slate-200 dark:hover:bg-slate-900",
-                                )}
-                              >
-                                <MessageSquareText aria-hidden="true" className="size-4" />
-                                SMS Grievance
-                              </Link>
-                            )}
+                            <Link
+                              href="/issues/sms-review"
+                              aria-current={pathname.startsWith("/issues/sms-review") ? "page" : undefined}
+                              className={cn(
+                                "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                                pathname.startsWith("/issues/sms-review")
+                                  ? "bg-primary text-white"
+                                  : "text-slate-700 hover:bg-slate-100 hover:text-primary dark:text-slate-200 dark:hover:bg-slate-900",
+                              )}
+                            >
+                              <MessageSquareText aria-hidden="true" className="size-4" />
+                              SMS Grievance
+                            </Link>
                           </div>
                         )}
                       </div>
