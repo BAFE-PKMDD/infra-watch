@@ -48,6 +48,11 @@ function formatDistance(meters: number) {
 
 function MeasureTool({ active }: { active: boolean }) {
   const [points, setPoints] = useState<LatLngTuple[]>([]);
+  const [wasActive, setWasActive] = useState(active);
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (!active) setPoints([]);
+  }
 
   const map = useMapEvents({
     click(e) {
@@ -59,10 +64,6 @@ function MeasureTool({ active }: { active: boolean }) {
       setPoints([]);
     },
   });
-
-  useEffect(() => {
-    if (!active) setPoints([]);
-  }, [active]);
 
   useEffect(() => {
     map.doubleClickZoom[active ? "disable" : "enable"]();
