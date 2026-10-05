@@ -50,7 +50,7 @@ export async function downloadDashboardAsPdf(pageImages: string[], filename: str
     pdf.addImage(image, "PNG", 0, 0, pageWidth, pageHeight);
     if (watermark) {
       pdf.saveGraphicsState();
-      pdf.setGState(new GState({ opacity: 0.12 }));
+      pdf.setGState(new GState({ opacity: 0.05 }));
       pdf.addImage(watermark, "PNG", watermarkX, watermarkY, watermarkWidth, watermarkHeight);
       pdf.restoreGraphicsState();
     }

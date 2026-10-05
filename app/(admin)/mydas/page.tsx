@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, type FormEvent, type ReactNode } from "react";
+import { useState, useRef, useEffect, useCallback, type FormEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import {
   FileDown,
@@ -110,7 +110,14 @@ const DISPLAY_TYPE_LABELS: Record<MydasDisplayType, string> = {
 
 const TOOLTIP_STYLE = { borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 12 };
 const AXIS_TICK = { fontSize: 10, fill: "#64748b" };
+const CATEGORY_AXIS_TICK = { fontSize: 10, fill: "#475569" };
 const LEGEND_STYLE = { fontSize: 11 };
+const CHART_MARGIN = { top: 4, right: 12, bottom: 4, left: 0 };
+const COLUMN_CHART_MARGIN = { top: 4, right: 12, bottom: 24, left: 0 };
+// Stable references (not recreated every render) so a widget resize doesn't churn
+// Recharts' internal tick memoization -- see the DraggableBox rAF-coalescing comment.
+const formatAxisTick = (value: number | string) => formatChartValue(Number(value));
+const valueLabelFormatter = (value: string | number | boolean | null | undefined) => formatChartValue(Number(value ?? 0));
 
 // Fills 100% of its parent (rather than sizing itself off data length), so a
 // widget's own resize handle actually changes the rendered chart size.
@@ -129,11 +136,13 @@ function MydasChart({
   valueLabelPosition: ValueLabelPosition;
   colors: string[];
 }) {
-  const tooltipFormatter = (value: number | string | readonly (number | string)[] | undefined): [string, string] => {
-    const numericValue = typeof value === "number" || typeof value === "string" ? value : value?.[0];
-    return [formatChartValue(Number(numericValue ?? 0)), seriesName];
-  };
-  const valueLabelFormatter = (value: string | number | boolean | null | undefined) => formatChartValue(Number(value ?? 0));
+  const tooltipFormatter = useCallback(
+    (value: number | string | readonly (number | string)[] | undefined): [string, string] => {
+      const numericValue = typeof value === "number" || typeof value === "string" ? value : value?.[0];
+      return [formatChartValue(Number(numericValue ?? 0)), seriesName];
+    },
+    [seriesName],
+  );
 
   if (type === "pie" || type === "donut") {
     return (
@@ -161,10 +170,10 @@ function MydasChart({
   if (type === "line") {
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
+        <LineChart data={data} margin={CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#475569" }} axisLine={false} tickLine={false} />
-          <YAxis tick={AXIS_TICK} tickFormatter={(value) => formatChartValue(Number(value))} axisLine={false} tickLine={false} />
+          <XAxis dataKey="label" tick={CATEGORY_AXIS_TICK} axisLine={false} tickLine={false} />
+          <YAxis tick={AXIS_TICK} tickFormatter={formatAxisTick} axisLine={false} tickLine={false} />
           <Tooltip formatter={tooltipFormatter} contentStyle={TOOLTIP_STYLE} />
           {showLegend && <Legend wrapperStyle={LEGEND_STYLE} />}
           <Line type="monotone" dataKey="value" name={seriesName} stroke={colors[0]} strokeWidth={2} dot={{ r: 3, fill: colors[0] }} />
@@ -176,10 +185,10 @@ function MydasChart({
   if (type === "area") {
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
+        <AreaChart data={data} margin={CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#475569" }} axisLine={false} tickLine={false} />
-          <YAxis tick={AXIS_TICK} tickFormatter={(value) => formatChartValue(Number(value))} axisLine={false} tickLine={false} />
+          <XAxis dataKey="label" tick={CATEGORY_AXIS_TICK} axisLine={false} tickLine={false} />
+          <YAxis tick={AXIS_TICK} tickFormatter={formatAxisTick} axisLine={false} tickLine={false} />
           <Tooltip formatter={tooltipFormatter} contentStyle={TOOLTIP_STYLE} />
           {showLegend && <Legend wrapperStyle={LEGEND_STYLE} />}
           <Area type="monotone" dataKey="value" name={seriesName} stroke={colors[0]} fill={colors[0]} fillOpacity={0.25} />
@@ -191,11 +200,11 @@ function MydasChart({
   if (type === "column") {
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 4, right: 12, bottom: 24, left: 0 }}>
+        <BarChart data={data} margin={COLUMN_CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: "#475569" }}
+            tick={CATEGORY_AXIS_TICK}
             axisLine={false}
             tickLine={false}
             interval={0}
@@ -203,7 +212,7 @@ function MydasChart({
             textAnchor="end"
             height={50}
           />
-          <YAxis tick={AXIS_TICK} tickFormatter={(value) => formatChartValue(Number(value))} axisLine={false} tickLine={false} />
+          <YAxis tick={AXIS_TICK} tickFormatter={formatAxisTick} axisLine={false} tickLine={false} />
           <Tooltip formatter={tooltipFormatter} contentStyle={TOOLTIP_STYLE} />
           {showLegend && <Legend wrapperStyle={LEGEND_STYLE} />}
           <Bar dataKey="value" name={seriesName} radius={[5, 5, 0, 0]}>
@@ -227,16 +236,16 @@ function MydasChart({
   // default: "bar" (horizontal)
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
+      <BarChart data={data} layout="vertical" margin={CHART_MARGIN}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
         <XAxis
           type="number"
           tick={AXIS_TICK}
-          tickFormatter={(value) => formatChartValue(Number(value))}
+          tickFormatter={formatAxisTick}
           axisLine={false}
           tickLine={false}
         />
-        <YAxis type="category" dataKey="label" width={88} tick={{ fontSize: 10, fill: "#475569" }} axisLine={false} tickLine={false} />
+        <YAxis type="category" dataKey="label" width={88} tick={CATEGORY_AXIS_TICK} axisLine={false} tickLine={false} />
         <Tooltip formatter={tooltipFormatter} contentStyle={TOOLTIP_STYLE} />
         {showLegend && <Legend wrapperStyle={LEGEND_STYLE} />}
         <Bar dataKey="value" name={seriesName} radius={[0, 5, 5, 0]}>
@@ -289,6 +298,14 @@ function RestrictedNotice() {
 // chart and label elements on the canvas. Uses pointer capture + per-move deltas
 // (not absolute cursor position) and commits through a functional updater so
 // rapid pointer events never read stale element state.
+// Header sits inline (consuming part of the box's own height) for charts, where
+// there's no separate "final" appearance to match. Labels toggle between an edited
+// box and a plain-text final view at the identical (x, y, width, height) -- an inline
+// header there would push the text down while editing, so it visibly jumps up the
+// moment you click away. "overlay" floats the header above the box instead, keeping
+// the editable area's geometry pixel-identical to the deselected label.
+const OVERLAY_HEADER_HEIGHT = 36;
+
 function DraggableBox({
   x,
   y,
@@ -302,6 +319,7 @@ function DraggableBox({
   onRemove,
   removeLabel,
   children,
+  headerPlacement = "inline",
 }: {
   x: number;
   y: number;
@@ -315,9 +333,43 @@ function DraggableBox({
   onRemove: () => void;
   removeLabel: string;
   children: ReactNode;
+  headerPlacement?: "inline" | "overlay";
 }) {
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const resizeStart = useRef<{ x: number; y: number } | null>(null);
+
+  // Pointermove fires far faster than React (and Recharts' internal tick
+  // measurement) can keep up with -- committing a setState per raw event
+  // during a fast drag trips React's nested-update guard ("Maximum update
+  // depth exceeded", surfacing from Recharts' RenderedTicksReporter inside
+  // any chart on the canvas). Accumulate deltas and flush at most once per
+  // animation frame instead.
+  const pendingMove = useRef<{ dx: number; dy: number } | null>(null);
+  const moveRafId = useRef<number | null>(null);
+  const pendingResize = useRef<{ dx: number; dy: number } | null>(null);
+  const resizeRafId = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (moveRafId.current != null) cancelAnimationFrame(moveRafId.current);
+      if (resizeRafId.current != null) cancelAnimationFrame(resizeRafId.current);
+    };
+  }, []);
+
+  function flushMove() {
+    moveRafId.current = null;
+    const pending = pendingMove.current;
+    if (!pending) return;
+    pendingMove.current = null;
+    onMoveBy(pending.dx, pending.dy);
+  }
+  function flushResize() {
+    resizeRafId.current = null;
+    const pending = pendingResize.current;
+    if (!pending) return;
+    pendingResize.current = null;
+    onResizeBy(pending.dx, pending.dy);
+  }
 
   function startDrag(event: React.PointerEvent) {
     event.preventDefault();
@@ -329,10 +381,15 @@ function DraggableBox({
     const dx = event.clientX - dragStart.current.x;
     const dy = event.clientY - dragStart.current.y;
     dragStart.current = { x: event.clientX, y: event.clientY };
-    onMoveBy(dx, dy);
+    pendingMove.current = { dx: (pendingMove.current?.dx ?? 0) + dx, dy: (pendingMove.current?.dy ?? 0) + dy };
+    if (moveRafId.current == null) moveRafId.current = requestAnimationFrame(flushMove);
   }
   function endDrag() {
     dragStart.current = null;
+    if (moveRafId.current != null) {
+      cancelAnimationFrame(moveRafId.current);
+      flushMove();
+    }
   }
 
   function startResize(event: React.PointerEvent) {
@@ -346,14 +403,77 @@ function DraggableBox({
     const dx = event.clientX - resizeStart.current.x;
     const dy = event.clientY - resizeStart.current.y;
     resizeStart.current = { x: event.clientX, y: event.clientY };
-    onResizeBy(dx, dy);
+    pendingResize.current = { dx: (pendingResize.current?.dx ?? 0) + dx, dy: (pendingResize.current?.dy ?? 0) + dy };
+    if (resizeRafId.current == null) resizeRafId.current = requestAnimationFrame(flushResize);
   }
   function endResize() {
     resizeStart.current = null;
+    if (resizeRafId.current != null) {
+      cancelAnimationFrame(resizeRafId.current);
+      flushResize();
+    }
   }
 
   void minWidth;
   void minHeight;
+
+  const headerBar = (
+    <div
+      data-capture-box="true"
+      onPointerDown={startDrag}
+      onPointerMove={onDragMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      className="flex min-h-9 shrink-0 cursor-move items-center gap-1 border-b border-slate-100 bg-slate-50 px-1.5 py-1.5 dark:border-slate-800 dark:bg-slate-800/60"
+    >
+      {header}
+      <button
+        type="button"
+        onClick={onRemove}
+        onPointerDown={(event) => event.stopPropagation()}
+        aria-label={removeLabel}
+        data-capture-hide="true"
+        className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+      >
+        <X aria-hidden="true" className="size-4" />
+      </button>
+    </div>
+  );
+
+  const resizeHandle = (
+    <div
+      onPointerDown={startResize}
+      onPointerMove={onResizeMove}
+      onPointerUp={endResize}
+      onPointerCancel={endResize}
+      title="Drag to resize"
+      data-capture-hide="true"
+      className="absolute bottom-0 right-0 size-4 cursor-nwse-resize"
+      style={{ background: "linear-gradient(135deg, transparent 50%, #94a3b8 50%)" }}
+    />
+  );
+
+  if (headerPlacement === "overlay") {
+    return (
+      <>
+        <div
+          data-capture-hide="true"
+          className="absolute overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900"
+          style={{ left: x, top: y - OVERLAY_HEADER_HEIGHT, width }}
+        >
+          {headerBar}
+        </div>
+        <div
+          data-capture-box="true"
+          className="absolute overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900"
+          style={{ left: x, top: y, width, height }}
+        >
+          {children}
+          {resizeHandle}
+        </div>
+      </>
+    );
+  }
 
   return (
     <div
@@ -361,37 +481,9 @@ function DraggableBox({
       className="absolute flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900"
       style={{ left: x, top: y, width, height }}
     >
-      <div
-        data-capture-box="true"
-        onPointerDown={startDrag}
-        onPointerMove={onDragMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        className="flex shrink-0 cursor-move items-center gap-1 border-b border-slate-100 bg-slate-50 px-1.5 py-1.5 dark:border-slate-800 dark:bg-slate-800/60"
-      >
-        {header}
-        <button
-          type="button"
-          onClick={onRemove}
-          onPointerDown={(event) => event.stopPropagation()}
-          aria-label={removeLabel}
-          data-capture-hide="true"
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
-        >
-          <X aria-hidden="true" className="size-4" />
-        </button>
-      </div>
+      {headerBar}
       <div className="min-h-0 flex-1">{children}</div>
-      <div
-        onPointerDown={startResize}
-        onPointerMove={onResizeMove}
-        onPointerUp={endResize}
-        onPointerCancel={endResize}
-        title="Drag to resize"
-        data-capture-hide="true"
-        className="absolute bottom-0 right-0 size-4 cursor-nwse-resize"
-        style={{ background: "linear-gradient(135deg, transparent 50%, #94a3b8 50%)" }}
-      />
+      {resizeHandle}
     </div>
   );
 }
@@ -656,6 +748,7 @@ function DesignerLabel({
       onResizeBy={onResizeBy}
       onRemove={onRemove}
       removeLabel="Remove label"
+      headerPlacement="overlay"
       header={
         <div data-capture-hide="true" className="flex flex-1 items-center gap-1">
           <span className="flex min-h-8 flex-1 items-center gap-1.5 px-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
