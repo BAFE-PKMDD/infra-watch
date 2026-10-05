@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
-import { beforeEach, mock, test } from "bun:test";
+import { afterEach, beforeEach, mock, spyOn, test } from "bun:test";
 import { PgDialect } from "drizzle-orm/pg-core";
 import type { SQL } from "drizzle-orm";
+import { db } from "@/lib/db";
+import * as session from "@/lib/session";
+import { getTourProgress, saveTourProgress } from "./tours";
 
 let viewer: { id: string; role: string; region?: string } | null = { id: "staff-a", role: "admin" };
 let stored: Array<{ automatic: boolean; seen: Record<string, string> }> = [];
@@ -9,28 +12,31 @@ let writes: Record<string, unknown>[] = [];
 let conflicts: Array<{ set: { seen: SQL; automatic: boolean } }> = [];
 let readWhere: SQL | null = null;
 
-mock.module("@/lib/session", () => ({ requireAuth: async () => {
-  if (!viewer) throw new Error("Unauthorized");
-  return viewer;
-} }));
-mock.module("@/lib/db", () => ({ db: {
-  select: () => ({ from: () => ({ where: (where: SQL) => {
-    readWhere = where;
-    return { limit: async () => stored };
-  } }) }),
-  insert: () => ({ values: (value: Record<string, unknown>) => {
-    writes.push(value);
-    return { onConflictDoUpdate: async (conflict: { set: { seen: SQL; automatic: boolean } }) => { conflicts.push(conflict); } };
-  } }),
-} }));
-
-const { getTourProgress, saveTourProgress } = await import("./tours");
 const dialect = new PgDialect();
 const update = { tourId: "dashboard", outcome: "completed", disableAutomatic: false };
 
 beforeEach(() => {
   viewer = { id: "staff-a", role: "admin" };
   stored = []; writes = []; conflicts = []; readWhere = null;
+
+  // Spy on the real `db`/`session` singletons instead of mock.module(), which swaps the
+  // module for the rest of the bun:test process (not just this file) with no reliable undo.
+  spyOn(session, "requireAuth").mockImplementation(async () => {
+    if (!viewer) throw new Error("Unauthorized");
+    return viewer;
+  });
+  spyOn(db, "select").mockImplementation((() => ({ from: () => ({ where: (where: SQL) => {
+    readWhere = where;
+    return { limit: async () => stored };
+  } }) })) as typeof db.select);
+  spyOn(db, "insert").mockImplementation((() => ({ values: (value: Record<string, unknown>) => {
+    writes.push(value);
+    return { onConflictDoUpdate: async (conflict: { set: { seen: SQL; automatic: boolean } }) => { conflicts.push(conflict); } };
+  } })) as typeof db.insert);
+});
+
+afterEach(() => {
+  mock.restore();
 });
 
 test("progress reads are scoped to the authenticated account", async () => {
