@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import FastAPI, File, Header, HTTPException, UploadFile
 from faster_whisper import WhisperModel
 
-from decoding import transcription_options
+from decoding import transcription_options, verified_transcript
 
 MAX_AUDIO_BYTES = 25 * 1024 * 1024
 ALLOWED_SUFFIXES = {".webm", ".wav", ".mp3", ".mp4", ".m4a", ".ogg"}
@@ -85,11 +85,11 @@ async def transcribe(
         if size == 0:
             raise HTTPException(status_code=400, detail="Recording is empty.")
 
-        segments, _ = model.transcribe(
+        segments, info = model.transcribe(
             temporary_path,
             **transcription_options(MODEL_LANGUAGE),
         )
-        text = " ".join(segment.text.strip() for segment in segments if segment.text.strip()).strip()
+        text = verified_transcript(segments, info.duration_after_vad)
         return {"text": text}
     finally:
         await audio.close()

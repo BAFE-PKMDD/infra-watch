@@ -21,7 +21,7 @@ export function AppFooter() {
                 alt={t("nav.logoAlt")}
                 width={88}
                 height={59}
-                className="h-11 w-auto flex-shrink-0 rounded bg-white object-contain"
+                className="h-11 w-auto flex-shrink-0 object-contain"
                 unoptimized
               />
               <div>

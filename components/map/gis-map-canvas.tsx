@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import React, { useEffect, useState } from "react";
-import { CircleMarker, MapContainer, TileLayer, WMSTileLayer, useMap, GeoJSON } from "react-leaflet";
+import React, { useEffect, useMemo, useState } from "react";
+import { Circle, CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, WMSTileLayer, useMap, useMapEvents, GeoJSON } from "react-leaflet";
+import type { LatLngTuple } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getProjectMarkerColor } from "@/lib/public-project-map";
 
@@ -26,10 +27,82 @@ interface GISMapCanvasProps {
   setSelectedProject: (pin: ProjectPin | null) => void;
   watershedOverlay: boolean;
   agriZoneOverlay: boolean;
+  postharvestOverlay: boolean;
+  riceProcessingOverlay: boolean;
+  tradingCentersOverlay: boolean;
+  agriProcessingOverlay: boolean;
+  productionAreaOverlay: boolean;
+  measureActive?: boolean;
+  serviceAreaEnabled?: boolean;
+  serviceRadius?: number;
   theme: "light" | "dark";
   mapCenter: [number, number];
   mapZoom: number;
   selectedRegion?: string;
+}
+
+function formatDistance(meters: number) {
+  if (meters >= 1000) return `${(meters / 1000).toFixed(2)} km`;
+  return `${meters.toFixed(0)} m`;
+}
+
+function MeasureTool({ active }: { active: boolean }) {
+  const [points, setPoints] = useState<LatLngTuple[]>([]);
+
+  const map = useMapEvents({
+    click(e) {
+      if (!active) return;
+      setPoints((prev) => [...prev, [e.latlng.lat, e.latlng.lng]]);
+    },
+    dblclick() {
+      if (!active) return;
+      setPoints([]);
+    },
+  });
+
+  useEffect(() => {
+    if (!active) setPoints([]);
+  }, [active]);
+
+  useEffect(() => {
+    map.doubleClickZoom[active ? "disable" : "enable"]();
+    map.getContainer().style.cursor = active ? "crosshair" : "";
+    return () => {
+      map.doubleClickZoom.enable();
+      map.getContainer().style.cursor = "";
+    };
+  }, [active, map]);
+
+  const totalDistance = useMemo(() => {
+    let total = 0;
+    for (let i = 1; i < points.length; i++) {
+      total += map.distance(points[i - 1], points[i]);
+    }
+    return total;
+  }, [points, map]);
+
+  if (!active || points.length === 0) return null;
+
+  return (
+    <>
+      {points.map((point, i) => (
+        <CircleMarker
+          key={i}
+          center={point}
+          radius={4}
+          pathOptions={{ color: "#f97316", fillColor: "#ffffff", fillOpacity: 1, weight: 2 }}
+          interactive={false}
+        />
+      ))}
+      <Polyline positions={points} pathOptions={{ color: "#f97316", weight: 3, dashArray: "6 6" }} interactive={false}>
+        {points.length > 1 && (
+          <Tooltip permanent direction="right" offset={[10, 0]} className="font-bold">
+            {formatDistance(totalDistance)}
+          </Tooltip>
+        )}
+      </Polyline>
+    </>
+  );
 }
 
 interface RegionFeature {
@@ -70,6 +143,15 @@ function FitFilteredPins({
       maxZoom: 10,
     });
   }, [fallbackCenter, fallbackZoom, map, pins]);
+  return null;
+}
+
+function FocusSelectedProject({ pin }: { pin: ProjectPin | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!pin) return;
+    map.setView([pin.lat, pin.lng], Math.max(map.getZoom(), 14), { animate: true });
+  }, [pin, map]);
   return null;
 }
 
@@ -147,9 +229,18 @@ function RegionBoundaryLayer({ selectedRegion }: { selectedRegion: string }) {
 
 export default function GISMapCanvas({
   filteredPins,
+  selectedProject,
   setSelectedProject,
   watershedOverlay,
   agriZoneOverlay,
+  postharvestOverlay,
+  riceProcessingOverlay,
+  tradingCentersOverlay,
+  agriProcessingOverlay,
+  productionAreaOverlay,
+  measureActive = false,
+  serviceAreaEnabled = false,
+  serviceRadius,
   mapCenter,
   mapZoom,
   selectedRegion = "all",
@@ -175,7 +266,20 @@ export default function GISMapCanvas({
         <TileLayer url={tileUrl} attribution={attribution} />
         <MapSizeWatcher />
         <FitFilteredPins pins={filteredPins} fallbackCenter={mapCenter} fallbackZoom={mapZoom} />
+        <FocusSelectedProject pin={selectedProject} />
         <RegionBoundaryLayer selectedRegion={selectedRegion} />
+        <MeasureTool active={measureActive} />
+
+        {/* Serviceable area — radius of effect around every visible project */}
+        {serviceAreaEnabled && !!serviceRadius && serviceRadius > 0 && filteredPins.map((pin) => (
+          <Circle
+            key={`svc-${pin.id}`}
+            center={[pin.lat, pin.lng]}
+            radius={serviceRadius}
+            pathOptions={{ color: "#0ea5e9", weight: 1, fillColor: "#0ea5e9", fillOpacity: 0.12 }}
+            interactive={false}
+          />
+        ))}
 
         {/* Watersheds / Waterways — live GeoServer WMS */}
         {watershedOverlay && GEOSERVER_URL && (
@@ -195,6 +299,61 @@ export default function GISMapCanvas({
             layers={`${GEOSERVER_WORKSPACE}:BSWM_AGRI_PROD_AREA`}
             {...wmsParams}
             opacity={0.6}
+            attribution="&copy; BAFE GeoServer"
+          />
+        )}
+
+        {/* Postharvest Facilities (dryers, mills, processing) — live GeoServer WMS */}
+        {postharvestOverlay && GEOSERVER_URL && (
+          <WMSTileLayer
+            url={WMS_BASE}
+            layers={`${GEOSERVER_WORKSPACE}:infra_postharverst_facilities`}
+            {...wmsParams}
+            opacity={0.85}
+            attribution="&copy; BAFE GeoServer"
+          />
+        )}
+
+        {/* Rice Processing Centers — live GeoServer WMS */}
+        {riceProcessingOverlay && GEOSERVER_URL && (
+          <WMSTileLayer
+            url={WMS_BASE}
+            layers={`${GEOSERVER_WORKSPACE}:rice_processing_center`}
+            {...wmsParams}
+            opacity={0.85}
+            attribution="&copy; BAFE GeoServer"
+          />
+        )}
+
+        {/* Agri Trading Centers (AMAS) — live GeoServer WMS */}
+        {tradingCentersOverlay && GEOSERVER_URL && (
+          <WMSTileLayer
+            url={WMS_BASE}
+            layers={`${GEOSERVER_WORKSPACE}:AMAS_TRADING_CENTERS`}
+            {...wmsParams}
+            opacity={0.85}
+            attribution="&copy; BAFE GeoServer"
+          />
+        )}
+
+        {/* Agri Processing Centers — live GeoServer WMS */}
+        {agriProcessingOverlay && GEOSERVER_URL && (
+          <WMSTileLayer
+            url={WMS_BASE}
+            layers={`${GEOSERVER_WORKSPACE}:Agri Processing Centers`}
+            {...wmsParams}
+            opacity={0.85}
+            attribution="&copy; BAFE GeoServer"
+          />
+        )}
+
+        {/* Existing Agricultural Production Area (crop coverage) — live GeoServer WMS */}
+        {productionAreaOverlay && GEOSERVER_URL && (
+          <WMSTileLayer
+            url={WMS_BASE}
+            layers={`${GEOSERVER_WORKSPACE}:exisiting_agri_prod_area`}
+            {...wmsParams}
+            opacity={0.5}
             attribution="&copy; BAFE GeoServer"
           />
         )}

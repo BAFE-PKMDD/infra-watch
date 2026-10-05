@@ -19,6 +19,7 @@ import {
   RefreshCw,
   ScrollText,
   Settings,
+  Sparkles,
   Users,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ const items = [
   { label: "Citizen Engagement", href: "/reports/citizen-engagement", icon: BarChart3, resource: "reports", action: "view", roles: ["admin", "regional_admin"] },
   // Admin-only: see admin-sidebar.tsx — instance-wide operational tools, not
   // region/agency-scoped work.
+  { label: "MYDAS", href: "/mydas", icon: Sparkles, resource: "mydas", action: "view", roles: ["admin"] },
   { label: "Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view", roles: ["admin"] },
   { label: "Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view", roles: ["admin"] },
   { label: "Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view", roles: ["admin"] },

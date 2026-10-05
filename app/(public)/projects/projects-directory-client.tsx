@@ -1169,6 +1169,11 @@ export default function ProjectsCatalog() {
                   setSelectedProject={handleMapProjectSelection}
                   watershedOverlay={false}
                   agriZoneOverlay={false}
+                  postharvestOverlay={false}
+                  riceProcessingOverlay={false}
+                  tradingCentersOverlay={false}
+                  agriProcessingOverlay={false}
+                  productionAreaOverlay={false}
                   theme={theme === "dark" ? "dark" : "light"}
                   mapCenter={[12.8797, 121.7740]}
                   mapZoom={6}

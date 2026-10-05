@@ -20,8 +20,6 @@ export type VoiceAssistantEvent =
   | { type: "WAKE_CONNECTED" }
   | { type: "WAKE_DISCONNECTED" }
   | { type: "WAKE_DETECTED" }
-  | { type: "RETRY_REQUESTED" }
-  | { type: "RETRY_LISTENING" }
   | { type: "RECORDING_STOPPED" }
   | { type: "TRANSCRIPTION_READY" }
   | { type: "RESPONSE_READY" }
@@ -40,10 +38,18 @@ export function reduceVoiceState(
   if (event.type === "ENABLE") {
     return { status: "listening_for_wake_word", enabled: true };
   }
-  if (event.type === "WAKE_DISCONNECTED" && state.enabled) {
+  if (
+    event.type === "WAKE_DISCONNECTED" &&
+    state.enabled &&
+    state.status === "listening_for_wake_word"
+  ) {
     return { ...state, status: "reconnecting" };
   }
-  if (event.type === "WAKE_CONNECTED" && state.enabled) {
+  if (
+    event.type === "WAKE_CONNECTED" &&
+    state.enabled &&
+    state.status === "reconnecting"
+  ) {
     return { ...state, status: "listening_for_wake_word" };
   }
   if (event.type === "RESET") {
@@ -60,19 +66,17 @@ export function reduceVoiceState(
     listening_for_wake_word: { WAKE_DETECTED: "recording" },
     recording: {
       RECORDING_STOPPED: "transcribing",
-      RETRY_REQUESTED: "preparing_speech",
     },
     transcribing: { TRANSCRIPTION_READY: "thinking" },
-    thinking: { RESPONSE_READY: "preparing_speech" },
+    thinking: {
+      RESPONSE_READY: "preparing_speech",
+      SPEECH_STARTED: "speaking",
+    },
     preparing_speech: {
       SPEECH_STARTED: "speaking",
-      // The retry prompt failed to play (e.g. a TTS synthesis error); skip
-      // straight to listening instead of getting stuck on "preparing speech".
-      RETRY_LISTENING: "recording",
     },
     speaking: {
       SPEECH_ENDED: "listening_for_wake_word",
-      RETRY_LISTENING: "recording",
     },
   };
   const nextStatus = transitions[state.status]?.[event.type];

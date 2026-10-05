@@ -16,6 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
 import type { FeedbackMedia } from "@/types/feedback.types";
+import type { MydasPageData } from "@/types/mydas.types";
 
 // PostGIS geometry type for spatial data
 const geometry = customType<{ data: string | null; driverData: string | null }>({
@@ -414,6 +415,25 @@ export const chatRateLimits = pgTable(
   }),
 );
 
+export const mydasDashboards = pgTable(
+  "mydas_dashboards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull().default("Untitled Dashboard"),
+    // Full pages/elements tree (charts + labels, positions, styling) as a single
+    // JSON document — this is saved UI state, not normalized relational data.
+    pages: jsonb("pages").notNull().$type<MydasPageData[]>(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    createdByIdx: index("mydas_dashboards_created_by_idx").on(table.createdBy),
+  }),
+);
 
 export const psgcLocations = pgTable("psgc_locations", {
   id: uuid("id").primaryKey().defaultRandom(),

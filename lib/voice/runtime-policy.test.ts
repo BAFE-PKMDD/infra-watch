@@ -7,12 +7,14 @@ import {
   VOICE_RESPONSE_INSTRUCTION,
   clearOwnedPlaybackSettlement,
   createSpokenBudget,
+  createRecordingActivityMonitor,
   createStreamingSpeechRunner,
   extractCompleteSentences,
   getKokoroInferenceOptions,
   getRecordingDecision,
   canStartVoiceRecording,
   isSleepCommand,
+  isVoiceInputBlocked,
   isVoiceExplicitlyDisabled,
   prepareSpeechChunks,
   runSpeechChunkPipeline,
@@ -21,6 +23,7 @@ import {
   shouldAutoEnableVoice,
   shouldReconnectWakeSocket,
   summarizeForSpeech,
+  VOICE_PLAYBACK_COOLDOWN_MS,
 } from "./runtime-policy";
 
 test("reconnects wake listening after an unexpected socket close", () => {
@@ -391,17 +394,13 @@ test("opens exactly one quiet conversational follow-up window", () => {
   }
 });
 
-test("asks once after five seconds of no speech, then returns to wake listening", () => {
+test("quiet wake and follow-up windows return to wake listening without speaking", () => {
   assert.equal(
-    getRecordingDecision({ elapsedMs: 4_999, heardSpeech: false, retryAttempt: 0 }),
+    getRecordingDecision({ elapsedMs: 4_999, heardSpeech: false }),
     "continue",
   );
   assert.equal(
-    getRecordingDecision({ elapsedMs: 5_000, heardSpeech: false, retryAttempt: 0 }),
-    "ask_again",
-  );
-  assert.equal(
-    getRecordingDecision({ elapsedMs: 5_000, heardSpeech: false, retryAttempt: 1 }),
+    getRecordingDecision({ elapsedMs: 5_000, heardSpeech: false }),
     "return_to_wake",
   );
 });
@@ -411,7 +410,6 @@ test("ends a spoken command after trailing silence instead of the initial five-s
     getRecordingDecision({
       elapsedMs: 2_000,
       heardSpeech: true,
-      retryAttempt: 0,
       trailingSilenceMs: 1_199,
     }),
     "continue",
@@ -420,9 +418,53 @@ test("ends a spoken command after trailing silence instead of the initial five-s
     getRecordingDecision({
       elapsedMs: 2_000,
       heardSpeech: true,
-      retryAttempt: 0,
       trailingSilenceMs: 1_200,
     }),
     "process",
   );
+});
+
+test("recording timeout never uploads audio without sustained activity", () => {
+  assert.equal(getRecordingDecision({ elapsedMs: 20_000, heardSpeech: false }), "return_to_wake");
+  assert.equal(getRecordingDecision({ elapsedMs: 20_000, heardSpeech: true }), "process");
+});
+
+test("isolated microphone transients do not become commands", () => {
+  const activity = createRecordingActivityMonitor();
+  for (let now = 0; now <= 5_000; now += 20) {
+    const result = activity(now % 1_000 === 0 ? 0.3 : 0.001, now);
+    assert.equal(result.heardSpeech, false);
+    assert.notEqual(getRecordingDecision({ elapsedMs: now, ...result }), "process");
+  }
+});
+
+test("sustained activity records a command and waits for trailing silence", () => {
+  const activity = createRecordingActivityMonitor();
+  for (let now = 0; now <= 500; now += 20) activity(0.05, now);
+  assert.equal(activity(0.001, 520).heardSpeech, true);
+  assert.equal(getRecordingDecision({ elapsedMs: 1_700, ...activity(0.001, 1_700) }), "continue");
+  assert.equal(getRecordingDecision({ elapsedMs: 1_720, ...activity(0.001, 1_720) }), "process");
+});
+
+test("suspended monitoring does not count an unobserved interval as speech", () => {
+  const activity = createRecordingActivityMonitor();
+  activity(0.2, 0);
+  assert.equal(activity(0.2, 5_000).heardSpeech, false);
+});
+
+test("normal short pauses between syllables do not discard a spoken command", () => {
+  const activity = createRecordingActivityMonitor();
+  let now = 0;
+  for (let burst = 0; burst < 3; burst++) {
+    for (let frame = 0; frame < 7; frame++) { activity(0.05, now); now += 20; }
+    for (let frame = 0; frame < 3; frame++) { activity(0.001, now); now += 20; }
+  }
+  assert.equal(activity(0.001, now).heardSpeech, true);
+});
+
+test("microphone input is blocked throughout playback and its echo cooldown", () => {
+  assert.equal(isVoiceInputBlocked({ playbackActive: true, blockedUntil: 0, now: 10 }), true);
+  const blockedUntil = 1_000 + VOICE_PLAYBACK_COOLDOWN_MS;
+  assert.equal(isVoiceInputBlocked({ playbackActive: false, blockedUntil, now: blockedUntil - 1 }), true);
+  assert.equal(isVoiceInputBlocked({ playbackActive: false, blockedUntil, now: blockedUntil }), false);
 });

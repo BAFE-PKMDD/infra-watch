@@ -22,6 +22,7 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
+  Sparkles,
   Users,
 } from "lucide-react";
 
@@ -64,6 +65,7 @@ const menu = [
     label: "System",
     items: [
       // Admin-only: instance-wide operational tools, not region/agency-scoped work.
+      { label: "MYDAS", href: "/mydas", icon: Sparkles, resource: "mydas", action: "view", roles: ["admin"] },
       { label: "ABEMIS Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view", roles: ["admin"] },
       { label: "Data Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view", roles: ["admin"] },
       { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view", roles: ["admin"] },
@@ -98,7 +100,7 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
             alt="INFRA Watch logo"
             width={96}
             height={64}
-            className="h-12 w-auto flex-shrink-0 rounded bg-white object-contain"
+            className="h-12 w-auto flex-shrink-0 object-contain"
             unoptimized
           />
           <div className="min-w-0">

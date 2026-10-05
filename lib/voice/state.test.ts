@@ -15,18 +15,12 @@ test("ANIA prepares speech before audio playback actually starts", () => {
   assert.equal(getVoiceStatusLabel(state.status), "ANIA is speaking");
 });
 
-test("ANIA asks once and returns to command recording after the retry prompt", () => {
-  let state = reduceVoiceState(
+test("an unused recording window returns quietly to wake listening", () => {
+  const state = reduceVoiceState(
     { status: "recording", enabled: true },
-    { type: "RETRY_REQUESTED" },
+    { type: "RESET" },
   );
-  assert.equal(state.status, "preparing_speech");
-
-  state = reduceVoiceState(state, { type: "SPEECH_STARTED" });
-  assert.equal(state.status, "speaking");
-
-  state = reduceVoiceState(state, { type: "RETRY_LISTENING" });
-  assert.equal(state.status, "recording");
+  assert.equal(state.status, "listening_for_wake_word");
 });
 
 test("ANIA follows the successful voice lifecycle", () => {
@@ -77,4 +71,20 @@ test("ANIA retains microphone mode while the initial wake connection retries", (
     { type: "ENABLE_CONNECTING" },
   );
   assert.deepEqual(state, { status: "reconnecting", enabled: true });
+});
+
+test("streamed audio enters speaking before the answer finishes generating", () => {
+  let state = reduceVoiceState({ status: "thinking", enabled: true }, { type: "SPEECH_STARTED" });
+  assert.equal(state.status, "speaking");
+  state = reduceVoiceState(state, { type: "RESPONSE_READY" });
+  assert.equal(state.status, "speaking");
+});
+
+test("wake socket reconnects cannot reopen listening during a voice command", () => {
+  for (const status of ["recording", "transcribing", "thinking", "preparing_speech", "speaking"] as const) {
+    const state = { status, enabled: true };
+    for (const type of ["WAKE_DISCONNECTED", "WAKE_CONNECTED"] as const) {
+      assert.equal(reduceVoiceState(state, { type }).status, status);
+    }
+  }
 });

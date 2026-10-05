@@ -275,6 +275,53 @@ export function isVoiceExplicitlyDisabled(persistedPreference: string | null) {
   return persistedPreference === "false";
 }
 
+export const VOICE_PLAYBACK_COOLDOWN_MS = 750;
+
+export function isVoiceInputBlocked({
+  playbackActive,
+  blockedUntil,
+  now,
+}: {
+  playbackActive: boolean;
+  blockedUntil: number;
+  now: number;
+}) {
+  return playbackActive || now < blockedUntil;
+}
+
+// A single loud frame (a click or microphone transient) is not a command.
+// Whisper's server-side VAD still decides whether sustained audio is speech.
+export function createRecordingActivityMonitor() {
+  let previousAt: number | null = null;
+  let voicedMs = 0;
+  let previousVoiced = false;
+  let lastVoicedAt: number | null = null;
+  let heardSpeech = false;
+  let silentSince: number | null = null;
+  return (rms: number, now: number) => {
+    const elapsed = previousAt === null ? 0 : Math.max(0, now - previousAt);
+    previousAt = now;
+    if (elapsed > 100) voicedMs = 0;
+    const voiced = Number.isFinite(rms) && rms >= 0.025;
+    if (voiced) {
+      if (lastVoicedAt !== null && now - lastVoicedAt >= 150) voicedMs = 0;
+      if (previousVoiced && elapsed <= 100) voicedMs += elapsed;
+      lastVoicedAt = now;
+      if (voicedMs >= 250) heardSpeech = true;
+      silentSince = null;
+    } else {
+      // Preserve short consonant/word gaps without counting them as speech.
+      if (lastVoicedAt === null || now - lastVoicedAt >= 150) voicedMs = 0;
+      if (heardSpeech) silentSince ??= now;
+    }
+    previousVoiced = voiced;
+    return {
+      heardSpeech,
+      trailingSilenceMs: silentSince === null ? 0 : now - silentSince,
+    };
+  };
+}
+
 export function canStartVoiceRecording({
   hasStream,
   recordingClaimed,
@@ -310,20 +357,21 @@ export function isSleepCommand(value: string) {
   );
 }
 
-type RecordingDecision = "continue" | "process" | "ask_again" | "return_to_wake";
+type RecordingDecision = "continue" | "process" | "return_to_wake";
 
 export function getRecordingDecision({
   elapsedMs,
   heardSpeech,
-  retryAttempt,
   trailingSilenceMs = 0,
+  maxDurationMs = 20_000,
 }: {
   elapsedMs: number;
   heardSpeech: boolean;
-  retryAttempt: number;
   trailingSilenceMs?: number;
+  maxDurationMs?: number;
 }): RecordingDecision {
+  if (elapsedMs >= maxDurationMs) return heardSpeech ? "process" : "return_to_wake";
   if (heardSpeech) return trailingSilenceMs >= 1_200 ? "process" : "continue";
   if (elapsedMs < 5_000) return "continue";
-  return retryAttempt === 0 ? "ask_again" : "return_to_wake";
+  return "return_to_wake";
 }

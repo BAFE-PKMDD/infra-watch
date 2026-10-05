@@ -273,3 +273,14 @@ test("returns trimmed transcription without storing audio", async () => {
   assert.equal(received?.name, "command.webm");
   assert.equal(response.headers.get("Cache-Control"), "no-store");
 });
+
+test("rejected speech returns no transcript for the chat to submit", async () => {
+  const response = await createVoiceTranscriptionPostHandler(
+    dependencies({ transcribe: async () => "  " }),
+  )(request());
+
+  assert.equal(response.status, 422);
+  const payload = await response.json();
+  assert.equal(payload.text, undefined);
+  assert.match(payload.error, /No speech was detected/);
+});

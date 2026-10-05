@@ -9,16 +9,16 @@ import {
   getRecordingDecision,
   canStartVoiceRecording,
   clearOwnedPlaybackSettlement,
+  createRecordingActivityMonitor,
   createStreamingSpeechRunner,
   isSleepCommand,
   isVoiceExplicitlyDisabled,
-  prepareSpeechChunks,
+  isVoiceInputBlocked,
   reconnectDelayMs,
-  runSpeechChunkPipeline,
   shouldAutoEnableVoice,
   shouldReconnectWakeSocket,
   shouldStartConversationalFollowup,
-  summarizeForSpeech,
+  VOICE_PLAYBACK_COOLDOWN_MS,
 } from "@/lib/voice/runtime-policy";
 import {
   createWorkerSpeechEngine,
@@ -28,12 +28,10 @@ import {
   getVoiceStatusLabel,
   reduceVoiceState,
   type VoiceAssistantStatus,
+  type VoiceAssistantEvent,
 } from "@/lib/voice/state";
 
 const PREFERENCE_KEY = "infra-watch:ania:voice-enabled";
-const SILENCE_THRESHOLD = 0.025;
-const MAX_RECORDING_MS = 20_000;
-const RETRY_PROMPT = "I didn’t hear a command. Please try again.";
 const WAKE_SOCKET_CONNECT_TIMEOUT_MS = 10_000;
 
 type UseVoiceAssistantOptions = {
@@ -98,11 +96,16 @@ export function useVoiceAssistant({
   onTranscription,
   onSleep,
 }: UseVoiceAssistantOptions): VoiceAssistantController {
-  const [state, dispatch] = useReducer(reduceVoiceState, {
+  const [state, dispatchState] = useReducer(reduceVoiceState, {
     enabled: false,
     status: "idle" as VoiceAssistantStatus,
   });
   const stateRef = useRef(state);
+  const dispatch = useCallback((event: VoiceAssistantEvent) => {
+    // Browser audio/socket callbacks can arrive before React commits a render.
+    stateRef.current = reduceVoiceState(stateRef.current, event);
+    dispatchState(event);
+  }, []);
   const streamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -110,6 +113,8 @@ export function useVoiceAssistant({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingClaimRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const inputBlockedUntilRef = useRef(0);
+  const followupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settlePlaybackRef = useRef<(() => void) | null>(null);
   const silenceFrameRef = useRef<number | null>(null);
   const submitCommandRef = useRef(submitCommand);
@@ -126,11 +131,7 @@ export function useVoiceAssistant({
   const kokoroRef = useRef<Promise<KokoroTTS> | null>(null);
   const speechEngineRef = useRef<SpeechSynthesisEngine | null>(null);
   const explicitlyDisabledRef = useRef(false);
-  const startRecordingRef = useRef<((retryAttempt?: number) => void) | null>(null);
-
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
+  const startRecordingRef = useRef<((isFollowup?: boolean) => void) | null>(null);
 
   useEffect(() => {
     submitCommandRef.current = submitCommand;
@@ -147,6 +148,9 @@ export function useVoiceAssistant({
 
   const stopResources = useCallback(() => {
     operationRef.current += 1;
+    if (followupTimerRef.current !== null) clearTimeout(followupTimerRef.current);
+    followupTimerRef.current = null;
+    inputBlockedUntilRef.current = 0;
     enablingRef.current = false;
     speechEngineRef.current?.dispose();
     speechEngineRef.current = null;
@@ -155,7 +159,9 @@ export function useVoiceAssistant({
     reconnectAttemptRef.current = 0;
     transcriptionControllerRef.current?.abort();
     transcriptionControllerRef.current = null;
-    if (stateRef.current.status === "thinking") cancelCommandRef.current?.();
+    if (["thinking", "preparing_speech", "speaking"].includes(stateRef.current.status)) {
+      cancelCommandRef.current?.();
+    }
     stopRecordingMonitor();
     const recorder = recorderRef.current;
     if (recorder && recorder.state !== "inactive") {
@@ -267,6 +273,7 @@ export function useVoiceAssistant({
           audio = new Audio(url);
           const playback = audio;
           audioRef.current = playback;
+          inputBlockedUntilRef.current = Number.POSITIVE_INFINITY;
           const playbackEnded = new Promise<void>((resolve, reject) => {
             const settle = () => {
               if (settlePlaybackRef.current === settle) settlePlaybackRef.current = null;
@@ -294,39 +301,15 @@ export function useVoiceAssistant({
           return operationRef.current === operation;
         } finally {
           URL.revokeObjectURL(url);
-          if (audioRef.current === audio) audioRef.current = null;
+          if (audio && audioRef.current === audio) {
+            audioRef.current = null;
+            inputBlockedUntilRef.current = performance.now() + VOICE_PLAYBACK_COOLDOWN_MS;
+          }
           clearOwnedPlaybackSettlement(settlePlaybackRef, ownedSettlement);
         }
       };
     },
     [],
-  );
-
-  const speak = useCallback(
-    async (text: string, operation: number) => {
-      const speechChunks = prepareSpeechChunks(summarizeForSpeech(text));
-      if (!speechChunks.length || operationRef.current !== operation) return false;
-
-      const engine = getSpeechEngine();
-      if (operationRef.current !== operation) return false;
-      return runSpeechChunkPipeline({
-        chunks: speechChunks,
-        generate: (speech) => engine.generate(speech),
-        shouldContinue: () => operationRef.current === operation,
-        play: (blob, onStarted) => {
-          let speechStarted = false;
-          const play = makePlay(operation, () => {
-            if (!speechStarted) {
-              speechStarted = true;
-              dispatch({ type: "SPEECH_STARTED" });
-            }
-            onStarted();
-          });
-          return play(blob);
-        },
-      });
-    },
-    [getSpeechEngine, makePlay],
   );
 
   const beginStreamingSpeech = useCallback(
@@ -339,11 +322,11 @@ export function useVoiceAssistant({
         shouldContinue: () => operationRef.current === operation,
       });
     },
-    [getSpeechEngine, makePlay],
+    [dispatch, getSpeechEngine, makePlay],
   );
 
   const processRecording = useCallback(
-    async (blob: Blob, operation: number, retryAttempt: number) => {
+    async (blob: Blob, operation: number, isFollowup: boolean) => {
       if (operationRef.current !== operation) return;
       dispatch({ type: "RECORDING_STOPPED" });
       const form = new FormData();
@@ -357,6 +340,10 @@ export function useVoiceAssistant({
       });
       if (operationRef.current !== operation) return;
       transcriptionControllerRef.current = null;
+      if (response.status === 422) {
+        dispatch({ type: "RESET" });
+        return;
+      }
       const payload = (await response.json().catch(() => null)) as
         | { text?: string; error?: string }
         | null;
@@ -386,16 +373,19 @@ export function useVoiceAssistant({
         shouldStartConversationalFollowup({
           enabled: stateRef.current.enabled,
           operationMatches: operationRef.current === operation,
-          alreadyFollowup: retryAttempt === 2,
+          alreadyFollowup: isFollowup,
         })
       ) {
-        setTimeout(() => startRecordingRef.current?.(2), 0);
+        followupTimerRef.current = setTimeout(() => {
+          followupTimerRef.current = null;
+          if (operationRef.current === operation) startRecordingRef.current?.(true);
+        }, VOICE_PLAYBACK_COOLDOWN_MS);
       }
     },
-    [beginStreamingSpeech],
+    [beginStreamingSpeech, dispatch],
   );
 
-  const startRecording = useCallback((retryAttempt = 0) => {
+  const startRecording = useCallback((isFollowup = false) => {
     const stream = streamRef.current;
     if (
       !stream ||
@@ -405,17 +395,21 @@ export function useVoiceAssistant({
         recorderActive:
           recorderRef.current !== null && recorderRef.current.state !== "inactive",
       }) ||
-      (retryAttempt === 0 && stateRef.current.status !== "listening_for_wake_word")
+      !stateRef.current.enabled ||
+      stateRef.current.status !== "listening_for_wake_word" ||
+      isVoiceInputBlocked({
+        playbackActive: audioRef.current !== null,
+        blockedUntil: inputBlockedUntilRef.current,
+        now: performance.now(),
+      })
     ) {
       return;
     }
     recordingClaimRef.current = true;
-    if (retryAttempt === 0) {
-      onWakeDetectedRef.current?.();
-      dispatch({ type: "WAKE_DETECTED" });
-    } else if (retryAttempt === 2) {
-      dispatch({ type: "WAKE_DETECTED" });
-    }
+    if (followupTimerRef.current !== null) clearTimeout(followupTimerRef.current);
+    followupTimerRef.current = null;
+    if (!isFollowup) onWakeDetectedRef.current?.();
+    dispatch({ type: "WAKE_DETECTED" });
     const operation = operationRef.current;
 
     const chunks: Blob[] = [];
@@ -428,7 +422,7 @@ export function useVoiceAssistant({
       throw error;
     }
     recorderRef.current = recorder;
-    let stopReason: "process" | "ask_again" | "return_to_wake" = "process";
+    let stopReason: "process" | "return_to_wake" = "return_to_wake";
     recorder.ondataavailable = (event) => {
       if (event.data.size) chunks.push(event.data);
     };
@@ -449,28 +443,8 @@ export function useVoiceAssistant({
         return;
       }
 
-      if (stopReason === "ask_again") {
-        dispatch({ type: "RETRY_REQUESTED" });
-        void speak(RETRY_PROMPT, operation)
-          .then((spoken) => {
-            if (!spoken || operationRef.current !== operation) return;
-            dispatch({ type: "RETRY_LISTENING" });
-            setTimeout(() => startRecordingRef.current?.(1), 0);
-          })
-          .catch((error) => {
-            if (operationRef.current !== operation) return;
-            // The retry prompt is a courtesy cue, not the command itself —
-            // a synthesis hiccup here shouldn't drop the whole session back
-            // to passive wake-word listening. Keep the conversation going.
-            console.warn("ANIA could not play the retry prompt:", readableError(error));
-            dispatch({ type: "RETRY_LISTENING" });
-            setTimeout(() => startRecordingRef.current?.(1), 0);
-          });
-        return;
-      }
-
       const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
-      void processRecording(blob, operation, retryAttempt).catch((error) => {
+      void processRecording(blob, operation, isFollowup).catch((error) => {
         if (operationRef.current !== operation) return;
         toast.error("ANIA voice request failed", { description: readableError(error) });
         dispatch({ type: "RESET" });
@@ -495,8 +469,7 @@ export function useVoiceAssistant({
     source.connect(analyser);
     const samples = new Float32Array(analyser.fftSize);
     const startedAt = performance.now();
-    let heardSpeech = false;
-    let silentSince: number | null = null;
+    const activity = createRecordingActivityMonitor();
     const stopRecorder = () => {
       source.disconnect();
       analyser.disconnect();
@@ -507,25 +480,16 @@ export function useVoiceAssistant({
       analyser.getFloatTimeDomainData(samples);
       const rms = Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
       const now = performance.now();
-      if (rms >= SILENCE_THRESHOLD) {
-        heardSpeech = true;
-        silentSince = null;
-      } else if (heardSpeech) {
-        silentSince ??= now;
-      }
-
       const decision = getRecordingDecision({
         elapsedMs: now - startedAt,
-        heardSpeech,
-        retryAttempt,
-        trailingSilenceMs: silentSince === null ? 0 : now - silentSince,
+        ...activity(rms, now),
       });
-      if (now - startedAt >= MAX_RECORDING_MS || decision === "process") {
+      if (decision === "process") {
         stopReason = "process";
         stopRecorder();
         return;
       }
-      if (decision === "ask_again" || decision === "return_to_wake") {
+      if (decision === "return_to_wake") {
         stopReason = decision;
         stopRecorder();
         return;
@@ -533,7 +497,7 @@ export function useVoiceAssistant({
       silenceFrameRef.current = requestAnimationFrame(monitor);
     };
     silenceFrameRef.current = requestAnimationFrame(monitor);
-  }, [processRecording, speak, stopRecordingMonitor]);
+  }, [dispatch, processRecording, stopRecordingMonitor]);
 
   useEffect(() => {
     startRecordingRef.current = startRecording;
@@ -609,6 +573,16 @@ export function useVoiceAssistant({
       reconnectAttemptRef.current = 0;
       dispatch({ type: "WAKE_CONNECTED" });
       socket.onmessage = (event) => {
+        if (
+          operationRef.current !== operation ||
+          socketRef.current !== socket ||
+          stateRef.current.status !== "listening_for_wake_word" ||
+          isVoiceInputBlocked({
+            playbackActive: audioRef.current !== null,
+            blockedUntil: inputBlockedUntilRef.current,
+            now: performance.now(),
+          })
+        ) return;
         try {
           const message = JSON.parse(String(event.data)) as { type?: string };
           if (message.type === "wake_detected") startRecording();
@@ -628,7 +602,7 @@ export function useVoiceAssistant({
         scheduleWakeReconnect(operation);
       };
     },
-    [config.wakeWordWsUrl, scheduleWakeReconnect, startRecording],
+    [config.wakeWordWsUrl, dispatch, scheduleWakeReconnect, startRecording],
   );
 
   useEffect(() => {
@@ -677,7 +651,14 @@ export function useVoiceAssistant({
         const activeSocket = socketRef.current;
         if (
           activeSocket?.readyState !== WebSocket.OPEN ||
-          stateRef.current.status !== "listening_for_wake_word"
+          stateRef.current.status !== "listening_for_wake_word" ||
+          operationRef.current !== operation ||
+          recordingClaimRef.current ||
+          isVoiceInputBlocked({
+            playbackActive: audioRef.current !== null,
+            blockedUntil: inputBlockedUntilRef.current,
+            now: performance.now(),
+          })
         ) {
           return;
         }
@@ -717,6 +698,7 @@ export function useVoiceAssistant({
     config.enabled,
     config.wakeWordWsUrl,
     connectWakeSocket,
+    dispatch,
     getSpeechEngine,
     scheduleWakeReconnect,
     stopResources,
@@ -725,7 +707,7 @@ export function useVoiceAssistant({
   const disable = useCallback(() => {
     stopResources();
     dispatch({ type: "DISABLE" });
-  }, [stopResources]);
+  }, [dispatch, stopResources]);
 
   const toggle = useCallback(() => {
     if (stateRef.current.enabled || enablingRef.current) {
@@ -741,7 +723,7 @@ export function useVoiceAssistant({
       dispatch({ type: "DISABLE" });
       toast.error("Could not enable ANIA", { description: readableError(error) });
     });
-  }, [disable, enable, stopResources]);
+  }, [disable, dispatch, enable, stopResources]);
 
   useEffect(() => {
     explicitlyDisabledRef.current = isVoiceExplicitlyDisabled(

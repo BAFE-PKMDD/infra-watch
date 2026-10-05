@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
-import { Compass, Loader2, Search, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Loader2, ZoomIn, ZoomOut, Maximize, Maximize2, Minimize2, ExternalLink, Ruler } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicMapPins } from "@/actions/query/public-projects.query";
-import { MAP_PIN_LOCATION_UNAVAILABLE, toSourceBackedMapPins } from "@/lib/public-project-map";
+import { getRegions } from "@/actions/query/get-location-options";
+import { MAP_PIN_LOCATION_UNAVAILABLE, PROJECT_MARKER_LEGEND, toSourceBackedMapPins } from "@/lib/public-project-map";
 import { sendCitizenEngagementEvent } from "@/lib/analytics/citizen-event-client";
 import { useTranslation } from "@/i18n";
 
@@ -49,23 +50,67 @@ export default function GISMapPage() {
 
   const { resolvedTheme } = useTheme();
 
+  const [selectedRegion, setSelectedRegion] = useState("all");
+  const [selectedProjectType, setSelectedProjectType] = useState("all");
+
   const { data: sourceRows = [], isLoading, isError } = useQuery({
-    queryKey: ["public-map-source-pins", 2],
-    queryFn: () => getPublicMapPins({}),
+    queryKey: ["public-map-source-pins", 3, selectedRegion],
+    queryFn: () => getPublicMapPins({ region: selectedRegion }),
     staleTime: 5 * 60 * 1000,
   });
+  const { data: regionsList = [] } = useQuery({
+    queryKey: ["regions"],
+    queryFn: () => getRegions(),
+    staleTime: Infinity,
+  });
   const mapProjects = React.useMemo(() => toSourceBackedMapPins(sourceRows), [sourceRows]);
+  const mapProjectTypes = React.useMemo(
+    () => [...new Set(mapProjects.map((pin) => pin.type))].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" }),
+    ),
+    [mapProjects],
+  );
+  const effectiveProjectType = selectedProjectType === "all" || mapProjectTypes.includes(selectedProjectType)
+    ? selectedProjectType
+    : "all";
 
   const [selectedProject, setSelectedProject] = useState<PublicMapPin | null>(null);
   const [insActive, setInsActive] = useState(true);
   const [amefipActive, setAmefipActive] = useState(true);
   const [watershedOverlay, setWatershedOverlay] = useState(false);
   const [agriZoneOverlay, setAgriZoneOverlay] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [postharvestOverlay, setPostharvestOverlay] = useState(false);
+  const [riceProcessingOverlay, setRiceProcessingOverlay] = useState(false);
+  const [tradingCentersOverlay, setTradingCentersOverlay] = useState(false);
+  const [agriProcessingOverlay, setAgriProcessingOverlay] = useState(false);
+  const [productionAreaOverlay, setProductionAreaOverlay] = useState(false);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  const [measureActive, setMeasureActive] = useState(false);
+  const [serviceAreaEnabled, setServiceAreaEnabled] = useState(false);
+  const [serviceRadius, setServiceRadius] = useState(500);
+  const mapPanelRef = useRef<HTMLDivElement>(null);
 
   const [mapCenter, setMapCenter] = useState<[number, number]>(defaultCenter);
   const [mapZoom, setMapZoom] = useState(defaultZoom);
   const mapViewTrackedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsMapFullscreen(document.fullscreenElement === mapPanelRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  const toggleMapFullscreen = async () => {
+    const mapPanel = mapPanelRef.current;
+    if (!mapPanel) return;
+    if (document.fullscreenElement === mapPanel) {
+      await document.exitFullscreen();
+    } else {
+      await mapPanel.requestFullscreen();
+    }
+  };
 
   React.useEffect(() => {
     if (isLoading || isError || mapViewTrackedRef.current) return;
@@ -106,37 +151,21 @@ export default function GISMapPage() {
     setMapZoom(defaultZoom);
   };
 
-  const filteredPins = mapProjects.filter((pin) => {
-    if (pin.type === "ins" && !insActive) return false;
-    if (pin.type === "amefip" && !amefipActive) return false;
-    if (searchQuery && !pin.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  const filteredPins = React.useMemo(
+    () => mapProjects.filter((pin) => {
+      if (pin.type === "ins" && !insActive) return false;
+      if (pin.type === "amefip" && !amefipActive) return false;
+      if (effectiveProjectType !== "all" && pin.type !== effectiveProjectType) return false;
+      return true;
+    }),
+    [mapProjects, insActive, amefipActive, effectiveProjectType],
+  );
 
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col md:flex-row relative overflow-hidden bg-slate-100 dark:bg-slate-950">
       {/* Side Control Panel */}
       <aside className="w-full md:w-80 bg-white dark:bg-slate-900 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between z-10 shadow-md shrink-0">
         <div className="space-y-6">
-          <div>
-            <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <Compass className="w-5 h-5 text-primary" /> {t("directory.infraMap.title")}
-            </h2>
-          </div>
-
-          {/* Search bar */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              aria-label={t("directory.infraMap.searchPlaceholder")}
-              placeholder={t("directory.infraMap.searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs outline-none focus:border-primary text-slate-900 dark:text-slate-100"
-            />
-          </div>
-
           <div className="space-y-5">
             {/* Program Toggles */}
             <div>
@@ -189,33 +218,127 @@ export default function GISMapPage() {
                   />
                   {t("directory.infraMap.agriZones")}
                 </label>
+                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={postharvestOverlay}
+                    onChange={() => setPostharvestOverlay(!postharvestOverlay)}
+                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
+                  />
+                  {t("directory.infraMap.postharvestFacilities")}
+                </label>
+                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={riceProcessingOverlay}
+                    onChange={() => setRiceProcessingOverlay(!riceProcessingOverlay)}
+                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
+                  />
+                  {t("directory.infraMap.riceProcessingCenters")}
+                </label>
+                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={tradingCentersOverlay}
+                    onChange={() => setTradingCentersOverlay(!tradingCentersOverlay)}
+                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
+                  />
+                  {t("directory.infraMap.tradingCenters")}
+                </label>
+                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agriProcessingOverlay}
+                    onChange={() => setAgriProcessingOverlay(!agriProcessingOverlay)}
+                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
+                  />
+                  {t("directory.infraMap.agriProcessingCenters")}
+                </label>
+                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={productionAreaOverlay}
+                    onChange={() => setProductionAreaOverlay(!productionAreaOverlay)}
+                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
+                  />
+                  {t("directory.infraMap.productionArea")}
+                </label>
               </div>
+            </div>
+
+            {/* Serviceable Area — radius of effect around every visible infrastructure pin */}
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-2.5">
+                {t("directory.infraMap.serviceableArea")}
+              </span>
+              <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer mb-3">
+                <input
+                  type="checkbox"
+                  checked={serviceAreaEnabled}
+                  onChange={() => setServiceAreaEnabled(!serviceAreaEnabled)}
+                  className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
+                />
+                {t("directory.infraMap.showServiceableArea")}
+              </label>
+              {serviceAreaEnabled && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                  <div className="flex items-center justify-between text-xs mb-2">
+                    <span className="text-slate-500">{t("directory.infraMap.radius")}</span>
+                    <span className="font-bold font-mono text-slate-900 dark:text-slate-200">
+                      {serviceRadius >= 1000 ? `${(serviceRadius / 1000).toFixed(2)} km` : `${serviceRadius} m`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={100}
+                    max={5000}
+                    step={50}
+                    value={serviceRadius}
+                    onChange={(e) => setServiceRadius(Number(e.target.value))}
+                    aria-label={t("directory.infraMap.radius")}
+                    className="w-full accent-primary cursor-pointer"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* GeoAgri attribution + outbound link */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-[10px] leading-relaxed text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400">
+              <p>{t("directory.infraMap.geoagriAttribution")}</p>
+              <a
+                href="https://geoagri2.bafe.gov.ph"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1.5 inline-flex items-center gap-1 font-bold text-primary hover:underline"
+              >
+                {t("directory.infraMap.geoagriExploreLink")} <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
           </div>
         </div>
 
-        {/* Legend */}
+        {/* Legend — same status colors/labels as the Projects page map (PROJECT_MARKER_LEGEND) */}
         <div className="bg-slate-50/70 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-[10px] space-y-2 text-slate-500 dark:text-slate-400 mt-6">
           <span className="font-extrabold text-slate-700 dark:text-slate-300 uppercase block">
             {t("directory.infraMap.legendTitle")}
           </span>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-primary block" /> {t("directory.infraMap.legend.completed")}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 block" /> {t("directory.infraMap.legend.ongoing")}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-slate-400 block" /> {t("directory.infraMap.legend.planned")}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-600 block" /> {t("directory.infraMap.legend.suspended")}
-          </div>
+          {PROJECT_MARKER_LEGEND.map((item) => (
+            <div key={item.key} className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full block" style={{ backgroundColor: item.color }} />
+              {t(`directory.status.${item.key}`)}
+            </div>
+          ))}
         </div>
       </aside>
 
       {/* Main Map View Area */}
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-200 dark:bg-slate-900">
+      <div
+        ref={mapPanelRef}
+        className={cn(
+          "flex-1 relative flex items-center justify-center overflow-hidden bg-slate-200 dark:bg-slate-900",
+          isMapFullscreen && "bg-slate-950"
+        )}
+      >
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 text-sm font-semibold text-slate-600 dark:text-slate-300"><Loader2 className="h-8 w-8 animate-spin text-primary" />{t("directory.infraMap.loadingProjects")}</div>
         ) : isError ? (
@@ -227,10 +350,93 @@ export default function GISMapPage() {
             setSelectedProject={handleSelectProject}
             watershedOverlay={watershedOverlay}
             agriZoneOverlay={agriZoneOverlay}
+            postharvestOverlay={postharvestOverlay}
+            riceProcessingOverlay={riceProcessingOverlay}
+            tradingCentersOverlay={tradingCentersOverlay}
+            agriProcessingOverlay={agriProcessingOverlay}
+            productionAreaOverlay={productionAreaOverlay}
             theme={(resolvedTheme as "light" | "dark") || "light"}
             mapCenter={mapCenter}
             mapZoom={mapZoom}
+            selectedRegion={selectedRegion}
+            measureActive={measureActive}
+            serviceAreaEnabled={serviceAreaEnabled}
+            serviceRadius={serviceRadius}
           />
+        )}
+
+        {/* Fullscreen toggle */}
+        <button
+          type="button"
+          onClick={() => void toggleMapFullscreen()}
+          aria-label={isMapFullscreen ? t("directory.map.exitFullscreen") : t("directory.map.enterFullscreen")}
+          title={isMapFullscreen ? t("directory.map.exitFullscreenTitle") : t("directory.map.enterFullscreen")}
+          className="absolute right-4 top-4 z-20 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white/95 text-slate-700 shadow-sm backdrop-blur transition-colors hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-200 dark:hover:bg-slate-900"
+        >
+          {isMapFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
+
+        {/* Measure distance toggle */}
+        <button
+          type="button"
+          onClick={() => setMeasureActive((prev) => !prev)}
+          aria-pressed={measureActive}
+          aria-label={t("directory.infraMap.measureDistance")}
+          title={t("directory.infraMap.measureDistance")}
+          className={cn(
+            "absolute right-4 top-16 z-20 inline-flex h-9 w-9 items-center justify-center rounded-lg border shadow-sm backdrop-blur transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            measureActive
+              ? "border-primary bg-primary text-white hover:bg-primary/90"
+              : "border-slate-200 bg-white/95 text-slate-700 hover:bg-white dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-200 dark:hover:bg-slate-900"
+          )}
+        >
+          <Ruler className="h-4 w-4" />
+        </button>
+
+        {measureActive && (
+          <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-lg border border-slate-200 bg-white/95 px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-200">
+            {t("directory.infraMap.measureHint")}
+          </div>
+        )}
+
+        {/* Region / Project Type filter */}
+        {!isLoading && !isError && (
+          <div className="absolute bottom-24 right-4 z-20 grid w-[min(20rem,calc(100%-2rem))] gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-200 sm:w-72">
+            <label className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2">
+              <span>{t("directory.filters.region")}</span>
+              <select
+                aria-label={t("directory.map.regionAria")}
+                value={selectedRegion}
+                onChange={(event) => {
+                  setSelectedRegion(event.target.value);
+                  setSelectedProject(null);
+                }}
+                className="min-w-0 rounded border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-950"
+              >
+                <option value="all">{t("directory.filters.allRegions")}</option>
+                {regionsList.map((region) => (
+                  <option key={region.value} value={region.value}>{region.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2">
+              <span>{t("directory.filters.projectType")}</span>
+              <select
+                aria-label={t("directory.filters.projectType")}
+                value={effectiveProjectType}
+                onChange={(event) => {
+                  setSelectedProjectType(event.target.value);
+                  setSelectedProject(null);
+                }}
+                className="min-w-0 rounded border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-950"
+              >
+                <option value="all">{t("directory.map.allProjectTypes")}</option>
+                {mapProjectTypes.map((projectType) => (
+                  <option key={projectType} value={projectType}>{projectType}</option>
+                ))}
+              </select>
+            </label>
+          </div>
         )}
 
         {!isLoading && !isError && (

@@ -19,6 +19,7 @@ export const statement = {
   audit_logs: ["view", "export", "delete"],
   knowledge_base: ["create", "read", "update", "delete", "list", "embed"],
   system_settings: ["read", "update"],
+  mydas: ["view", "create", "export"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -102,6 +103,9 @@ export const admin = ac.newRole({
   audit_logs: ["view", "export", "delete"],
   knowledge_base: ["create", "read", "update", "delete", "list", "embed"],
   system_settings: ["read", "update"],
+  // Admin-only: generates and executes SQL against the read model from
+  // natural-language questions — not granted to moderator/regional_admin.
+  mydas: ["view", "create", "export"],
 });
 
 const roleRegistry = {
