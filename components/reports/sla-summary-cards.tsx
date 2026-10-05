@@ -4,24 +4,13 @@ import { AlertTriangle, CheckCircle2, Clock, TrendingUp } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SlaSummary } from "@/types/reports.types";
-
-function formatDuration(ms: number) {
-  if (ms === 0) return "0h";
-  const hours = ms / (1000 * 60 * 60);
-  if (hours < 1) {
-    const minutes = Math.round(ms / (1000 * 60));
-    return `${minutes}m`;
-  }
-  if (hours < 24) return `${hours.toFixed(1)}h`;
-  const days = hours / 24;
-  return `${days.toFixed(1)}d`;
-}
+import { formatSlaDuration } from "@/lib/reports/format";
 
 export function SlaSummaryCards({ summary, title }: { summary: SlaSummary; title: string }) {
   const stats = [
     {
       label: "Avg response time",
-      value: formatDuration(summary.avgResponseTime),
+      value: formatSlaDuration(summary.avgResponseTime),
       icon: Clock,
       description: "Average time to first human response",
       color: "text-blue-600 dark:text-blue-400",
@@ -29,7 +18,7 @@ export function SlaSummaryCards({ summary, title }: { summary: SlaSummary; title
     },
     {
       label: "Median response",
-      value: formatDuration(summary.medianResponseTime),
+      value: formatSlaDuration(summary.medianResponseTime),
       icon: TrendingUp,
       description: "Middle response time (reduces outlier impact)",
       color: "text-emerald-600 dark:text-emerald-400",
@@ -45,7 +34,7 @@ export function SlaSummaryCards({ summary, title }: { summary: SlaSummary; title
     },
     {
       label: "Max response",
-      value: formatDuration(summary.maxResponseTime),
+      value: formatSlaDuration(summary.maxResponseTime),
       icon: AlertTriangle,
       description: "Slowest response recorded",
       color: "text-red-600 dark:text-red-400",
@@ -74,6 +63,9 @@ export function SlaSummaryCards({ summary, title }: { summary: SlaSummary; title
           </Card>
         ))}
       </div>
+      <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+        Response times use {summary.respondedItems.toLocaleString("en-PH")} staff responses out of {summary.totalItems.toLocaleString("en-PH")} submissions. Automated acceptance and acknowledgment messages are excluded.
+      </p>
     </div>
   );
 }

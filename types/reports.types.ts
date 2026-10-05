@@ -7,14 +7,14 @@ export type SlaTier =
   | "over_7d";
 
 export interface SlaSummary {
-  avgResponseTime: number; // in milliseconds
-  medianResponseTime: number; // in milliseconds
-  minResponseTime: number; // in milliseconds
-  maxResponseTime: number; // in milliseconds
+  avgResponseTime: number | null; // in milliseconds; null when no staff responses exist
+  medianResponseTime: number | null;
+  minResponseTime: number | null;
+  maxResponseTime: number | null;
   totalItems: number;
   respondedItems: number;
-  resolutionRate?: number; // percentage
-  avgResolutionTime?: number; // in milliseconds
+  resolutionRate?: number | null; // percentage
+  avgResolutionTime?: number | null; // in milliseconds
 }
 
 export interface SlaDistribution {
@@ -26,8 +26,8 @@ export interface SlaDistribution {
 }
 
 export interface SlaTrendPoint {
-  date: string; // formatted date label
-  avgResponseTime: number; // in hours
+  date: string; // Asia/Manila calendar date, YYYY-MM-DD
+  avgResponseTime: number | null; // in hours; null when there are no staff responses
   itemCount: number;
   avgResolutionTime?: number;
 }

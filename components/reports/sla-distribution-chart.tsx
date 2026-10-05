@@ -28,7 +28,9 @@ export function SlaDistributionChart({
         )}
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full" role="img" aria-label={title}>
+        {!data.some((tier) => tier.count > 0) ? (
+          <p role="status" className="py-12 text-center text-sm text-slate-600 dark:text-slate-300">No staff responses recorded for submissions in this period.</p>
+        ) : <ChartContainer config={chartConfig} className="h-[300px] w-full" role="img" aria-label={title}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
               <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" />
@@ -49,7 +51,7 @@ export function SlaDistributionChart({
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </ChartContainer>
+        </ChartContainer>}
       </CardContent>
     </Card>
   );

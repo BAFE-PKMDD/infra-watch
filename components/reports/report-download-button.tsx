@@ -15,25 +15,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { SlaTableRow } from "@/types/reports.types";
+import { buildSlaCsv, buildSlaPdfRows } from "@/lib/reports/export";
+import { formatReportTimestamp } from "@/lib/reports/format";
 
 export function ReportDownloadButton({ data, moduleName }: { data: SlaTableRow[]; moduleName: string }) {
   function exportToCSV() {
-    const headers = ["ID", "Reference", "Status", "Category", "Farm Operation", "Submitted", "First response", "Response time (ms)", "SLA breach"];
-    const rows = data.map((item) => [
-      item.id,
-      item.referenceId,
-      item.status,
-      item.category || "N/A",
-      item.farmOperation || "N/A",
-      format(item.createdAt, "yyyy-MM-dd HH:mm:ss"),
-      item.firstResponseAt ? format(item.firstResponseAt, "yyyy-MM-dd HH:mm:ss") : "N/A",
-      item.responseTimeMs?.toString() || "0",
-      item.isSlaBreach ? "Yes" : "No",
-    ]);
-
-    const csvContent = [headers, ...rows]
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
+    const csvContent = buildSlaCsv(data);
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -52,23 +39,14 @@ export function ReportDownloadButton({ data, moduleName }: { data: SlaTableRow[]
 
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Generated on: ${format(new Date(), "PPpp")}`, 14, 22);
+    doc.text(`Generated on: ${formatReportTimestamp(new Date())} (Asia/Manila)`, 14, 22);
     doc.text(`Total records: ${data.length}`, 14, 27);
 
-    const tableData = data.map((item) => [
-      item.referenceId,
-      item.status,
-      item.category || "N/A",
-      item.farmOperation || "N/A",
-      format(item.createdAt, "MMM dd, HH:mm"),
-      item.firstResponseAt ? format(item.firstResponseAt, "MMM dd, HH:mm") : "---",
-      item.responseTimeMs ? `${(item.responseTimeMs / (1000 * 60 * 60)).toFixed(1)}h` : "---",
-      item.isSlaBreach ? "BREACH" : "OK",
-    ]);
+    const tableData = buildSlaPdfRows(data);
 
     autoTable(doc, {
       startY: 35,
-      head: [["Reference", "Status", "Category", "Farm Operation", "Submitted", "Responded", "Time", "SLA"]],
+      head: [["Reference", "Status", "Category", "Farm Operation", "Submitted (Manila)", "Staff response (Manila)", "Time", "SLA"]],
       body: tableData,
       theme: "striped",
       headStyles: { fillColor: [15, 23, 42], fontSize: 9 },

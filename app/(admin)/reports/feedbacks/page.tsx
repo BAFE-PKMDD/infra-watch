@@ -3,7 +3,6 @@
 import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { subDays } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -14,6 +13,7 @@ import { ReportDownloadButton } from "@/components/reports/report-download-butto
 import { SlaDataTable } from "@/components/reports/sla-data-table";
 import { SlaSummaryCards } from "@/components/reports/sla-summary-cards";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getReportPreset, parseReportRange } from "@/lib/reports/date-range";
 
 const SlaResponseChart = dynamic(
   () => import("@/components/reports/sla-response-chart").then((mod) => mod.SlaResponseChart),
@@ -30,22 +30,26 @@ function FeedbacksReportContent() {
   const fromStr = searchParams.get("from");
   const toStr = searchParams.get("to");
   const { from, to } = useMemo(
-    () => ({
-      from: fromStr || subDays(new Date(), 30).toISOString(),
-      to: toStr || new Date().toISOString(),
-    }),
+    () => {
+      try {
+        return parseReportRange({ from: fromStr, to: toStr });
+      } catch {
+        const defaults = getReportPreset(30);
+        return { from: fromStr || defaults.from, to: toStr || defaults.to };
+      }
+    },
     [fromStr, toStr],
   );
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["feedback-sla-report", from, to],
-    queryFn: () => getFeedbackSlaReport({ from: new Date(from), to: new Date(to) }),
+    queryFn: () => getFeedbackSlaReport({ from, to }),
   });
 
   return (
     <AdminPageWrapper
       title="Feedback Moderation Reports"
-      description="Analytics for how quickly citizen feedback gets a moderation decision. The automatic acknowledgment sent after submission is not counted as a response."
+      description="Time to a staff moderation decision. Automated acceptance and acknowledgment messages are excluded from response times."
       breadcrumbs={[{ label: "Reports & Analytics" }, { label: "Feedback Reports" }]}
     >
       <div className="space-y-6">

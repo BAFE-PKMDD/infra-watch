@@ -1,6 +1,7 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { format } from "date-fns";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -31,7 +32,9 @@ export function SlaResponseChart({
         )}
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full" role="img" aria-label={title}>
+        {!data.some((point) => point.avgResponseTime !== null) ? (
+          <p role="status" className="py-12 text-center text-sm text-slate-600 dark:text-slate-300">No staff responses recorded for submissions in this period.</p>
+        ) : <ChartContainer config={chartConfig} className="h-[300px] w-full" role="img" aria-label={title}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
@@ -41,7 +44,7 @@ export function SlaResponseChart({
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} dy={10} />
+              <XAxis dataKey="date" tickFormatter={(day) => format(new Date(`${day}T00:00:00`), "MMM dd")} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} dy={10} />
               <YAxis
                 axisLine={false}
                 tickLine={false}
@@ -52,6 +55,9 @@ export function SlaResponseChart({
               <Area
                 type="monotone"
                 dataKey="avgResponseTime"
+                connectNulls={false}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
                 stroke="#10b981"
                 strokeWidth={2}
                 fillOpacity={1}
@@ -59,7 +65,7 @@ export function SlaResponseChart({
               />
             </AreaChart>
           </ResponsiveContainer>
-        </ChartContainer>
+        </ChartContainer>}
       </CardContent>
     </Card>
   );

@@ -8,6 +8,7 @@ import {
   summarizeApproximateNetworkRegions,
   parseCitizenAnalyticsRange,
   toIssueCategoryLabel,
+  summarizeEReportIssueTypes,
 } from "./citizen-engagement-query";
 import { db } from "@/lib/db";
 import { analyticsEvents, feedback } from "@/lib/db/schema";
@@ -85,4 +86,19 @@ test("suppresses network-region rows in SQL before serialization", () => {
   const range = parseCitizenAnalyticsRange({}, new Date("2026-09-22T04:00:00.000Z"));
   const query = buildVisibleNetworkRegionQuery(range).toSQL();
   assert.match(query.sql, /having count\(\*\) >= 5/i);
+});
+
+test("counts each selected E-Report issue type independently and retains unclassified reports", () => {
+  const result = summarizeEReportIssueTypes([
+    { issueType: "Pavement Damage or Potholes | Drainage Blockage", count: 2 },
+    { issueType: "Drainage Blockage", count: 1 },
+    { issueType: "Drainage Blockage | Drainage Blockage", count: 1 },
+    { issueType: null, count: 1 },
+    { issueType: "  ", count: 1 },
+  ]);
+  assert.deepEqual(result, [
+    { key: "Drainage Blockage", label: "Drainage Blockage", count: 4 },
+    { key: "unclassified", label: "Not classified", count: 2 },
+    { key: "Pavement Damage or Potholes", label: "Pavement Damage or Potholes", count: 2 },
+  ]);
 });

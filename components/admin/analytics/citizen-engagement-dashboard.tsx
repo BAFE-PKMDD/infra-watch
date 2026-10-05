@@ -112,6 +112,10 @@ const resultBandLabels: Record<string, string> = {
 
 export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAnalytics }) {
   const hasActivity = Object.values(data.overview).some((value) => typeof value === "number" && value > 0)
+    || data.projectDiscovery.mostOpenedFromSearch.length > 0
+    || data.projectDiscovery.mostOpenedFromMap.length > 0
+    || data.projectDiscovery.mostViewed.length > 0
+    || data.networkGeography.regions.length > 0
     || data.commonIssues.feedbackThemes.length > 0
     || data.commonIssues.eReportTypes.length > 0;
 
@@ -131,7 +135,7 @@ export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAn
       {!hasActivity ? (
         <section role="status" className="border-l-4 border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
           <h2 className="font-semibold text-slate-950 dark:text-white">No citizen activity recorded</h2>
-          <p className="mt-1">No searches, project or map views, ratings, comments, feedback themes, or E-Report issue types were recorded for this period.</p>
+          <p className="mt-1">No searches, project or map views or selections, ratings, comments, feedback themes, or E-Report issue types were recorded for this period.</p>
         </section>
       ) : <>
 
@@ -205,7 +209,7 @@ export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAn
         <h2 id="common-issues-heading" className="text-lg font-semibold text-slate-950 dark:text-white">Common issues</h2>
         <div className="mt-2 flex gap-2 rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-600 dark:bg-slate-950 dark:text-slate-300">
           <Info className="mt-0.5 size-4 shrink-0 text-slate-500" aria-hidden="true" />
-          <p>Feedback themes and E-Report issue types use different source taxonomies. They are shown separately rather than merged into a misleading combined ranking.</p>
+          <p>Feedback themes and E-Report issue types use different source taxonomies. Each E-Report counts once for every selected issue type. Reports without a recorded issue type appear as Not classified.</p>
         </div>
         <div className="mt-5 grid gap-8 md:grid-cols-2">
           <CategoryList title="Feedback themes" rows={data.commonIssues.feedbackThemes} />

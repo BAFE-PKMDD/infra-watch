@@ -136,6 +136,21 @@ function asNumber(value: unknown): number {
   return Number.isFinite(number) ? number : 0;
 }
 
+export function summarizeEReportIssueTypes(rows: Array<{ issueType: string | null; count: number }>) {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const labels = [...new Set(row.issueType?.split(" | ").map((label) => label.trim()).filter(Boolean) ?? [])];
+    for (const key of labels.length ? labels : ["unclassified"]) {
+      counts.set(key, (counts.get(key) ?? 0) + asNumber(row.count));
+    }
+  }
+  return [...counts].map(([key, count]) => ({
+    key,
+    label: key === "unclassified" ? "Not classified" : toIssueCategoryLabel(key),
+    count,
+  })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
 export function summarizeApproximateNetworkRegions(
   rows: Array<{ code: string | null; count: number }>,
 ) {
@@ -207,7 +222,7 @@ export async function getCitizenEngagementAnalytics(
     feedbackSummaryRows,
     feedbackTrend,
     feedbackCategories,
-    issueCategories,
+    issueTypes,
     networkRegionRows,
   ] = await Promise.all([
     db.select({ eventName: analyticsEvents.eventName, value: count() })
@@ -241,8 +256,8 @@ export async function getCitizenEngagementAnalytics(
     }).from(feedback).leftJoin(authUser, eq(authUser.id, feedback.userId)).where(feedbackWhere).groupBy(manilaFeedbackDay),
     db.select({ category: feedback.category, value: count() })
       .from(feedback).leftJoin(authUser, eq(authUser.id, feedback.userId)).where(feedbackWhere).groupBy(feedback.category),
-    db.select({ category: issues.category, value: count() })
-      .from(issues).leftJoin(authUser, eq(authUser.id, issues.reporterUserId)).where(issueWhere).groupBy(issues.category),
+    db.select({ issueType: issues.issueType, value: count() })
+      .from(issues).leftJoin(authUser, eq(authUser.id, issues.reporterUserId)).where(issueWhere).groupBy(issues.issueType),
     buildVisibleNetworkRegionQuery(range),
   ]);
 
@@ -310,9 +325,7 @@ export async function getCitizenEngagementAnalytics(
       feedbackThemes: feedbackCategories
         .map((row) => ({ key: row.category ?? "unclassified", label: toIssueCategoryLabel(row.category), count: asNumber(row.value) }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
-      eReportTypes: issueCategories
-        .map((row) => ({ key: row.category, label: toIssueCategoryLabel(row.category), count: asNumber(row.value) }))
-        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+      eReportTypes: summarizeEReportIssueTypes(issueTypes.map((row) => ({ issueType: row.issueType, count: asNumber(row.value) }))),
     },
     networkGeography: summarizeApproximateNetworkRegions(
       networkRegionRows.map((row) => ({ code: row.code, count: asNumber(row.value) })),

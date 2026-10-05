@@ -81,3 +81,17 @@ test("renders explicit empty states instead of blank rankings", () => {
   assert.match(html, /No search-result opens recorded/);
   assert.match(html, /No map project opens recorded/);
 });
+
+test("shows recorded project selections even when all overview metrics are zero", () => {
+  const html = renderToStaticMarkup(<CitizenEngagementDashboard data={{
+    ...data,
+    overview: { searches: 0, projectViews: 0, mapViews: 0, ratingsSubmitted: 0, commentsSubmitted: 0, averageRating: null },
+    projectDiscovery: { mostViewed: [], mostOpenedFromSearch: [], mostOpenedFromMap: [{ projectId: "test-1", projectName: "Selected from map", count: 1 }], searchResultBands: [] },
+    commonIssues: { feedbackThemes: [], eReportTypes: [] },
+    networkGeography: { minimumEventCount: 5, regions: [] },
+  }} />);
+  assert.doesNotMatch(html, /No citizen activity recorded/);
+  assert.match(html, /Selected from map/);
+  assert.match(html, /Region tracking may be disabled or unavailable/);
+  assert.match(html, /Each E-Report counts once for every selected issue type/);
+});

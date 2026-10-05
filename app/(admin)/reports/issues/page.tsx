@@ -3,7 +3,6 @@
 import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { subDays } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -14,6 +13,7 @@ import { ReportDownloadButton } from "@/components/reports/report-download-butto
 import { SlaDataTable } from "@/components/reports/sla-data-table";
 import { SlaSummaryCards } from "@/components/reports/sla-summary-cards";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getReportPreset, parseReportRange } from "@/lib/reports/date-range";
 
 const SlaResponseChart = dynamic(
   () => import("@/components/reports/sla-response-chart").then((mod) => mod.SlaResponseChart),
@@ -30,22 +30,26 @@ function IssuesReportContent() {
   const fromStr = searchParams.get("from");
   const toStr = searchParams.get("to");
   const { from, to } = useMemo(
-    () => ({
-      from: fromStr || subDays(new Date(), 30).toISOString(),
-      to: toStr || new Date().toISOString(),
-    }),
+    () => {
+      try {
+        return parseReportRange({ from: fromStr, to: toStr });
+      } catch {
+        const defaults = getReportPreset(30);
+        return { from: fromStr || defaults.from, to: toStr || defaults.to };
+      }
+    },
     [fromStr, toStr],
   );
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["issue-sla-report", from, to],
-    queryFn: () => getIssueSlaReport({ from: new Date(from), to: new Date(to) }),
+    queryFn: () => getIssueSlaReport({ from, to }),
   });
 
   return (
     <AdminPageWrapper
       title="Issue Response Reports"
-      description="Analytics for how quickly reported issues get a first public response and get resolved."
+      description="Time to a first public staff response and issue resolution. Automated acceptance messages are excluded from response times."
       breadcrumbs={[{ label: "Reports & Analytics" }, { label: "Issue Reports" }]}
     >
       <div className="space-y-6">
