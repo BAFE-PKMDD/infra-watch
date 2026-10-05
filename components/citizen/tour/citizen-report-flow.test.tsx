@@ -1,20 +1,36 @@
 import assert from "node:assert/strict";
-import { mock, test } from "bun:test";
+import { afterAll, mock, spyOn, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CitizenGuideContext } from "./citizen-guide-context";
 import { CITIZEN_PROJECT_ID } from "@/lib/tours/citizen";
+import * as navigation from "next/navigation";
+import * as authProvider from "@/providers/auth-provider";
+import * as i18n from "@/i18n";
+import * as reactQuery from "@tanstack/react-query";
+import * as locationOptions from "@/actions/query/get-location-options";
+import * as surveyGate from "@/hooks/use-submission-survey-gate";
+import * as surveyModal from "@/components/shared/submission-survey-modal";
+import * as geoEvidence from "@/components/shared/geo-evidence-upload";
 
 const queries: Array<{ queryKey: unknown[]; queryFn: () => Promise<unknown>; enabled?: boolean }> = [];
-mock.module("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(), useRouter: () => ({ push: () => {} }) }));
-mock.module("@/providers/auth-provider", () => ({ useAuth: () => ({ user: { id: "citizen", role: "citizen" }, isLoading: false }) }));
-mock.module("@/i18n", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-mock.module("@tanstack/react-query", () => ({ useQuery: (options: typeof queries[number]) => { queries.push(options); return { data: [], isFetching: false }; } }));
-mock.module("@/actions/query/get-location-options", () => ({ getRegions: async () => [], getProvinces: async () => [], getMunicipalities: async () => [], getBarangays: async () => [] }));
-mock.module("@/hooks/use-submission-survey-gate", () => ({ useSubmissionSurveyGate: () => ({ needsSurvey: false }) }));
-mock.module("@/components/shared/submission-survey-modal", () => ({ SubmissionSurveyModal: () => null }));
-mock.module("@/components/shared/geo-evidence-upload", () => ({ GeoEvidenceUpload: () => null }));
+// spyOn() mutates these real singletons in place and is undone in afterAll() below.
+// mock.module() (used previously) replaces the module for the rest of the bun:test
+// process, not just this file, with no reliable way to undo it afterward.
+spyOn(navigation, "useSearchParams").mockReturnValue(new URLSearchParams() as unknown as ReturnType<typeof navigation.useSearchParams>);
+spyOn(navigation, "useRouter").mockReturnValue({ push: () => {} } as unknown as ReturnType<typeof navigation.useRouter>);
+spyOn(authProvider, "useAuth").mockReturnValue({ user: { id: "citizen", role: "citizen" }, isLoading: false } as unknown as ReturnType<typeof authProvider.useAuth>);
+spyOn(i18n, "useTranslation").mockReturnValue({ t: (key: string) => key } as unknown as ReturnType<typeof i18n.useTranslation>);
+spyOn(reactQuery, "useQuery").mockImplementation(((options: typeof queries[number]) => { queries.push(options); return { data: [], isFetching: false }; }) as unknown as typeof reactQuery.useQuery);
+spyOn(locationOptions, "getRegions").mockImplementation(async () => []);
+spyOn(locationOptions, "getProvinces").mockImplementation(async () => []);
+spyOn(locationOptions, "getMunicipalities").mockImplementation(async () => []);
+spyOn(locationOptions, "getBarangays").mockImplementation(async () => []);
+spyOn(surveyGate, "useSubmissionSurveyGate").mockReturnValue({ needsSurvey: false } as unknown as ReturnType<typeof surveyGate.useSubmissionSurveyGate>);
+spyOn(surveyModal, "SubmissionSurveyModal").mockImplementation((() => null) as unknown as typeof surveyModal.SubmissionSurveyModal);
+spyOn(geoEvidence, "GeoEvidenceUpload").mockImplementation((() => null) as unknown as typeof geoEvidence.GeoEvidenceUpload);
 
 const { default: ReportIssuePage } = await import("@/app/(public)/report-issue/new/report-issue-form");
+afterAll(() => { mock.restore(); });
 const context = {
   session: { id: "attempt", guide: "citizen-report" as const, returnTo: "/", submitted: false },
   active: true, loading: false, start: () => {}, overview: () => {}, submitted: () => {},

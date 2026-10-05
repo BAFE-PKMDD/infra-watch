@@ -1,17 +1,29 @@
 import assert from "node:assert/strict";
-import { mock, test } from "bun:test";
+import { afterAll, mock, spyOn, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TutorialSandboxContext } from "@/components/admin/tour/tutorial-sandbox";
 import { applySandboxAction, createTutorialSandbox, TUTORIAL_FEEDBACK_ID } from "@/lib/tours/sandbox";
+import * as authProvider from "@/providers/auth-provider";
+import * as i18n from "@/i18n";
+import * as feedbackCommentsQuery from "@/actions/query/feedback-comments.query";
 
-mock.module("@/providers/auth-provider", () => ({ useAuth: () => ({ user: { id: "staff-a", name: "Staff account", image: null } }) }));
-mock.module("@/i18n", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-mock.module("@/actions/query/feedback-comments.query", () => ({ getFeedbackComments: async () => ({ success: true, data: [] }) }));
+// spyOn() mutates these real singletons in place and is undone in afterAll() below.
+// mock.module() (used previously) replaces the module for the rest of the bun:test
+// process, not just this file, with no reliable way to undo it afterward.
+spyOn(authProvider, "useAuth").mockReturnValue({ user: { id: "staff-a", name: "Staff account", image: null } } as ReturnType<typeof authProvider.useAuth>);
+spyOn(i18n, "useTranslation").mockReturnValue({ t: (key: string) => key } as ReturnType<typeof i18n.useTranslation>);
+spyOn(feedbackCommentsQuery, "getFeedbackComments").mockImplementation(async () => ({ success: true, data: [] }) as Awaited<ReturnType<typeof feedbackCommentsQuery.getFeedbackComments>>);
+// createFeedbackComment transitively imports the "server-only" package (via
+// lib/services/content-moderation.ts), which throws unconditionally when actually
+// evaluated outside Next's server bundle. It can't be spied on without loading the
+// real module, so it stays on mock.module(); no other test file imports this exact
+// specifier, so there is nothing else for this one to leak into.
 mock.module("@/actions/mutation/feedback-comment.mutation", () => ({ createFeedbackComment: async () => { throw new Error("Rendering must not post a real comment."); } }));
 
 const { FeedbackResponses } = await import("./feedback-responses");
 const { FeedbackManagementView } = await import("./feedback-management-view");
+afterAll(() => { mock.restore(); });
 
 test("the actual feedback list exposes Respond for the lesson's approved example", () => {
   const state = createTutorialSandbox("attempt", "feedback-reply");

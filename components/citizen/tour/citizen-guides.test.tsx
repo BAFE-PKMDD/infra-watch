@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
-import { beforeEach, mock, test } from "bun:test";
+import { afterAll, beforeEach, mock, spyOn, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CitizenGuideContext } from "./citizen-guide-context";
 import { applyTourUpdate, EMPTY_TOUR_PROGRESS, tourKey, type TourProgress } from "@/lib/tours/progress";
 import { CITIZEN_GUIDES } from "@/lib/tours/citizen";
+import * as navigation from "next/navigation";
 
 let pathname = "/citizen-feed";
-mock.module("next/navigation", () => ({ usePathname: () => pathname }));
+// spyOn() mutates the real singleton in place and is undone in afterAll() below.
+// mock.module() (used previously) replaces the module for the rest of the bun:test
+// process, not just this file, with no reliable way to undo it afterward.
+spyOn(navigation, "usePathname").mockImplementation(() => pathname);
 const { CitizenGuides, CitizenGuidesPanel } = await import("./citizen-guides");
+afterAll(() => { mock.restore(); });
 const context = {
   session: null, loading: false, active: false, start: () => {}, overview: () => {}, submitted: () => {},
   progress: { automatic: true, seen: { [tourKey("citizen-feedback")]: "completed" as const } },

@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
-import { afterEach, mock, test } from "bun:test";
+import { afterAll, afterEach, mock, spyOn, test } from "bun:test";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CitizenGuideContext } from "./citizen-guide-context";
 import { CITIZEN_PROJECT_ID } from "@/lib/tours/citizen";
+import * as i18n from "@/i18n";
+import * as clientNotifications from "@/lib/client-notifications";
+import * as surveyGate from "@/hooks/use-submission-survey-gate";
+import * as surveyModal from "@/components/shared/submission-survey-modal";
+import * as geoEvidence from "@/components/shared/geo-evidence-upload";
+import * as officeMap from "@/components/contact/office-location-map-loader";
+import * as contactMutation from "@/actions/mutation/contact.mutation";
+import * as buttonModule from "@/components/ui/button";
+import * as reactForm from "@tanstack/react-form";
 
 const buttons: Array<{ label: ReactNode; click?: () => unknown; target?: string }> = [];
 let contactSubmit: ((args: { value: { name: string; email: string; subject: string; message: string }; formApi: { reset: () => void } }) => Promise<void>) | undefined;
@@ -15,26 +24,30 @@ let completions = 0;
 let callbackCalls = 0;
 const originalFetch = globalThis.fetch;
 
-mock.module("@/i18n", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-mock.module("@/lib/client-notifications", () => ({ dispatchClientNotification: () => { notifications++; } }));
-mock.module("@/hooks/use-submission-survey-gate", () => ({ useSubmissionSurveyGate: () => ({ needsSurvey: true }) }));
-mock.module("@/components/shared/submission-survey-modal", () => ({ SubmissionSurveyModal: () => null }));
-mock.module("@/components/shared/geo-evidence-upload", () => ({ GeoEvidenceUpload: () => null }));
-mock.module("@/components/contact/office-location-map-loader", () => ({ OfficeLocationMapLoader: () => null }));
-mock.module("@/actions/mutation/contact.mutation", () => ({ createContactMessage: async () => { writes++; return { success: true }; } }));
-mock.module("@/components/ui/button", () => ({ Button: (props: { children: ReactNode; onClick?: () => unknown; "data-citizen"?: string; disabled?: boolean }) => {
+// spyOn() mutates these real singletons in place and is undone in afterAll() below.
+// mock.module() (used previously) replaces the module for the rest of the bun:test
+// process, not just this file, with no reliable way to undo it afterward.
+spyOn(i18n, "useTranslation").mockReturnValue({ t: (key: string) => key } as unknown as ReturnType<typeof i18n.useTranslation>);
+spyOn(clientNotifications, "dispatchClientNotification").mockImplementation(() => { notifications++; });
+spyOn(surveyGate, "useSubmissionSurveyGate").mockReturnValue({ needsSurvey: true } as unknown as ReturnType<typeof surveyGate.useSubmissionSurveyGate>);
+spyOn(surveyModal, "SubmissionSurveyModal").mockImplementation((() => null) as unknown as typeof surveyModal.SubmissionSurveyModal);
+spyOn(geoEvidence, "GeoEvidenceUpload").mockImplementation((() => null) as unknown as typeof geoEvidence.GeoEvidenceUpload);
+spyOn(officeMap, "OfficeLocationMapLoader").mockImplementation((() => null) as unknown as typeof officeMap.OfficeLocationMapLoader);
+spyOn(contactMutation, "createContactMessage").mockImplementation((async () => { writes++; return { success: true }; }) as unknown as typeof contactMutation.createContactMessage);
+spyOn(buttonModule, "Button").mockImplementation(((props: { children: ReactNode; onClick?: () => unknown; "data-citizen"?: string; disabled?: boolean }) => {
   buttons.push({ label: props.children, click: props.onClick, target: props["data-citizen"] });
   return <button data-citizen={props["data-citizen"]} disabled={props.disabled}>{props.children}</button>;
-} }));
-mock.module("@tanstack/react-form", () => ({ useForm: (options: { defaultValues: Record<string, string>; onSubmit: typeof contactSubmit }) => {
+}) as unknown as typeof buttonModule.Button);
+spyOn(reactForm, "useForm").mockImplementation(((options: { defaultValues: Record<string, string>; onSubmit: typeof contactSubmit }) => {
   contactSubmit = options.onSubmit;
   contactDefaults = options.defaultValues;
   return { Field: () => null, Subscribe: () => null, handleSubmit: () => {} };
-} }));
+}) as unknown as typeof reactForm.useForm);
 
 const { FeedbackSubmissionForm } = await import("@/components/projects/feedback-submission-form");
 const { default: ContactPage } = await import("@/app/(public)/contact/page");
 afterEach(() => { globalThis.fetch = originalFetch; buttons.length = 0; writes = 0; notifications = 0; completions = 0; callbackCalls = 0; });
+afterAll(() => { mock.restore(); });
 
 test("the actual feedback submit handler bypasses survey, API, notifications, and live success callbacks", async () => {
   globalThis.fetch = mock(async () => { writes++; throw new Error("No network write expected"); }) as typeof fetch;

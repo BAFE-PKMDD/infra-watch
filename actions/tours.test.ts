@@ -21,18 +21,18 @@ beforeEach(() => {
 
   // Spy on the real `db`/`session` singletons instead of mock.module(), which swaps the
   // module for the rest of the bun:test process (not just this file) with no reliable undo.
-  spyOn(session, "requireAuth").mockImplementation(async () => {
+  spyOn(session, "requireAuth").mockImplementation((async () => {
     if (!viewer) throw new Error("Unauthorized");
     return viewer;
-  });
+  }) as unknown as typeof session.requireAuth);
   spyOn(db, "select").mockImplementation((() => ({ from: () => ({ where: (where: SQL) => {
     readWhere = where;
     return { limit: async () => stored };
-  } }) })) as typeof db.select);
+  } }) })) as unknown as typeof db.select);
   spyOn(db, "insert").mockImplementation((() => ({ values: (value: Record<string, unknown>) => {
     writes.push(value);
     return { onConflictDoUpdate: async (conflict: { set: { seen: SQL; automatic: boolean } }) => { conflicts.push(conflict); } };
-  } })) as typeof db.insert);
+  } })) as unknown as typeof db.insert);
 });
 
 afterEach(() => {
