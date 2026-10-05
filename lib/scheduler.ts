@@ -62,9 +62,11 @@ export function initScheduler() {
           triggeredBy: "cron-scheduler",
         });
 
-        if (result.success) {
+        if (result.status === "skipped") {
+          console.log("[Scheduler] ABEMIS sync skipped; another sync was already running.");
+        } else if (result.success) {
           console.log(
-            `[Scheduler] ABEMIS sync completed successfully in ${result.duration}ms. Added ${result.statistics.projectsAdded}, updated ${result.statistics.projectsUpdated}, failed ${result.statistics.projectsFailed}.`
+            `[Scheduler] ABEMIS sync ${result.status} in ${result.duration}ms. Added ${result.statistics.projectsAdded}, updated ${result.statistics.projectsUpdated}, failed ${result.statistics.projectsFailed}.`
           );
         } else {
           console.error(

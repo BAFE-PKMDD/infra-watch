@@ -5,6 +5,13 @@ import { getAuditContextFromRequest, logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/permissions";
 import { getCurrentUser } from "@/lib/session";
 
+function getSyncResultMessage(status: string) {
+  if (status === "skipped") return "Sync skipped: another sync is already running.";
+  if (status === "completed_with_warnings") return "Sync completed with a small number of failed records.";
+  if (status === "failed") return "Sync completed with errors";
+  return "Sync completed successfully";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -28,18 +35,19 @@ export async function POST(request: NextRequest) {
       newValues: {
         syncLogId: result.syncLogId,
         success: result.success,
+        status: result.status,
         statistics: result.statistics,
         duration: result.duration,
         errors: result.errors,
       },
-      notes: result.success ? "ABEMIS sync completed" : "ABEMIS sync completed with errors",
+      notes: `ABEMIS sync ${result.status}`,
       context: getAuditContextFromRequest(request, user),
     });
 
     return NextResponse.json(
       {
         success: result.success,
-        message: result.success ? "Sync completed successfully" : "Sync completed with errors",
+        message: getSyncResultMessage(result.status),
         syncLogId: result.syncLogId,
         statistics: result.statistics,
         duration: result.duration,

@@ -6,7 +6,7 @@
 export interface SyncLog {
   id: string;
   syncType: string;
-  status: "running" | "completed" | "failed";
+  status: "running" | "completed" | "completed_with_warnings" | "failed" | "skipped";
   projectsAdded: number;
   projectsUpdated: number;
   projectsFailed: number;

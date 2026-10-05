@@ -34,6 +34,53 @@ function createSyncExclusionCounts(): SyncExclusionCounts {
   };
 }
 
+// A run stuck in "running" past this age is presumed crashed (process killed, deploy
+// restart, etc.) rather than genuinely in progress -- it should not permanently block
+// every future sync from starting.
+const RUNNING_SYNC_STALE_MINUTES = 30;
+
+// Below this failure rate (relative to records actually processed), a run is reported as
+// "completed with warnings" instead of "failed". A handful of bad records out of ~10k
+// shouldn't read the same as a total sync failure.
+const FAILURE_TOLERANCE_RATIO = 0.01;
+
+async function hasActiveSync() {
+  const staleCutoff = new Date(Date.now() - RUNNING_SYNC_STALE_MINUTES * 60 * 1000);
+  const [row] = await db
+    .select({ id: syncLogs.id })
+    .from(syncLogs)
+    .where(and(
+      eq(syncLogs.resource, "project"),
+      eq(syncLogs.status, "running"),
+      gte(syncLogs.startedAt, staleCutoff),
+    ))
+    .limit(1);
+  return Boolean(row);
+}
+
+function determineSyncStatus({
+  errors,
+  recordsFailed,
+  totalProcessed,
+}: {
+  errors: SyncError[];
+  recordsFailed: number;
+  totalProcessed: number;
+}): "completed" | "completed_with_warnings" | "failed" {
+  if (errors.length === 0) return "completed";
+
+  // A sync-level error (thrown before/outside per-record processing, e.g. the ABEMIS
+  // fetch itself failing) means nothing meaningful was processed -- always a hard failure,
+  // regardless of how small `recordsFailed` happens to be.
+  const hasSyncLevelFailure = errors.some((error) => error.projectId === "sync");
+  if (hasSyncLevelFailure || totalProcessed === 0) return "failed";
+
+  const failureRatio = recordsFailed / totalProcessed;
+  if (failureRatio <= FAILURE_TOLERANCE_RATIO) return "completed_with_warnings";
+
+  return "failed";
+}
+
 export async function syncAbemisProjects(
   options: { syncType?: string; triggeredBy?: string } | string = "system",
   onProgress?: (processed: number, total: number, message: string) => void
@@ -42,7 +89,44 @@ export async function syncAbemisProjects(
   const triggeredBy = typeof options === "string" ? options : (options?.triggeredBy || "system");
   const syncStartTime = new Date();
   const startedAtMs = syncStartTime.getTime();
-  
+
+  if (await hasActiveSync()) {
+    const message = "Skipped: another ABEMIS sync is already running.";
+    onProgress?.(0, 0, message);
+
+    const [skippedLog] = await db
+      .insert(syncLogs)
+      .values({
+        syncType,
+        resource: "project",
+        status: "skipped",
+        triggeredBy,
+        errors: [`sync: ${message}`],
+        startedAt: syncStartTime,
+        completedAt: syncStartTime,
+        duration: 0,
+        createdAt: syncStartTime,
+      })
+      .returning();
+
+    return {
+      success: false,
+      status: "skipped" as const,
+      skipped: true,
+      syncLogId: skippedLog.id,
+      statistics: {
+        projectsAdded: 0,
+        projectsUpdated: 0,
+        projectsFailed: 0,
+        totalProcessed: 0,
+        projectsExcluded: 0,
+        exclusions: createSyncExclusionCounts(),
+      },
+      duration: 0,
+      errors: [{ projectId: "sync", message }],
+    };
+  }
+
   // 1. Create a sync log entry
   const [syncLog] = await db
     .insert(syncLogs)
@@ -64,6 +148,7 @@ export async function syncAbemisProjects(
   const diagnostics: string[] = [];
   const exclusionCounts = createSyncExclusionCounts();
   const successfullyUpsertedIds = new Set<string>();
+  let finalStatus: "completed" | "completed_with_warnings" | "failed" = "completed";
 
   try {
     onProgress?.(0, 0, "Fetching metadata from ABEMIS...");
@@ -221,11 +306,12 @@ export async function syncAbemisProjects(
     // 4. Update sync log
     const completedAt = new Date();
     const duration = getDurationSeconds(startedAtMs, completedAt.getTime());
-    
+    finalStatus = determineSyncStatus({ errors, recordsFailed, totalProcessed });
+
     await db
       .update(syncLogs)
       .set({
-        status: errors.length > 0 ? "failed" : "completed",
+        status: finalStatus,
         recordsAdded,
         recordsUpdated,
         recordsFailed,
@@ -238,7 +324,7 @@ export async function syncAbemisProjects(
       .where(eq(syncLogs.id, syncLog.id));
 
     await captureSnapshotsAfterSuccessfulSync({
-      successful: errors.length === 0,
+      successful: finalStatus !== "failed",
       syncLogId: syncLog.id,
       capturedAt: completedAt,
       projectIds: [...successfullyUpsertedIds],
@@ -246,7 +332,8 @@ export async function syncAbemisProjects(
   }
 
   return {
-    success: errors.length === 0,
+    success: finalStatus !== "failed",
+    status: finalStatus,
     syncLogId: syncLog.id,
     statistics: {
       projectsAdded: recordsAdded,

@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Loader2, SkipForward } from "lucide-react";
 
 import {
   Table,
@@ -23,7 +23,13 @@ function formatDate(value: Date | string | null) {
 function StatusIcon({ status }: { status: string }) {
   if (status === "running") return <Loader2 className="size-4 animate-spin text-blue-600" />;
   if (status === "failed") return <AlertCircle className="size-4 text-red-600" />;
+  if (status === "completed_with_warnings") return <AlertTriangle className="size-4 text-amber-600" />;
+  if (status === "skipped") return <SkipForward className="size-4 text-slate-500" />;
   return <CheckCircle2 className="size-4 text-emerald-600" />;
+}
+
+function formatStatus(status: string) {
+  return status.replace(/_/g, " ");
 }
 
 export function SyncLogsTable({ logs }: { logs: SyncLog[] }) {
@@ -55,7 +61,7 @@ export function SyncLogsTable({ logs }: { logs: SyncLog[] }) {
               <TableCell>
                 <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-2 py-1 text-xs font-bold capitalize dark:border-slate-800">
                   <StatusIcon status={log.status} />
-                  {log.status}
+                  {formatStatus(log.status)}
                 </span>
               </TableCell>
               <TableCell className="font-semibold capitalize">{log.syncType}</TableCell>

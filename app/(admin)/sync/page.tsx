@@ -11,7 +11,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useSyncLogs, useTriggerSync } from "@/hooks/use-sync";
 
 export default function SyncPage() {
-  const [message, setMessage] = useState<{ text: string; tone: "info" | "success" | "error" } | null>(null);
+  const [message, setMessage] = useState<{ text: string; tone: "info" | "success" | "warning" | "error" } | null>(null);
   const { user } = useAuth();
   const triggerSync = useTriggerSync();
   const { data, isLoading, error, refetch } = useSyncLogs({
@@ -40,9 +40,10 @@ export default function SyncPage() {
         onSuccess: (result) => {
           const stats = result.statistics;
           const firstError = result.errors?.[0]?.message ? ` ${result.errors[0].message}` : "";
+          const hasFailures = (stats?.projectsFailed ?? 0) > 0;
           setMessage({
-            text: `${result.success ? "Sync complete" : "Sync completed with errors"}. Added ${stats?.projectsAdded ?? 0}, updated ${stats?.projectsUpdated ?? 0}, failed ${stats?.projectsFailed ?? 0}.${firstError}`,
-            tone: result.success ? "success" : "error",
+            text: `${result.message ?? (result.success ? "Sync complete" : "Sync completed with errors")}. Added ${stats?.projectsAdded ?? 0}, updated ${stats?.projectsUpdated ?? 0}, failed ${stats?.projectsFailed ?? 0}.${firstError}`,
+            tone: !result.success ? "error" : hasFailures ? "warning" : "success",
           });
           void refetch();
         },
@@ -114,9 +115,10 @@ export default function SyncPage() {
   );
 }
 
-function getMessageClass(tone: "info" | "success" | "error") {
+function getMessageClass(tone: "info" | "success" | "warning" | "error") {
   const base = "rounded-lg border p-4 text-sm font-semibold";
   if (tone === "success") return `${base} border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200`;
+  if (tone === "warning") return `${base} border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100`;
   if (tone === "error") return `${base} border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200`;
   return `${base} border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200`;
 }
