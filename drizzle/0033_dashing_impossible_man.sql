@@ -1,4 +1,4 @@
-CREATE TABLE "mydas_dashboards" (
+CREATE TABLE IF NOT EXISTS "mydas_dashboards" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text DEFAULT 'Untitled Dashboard' NOT NULL,
 	"pages" jsonb NOT NULL,
@@ -7,4 +7,4 @@ CREATE TABLE "mydas_dashboards" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE INDEX "mydas_dashboards_created_by_idx" ON "mydas_dashboards" USING btree ("created_by");
+CREATE INDEX IF NOT EXISTS "mydas_dashboards_created_by_idx" ON "mydas_dashboards" USING btree ("created_by");

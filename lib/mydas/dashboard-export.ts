@@ -14,7 +14,6 @@ export async function capturePageAsPng(element: HTMLElement, width: number, heig
   await document.fonts?.ready;
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   return toPng(element, {
-    backgroundColor: "#ffffff",
     cacheBust: true,
     pixelRatio: 2,
     width,
@@ -47,13 +46,13 @@ export async function downloadDashboardAsPdf(pageImages: string[], filename: str
 
   pageImages.forEach((image, index) => {
     if (index > 0) pdf.addPage();
-    pdf.addImage(image, "PNG", 0, 0, pageWidth, pageHeight);
     if (watermark) {
       pdf.saveGraphicsState();
       pdf.setGState(new GState({ opacity: 0.05 }));
       pdf.addImage(watermark, "PNG", watermarkX, watermarkY, watermarkWidth, watermarkHeight);
       pdf.restoreGraphicsState();
     }
+    pdf.addImage(image, "PNG", 0, 0, pageWidth, pageHeight);
   });
 
   pdf.save(filename);

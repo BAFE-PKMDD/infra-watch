@@ -1,8 +1,33 @@
-import type { ChartSpec } from "@/lib/chat-visuals";
+export const MYDAS_DISPLAY_TYPES = [
+  "bar",
+  "column",
+  "line",
+  "area",
+  "pie",
+  "donut",
+  "stacked-bar-100",
+  "stacked-column",
+  "heatmap",
+  "range",
+  "kpi",
+  "trend",
+] as const;
 
-export type MydasDisplayType = "bar" | "column" | "line" | "area" | "pie" | "donut";
+export type MydasDisplayType = (typeof MYDAS_DISPLAY_TYPES)[number];
 export type ValueLabelPosition = "none" | "inside" | "outside";
 export type MydasPalette = "default" | "ocean" | "sunset" | "earth";
+
+export interface MydasChartRow {
+  label: string;
+  values: number[];
+  projected?: boolean;
+}
+
+export interface MydasChartData {
+  title: string;
+  seriesNames: string[];
+  data: MydasChartRow[];
+}
 
 export interface MydasBaseElement {
   id: string;
@@ -14,7 +39,7 @@ export interface MydasBaseElement {
 
 export interface MydasChartElement extends MydasBaseElement {
   kind: "chart";
-  chart: ChartSpec;
+  chart: MydasChartData;
   displayType: MydasDisplayType;
   showLegend: boolean;
   valueLabelPosition: ValueLabelPosition;

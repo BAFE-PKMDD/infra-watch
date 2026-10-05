@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, type FormEvent, type ReactNode } from "react";
+import { useState, useRef, useEffect, type FormEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import {
   FileDown,
@@ -19,25 +19,6 @@ import {
   Type as TypeIcon,
   Minus,
 } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  LabelList,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,8 +33,11 @@ import {
   renameMydasDashboard,
   deleteMydasDashboard,
 } from "@/actions/mutation/mydas-dashboard.mutation";
-import type { ChartSpec } from "@/lib/chat-visuals";
+import { MydasChart } from "./mydas-chart";
+import { MAX_CHART_ROWS, normalizeMydasPages } from "@/lib/mydas/chart-data";
+import { buildCatalogAnswer } from "@/lib/mydas/analytics-catalog";
 import type {
+  MydasChartData,
   MydasDisplayType,
   ValueLabelPosition,
   MydasPalette,
@@ -92,13 +76,6 @@ const PALETTE_LABELS: Record<MydasPalette, string> = {
   earth: "Earth",
 };
 
-function formatChartValue(value: number) {
-  return new Intl.NumberFormat("en-PH", {
-    notation: Math.abs(value) >= 1_000_000 ? "compact" : "standard",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
 const DISPLAY_TYPE_LABELS: Record<MydasDisplayType, string> = {
   bar: "Horizontal bars",
   column: "Vertical columns",
@@ -106,165 +83,13 @@ const DISPLAY_TYPE_LABELS: Record<MydasDisplayType, string> = {
   area: "Area",
   pie: "Pie",
   donut: "Donut",
+  "stacked-bar-100": "100% stacked bars",
+  "stacked-column": "Stacked columns",
+  heatmap: "Highlight table",
+  range: "Range with median",
+  kpi: "KPI cards",
+  trend: "Trend with projection",
 };
-
-const TOOLTIP_STYLE = { borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 12 };
-const AXIS_TICK = { fontSize: 10, fill: "#64748b" };
-const CATEGORY_AXIS_TICK = { fontSize: 10, fill: "#475569" };
-const LEGEND_STYLE = { fontSize: 11 };
-const CHART_MARGIN = { top: 4, right: 12, bottom: 4, left: 0 };
-const COLUMN_CHART_MARGIN = { top: 4, right: 12, bottom: 24, left: 0 };
-// Stable references (not recreated every render) so a widget resize doesn't churn
-// Recharts' internal tick memoization -- see the DraggableBox rAF-coalescing comment.
-const formatAxisTick = (value: number | string) => formatChartValue(Number(value));
-const valueLabelFormatter = (value: string | number | boolean | null | undefined) => formatChartValue(Number(value ?? 0));
-
-// Fills 100% of its parent (rather than sizing itself off data length), so a
-// widget's own resize handle actually changes the rendered chart size.
-function MydasChart({
-  data,
-  type,
-  seriesName,
-  showLegend,
-  valueLabelPosition,
-  colors,
-}: {
-  data: ChartSpec["data"];
-  type: MydasDisplayType;
-  seriesName: string;
-  showLegend: boolean;
-  valueLabelPosition: ValueLabelPosition;
-  colors: string[];
-}) {
-  const tooltipFormatter = useCallback(
-    (value: number | string | readonly (number | string)[] | undefined): [string, string] => {
-      const numericValue = typeof value === "number" || typeof value === "string" ? value : value?.[0];
-      return [formatChartValue(Number(numericValue ?? 0)), seriesName];
-    },
-    [seriesName],
-  );
-
-  if (type === "pie" || type === "donut") {
-    return (
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="label"
-            innerRadius={type === "donut" ? "55%" : "35%"}
-            outerRadius="75%"
-            paddingAngle={2}
-          >
-            {data.map((item, index) => (
-              <Cell key={`${item.label}-${index}`} fill={colors[index % colors.length]} />
-            ))}
-          </Pie>
-          <Tooltip formatter={tooltipFormatter} />
-          {showLegend && <Legend wrapperStyle={LEGEND_STYLE} />}
-        </PieChart>
-      </ResponsiveContainer>
-    );
-  }
-
-  if (type === "line") {
-    return (
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={CHART_MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="label" tick={CATEGORY_AXIS_TICK} axisLine={false} tickLine={false} />
-          <YAxis tick={AXIS_TICK} tickFormatter={formatAxisTick} axisLine={false} tickLine={false} />
-          <Tooltip formatter={tooltipFormatter} contentStyle={TOOLTIP_STYLE} />
-          {showLegend && <Legend wrapperStyle={LEGEND_STYLE} />}
-          <Line type="monotone" dataKey="value" name={seriesName} stroke={colors[0]} strokeWidth={2} dot={{ r: 3, fill: colors[0] }} />
-        </LineChart>
-      </ResponsiveContainer>
-    );
-  }
-
-  if (type === "area") {
-    return (
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={CHART_MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="label" tick={CATEGORY_AXIS_TICK} axisLine={false} tickLine={false} />
-          <YAxis tick={AXIS_TICK} tickFormatter={formatAxisTick} axisLine={false} tickLine={false} />
-          <Tooltip formatter={tooltipFormatter} contentStyle={TOOLTIP_STYLE} />
-          {showLegend && <Legend wrapperStyle={LEGEND_STYLE} />}
-          <Area type="monotone" dataKey="value" name={seriesName} stroke={colors[0]} fill={colors[0]} fillOpacity={0.25} />
-        </AreaChart>
-      </ResponsiveContainer>
-    );
-  }
-
-  if (type === "column") {
-    return (
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={COLUMN_CHART_MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-          <XAxis
-            dataKey="label"
-            tick={CATEGORY_AXIS_TICK}
-            axisLine={false}
-            tickLine={false}
-            interval={0}
-            angle={-25}
-            textAnchor="end"
-            height={50}
-          />
-          <YAxis tick={AXIS_TICK} tickFormatter={formatAxisTick} axisLine={false} tickLine={false} />
-          <Tooltip formatter={tooltipFormatter} contentStyle={TOOLTIP_STYLE} />
-          {showLegend && <Legend wrapperStyle={LEGEND_STYLE} />}
-          <Bar dataKey="value" name={seriesName} radius={[5, 5, 0, 0]}>
-            {data.map((item, index) => (
-              <Cell key={`${item.label}-${index}`} fill={colors[index % colors.length]} />
-            ))}
-            {valueLabelPosition !== "none" && (
-              <LabelList
-                dataKey="value"
-                position={valueLabelPosition === "inside" ? "inside" : "top"}
-                formatter={valueLabelFormatter}
-                style={{ fontSize: 10, fill: valueLabelPosition === "inside" ? "#ffffff" : "#475569" }}
-              />
-            )}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    );
-  }
-
-  // default: "bar" (horizontal)
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} layout="vertical" margin={CHART_MARGIN}>
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-        <XAxis
-          type="number"
-          tick={AXIS_TICK}
-          tickFormatter={formatAxisTick}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis type="category" dataKey="label" width={88} tick={CATEGORY_AXIS_TICK} axisLine={false} tickLine={false} />
-        <Tooltip formatter={tooltipFormatter} contentStyle={TOOLTIP_STYLE} />
-        {showLegend && <Legend wrapperStyle={LEGEND_STYLE} />}
-        <Bar dataKey="value" name={seriesName} radius={[0, 5, 5, 0]}>
-          {data.map((item, index) => (
-            <Cell key={`${item.label}-${index}`} fill={colors[index % colors.length]} />
-          ))}
-          {valueLabelPosition !== "none" && (
-            <LabelList
-              dataKey="value"
-              position={valueLabelPosition === "inside" ? "insideRight" : "right"}
-              formatter={valueLabelFormatter}
-              style={{ fontSize: 10, fill: valueLabelPosition === "inside" ? "#ffffff" : "#475569" }}
-            />
-          )}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
 
 type MydasMessage = {
   id: string;
@@ -298,12 +123,9 @@ function RestrictedNotice() {
 // chart and label elements on the canvas. Uses pointer capture + per-move deltas
 // (not absolute cursor position) and commits through a functional updater so
 // rapid pointer events never read stale element state.
-// Header sits inline (consuming part of the box's own height) for charts, where
-// there's no separate "final" appearance to match. Labels toggle between an edited
-// box and a plain-text final view at the identical (x, y, width, height) -- an inline
-// header there would push the text down while editing, so it visibly jumps up the
-// moment you click away. "overlay" floats the header above the box instead, keeping
-// the editable area's geometry pixel-identical to the deselected label.
+// The selected chrome (header above, footer below) floats outside the element's own
+// box, so the content keeps the same (x, y, width, height) whether it's selected or
+// not -- nothing shifts when you click away.
 const OVERLAY_HEADER_HEIGHT = 36;
 
 function DraggableBox({
@@ -319,7 +141,9 @@ function DraggableBox({
   onRemove,
   removeLabel,
   children,
-  headerPlacement = "inline",
+  footer,
+  selected = true,
+  onSelect,
 }: {
   x: number;
   y: number;
@@ -333,7 +157,9 @@ function DraggableBox({
   onRemove: () => void;
   removeLabel: string;
   children: ReactNode;
-  headerPlacement?: "inline" | "overlay";
+  footer?: ReactNode;
+  selected?: boolean;
+  onSelect?: () => void;
 }) {
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const resizeStart = useRef<{ x: number; y: number } | null>(null);
@@ -453,38 +279,47 @@ function DraggableBox({
     />
   );
 
-  if (headerPlacement === "overlay") {
+  if (!selected) {
     return (
-      <>
-        <div
-          data-capture-hide="true"
-          className="absolute overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900"
-          style={{ left: x, top: y - OVERLAY_HEADER_HEIGHT, width }}
-        >
-          {headerBar}
-        </div>
-        <div
-          data-capture-box="true"
-          className="absolute overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900"
-          style={{ left: x, top: y, width, height }}
-        >
-          {children}
-          {resizeHandle}
-        </div>
-      </>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onSelect}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") onSelect?.();
+        }}
+        title="Click to edit"
+        className="absolute cursor-pointer overflow-hidden bg-white dark:bg-slate-900"
+        style={{ left: x, top: y, width, height }}
+      >
+        {children}
+      </div>
     );
   }
 
   return (
-    <div
-      data-capture-box="true"
-      className="absolute flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900"
-      style={{ left: x, top: y, width, height }}
-    >
-      {headerBar}
-      <div className="min-h-0 flex-1">{children}</div>
-      {resizeHandle}
-    </div>
+    <>
+      <div
+        data-capture-hide="true"
+        className="absolute overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900"
+        style={{ left: x, top: y - OVERLAY_HEADER_HEIGHT, width }}
+      >
+        {headerBar}
+      </div>
+      <div
+        data-capture-box="true"
+        className="absolute overflow-hidden rounded-sm bg-white ring-2 ring-primary/50 dark:bg-slate-900"
+        style={{ left: x, top: y, width, height }}
+      >
+        {children}
+        {resizeHandle}
+      </div>
+      {footer && (
+        <div data-capture-hide="true" className="absolute" style={{ left: x, top: y + height + 6, width }}>
+          {footer}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -492,19 +327,28 @@ function WidgetDataEditor({
   chart,
   onUpdateChart,
 }: {
-  chart: ChartSpec;
-  onUpdateChart: (patch: Partial<ChartSpec>) => void;
+  chart: MydasChartData;
+  onUpdateChart: (patch: Partial<MydasChartData>) => void;
 }) {
-  function updateRow(index: number, patch: Partial<ChartSpec["data"][number]>) {
-    onUpdateChart({ data: chart.data.map((row, i) => (i === index ? { ...row, ...patch } : row)) });
+  function updateLabel(index: number, label: string) {
+    onUpdateChart({ data: chart.data.map((row, i) => (i === index ? { ...row, label } : row)) });
+  }
+  function updateValue(rowIndex: number, seriesIndex: number, value: number) {
+    onUpdateChart({
+      data: chart.data.map((row, i) =>
+        i === rowIndex
+          ? { ...row, values: chart.seriesNames.map((_, s) => (s === seriesIndex ? value : (row.values[s] ?? 0))) }
+          : row,
+      ),
+    });
   }
   function removeRow(index: number) {
     if (chart.data.length <= 1) return;
     onUpdateChart({ data: chart.data.filter((_, i) => i !== index) });
   }
   function addRow() {
-    if (chart.data.length >= 12) return;
-    onUpdateChart({ data: [...chart.data, { label: "New item", value: 0 }] });
+    if (chart.data.length >= MAX_CHART_ROWS) return;
+    onUpdateChart({ data: [...chart.data, { label: "New item", values: chart.seriesNames.map(() => 0) }] });
   }
 
   return (
@@ -513,18 +357,22 @@ function WidgetDataEditor({
         <div key={index} className="flex items-center gap-1.5">
           <input
             value={row.label}
-            onChange={(event) => updateRow(index, { label: event.target.value.slice(0, 48) })}
+            onChange={(event) => updateLabel(index, event.target.value.slice(0, 48))}
             aria-label={`Label for row ${index + 1}`}
             className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] dark:border-slate-700 dark:bg-slate-900"
           />
-          <input
-            type="number"
-            min={0}
-            value={row.value}
-            onChange={(event) => updateRow(index, { value: Math.max(0, Number(event.target.value) || 0) })}
-            aria-label={`Value for row ${index + 1}`}
-            className="w-16 rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] dark:border-slate-700 dark:bg-slate-900"
-          />
+          {chart.seriesNames.map((name, seriesIndex) => (
+            <input
+              key={seriesIndex}
+              type="number"
+              min={0}
+              value={row.values[seriesIndex] ?? 0}
+              onChange={(event) => updateValue(index, seriesIndex, Math.max(0, Number(event.target.value) || 0))}
+              aria-label={`${name} for row ${index + 1}`}
+              title={name}
+              className="w-14 rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] dark:border-slate-700 dark:bg-slate-900"
+            />
+          ))}
           <button
             type="button"
             onClick={() => removeRow(index)}
@@ -539,10 +387,10 @@ function WidgetDataEditor({
       <button
         type="button"
         onClick={addRow}
-        disabled={chart.data.length >= 12}
+        disabled={chart.data.length >= MAX_CHART_ROWS}
         className="flex min-h-7 items-center gap-1 rounded px-2 text-[11px] font-medium text-primary hover:underline disabled:opacity-40 disabled:no-underline"
       >
-        <Plus aria-hidden="true" className="size-3.5" /> Add row {chart.data.length >= 12 && "(max 12)"}
+        <Plus aria-hidden="true" className="size-3.5" /> Add row {chart.data.length >= MAX_CHART_ROWS && `(max ${MAX_CHART_ROWS})`}
       </button>
     </div>
   );
@@ -550,12 +398,16 @@ function WidgetDataEditor({
 
 function DesignerChart({
   element,
+  isSelected,
+  onSelect,
   onRemove,
   onMoveBy,
   onResizeBy,
   onUpdateChart,
 }: {
   element: ChartElement;
+  isSelected: boolean;
+  onSelect: () => void;
   onRemove: () => void;
   onMoveBy: (dx: number, dy: number) => void;
   onResizeBy: (dx: number, dy: number) => void;
@@ -564,6 +416,7 @@ function DesignerChart({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(element.chart.title);
   const [showDataEditor, setShowDataEditor] = useState(false);
+  const isKpi = element.displayType === "kpi";
 
   function commitTitle() {
     const trimmed = draftTitle.trim();
@@ -571,6 +424,60 @@ function DesignerChart({
     else setDraftTitle(element.chart.title);
     setIsEditingTitle(false);
   }
+
+  // The title row is part of the chart's own geometry in both states (editing and
+  // deselected), so the chart doesn't shift when you click away. KPI cards carry
+  // their own labels, so they skip the title row entirely.
+  const titleRow = !isKpi && (
+    <div className="flex h-9 shrink-0 items-center px-3">
+      {isSelected && isEditingTitle ? (
+        <input
+          autoFocus
+          value={draftTitle}
+          onChange={(event) => setDraftTitle(event.target.value)}
+          onBlur={commitTitle}
+          onPointerDown={(event) => event.stopPropagation()}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") commitTitle();
+            if (event.key === "Escape") {
+              setDraftTitle(element.chart.title);
+              setIsEditingTitle(false);
+            }
+          }}
+          aria-label="Chart title"
+          className="min-w-0 flex-1 rounded border border-primary/40 bg-white px-2 py-1 text-sm font-semibold outline-none dark:bg-slate-950"
+        />
+      ) : isSelected ? (
+        <button
+          type="button"
+          onClick={() => setIsEditingTitle(true)}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="group flex min-h-8 min-w-0 flex-1 items-center gap-1.5 rounded px-1 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50 dark:text-white dark:hover:bg-slate-800"
+          title="Click to rename"
+        >
+          <span className="truncate">{element.chart.title}</span>
+          <Pencil aria-hidden="true" className="size-3 shrink-0 text-slate-400 opacity-0 group-hover:opacity-100" />
+        </button>
+      ) : (
+        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{element.chart.title}</p>
+      )}
+    </div>
+  );
+
+  const chartBody = (
+    <div className="flex h-full flex-col">
+      {titleRow}
+      <div className="min-h-0 flex-1 p-1.5">
+        <MydasChart
+          chart={element.chart}
+          type={element.displayType}
+          showLegend={element.showLegend}
+          valueLabelPosition={element.valueLabelPosition}
+          colors={PALETTES[element.palette]}
+        />
+      </div>
+    </div>
+  );
 
   return (
     <DraggableBox
@@ -584,117 +491,81 @@ function DesignerChart({
       onResizeBy={onResizeBy}
       onRemove={onRemove}
       removeLabel={`Remove "${element.chart.title}"`}
+      selected={isSelected}
+      onSelect={onSelect}
       header={
-        <>
-          {isEditingTitle ? (
-            <input
-              autoFocus
-              value={draftTitle}
-              onChange={(event) => setDraftTitle(event.target.value)}
-              onBlur={commitTitle}
-              onPointerDown={(event) => event.stopPropagation()}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") commitTitle();
-                if (event.key === "Escape") {
-                  setDraftTitle(element.chart.title);
-                  setIsEditingTitle(false);
-                }
-              }}
-              aria-label="Chart title"
-              className="min-w-0 flex-1 rounded border border-primary/40 bg-white px-2 py-1 text-sm font-semibold outline-none dark:bg-slate-950"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsEditingTitle(true)}
-              onPointerDown={(event) => event.stopPropagation()}
-              className="group flex min-h-8 min-w-0 flex-1 items-center gap-1.5 rounded px-1 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50 dark:text-white dark:hover:bg-slate-800"
-              title="Click to rename"
-            >
-              <span className="truncate">{element.chart.title}</span>
-              <Pencil aria-hidden="true" className="size-3 shrink-0 text-slate-400 opacity-0 group-hover:opacity-100" />
-            </button>
-          )}
-          <select
-            value={element.displayType}
-            onChange={(event) => onUpdateChart({ displayType: event.target.value as MydasDisplayType })}
-            onPointerDown={(event) => event.stopPropagation()}
-            aria-label="Chart type"
-            data-capture-hide="true"
-            className="min-h-8 shrink-0 rounded-lg border border-slate-200 bg-white px-1.5 text-[11px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            {(Object.keys(DISPLAY_TYPE_LABELS) as MydasDisplayType[]).map((option) => (
-              <option key={option} value={option}>
-                {DISPLAY_TYPE_LABELS[option]}
-              </option>
-            ))}
-          </select>
-        </>
+        <select
+          value={element.displayType}
+          onChange={(event) => onUpdateChart({ displayType: event.target.value as MydasDisplayType })}
+          onPointerDown={(event) => event.stopPropagation()}
+          aria-label="Chart type"
+          data-capture-hide="true"
+          className="min-h-8 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[11px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+        >
+          {(Object.keys(DISPLAY_TYPE_LABELS) as MydasDisplayType[]).map((option) => (
+            <option key={option} value={option}>
+              {DISPLAY_TYPE_LABELS[option]}
+            </option>
+          ))}
+        </select>
       }
-    >
-      <div className="flex h-full flex-col">
-        <div className="min-h-0 flex-1 p-1.5">
-          <MydasChart
-            data={element.chart.data}
-            type={element.displayType}
-            seriesName={element.chart.valueLabel ?? element.chart.title}
-            showLegend={element.showLegend}
-            valueLabelPosition={element.valueLabelPosition}
-            colors={PALETTES[element.palette]}
-          />
-        </div>
-        <div data-capture-hide="true" className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-slate-100 px-2 py-1 dark:border-slate-800">
-          <label className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-            Palette
-            <select
-              value={element.palette}
-              onChange={(event) => onUpdateChart({ palette: event.target.value as MydasPalette })}
-              className="min-h-6 rounded border border-slate-200 bg-white px-1 text-[10px] dark:border-slate-700 dark:bg-slate-900"
-            >
-              {(Object.keys(PALETTE_LABELS) as MydasPalette[]).map((option) => (
-                <option key={option} value={option}>
-                  {PALETTE_LABELS[option]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-            <input
-              type="checkbox"
-              checked={element.showLegend}
-              onChange={(event) => onUpdateChart({ showLegend: event.target.checked })}
-              className="size-3 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-700"
-            />
-            Legend
-          </label>
-          {(element.displayType === "bar" || element.displayType === "column") && (
+      footer={
+        <div className="rounded-lg border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2 py-1">
             <label className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-              Values
+              Palette
               <select
-                value={element.valueLabelPosition}
-                onChange={(event) => onUpdateChart({ valueLabelPosition: event.target.value as ValueLabelPosition })}
+                value={element.palette}
+                onChange={(event) => onUpdateChart({ palette: event.target.value as MydasPalette })}
                 className="min-h-6 rounded border border-slate-200 bg-white px-1 text-[10px] dark:border-slate-700 dark:bg-slate-900"
               >
-                <option value="none">Hidden</option>
-                <option value="inside">Inside bar</option>
-                <option value="outside">Outside bar</option>
+                {(Object.keys(PALETTE_LABELS) as MydasPalette[]).map((option) => (
+                  <option key={option} value={option}>
+                    {PALETTE_LABELS[option]}
+                  </option>
+                ))}
               </select>
             </label>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowDataEditor((prev) => !prev)}
-            className="flex items-center gap-1 text-[10px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-          >
-            <ListTree aria-hidden="true" className="size-3" /> {showDataEditor ? "Hide data" : "Edit data"}
-          </button>
-        </div>
-        {showDataEditor && (
-          <div data-capture-hide="true" className="max-h-32 shrink-0 overflow-y-auto">
-            <WidgetDataEditor chart={element.chart} onUpdateChart={(patch) => onUpdateChart({ chart: { ...element.chart, ...patch } })} />
+            <label className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+              <input
+                type="checkbox"
+                checked={element.showLegend}
+                onChange={(event) => onUpdateChart({ showLegend: event.target.checked })}
+                className="size-3 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-700"
+              />
+              Legend
+            </label>
+            {(element.displayType === "bar" || element.displayType === "column") && (
+              <label className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                Values
+                <select
+                  value={element.valueLabelPosition}
+                  onChange={(event) => onUpdateChart({ valueLabelPosition: event.target.value as ValueLabelPosition })}
+                  className="min-h-6 rounded border border-slate-200 bg-white px-1 text-[10px] dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <option value="none">Hidden</option>
+                  <option value="inside">Inside bar</option>
+                  <option value="outside">Outside bar</option>
+                </select>
+              </label>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowDataEditor((prev) => !prev)}
+              className="flex items-center gap-1 text-[10px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              <ListTree aria-hidden="true" className="size-3" /> {showDataEditor ? "Hide data" : "Edit data"}
+            </button>
           </div>
-        )}
-      </div>
+          {showDataEditor && (
+            <div className="max-h-48 overflow-y-auto border-t border-slate-100 dark:border-slate-800">
+              <WidgetDataEditor chart={element.chart} onUpdateChart={(patch) => onUpdateChart({ chart: { ...element.chart, ...patch } })} />
+            </div>
+          )}
+        </div>
+      }
+    >
+      {chartBody}
     </DraggableBox>
   );
 }
@@ -748,7 +619,6 @@ function DesignerLabel({
       onResizeBy={onResizeBy}
       onRemove={onRemove}
       removeLabel="Remove label"
-      headerPlacement="overlay"
       header={
         <div data-capture-hide="true" className="flex flex-1 items-center gap-1">
           <span className="flex min-h-8 flex-1 items-center gap-1.5 px-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
@@ -825,7 +695,7 @@ function DesignerOverlay({
   isExporting: boolean;
   onExportPdf: () => void;
 }) {
-  const [selectedLabelId, setSelectedLabelId] = useState<string | null>(null);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -839,7 +709,7 @@ function DesignerOverlay({
 
   function handleAddLabel() {
     const id = onAddLabel();
-    setSelectedLabelId(id);
+    setSelectedElementId(id);
   }
 
   return (
@@ -849,7 +719,9 @@ function DesignerOverlay({
           presentation-style dashboard instead of the live editor. */}
       <style>{`
         .mydas-export-capture [data-capture-hide="true"] { display: none !important; }
+        .mydas-export-capture,
         .mydas-export-capture [data-capture-box="true"] {
+          background: transparent !important;
           border-color: transparent !important;
           box-shadow: none !important;
         }
@@ -915,7 +787,7 @@ function DesignerOverlay({
         <div
           ref={canvasRef}
           onClick={(event) => {
-            if (event.target === event.currentTarget) setSelectedLabelId(null);
+            if (event.target === event.currentTarget) setSelectedElementId(null);
           }}
           className="relative shrink-0 rounded-sm bg-white shadow-2xl dark:bg-slate-950"
           style={{ width: A4_CANVAS_WIDTH, height: A4_CANVAS_HEIGHT }}
@@ -930,6 +802,8 @@ function DesignerOverlay({
               <DesignerChart
                 key={element.id}
                 element={element}
+                isSelected={selectedElementId === element.id}
+                onSelect={() => setSelectedElementId(element.id)}
                 onRemove={() => onRemoveElement(element.id)}
                 onMoveBy={(dx, dy) => onMoveElementBy(element.id, dx, dy)}
                 onResizeBy={(dx, dy) => onResizeElementBy(element.id, dx, dy)}
@@ -939,8 +813,8 @@ function DesignerOverlay({
               <DesignerLabel
                 key={element.id}
                 element={element}
-                isSelected={selectedLabelId === element.id}
-                onSelect={() => setSelectedLabelId(element.id)}
+                isSelected={selectedElementId === element.id}
+                onSelect={() => setSelectedElementId(element.id)}
                 onRemove={() => onRemoveElement(element.id)}
                 onMoveBy={(dx, dy) => onMoveElementBy(element.id, dx, dy)}
                 onResizeBy={(dx, dy) => onResizeElementBy(element.id, dx, dy)}
@@ -999,7 +873,7 @@ export default function MydasPage() {
       skipNextAutoSaveRef.current = true;
       setCurrentDashboardId(target.id);
       setDashboardName(target.name);
-      setPages(loaded?.pages && loaded.pages.length > 0 ? loaded.pages : [{ id: "page-1", elements: [] }]);
+      setPages(loaded?.pages && loaded.pages.length > 0 ? normalizeMydasPages(loaded.pages) : [{ id: "page-1", elements: [] }]);
       setActivePageIndex(0);
       setIsDashboardLoading(false);
     })();
@@ -1037,7 +911,7 @@ export default function MydasPage() {
     skipNextAutoSaveRef.current = true;
     setCurrentDashboardId(id);
     setDashboardName(summary?.name ?? "Untitled Dashboard");
-    setPages(loaded?.pages && loaded.pages.length > 0 ? loaded.pages : [{ id: "page-1", elements: [] }]);
+    setPages(loaded?.pages && loaded.pages.length > 0 ? normalizeMydasPages(loaded.pages) : [{ id: "page-1", elements: [] }]);
     setActivePageIndex(0);
     setIsDashboardLoading(false);
   }
@@ -1113,8 +987,8 @@ export default function MydasPage() {
     const reply: MydasReply = result.data;
 
     if (reply.kind === "text") {
-      // Not a chart request (meta question, greeting, "remove X", etc.) — the AI
-      // replies in plain text instead of being forced to invent a chart.
+      // Not a chart request (greeting, "remove X", off-topic, etc.) — the AI replies
+      // in plain text instead of being forced to invent a chart.
       setMessages((prev) => [
         ...prev,
         { id: `${Date.now()}-assistant`, role: "assistant", content: reply.message },
@@ -1123,7 +997,23 @@ export default function MydasPage() {
       return;
     }
 
+    if (reply.kind === "catalog") {
+      // Built from the same catalog that drives chart generation, so the list of
+      // analytics here always matches what the designer can actually render.
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-assistant`,
+          role: "assistant",
+          content: buildCatalogAnswer("Here are the analytics I can generate for InfraWatch data:"),
+        },
+      ]);
+      setIsAsking(false);
+      return;
+    }
+
     const chart = reply.chart;
+    const displayType = reply.displayType;
     const sql = reply.sql;
     const targetPage = activePageIndex;
     updatePageElements(targetPage, (elements) => {
@@ -1134,7 +1024,7 @@ export default function MydasPage() {
         id: `${Date.now()}-chart`,
         kind: "chart",
         chart,
-        displayType: chart.type,
+        displayType,
         showLegend: false,
         valueLabelPosition: "none",
         palette: "default",
@@ -1394,7 +1284,7 @@ export default function MydasPage() {
                       className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                        className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                           message.role === "user"
                             ? "bg-primary text-white"
                             : message.isError
