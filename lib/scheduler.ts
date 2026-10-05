@@ -8,6 +8,7 @@ import { hasRecentSuccessfulSync, syncAbemisProjects } from "./abemis/sync";
 import { purgeExpiredChatHistory } from "./chat-history";
 import { runSlaFollowUpReminders } from "./sla-followup";
 import { runCitizenAnalyticsMaintenance } from "./analytics/citizen-analytics-maintenance";
+import { runScheduledSmsAcknowledgments } from "./sms-grievance/auto-acknowledge";
 
 let isSchedulerInitialized = false;
 
@@ -155,6 +156,32 @@ export function initScheduler() {
     {
       timezone: "Asia/Manila",
       name: "sla-followup-reminders",
+    },
+  );
+
+  // Texts a first reply to each newly received SMS grievance. A no-op unless
+  // SMS_AUTO_ACK_ENABLED=true (and SMS_AUTO_ACK_SINCE is set), so merely turning the
+  // scheduler on never starts messaging people.
+  cron.schedule(
+    "* * * * *",
+    async () => {
+      try {
+        const result = await runScheduledSmsAcknowledgments();
+        if (result?.skippedReason && result.skippedReason !== "disabled") {
+          console.warn(`[Scheduler] SMS auto-acknowledgment skipped: ${result.skippedReason}.`);
+        } else if (result && (result.acknowledged > 0 || result.failed > 0)) {
+          console.log(`[Scheduler] SMS auto-acknowledgments — sent ${result.acknowledged}, failed ${result.failed}.`);
+        }
+      } catch (error) {
+        console.error(
+          "[Scheduler] SMS auto-acknowledgment run failed:",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    },
+    {
+      timezone: "Asia/Manila",
+      name: "sms-grievance-auto-acknowledgment",
     },
   );
 

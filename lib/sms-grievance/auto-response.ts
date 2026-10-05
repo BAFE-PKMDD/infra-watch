@@ -29,20 +29,29 @@ export function buildAcknowledgmentReply(ticketId: string): string {
 // The two categories need different phrasing: a stray message unrelated to any project
 // gets a plain "not for us" reply, while a real project complaint for another agency
 // points the sender elsewhere instead of implying their report itself was invalid.
-export function buildNotBafeProjectReply(reason: string, category: SmsNotBafeCategory): string {
+// `live: true` is for a reply that actually goes out over the SMS gateway to a real
+// sender, so it must not carry the "SAMPLE SMS ONLY" prefix; the default stays the
+// prefixed prototype wording used by fixtures and the tutorial sandbox.
+export type ReplyOptions = { live?: boolean };
+
+function replyPrefix(options: ReplyOptions | undefined) {
+  return options?.live ? "" : `${SAMPLE_SMS_PREFIX} `;
+}
+
+export function buildNotBafeProjectReply(reason: string, category: SmsNotBafeCategory, options?: ReplyOptions): string {
   const situationLine = category === "different_agency_project"
     ? "the project you're reporting belongs to a different government agency, not BAFE"
     : "this message isn't related to a BAFE project or program";
   const closingLine = category === "different_agency_project"
     ? "Please reach out to the agency responsible for that project directly."
     : "";
-  return [`${SAMPLE_SMS_PREFIX} Good day. After review, we found that ${situationLine}, so we're unable to act on it here.`, `Reason: ${reason}.`, closingLine, "Thank you."]
+  return [`${replyPrefix(options)}Good day. After review, we found that ${situationLine}, so we're unable to act on it here.`, `Reason: ${reason}.`, closingLine, "Thank you."]
     .filter(Boolean)
     .join(" ");
 }
 
-export function buildBafeCaseOpenedReply(caseId: string): string {
-  return `${SAMPLE_SMS_PREFIX} Good day. Your report has been confirmed as a BAFE project concern and logged as case ${caseId}. Our review team will continue following up with you on this thread until it's resolved. Thank you.`;
+export function buildBafeCaseOpenedReply(caseId: string, options?: ReplyOptions): string {
+  return `${replyPrefix(options)}Good day. Your report has been confirmed as a BAFE project concern and logged as case ${caseId}. Our review team will continue following up with you on this thread until it's resolved. Thank you.`;
 }
 
 // Deterministic so re-rendering the same static fixture set never mints a different ID for

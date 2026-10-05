@@ -3,11 +3,13 @@ import { createServer, type Server } from "node:http";
 import { test } from "bun:test";
 
 import { SMS_MOCK_SCENARIOS } from "./mock-fixtures";
+import { createMemorySmsReviewStore } from "./review-store";
 import {
   fetchLiveSmsGrievanceRecords,
   formatLiveLocationLabel,
   getSmsGrievanceQueue,
   mapRawGrievanceToRecord,
+  overlaySavedReviews,
   parsePhReceivedAt,
   type RawSmsGrievanceMessage,
 } from "./live-source";
@@ -112,7 +114,7 @@ test("getSmsGrievanceQueue falls back to sample messages when the live feed is u
   process.env.SMS_GRIEVANCE_API_URL = "http://127.0.0.1:1";
 
   try {
-    const queue = await getSmsGrievanceQueue();
+    const queue = await getSmsGrievanceQueue(createMemorySmsReviewStore());
     assert.equal(queue.dataSource, "sample");
     assert.equal(queue.liveFetchError, true);
     assert.deepEqual(queue.records, SMS_MOCK_SCENARIOS);
@@ -131,7 +133,7 @@ test("getSmsGrievanceQueue falls back to sample messages on a malformed response
   process.env.SMS_GRIEVANCE_API_URL = origin;
 
   try {
-    const queue = await getSmsGrievanceQueue();
+    const queue = await getSmsGrievanceQueue(createMemorySmsReviewStore());
     assert.equal(queue.dataSource, "sample");
     assert.equal(queue.liveFetchError, true);
   } finally {
@@ -150,7 +152,7 @@ test("getSmsGrievanceQueue reports live data on success", async () => {
   process.env.SMS_GRIEVANCE_API_URL = origin;
 
   try {
-    const queue = await getSmsGrievanceQueue();
+    const queue = await getSmsGrievanceQueue(createMemorySmsReviewStore());
     assert.equal(queue.dataSource, "live");
     assert.equal(queue.liveFetchError, false);
     assert.equal(queue.records.length, 1);
@@ -158,4 +160,26 @@ test("getSmsGrievanceQueue reports live data on success", async () => {
     process.env.SMS_GRIEVANCE_API_URL = previous;
     await close(server);
   }
+});
+
+test("overlaySavedReviews keeps staff's saved review but always takes the sender's text and location from the feed", () => {
+  const live = mapRawGrievanceToRecord(RAW_MESSAGE);
+  const saved = {
+    ...live,
+    status: "under_review" as const,
+    originalText: "stale copy",
+    coordinates: null,
+    assignedRegion: "Region VII",
+  };
+  const [merged] = overlaySavedReviews([live], new Map([[live.id, { record: saved, version: 3 }]]));
+
+  assert.equal(merged.status, "under_review");
+  assert.equal(merged.assignedRegion, "Region VII");
+  assert.equal(merged.originalText, live.originalText);
+  assert.deepEqual(merged.coordinates, live.coordinates);
+});
+
+test("overlaySavedReviews leaves messages with no saved review untouched", () => {
+  const live = mapRawGrievanceToRecord(RAW_MESSAGE);
+  assert.deepEqual(overlaySavedReviews([live], new Map()), [live]);
 });

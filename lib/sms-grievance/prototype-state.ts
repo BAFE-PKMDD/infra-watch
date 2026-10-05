@@ -38,7 +38,23 @@ function requireProject(project: SmsProjectTag | null): SmsProjectTag {
   };
 }
 
-export function applySmsPrototypeAction(candidate: SmsMockScenario, action: PrototypeAction): SmsMockScenario {
+export type ApplyActionOptions = {
+  // True when the record is a real message from the live SMS line: outbound replies are
+  // plain gateway text (no "SAMPLE SMS ONLY" prefix) that start out "simulated_pending"
+  // until the server actually sends them, and events carry the real clock time instead of
+  // the fixed prototype timestamps. Defaults to the sandbox/prototype behavior.
+  live?: boolean;
+  now?: string;
+};
+
+const PROTOTYPE_EVENT_TIME = "2026-09-19T09:15:00.000Z";
+const PROTOTYPE_STATUS_TIME = "2026-09-19T09:30:00.000Z";
+
+export function applySmsPrototypeAction(candidate: SmsMockScenario, action: PrototypeAction, options: ApplyActionOptions = {}): SmsMockScenario {
+  const live = options.live === true;
+  const now = options.now ?? new Date().toISOString();
+  const eventTime = (fallback: string) => (live ? now : fallback);
+  const outboundStatus = live ? "simulated_pending" as const : "simulated_delivered" as const;
   if (action.type === "accept") {
     if (candidate.status !== "needs_relevance_review") throw new Error("This action is available only while the sample needs checking.");
     const location = requireText(action.location, "Location tag");
@@ -71,15 +87,15 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
       projectProvince: project?.province,
       projectMunicipality: project?.municipality,
       projectLabel: project?.name ?? "Not yet identified — needs further checking",
-      deliveryStatus: "simulated_delivered",
+      deliveryStatus: outboundStatus,
       conversation: [
         ...candidate.conversation,
         {
           id: `${candidate.id}-prototype-event-${candidate.conversation.length + 1}`,
           kind: "outbound_sms",
-          body: buildBafeCaseOpenedReply(smsGrievanceCaseId),
-          occurredAt: "2026-09-19T09:15:00.000Z",
-          deliveryStatus: "simulated_delivered",
+          body: buildBafeCaseOpenedReply(smsGrievanceCaseId, { live }),
+          occurredAt: eventTime(PROTOTYPE_EVENT_TIME),
+          deliveryStatus: outboundStatus,
         },
       ],
     };
@@ -88,7 +104,7 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
   if (action.type === "mark_not_bafe_project") {
     if (candidate.status !== "needs_relevance_review") throw new Error("This action is available only while the sample needs checking.");
     const reason = requireText(action.reason, "Reason");
-    return {
+    const dismissed: SmsMockScenario = {
       ...candidate,
       relevance: "out_of_scope",
       relevanceReason: reason,
@@ -100,6 +116,11 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
       projectCode: undefined,
       projectProvince: undefined,
       projectMunicipality: undefined,
+    };
+    // A real message dismissed as not-BAFE is just filed away: the sender is not texted.
+    if (live) return dismissed;
+    return {
+      ...dismissed,
       deliveryStatus: "simulated_delivered",
       conversation: [
         ...candidate.conversation,
@@ -107,7 +128,7 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
           id: `${candidate.id}-prototype-event-${candidate.conversation.length + 1}`,
           kind: "outbound_sms",
           body: buildNotBafeProjectReply(reason, action.category),
-          occurredAt: "2026-09-19T09:15:00.000Z",
+          occurredAt: PROTOTYPE_EVENT_TIME,
           deliveryStatus: "simulated_delivered",
         },
       ],
@@ -162,8 +183,8 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
         {
           id: `${candidate.id}-prototype-event-${candidate.conversation.length + 1}`,
           kind: "status_event",
-          body: `Prototype status changed to ${action.to.replaceAll("_", " ")}. Reason: ${reason}`,
-          occurredAt: "2026-09-19T09:30:00.000Z",
+          body: `${live ? "Status" : "Prototype status"} changed to ${action.to.replaceAll("_", " ")}. Reason: ${reason}`,
+          occurredAt: eventTime(PROTOTYPE_STATUS_TIME),
         },
       ],
     };
@@ -184,15 +205,15 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
   if (action.type === "simulate_response") {
     return {
       ...candidate,
-      deliveryStatus: "simulated_delivered",
+      deliveryStatus: outboundStatus,
       conversation: [
         ...candidate.conversation,
         {
           id: `${candidate.id}-prototype-event-${eventNumber}`,
           kind: "outbound_sms",
-          body: `SAMPLE SMS ONLY. No message was sent. ${body}`,
-          occurredAt: "2026-09-19T09:30:00.000Z",
-          deliveryStatus: "simulated_delivered",
+          body: live ? body : `SAMPLE SMS ONLY. No message was sent. ${body}`,
+          occurredAt: eventTime(PROTOTYPE_STATUS_TIME),
+          deliveryStatus: outboundStatus,
         },
       ],
     };
@@ -206,7 +227,7 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
         id: `${candidate.id}-prototype-event-${eventNumber}`,
         kind: "internal_note",
         body,
-        occurredAt: "2026-09-19T09:30:00.000Z",
+        occurredAt: eventTime(PROTOTYPE_STATUS_TIME),
       },
     ],
   };

@@ -366,16 +366,18 @@ Important limitation: the server currently accepts arbitrary transitions among r
 
 ### 4.6 SMS grievance review (`/issues/sms-review`, `/issues/sms-review/[id]`)
 
-**Status:** Prototype
+**Status:** Live (replies and review state); cases are not yet created in Issue Management
 
-- Available only outside production and only to signed-in admin/moderator/regional-admin staff.
-- Loads real, untriaged messages server-side from the SMS grievance line's public API (`SMS_GRIEVANCE_API_URL`); falls back to deterministic synthetic records, with a visible on-page warning, if that feed can't be reached.
-- Preserves the original SMS text exactly as received. Review decisions (tags, routing, status, simulated replies) live in browser-local storage only and are never written back to the source feed or to a database.
-- Lets staff derive tags/routing and select an actual BAFE project from current InfraWatch project records, or explicitly mark `Not a BAFE project`.
-- A parser/project phrase is only a clue; it cannot confirm a project.
-- Does not send real SMS replies and does not create production database cases. Live sender numbers are shown as received to the signed-in staff who already have access to this page.
+- Available to signed-in admin/moderator/regional-admin staff.
+- Loads real, untriaged messages server-side from the SMS grievance line's API (`SMS_GRIEVANCE_API_URL`); falls back to deterministic synthetic records, with a visible on-page warning, if that feed can't be reached.
+- Preserves the original SMS text exactly as received. Staff decisions (tags, routing, status, notes and the SMS thread) are saved in the `sms_grievance_reviews` table and overlaid on the feed, so every reviewer sees the same state. Each write is version-checked, so two reviewers can't both send the same reply.
+- Tagging a project, marking `Not a BAFE project`, linking a follow-up to an existing case, and the Reply tab each send a real SMS to the sender through `lib/sms.ts` (`SMS_API_URL` and related variables). The decision is saved before the SMS is sent; a failed send is shown as failed in the thread. Senders without a mobile number can be reviewed but not texted. Internal notes are never sent.
+- Optional automatic first reply: with `ENABLE_SCHEDULER=true`, `SMS_AUTO_ACK_ENABLED=true` and `SMS_AUTO_ACK_SINCE=<ISO date>`, a once-a-minute job texts the Project Type/Name/Age/Gender/Location request to each new message received at or after that date, at most once per message.
+- Lets staff select an actual BAFE project from current InfraWatch project records. A parser/project phrase is only a clue; it cannot confirm a project.
+- "Simulate incoming message" remains a non-production test tool: those test messages live only in the staff member's browser storage.
+- Does not yet create rows in `issues`; case tracking happens on this page only.
 
-Sources: `lib/sms-grievance/`, `types/sms-grievance.types.ts`, admin SMS components/routes.
+Sources: `lib/sms-grievance/` (`live-review.ts`, `review-store.ts`, `auto-acknowledge.ts`), `actions/mutation/sms-grievance.mutation.ts`, `types/sms-grievance.types.ts`, admin SMS components/routes.
 
 ### 4.7 SLA reports (`/reports/issues`, `/reports/feedbacks`)
 

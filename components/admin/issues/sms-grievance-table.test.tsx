@@ -54,3 +54,18 @@ test("a quick 'Not InfraWatch' action is offered only for messages that still ne
   // Each qualifying message renders the button twice (mobile list + desktop table).
   assert.equal(occurrences, needsCheckingCount * 2);
 });
+
+test("with the live line there is no prototype notice and no simulation controls", () => {
+  const html = renderToStaticMarkup(<SmsGrievanceTable initialRecords={SMS_MOCK_SCENARIOS} dataSource="live" />);
+
+  assert.doesNotMatch(html, /Live SMS grievance line/);
+  assert.doesNotMatch(html, /prototype/i);
+  assert.doesNotMatch(html, /Simulate incoming message/);
+  assert.doesNotMatch(html, /Restore sample messages|Clear test messages|Restore original messages/);
+  assert.match(html, /Messages to check/);
+});
+
+test("when the live feed is unreachable the sample-data warning is still shown", () => {
+  const html = renderToStaticMarkup(<SmsGrievanceTable initialRecords={SMS_MOCK_SCENARIOS} dataSource="sample" liveFetchError />);
+  assert.match(html, /live SMS grievance feed could not be reached/);
+});

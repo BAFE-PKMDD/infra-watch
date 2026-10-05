@@ -1,9 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 
-function bannerCopy(dataSource: "live" | "sample", liveFetchError: boolean) {
-  if (dataSource === "live") {
-    return "Showing live messages from the SMS grievance line. Message text and sender numbers below are real. Accepting, assigning, replying, or changing status here does not send anything or create a real case yet — those actions stay local to this page.";
-  }
+function bannerCopy(liveFetchError: boolean) {
   if (liveFetchError) {
     return "The live SMS grievance feed could not be reached, so sample messages are shown instead. Every message, contact, status, and action below is a sample, not real data.";
   }
@@ -11,10 +8,8 @@ function bannerCopy(dataSource: "live" | "sample", liveFetchError: boolean) {
 }
 
 export function SmsPrototypeBanner({
-  dataSource = "sample",
   liveFetchError = false,
 }: {
-  dataSource?: "live" | "sample";
   liveFetchError?: boolean;
 } = {}) {
   return (
@@ -22,8 +17,8 @@ export function SmsPrototypeBanner({
       <div className="flex gap-3">
         <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-orange-700 dark:text-orange-300" />
         <div>
-          <h2 id="prototype-title" className="font-heading text-base font-semibold">{dataSource === "live" ? "SMS Grievance review is still a prototype" : "SMS Grievance prototype"}</h2>
-          <p className="mt-1 text-sm leading-6">{bannerCopy(dataSource, liveFetchError)}</p>
+          <h2 id="prototype-title" className="font-heading text-base font-semibold">SMS Grievance prototype</h2>
+          <p className="mt-1 text-sm leading-6">{bannerCopy(liveFetchError)}</p>
         </div>
       </div>
     </section>

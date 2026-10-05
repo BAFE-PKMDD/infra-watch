@@ -293,3 +293,46 @@ test("duplicate classification requires a reason and sample case reference", () 
   // instead of sitting there as a second, redundant item to review.
   assert.equal(duplicate.status, "closed");
 });
+
+test("live mode builds real replies: plain text, pending until sent, and the real clock", () => {
+  const updated = applySmsPrototypeAction(
+    liveCandidate(),
+    { type: "simulate_response", body: "Salamat po." },
+    { live: true, now: "2026-10-05T01:00:00.000Z" },
+  );
+  const reply = updated.conversation.at(-1)!;
+
+  assert.equal(reply.kind, "outbound_sms");
+  assert.equal(reply.body, "Salamat po.");
+  assert.equal(reply.deliveryStatus, "simulated_pending");
+  assert.equal(reply.occurredAt, "2026-10-05T01:00:00.000Z");
+});
+
+test("live mode dismisses a not-BAFE message without adding any reply to send", () => {
+  const candidate = liveCandidate();
+  const updated = applySmsPrototypeAction(
+    candidate,
+    { type: "mark_not_bafe_project", reason: "Not a project.", category: "different_agency_project" },
+    { live: true },
+  );
+
+  assert.equal(updated.status, "closed");
+  assert.equal(updated.relevance, "out_of_scope");
+  assert.equal(updated.conversation.length, candidate.conversation.length);
+  assert.equal(updated.deliveryStatus, candidate.deliveryStatus);
+});
+
+test("without live mode the prototype keeps its sample prefix and simulated delivery", () => {
+  const updated = applySmsPrototypeAction(
+    liveCandidate(),
+    { type: "mark_not_bafe_project", reason: "Not a project.", category: "not_related_to_infrawatch" },
+  );
+  const reply = updated.conversation.at(-1)!;
+
+  assert.match(reply.body, /^SAMPLE SMS ONLY/);
+  assert.equal(reply.deliveryStatus, "simulated_delivered");
+});
+
+function liveCandidate() {
+  return getSmsMockScenario("sample-sms-004")!;
+}

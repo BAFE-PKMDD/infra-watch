@@ -17,6 +17,7 @@ import {
 import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
 import type { FeedbackMedia } from "@/types/feedback.types";
 import type { MydasPageData } from "@/types/mydas.types";
+import type { SmsMockScenario } from "@/types/sms-grievance.types";
 
 // PostGIS geometry type for spatial data
 const geometry = customType<{ data: string | null; driverData: string | null }>({
@@ -738,3 +739,28 @@ export const userTourProgress = pgTable("user_tour_progress", {
   seen: jsonb("seen").$type<Record<string, "completed" | "skipped">>().notNull().default({}),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
+
+/**
+ * Staff review state for a message that arrived on the live SMS grievance line. The line
+ * itself stays the source of truth for the original text, sender, and time; this row only
+ * holds what staff did with it (tags, routing, status, the SMS thread InfraWatch sent and
+ * received). Keyed by the live message id so the review page can overlay it on the feed.
+ * `version` is bumped on every write so two staff acting on the same message can't both
+ * send the same real SMS.
+ */
+export const smsGrievanceReviews = pgTable(
+  "sms_grievance_reviews",
+  {
+    messageId: text("message_id").primaryKey(),
+    record: jsonb("record").$type<SmsMockScenario>().notNull(),
+    version: integer("version").notNull().default(1),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    updatedAtIdx: index("sms_grievance_reviews_updated_at_idx").on(table.updatedAt),
+  }),
+);
+
+export type SmsGrievanceReviewRow = typeof smsGrievanceReviews.$inferSelect;

@@ -1,5 +1,6 @@
 import { SMS_MOCK_SCENARIOS } from "@/lib/sms-grievance/mock-fixtures";
 import { parseSmsCoordinates } from "@/lib/sms-grievance/location";
+import { drizzleSmsReviewStore, type SmsReviewStore, type StoredSmsReview } from "@/lib/sms-grievance/review-store";
 import type { SmsMockScenario } from "@/types/sms-grievance.types";
 
 // Public, unauthenticated feed of raw inbound SMS text — see docs/current-system/feature-catalog.md
@@ -170,15 +171,37 @@ export type SmsGrievanceQueue = {
   liveFetchError: boolean;
 };
 
+// Lays what staff have already done with a message (tags, routing, status, the SMS thread
+// that went out) over the record the line just returned. The line stays authoritative for
+// what the sender wrote and where they were, so those fields are always taken fresh from
+// the feed rather than from the saved copy.
+export function overlaySavedReviews(liveRecords: SmsMockScenario[], saved: Map<string, StoredSmsReview>): SmsMockScenario[] {
+  return liveRecords.map((live) => {
+    const review = saved.get(live.id);
+    if (!review) return live;
+    return { ...review.record, originalText: live.originalText, contactNumber: live.contactNumber, coordinates: live.coordinates };
+  });
+}
+
 // Falls back to the deterministic sample set on any failure (unreachable host, non-2xx,
 // malformed body) so the review page still renders something coherent during an outage,
 // while telling staff plainly that what they're looking at is not real.
-export async function getSmsGrievanceQueue(): Promise<SmsGrievanceQueue> {
+export async function getSmsGrievanceQueue(store: SmsReviewStore = drizzleSmsReviewStore): Promise<SmsGrievanceQueue> {
+  let liveRecords: SmsMockScenario[];
   try {
-    const records = await fetchLiveSmsGrievanceRecords();
-    return { records, dataSource: "live", liveFetchError: false };
+    liveRecords = await fetchLiveSmsGrievanceRecords();
   } catch (error) {
     console.error("[SMS Grievance] Falling back to sample messages:", error instanceof Error ? error.message : error);
     return { records: SMS_MOCK_SCENARIOS, dataSource: "sample", liveFetchError: true };
+  }
+
+  try {
+    const saved = await store.getMany(liveRecords.map((record) => record.id));
+    return { records: overlaySavedReviews(liveRecords, saved), dataSource: "live", liveFetchError: false };
+  } catch (error) {
+    // Showing the feed without staff's saved work is better than hiding real messages, but
+    // it must be loud in the logs: a reviewed message would look untouched.
+    console.error("[SMS Grievance] Could not load saved reviews; showing the live feed without them:", error instanceof Error ? error.message : error);
+    return { records: liveRecords, dataSource: "live", liveFetchError: false };
   }
 }

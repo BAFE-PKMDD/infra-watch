@@ -14,7 +14,8 @@ import type { IntakeDecision } from "@/components/admin/issues/sms-project-taggi
 import { SmsPrototypeBanner } from "@/components/admin/issues/sms-prototype-banner";
 import { Button } from "@/components/ui/button";
 import type { SelectedProject } from "@/components/ui/project-search-input";
-import { sendSimulatedAcknowledgmentSms } from "@/actions/mutation/sms-grievance.mutation";
+import { applyLiveSmsAction, linkLiveSmsToThread, sendSimulatedAcknowledgmentSms } from "@/actions/mutation/sms-grievance.mutation";
+import type { LiveSmsActionResponse } from "@/actions/mutation/sms-grievance.mutation";
 import { DEFAULT_SMS_CATEGORY } from "@/lib/sms-grievance/categories";
 import { readSmsPrototypeRecords, writeSmsPrototypeRecords } from "@/lib/sms-grievance/mock-store";
 import { nextSmsCaseStatuses } from "@/lib/sms-grievance/policy";
@@ -39,6 +40,20 @@ function projectSelection(item: SmsMockScenario | undefined): SelectedProject | 
   };
 }
 
+// Folds records the server just saved back into the page's list, replacing by id.
+function mergeSavedRecords(current: SmsMockScenario[], saved: SmsMockScenario[]) {
+  return current.map((item) => saved.find((updated) => updated.id === item.id) ?? item);
+}
+
+// What the page tells staff after a real action: the decision was saved either way, but a
+// failed SMS needs to be unmistakable rather than buried in a generic success line.
+function liveActionFeedback(success: string, result: Extract<LiveSmsActionResponse, { success: true }>) {
+  if (!result.delivery) return success;
+  return result.delivery.success
+    ? `${success} The SMS was sent to the sender.`
+    : `${success} But the SMS to the sender failed to send: ${result.delivery.error ?? "unknown error"}.`;
+}
+
 function closedLabelFor(record: SmsMockScenario) {
   if (record.relevance === "out_of_scope") return "Closed — marked as not a BAFE project. No case was created.";
   if (record.relevance === "duplicate") return `Closed — linked as a possible copy of ${record.duplicateOf ?? "an earlier message"}. No new case was created.`;
@@ -61,6 +76,9 @@ export function SmsGrievanceDetailView({
   const [records, setRecords] = useState(initialRecords);
   const [storageReady, setStorageReady] = useState(false);
   const selected = records.find((item) => item.id === id) ?? null;
+  // A real message from the SMS line: decisions are saved on the server and replies go out
+  // as real SMS. The sample set keeps the local-only flow.
+  const isLiveMessage = dataSource === "live" && !tutorial && Boolean(selected);
 
   const [intakeDecision, setIntakeDecision] = useState<IntakeDecision>("bafe_project");
   const [category, setCategory] = useState<SmsCategory>(selected?.category ?? DEFAULT_SMS_CATEGORY);
@@ -81,7 +99,9 @@ export function SmsGrievanceDetailView({
   useEffect(() => {
     if (tutorial) return;
     const timeout = window.setTimeout(() => {
-      const stored = readSmsPrototypeRecords(window.localStorage, initialRecords);
+      const stored = dataSource === "live"
+        ? initialRecords
+        : readSmsPrototypeRecords(window.localStorage, initialRecords);
       setRecords(stored);
       setStorageReady(true);
       const match = stored.find((item) => item.id === id);
@@ -93,11 +113,12 @@ export function SmsGrievanceDetailView({
       }
     }, 0);
     return () => window.clearTimeout(timeout);
-  }, [id, initialRecords, tutorial]);
+  }, [id, initialRecords, tutorial, dataSource]);
 
   useEffect(() => {
-    if (storageReady && !tutorial) writeSmsPrototypeRecords(window.localStorage, records);
-  }, [records, storageReady, tutorial]);
+    if (!storageReady || tutorial || dataSource === "live") return;
+    writeSmsPrototypeRecords(window.localStorage, records);
+  }, [records, storageReady, tutorial, dataSource]);
 
   const canMakeRelevanceDecision = selected?.status === "needs_relevance_review";
   // A record that's already received more than one inbound message is already the main,
@@ -146,6 +167,23 @@ export function SmsGrievanceDetailView({
     if (isTutorialRecord(selected.id)) return;
     setActionPending(true);
     try {
+      if (isLiveMessage) {
+        const result = await applyLiveSmsAction(selected.id, action);
+        if (!result.success) {
+          setFeedback(result.error);
+          return;
+        }
+        setRecords((current) => mergeSavedRecords(current, result.records));
+        setFeedback(liveActionFeedback(success, result));
+        if (action.type === "transition") {
+          setStatusChangeReason("");
+          setStatusTarget("");
+        }
+        if (action.type === "simulate_response" && result.delivery?.success !== false) setResponseBody("");
+        if (action.type === "add_internal_note") setInternalNote("");
+        return;
+      }
+
       let finalRecord = applySmsPrototypeAction(selected, action);
       let finalSuccess = success;
 
@@ -187,7 +225,7 @@ export function SmsGrievanceDetailView({
   const saveIntakeDecision = () => {
     if (!selected || !canMakeRelevanceDecision) return;
     if (intakeDecision === "not_bafe_project") {
-      runAction({ type: "mark_not_bafe_project", reason: decisionReason, category: notBafeCategory }, "Marked as not a BAFE project. No official issue was created.");
+      runAction({ type: "mark_not_bafe_project", reason: decisionReason, category: notBafeCategory }, "Marked as not a BAFE project. No official issue was created and no SMS was sent.");
       return;
     }
     const project = selectedProject ? {
@@ -235,6 +273,17 @@ export function SmsGrievanceDetailView({
     if (!selected || !matchedThread) return;
     setLinkingThread(true);
     try {
+      if (isLiveMessage) {
+        const result = await linkLiveSmsToThread(selected.id, matchedThread.id);
+        if (!result.success) {
+          setFeedback(result.error);
+          return;
+        }
+        setRecords((current) => mergeSavedRecords(current, result.records));
+        setFeedback(liveActionFeedback(`Linked to case ${matchedThread.externalMessageId}. This message is now part of that thread.`, result));
+        return;
+      }
+
       const updatedThread = appendFollowUpMessage(matchedThread, selected.originalText);
       const ackItem = [...updatedThread.conversation].reverse().find((item) => item.kind === "outbound_sms");
       // Only ever really sends when the target thread is a staff-simulated test case —
@@ -287,7 +336,7 @@ export function SmsGrievanceDetailView({
 
   return (
     <div className="space-y-5">
-      {tutorial ? <TutorialModeNotice /> : <SmsPrototypeBanner dataSource={dataSource} liveFetchError={liveFetchError} />}
+      {tutorial ? <TutorialModeNotice /> : dataSource !== "live" && <SmsPrototypeBanner liveFetchError={liveFetchError} />}
 
       <Link href={tutorial ? "/learn/sms-grievances" : "/issues/sms-review"} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
         <ArrowLeft aria-hidden="true" className="size-4" /> {dataSource === "live" ? "Back to messages" : "Back to sample messages"}

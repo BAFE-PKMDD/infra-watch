@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { sendSimulatedAcknowledgmentSms } from "@/actions/mutation/sms-grievance.mutation";
+import { applyLiveSmsAction, sendSimulatedAcknowledgmentSms } from "@/actions/mutation/sms-grievance.mutation";
 import { clearSmsPrototypeRecords, readSmsPrototypeRecords, writeSmsPrototypeRecords } from "@/lib/sms-grievance/mock-store";
 import { applySmsPrototypeAction } from "@/lib/sms-grievance/prototype-state";
 import { QUEUE_FILTERS, filterSmsReviewRecords, smsStatusLabel } from "@/lib/sms-grievance/queue";
@@ -180,12 +180,22 @@ export function SmsGrievanceTable({
   const [records, setRecords] = useState(initialRecords);
   const [filter, setFilter] = useState<QueueFilter>("all");
   const [simulateFeedback, setSimulateFeedback] = useState("");
+  const [quickActionPendingId, setQuickActionPendingId] = useState<string | null>(null);
+  const isLive = dataSource === "live" && !tutorial;
+
+  // With the live line, decisions on real messages are saved on the server and the page
+  // never touches browser storage; the sample set keeps its local-only review state.
+  const persistLocally = (next: SmsMockScenario[]) => {
+    if (!isLive) writeSmsPrototypeRecords(window.localStorage, next);
+  };
 
   useEffect(() => {
     if (tutorial) return;
-    const timeout = window.setTimeout(() => setRecords(readSmsPrototypeRecords(window.localStorage, initialRecords)), 0);
+    const timeout = window.setTimeout(() => {
+      setRecords(isLive ? initialRecords : readSmsPrototypeRecords(window.localStorage, initialRecords));
+    }, 0);
     return () => window.clearTimeout(timeout);
-  }, [initialRecords, tutorial]);
+  }, [initialRecords, tutorial, isLive]);
 
   const filtered = filterSmsReviewRecords(records, filter);
 
@@ -204,7 +214,7 @@ export function SmsGrievanceTable({
 
       const updated = [finalRecord, ...records];
       setRecords(updated);
-      writeSmsPrototypeRecords(window.localStorage, updated);
+      persistLocally(updated);
       setSimulateFeedback(sendResult.success
         ? `Simulated message ${finalRecord.externalMessageId} received from ${finalRecord.contactNumber}. A real acknowledgment SMS was sent to that number.`
         : `Simulated message ${finalRecord.externalMessageId} received, but the real acknowledgment SMS failed to send: ${sendResult.error ?? "unknown error"}.`);
@@ -218,17 +228,36 @@ export function SmsGrievanceTable({
   // inquiries) without opening the full "Review & tag" wizard — the same outcome as
   // walking through it and choosing "Not a BAFE project" / "Not related to InfraWatch",
   // just without the extra clicks for something that doesn't need a closer look.
-  const handleQuickNotInfraWatch = (item: SmsMockScenario) => {
+  const handleQuickNotInfraWatch = async (item: SmsMockScenario) => {
     if (tutorial) return;
+    const action = {
+      type: "mark_not_bafe_project" as const,
+      reason: "This message does not appear to be related to any BAFE project or program.",
+      category: "not_related_to_infrawatch" as const,
+    };
+
+    if (isLive) {
+      // Saved for the whole team; the sender is not texted.
+      setQuickActionPendingId(item.id);
+      try {
+        const result = await applyLiveSmsAction(item.id, action);
+        if (!result.success) {
+          setSimulateFeedback(result.error);
+          return;
+        }
+        setRecords((current) => current.map((record) => result.records.find((updated) => updated.id === record.id) ?? record));
+        setSimulateFeedback(`${item.externalMessageId} marked as not related to InfraWatch and removed from the list.`);
+      } finally {
+        setQuickActionPendingId(null);
+      }
+      return;
+    }
+
     try {
-      const updated = applySmsPrototypeAction(item, {
-        type: "mark_not_bafe_project",
-        reason: "This message does not appear to be related to any BAFE project or program.",
-        category: "not_related_to_infrawatch",
-      });
+      const updated = applySmsPrototypeAction(item, action);
       const nextRecords = records.map((record) => (record.id === updated.id ? updated : record));
       setRecords(nextRecords);
-      writeSmsPrototypeRecords(window.localStorage, nextRecords);
+      persistLocally(nextRecords);
       setSimulateFeedback(`${updated.externalMessageId} marked as not related to InfraWatch.`);
     } catch (error) {
       setSimulateFeedback(error instanceof Error ? error.message : "That message could not be tagged.");
@@ -237,7 +266,7 @@ export function SmsGrievanceTable({
 
   return (
     <div className="space-y-6">
-      {tutorial ? <TutorialModeNotice /> : <SmsPrototypeBanner dataSource={dataSource} liveFetchError={liveFetchError} />}
+      {tutorial ? <TutorialModeNotice /> : !isLive && <SmsPrototypeBanner liveFetchError={liveFetchError} />}
 
       <section aria-labelledby="sms-queue-heading" className="border border-slate-200 bg-white px-4 py-5 sm:px-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -245,7 +274,7 @@ export function SmsGrievanceTable({
             <h2 id="sms-queue-heading" className="font-heading text-lg font-semibold text-slate-950 dark:text-white">Messages to check</h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Choose a queue, read the message, then open it to confirm the project and routing.</p>
           </div>
-          {!tutorial && <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-start">
+          {!tutorial && !isLive && <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-start">
             <SimulateIncomingForm onSubmit={handleSimulateIncoming} />
             <Button
               type="button"
@@ -259,7 +288,7 @@ export function SmsGrievanceTable({
                 setSimulateFeedback("");
               }}
             >
-              <RotateCcw aria-hidden="true" className="size-4" /> {dataSource === "live" ? "Restore original messages" : "Restore sample messages"}
+              <RotateCcw aria-hidden="true" className="size-4" /> Restore sample messages
             </Button>
           </div>}
         </div>
@@ -335,7 +364,7 @@ export function SmsGrievanceTable({
                       </div>
                       <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                         {item.status === "needs_relevance_review" && (
-                          <Button variant="outline" className="min-h-11 w-full font-medium sm:w-auto" onClick={() => handleQuickNotInfraWatch(item)}>
+                          <Button variant="outline" disabled={quickActionPendingId !== null} className="min-h-11 w-full font-medium sm:w-auto" onClick={() => handleQuickNotInfraWatch(item)}>
                             <Ban aria-hidden="true" className="size-4" /> Not InfraWatch
                           </Button>
                         )}
@@ -384,7 +413,7 @@ export function SmsGrievanceTable({
                     <TableCell className="px-4 py-5">
                       <div className="flex flex-col gap-2">
                         {item.status === "needs_relevance_review" && (
-                          <Button variant="outline" className="min-h-11 font-medium" onClick={() => handleQuickNotInfraWatch(item)}>
+                          <Button variant="outline" disabled={quickActionPendingId !== null} className="min-h-11 font-medium" onClick={() => handleQuickNotInfraWatch(item)}>
                             <Ban aria-hidden="true" className="size-4" /> Not InfraWatch
                           </Button>
                         )}
