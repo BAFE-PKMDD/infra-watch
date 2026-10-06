@@ -6,6 +6,7 @@ import {
   createSimulatedIncomingMessage,
   findLatestThreadForContact,
   LOCAL_SIMULATED_ID_PREFIX,
+  SMS_LINK_WINDOW_MS,
 } from "./simulate-incoming";
 import { SMS_MOCK_SCENARIOS } from "./mock-fixtures";
 import { mapRawGrievanceToRecord } from "./live-source";
@@ -82,19 +83,40 @@ test("findLatestThreadForContact picks the most recently received match when the
   assert.equal(found?.id, newer.id);
 });
 
-test("appendFollowUpMessage adds a short real-reply item to the thread without repeating the full field request", () => {
+test("findLatestThreadForContact with a time window ignores messages from the same number more than a week apart", () => {
+  const base = createSimulatedIncomingMessage({ contactNumber: "09171234567", originalText: "first" }, []);
+  const hoursAgo = (hours: number) => new Date(Date.parse("2026-10-06T12:00:00.000Z") - hours * 3_600_000).toISOString();
+  const withinDay = { ...base, id: "within", receivedAt: hoursAgo(5 * 24) };
+  const tooOld = { ...base, id: "old", receivedAt: hoursAgo(8 * 24) };
+  const window = { referenceAt: "2026-10-06T12:00:00.000Z", withinMs: SMS_LINK_WINDOW_MS };
+
+  assert.equal(findLatestThreadForContact([withinDay, tooOld], "09171234567", undefined, window)?.id, "within");
+  assert.equal(findLatestThreadForContact([tooOld], "09171234567", undefined, window), null);
+});
+
+test("findLatestThreadForContact skips folded copies and dismissed messages, and prefers an open case over a finished one", () => {
+  const base = createSimulatedIncomingMessage({ contactNumber: "09171234567", originalText: "first" }, []);
+  const at = (day: number) => `2026-10-0${day}T00:00:00.000Z`;
+  const open = { ...base, id: "open", status: "under_review" as const, receivedAt: at(1) };
+  const finishedNewer = { ...base, id: "finished", status: "closed" as const, receivedAt: at(3) };
+  const folded = { ...base, id: "folded", status: "closed" as const, relevance: "duplicate" as const, receivedAt: at(4) };
+  const dismissed = { ...base, id: "dismissed", status: "closed" as const, relevance: "out_of_scope" as const, receivedAt: at(5) };
+
+  assert.equal(findLatestThreadForContact([open, finishedNewer, folded, dismissed], "09171234567")?.id, "open");
+  assert.equal(findLatestThreadForContact([finishedNewer, folded, dismissed], "09171234567")?.id, "finished");
+  assert.equal(findLatestThreadForContact([folded, dismissed], "09171234567"), null);
+});
+
+test("appendFollowUpMessage adds the new inbound message to the thread without sending anything back", () => {
   const thread = createSimulatedIncomingMessage({ contactNumber: "09171234567", originalText: "first message" }, []);
   const updated = appendFollowUpMessage(thread, "sumunod na mensahe ko");
 
   assert.equal(updated.id, thread.id);
-  assert.equal(updated.conversation.length, thread.conversation.length + 2);
-  const newInbound = updated.conversation.at(-2);
-  const newOutbound = updated.conversation.at(-1);
+  assert.equal(updated.conversation.length, thread.conversation.length + 1);
+  const newInbound = updated.conversation.at(-1);
   assert.equal(newInbound?.kind, "inbound_sms");
   assert.equal(newInbound?.body, "sumunod na mensahe ko");
-  assert.equal(newOutbound?.kind, "outbound_sms");
-  assert.doesNotMatch(newOutbound?.body ?? "", /Uri ng Proyekto/);
-  assert.match(newOutbound?.body ?? "", new RegExp(thread.externalMessageId));
+  assert.equal(updated.deliveryStatus, thread.deliveryStatus);
 });
 
 test("appendFollowUpMessage reopens a resolved or closed thread to under_review with a status event", () => {
@@ -111,7 +133,7 @@ test("appendFollowUpMessage leaves an in-progress thread's status untouched", ()
   const updated = appendFollowUpMessage(thread, "another update");
 
   assert.equal(updated.status, "under_review");
-  assert.equal(updated.conversation.at(-1)?.kind, "outbound_sms");
+  assert.equal(updated.conversation.at(-1)?.kind, "inbound_sms");
 });
 
 test("appendFollowUpMessage requires non-empty message text", () => {

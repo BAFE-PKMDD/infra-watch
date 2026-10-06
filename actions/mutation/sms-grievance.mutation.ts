@@ -45,6 +45,7 @@ const LIVE_ACTION_TYPES: ReadonlySet<PrototypeAction["type"]> = new Set([
   "transition",
   "restrict",
   "simulate_response",
+  "request_details",
   "add_internal_note",
 ]);
 

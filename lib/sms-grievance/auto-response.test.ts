@@ -4,6 +4,7 @@ import { test } from "bun:test";
 import {
   buildAcknowledgmentReply,
   buildBafeCaseOpenedReply,
+  buildDetailsRequestReply,
   buildNotBafeProjectReply,
   mintSmsGrievanceCaseId,
   SAMPLE_SMS_PREFIX,
@@ -21,6 +22,15 @@ test("buildAcknowledgmentReply always lists every requested field plus the disre
   assert.match(body, /5\. Lokasyon/);
   assert.match(body, /6\. Concern/);
   assert.match(body, /balewalain/);
+  assert.match(body, /\+63 956 234 9888/);
+});
+
+test("buildDetailsRequestReply is the same text as the acknowledgment, with the message's own ticket number", () => {
+  const body = buildDetailsRequestReply("BAFE-SMS-29");
+
+  assert.equal(body, buildAcknowledgmentReply("BAFE-SMS-29"));
+  assert.ok(!body.startsWith(SAMPLE_SMS_PREFIX));
+  assert.match(body, /Ticket Blg\. BAFE-SMS-29/);
 });
 
 test("buildNotBafeProjectReply for a general/unrelated message says it isn't connected to BAFE, with no redirect line", () => {

@@ -60,7 +60,7 @@ test("SMS lesson follows its own case page and completes only after a simulated 
   const arrived = reconcileLiveTutorial(state, lesson, { onIssueList: false, issueDetailId: TUTORIAL_SMS_ID });
   assert.ok(arrived);
   state = reduceLiveTutorial(state, arrived, lesson) as typeof state;
-  assert.equal(liveTutorialSteps(lesson)[state.index].target, '[data-tour="sms-reply-tab"]');
+  assert.equal(liveTutorialSteps(lesson)[state.index].target, '[data-tour="sms-reply-box"]');
   const event = { resource: "sms" as const, recordId: TUTORIAL_SMS_ID, action: "reply" as const, outcome: "success" as const };
   assert.equal(reduceLiveTutorial(state, { type: "mutation", detail: event }, lesson), state);
   assert.equal(reduceLiveTutorial(state, { type: "mutation", detail: { ...event, simulated: true } }, lesson).saved, true);

@@ -52,6 +52,9 @@ export type SmsConversationItem = {
   body: string;
   occurredAt: string;
   deliveryStatus?: SmsDeliveryStatus;
+  /** Marks an outbound text staff sent to find out whether the report belongs to InfraWatch,
+   * so the review page can show that the sender has been asked and hasn't answered yet. */
+  purpose?: "details_request";
 };
 
 export type SmsProjectTag = {

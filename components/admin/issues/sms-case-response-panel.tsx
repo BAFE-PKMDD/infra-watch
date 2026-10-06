@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, MessageSquareText, StickyNote } from "lucide-react";
+import { MapPin, StickyNote } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,8 +10,6 @@ import type { PrototypeAction } from "@/lib/sms-grievance/prototype-state";
 
 export function SmsCaseResponsePanel({
   isLinked,
-  responseBody,
-  onResponseBodyChange,
   assignedRegion,
   onAssignedRegionChange,
   currentRegion,
@@ -22,8 +20,6 @@ export function SmsCaseResponsePanel({
   tutorial = false,
 }: {
   isLinked: boolean;
-  responseBody: string;
-  onResponseBodyChange: (value: string) => void;
   assignedRegion: string;
   onAssignedRegionChange: (value: string) => void;
   /** The region actually saved on the case right now — lets this panel show that routing
@@ -38,17 +34,12 @@ export function SmsCaseResponsePanel({
   disabled?: boolean;
   tutorial?: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState(isLinked ? "reply" : "routing");
+  const [activeTab, setActiveTab] = useState("routing");
   const regionUnchanged = assignedRegion.trim() === currentRegion.trim();
 
   return (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as string)}>
       <TabsList variant="line" className="w-full flex-wrap justify-start gap-0">
-        {isLinked && (
-          <TabsTrigger value="reply" data-tour="sms-reply-tab">
-            <MessageSquareText className="size-3.5" /> Reply
-          </TabsTrigger>
-        )}
         <TabsTrigger value="routing" disabled={tutorial}>
           <MapPin className="size-3.5" /> Assign &amp; route
         </TabsTrigger>
@@ -61,31 +52,8 @@ export function SmsCaseResponsePanel({
 
       {!isLinked && (
         <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-          Replying and adding internal notes unlock once this case is linked to a responsible office and region below.
+          Replying (in the conversation below) and adding internal notes unlock once this case is linked to a responsible office and region below.
         </p>
-      )}
-
-      {isLinked && (
-        <TabsContent value="reply" className="mt-4 space-y-3">
-          <p className="text-sm text-slate-600 dark:text-slate-300">{tutorial ? "Practice a reply here. No SMS will be sent." : "This reply is sent to the sender by SMS."}</p>
-          <label className="sr-only" htmlFor="simulated-response">Reply text</label>
-          <textarea
-            id="simulated-response"
-            value={responseBody}
-            onChange={(event) => onResponseBodyChange(event.target.value)}
-            className="min-h-28 w-full rounded-lg border border-slate-300 bg-white p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-slate-700 dark:bg-slate-950"
-            placeholder="Write a reply telling the sender what's happening next."
-          />
-          <Button
-            type="button"
-            data-tour="sms-send"
-            disabled={disabled}
-            className="min-h-11 px-4"
-            onClick={() => onRunAction({ type: "simulate_response", body: responseBody }, "Reply sent.")}
-          >
-            <MessageSquareText aria-hidden="true" className="size-4" /> {disabled ? "Sending…" : "Send reply"}
-          </Button>
-        </TabsContent>
       )}
 
       <TabsContent value="routing" className="mt-4 space-y-3">

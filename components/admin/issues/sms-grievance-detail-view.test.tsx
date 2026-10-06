@@ -105,7 +105,7 @@ test("a fresh message from a number with an existing case offers to link them", 
   const needsReview = SMS_MOCK_SCENARIOS.find((item) => item.status === "needs_relevance_review" && item.relevance === "uncertain")!;
   const contactNumber = "09171234567";
   const newer = { ...needsReview, id: "local-sms-newer", contactNumber, localSimulated: true, receivedAt: "2026-09-20T00:00:00.000Z" };
-  const older = { ...needsReview, id: "local-sms-older", contactNumber, localSimulated: true, receivedAt: "2026-09-19T00:00:00.000Z", status: "closed" as const };
+  const older = { ...needsReview, id: "local-sms-older", contactNumber, localSimulated: true, receivedAt: "2026-09-19T00:00:00.000Z", status: "under_review" as const };
   const queryClient = new QueryClient();
   const html = renderToStaticMarkup(
     <QueryClientProvider client={queryClient}>
@@ -115,6 +115,24 @@ test("a fresh message from a number with an existing case offers to link them", 
 
   assert.match(html, /Same sender as an existing case/);
   assert.match(html, new RegExp(older.externalMessageId));
+  assert.match(html, /Link to case/);
+  assert.doesNotMatch(html, /Reopen case/);
+});
+
+test("a closed earlier case is offered as a reopen, with the new message defaulting to its own ticket", () => {
+  const needsReview = SMS_MOCK_SCENARIOS.find((item) => item.status === "needs_relevance_review" && item.relevance === "uncertain")!;
+  const contactNumber = "09171234567";
+  const newer = { ...needsReview, id: "local-sms-newer", contactNumber, localSimulated: true, receivedAt: "2026-09-20T00:00:00.000Z" };
+  const older = { ...needsReview, id: "local-sms-older", contactNumber, localSimulated: true, receivedAt: "2026-09-19T00:00:00.000Z", status: "closed" as const };
+  const html = renderToStaticMarkup(
+    <QueryClientProvider client={new QueryClient()}>
+      <SmsGrievanceDetailView id={newer.id} initialRecords={[newer, older]} />
+    </QueryClientProvider>,
+  );
+
+  assert.match(html, /Same sender as a finished case/);
+  assert.match(html, new RegExp(`Reopen case ${older.externalMessageId} and link`));
+  assert.match(html, /Keep as a new ticket/);
 });
 
 test("a message that already absorbed a follow-up (the main thread) doesn't get offered to link elsewhere", () => {
@@ -136,5 +154,5 @@ test("a message that already absorbed a follow-up (the main thread) doesn't get 
     </QueryClientProvider>,
   );
 
-  assert.doesNotMatch(html, /Same sender as an existing case/);
+  assert.doesNotMatch(html, /Same sender as a/);
 });

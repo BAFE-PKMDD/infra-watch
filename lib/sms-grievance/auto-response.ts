@@ -4,6 +4,10 @@ import type { SmsMockScenario, SmsNotBafeCategory } from "@/types/sms-grievance.
 // reply for something actually delivered to the sender's phone.
 export const SAMPLE_SMS_PREFIX = "SAMPLE SMS ONLY. No message was sent.";
 
+// Outgoing texts carry the alphanumeric sender ID "BAFE", which phones can't reply to, so
+// every message that invites an answer has to say which number to text back.
+export const SMS_REPLY_NUMBER = "+63 956 234 9888";
+
 // Sent the moment a message is received, before any staff triage — so it always asks for
 // the full list rather than trying to parse which fields the sender already gave in
 // free-form text. Plain content, with no SAMPLE_SMS_PREFIX baked in: a staff-simulated
@@ -21,9 +25,17 @@ export function buildAcknowledgmentReply(ticketId: string): string {
     "4. Kasarian",
     "5. Lokasyon",
     "6. Concern",
+    `Mangyaring ipadala ang inyong sagot sa ${SMS_REPLY_NUMBER}. Hindi maaaring sagutin nang direkta ang mensaheng ito.`,
     "Kung naibigay mo na ang impormasyong ito sa iyong ulat sa itaas, maaari mo na itong balewalain.",
     "Maraming salamat.",
   ].join("\n");
+}
+
+// Sent by staff during review when a message can't yet be told apart from the other
+// systems sharing the SMS line. It is the same text as the automatic acknowledgment, so a
+// sender who got that reply and a sender staff ask later see identical wording.
+export function buildDetailsRequestReply(ticketId: string): string {
+  return buildAcknowledgmentReply(ticketId);
 }
 
 // The two categories need different phrasing: a stray message unrelated to any project
@@ -51,7 +63,7 @@ export function buildNotBafeProjectReply(reason: string, category: SmsNotBafeCat
 }
 
 export function buildBafeCaseOpenedReply(caseId: string, options?: ReplyOptions): string {
-  return `${replyPrefix(options)}Good day. Your report has been confirmed as a BAFE project concern and logged as case ${caseId}. Our review team will continue following up with you on this thread until it's resolved. Thank you.`;
+  return `${replyPrefix(options)}Good day. Your report has been confirmed as a BAFE project concern and logged as case ${caseId}. Our review team will continue following up with you on this thread until it's resolved. To reply, text ${SMS_REPLY_NUMBER}; this message can't be answered directly. Thank you.`;
 }
 
 // Deterministic so re-rendering the same static fixture set never mints a different ID for

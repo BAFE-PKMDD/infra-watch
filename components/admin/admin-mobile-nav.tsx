@@ -26,6 +26,7 @@ import {
 import { hasAssignedModeratorScope } from "@/lib/moderator-scope";
 import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { SmsAttentionBadge, useSmsAttentionCount } from "@/components/admin/sms-attention-badge";
 
 const items = [
   { label: "Analytics", href: "/dashboard", icon: LayoutDashboard, resource: "analytics", action: "view" },
@@ -76,6 +77,7 @@ export function AdminMobileNav({ role, region, assignedAgency }: AdminMobileNavP
       (item.resource !== "analytics" || canViewAnalytics),
   );
   const canViewIssues = visibleItems.some((item) => item.href === "/issues");
+  const smsAttentionCount = useSmsAttentionCount(canViewIssues);
 
   return (
     <div className="sticky top-0 z-40 border-b border-slate-200 bg-white px-3 py-2 lg:hidden dark:border-slate-800 dark:bg-slate-950">
@@ -100,6 +102,7 @@ export function AdminMobileNav({ role, region, assignedAgency }: AdminMobileNavP
                 >
                   <Icon aria-hidden="true" className="size-4" />
                   Reported Issues
+                  {!issuesOpen && <SmsAttentionBadge count={smsAttentionCount} />}
                   <ChevronDown aria-hidden="true" className={cn("size-4", issuesOpen && "rotate-180")} />
                 </button>
               );
@@ -149,7 +152,8 @@ export function AdminMobileNav({ role, region, assignedAgency }: AdminMobileNavP
               )}
             >
               <MessageSquareText aria-hidden="true" className="size-4" />
-              SMS Grievance
+              <span className="flex-1">SMS Grievance</span>
+              <SmsAttentionBadge count={smsAttentionCount} />
             </Link>
           </div>
         )}

@@ -29,6 +29,7 @@ import {
 import { hasAssignedModeratorScope } from "@/lib/moderator-scope";
 import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { SmsAttentionBadge, useSmsAttentionCount } from "@/components/admin/sms-attention-badge";
 
 type AdminSidebarProps = {
   role?: string | null;
@@ -84,6 +85,7 @@ function isEReportPath(pathname: string) {
 
 export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps) {
   const pathname = usePathname();
+  const smsAttentionCount = useSmsAttentionCount(hasPermission(role, "issues" as never, "list" as never));
   const issuesActive = pathname === "/issues" || pathname.startsWith("/issues/");
   const [issuesOpen, setIssuesOpen] = useState(issuesActive);
   // A moderator with no region/agency assigned yet gets a 403 from every analytics
@@ -144,6 +146,7 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
                         >
                           <Icon aria-hidden="true" className="size-5" />
                           <span className="flex-1">Reported Issues</span>
+                          {!issuesOpen && <SmsAttentionBadge count={smsAttentionCount} />}
                           <ChevronDown aria-hidden="true" className={cn("size-4", issuesOpen && "rotate-180")} />
                         </button>
                         {issuesOpen && (
@@ -172,7 +175,8 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
                               )}
                             >
                               <MessageSquareText aria-hidden="true" className="size-4" />
-                              SMS Grievance
+                              <span className="flex-1">SMS Grievance</span>
+                              <SmsAttentionBadge count={smsAttentionCount} />
                             </Link>
                           </div>
                         )}

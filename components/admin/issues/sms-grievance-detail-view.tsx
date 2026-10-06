@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { SmsDetailsRequestPanel } from "@/components/admin/issues/sms-details-request-panel";
 import { SmsCaseLifecycleStepper } from "@/components/admin/issues/sms-case-lifecycle-stepper";
 import { SmsCaseResponsePanel } from "@/components/admin/issues/sms-case-response-panel";
 import { SmsConversationTimeline } from "@/components/admin/issues/sms-conversation-timeline";
@@ -16,12 +17,14 @@ import { Button } from "@/components/ui/button";
 import type { SelectedProject } from "@/components/ui/project-search-input";
 import { applyLiveSmsAction, linkLiveSmsToThread, sendSimulatedAcknowledgmentSms } from "@/actions/mutation/sms-grievance.mutation";
 import type { LiveSmsActionResponse } from "@/actions/mutation/sms-grievance.mutation";
+import { smsAttention, smsAttentionStamp } from "@/lib/sms-grievance/attention";
+import { markSmsSeen } from "@/lib/sms-grievance/seen-store";
 import { DEFAULT_SMS_CATEGORY } from "@/lib/sms-grievance/categories";
 import { readSmsPrototypeRecords, writeSmsPrototypeRecords } from "@/lib/sms-grievance/mock-store";
 import { nextSmsCaseStatuses } from "@/lib/sms-grievance/policy";
 import { applySmsPrototypeAction, type PrototypeAction } from "@/lib/sms-grievance/prototype-state";
 import { SMS_CASE_STATUS_LABELS } from "@/lib/sms-grievance/queue";
-import { appendFollowUpMessage, findLatestThreadForContact } from "@/lib/sms-grievance/simulate-incoming";
+import { appendFollowUpMessage, findLatestThreadForContact, SMS_LINK_WINDOW_MS } from "@/lib/sms-grievance/simulate-incoming";
 import type { SmsCaseStatus, SmsCategory, SmsMockScenario, SmsNotBafeCategory } from "@/types/sms-grievance.types";
 import { TutorialModeNotice } from "@/components/admin/tour/tutorial-sandbox";
 import { applyTutorialSmsReply } from "@/lib/tours/sms-sandbox";
@@ -120,6 +123,13 @@ export function SmsGrievanceDetailView({
     writeSmsPrototypeRecords(window.localStorage, records);
   }, [records, storageReady, tutorial, dataSource]);
 
+  // Opening a message is what clears its red "New" marker in the list and sidebar; a newer
+  // text from the sender brings it back.
+  useEffect(() => {
+    if (tutorial || !selected || smsAttention(selected) === null) return;
+    markSmsSeen(selected.id, smsAttentionStamp(selected));
+  }, [selected, tutorial]);
+
   const canMakeRelevanceDecision = selected?.status === "needs_relevance_review";
   // A record that's already received more than one inbound message is already the main,
   // consolidated thread for that sender (something was already linked into it, or it
@@ -130,9 +140,10 @@ export function SmsGrievanceDetailView({
   // a real incoming message has no step where anyone could make that call earlier, so this
   // has to be where staff can link it to an existing case from the same sender.
   const matchedThread = canMakeRelevanceDecision && selected && !isAlreadyMainThread
-    ? findLatestThreadForContact(records, selected.contactNumber, selected.id)
+    ? findLatestThreadForContact(records, selected.contactNumber, selected.id, { referenceAt: selected.receivedAt, withinMs: SMS_LINK_WINDOW_MS })
     : null;
   const showThreadSuggestion = Boolean(matchedThread) && dismissedThreadSuggestionFor !== selected?.id;
+  const matchedThreadFinished = matchedThread?.status === "closed" || matchedThread?.status === "resolved";
   const isClosedWithoutCase = selected ? closedLabelFor(selected) !== null : false;
   const isTagged = Boolean(selected) && !canMakeRelevanceDecision && !isClosedWithoutCase;
   // Being tagged only means a project was identified — reply, notes, and status
@@ -280,26 +291,12 @@ export function SmsGrievanceDetailView({
           return;
         }
         setRecords((current) => mergeSavedRecords(current, result.records));
-        setFeedback(liveActionFeedback(`Linked to case ${matchedThread.externalMessageId}. This message is now part of that thread.`, result));
+        setFeedback(liveActionFeedback(`${matchedThreadFinished ? `Reopened and linked to case ${matchedThread.externalMessageId}` : `Linked to case ${matchedThread.externalMessageId}`}. This message is now part of that thread.`, result));
         return;
       }
 
       const updatedThread = appendFollowUpMessage(matchedThread, selected.originalText);
-      const ackItem = [...updatedThread.conversation].reverse().find((item) => item.kind === "outbound_sms");
-      // Only ever really sends when the target thread is a staff-simulated test case —
-      // never for a real citizen's live-feed number, consistent with every other
-      // real-send path in this module.
-      const finalThread = ackItem && updatedThread.localSimulated
-        ? await (async () => {
-            const sendResult = await sendSimulatedAcknowledgmentSms(updatedThread.contactNumber, ackItem.body);
-            const deliveryStatus = sendResult.success ? "sent" as const : "send_failed" as const;
-            return {
-              ...updatedThread,
-              deliveryStatus,
-              conversation: updatedThread.conversation.map((item) => item.id === ackItem.id ? { ...item, deliveryStatus } : item),
-            };
-          })()
-        : updatedThread;
+      const finalThread = updatedThread;
 
       const markedDuplicate = applySmsPrototypeAction(selected, {
         type: "mark_duplicate",
@@ -361,13 +358,16 @@ export function SmsGrievanceDetailView({
 
                   {showThreadSuggestion && matchedThread && (
                     <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 dark:border-sky-900 dark:bg-sky-950/20">
-                      <p className="text-sm font-bold text-sky-900 dark:text-sky-200">Same sender as an existing case</p>
+                      <p className="text-sm font-bold text-sky-900 dark:text-sky-200">
+                        {matchedThreadFinished ? "Same sender as a finished case" : "Same sender as an existing case"}
+                      </p>
                       <p className="mt-1 text-sm text-sky-800 dark:text-sky-300">
-                        {selected.contactNumber} already has case {matchedThread.externalMessageId} ({SMS_CASE_STATUS_LABELS[matchedThread.status]}, received {new Date(matchedThread.receivedAt).toLocaleString()}).
+                        {selected.contactNumber} already has case {matchedThread.externalMessageId} ({SMS_CASE_STATUS_LABELS[matchedThread.status]}, last activity {new Date(matchedThread.receivedAt).toLocaleString()}).
+                        {matchedThreadFinished && " This message is its own new ticket unless you link it, which reopens that case."}
                       </p>
                       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                         <Button type="button" disabled={linkingThread} className="min-h-11 font-medium" onClick={linkToExistingThread}>
-                          {linkingThread ? "Linking…" : `Link to case ${matchedThread.externalMessageId}`}
+                          {linkingThread ? (matchedThreadFinished ? "Reopening…" : "Linking…") : matchedThreadFinished ? `Reopen case ${matchedThread.externalMessageId} and link` : `Link to case ${matchedThread.externalMessageId}`}
                         </Button>
                         <Button
                           type="button"
@@ -376,7 +376,7 @@ export function SmsGrievanceDetailView({
                           className="min-h-11 font-medium"
                           onClick={() => setDismissedThreadSuggestionFor(selected.id)}
                         >
-                          Keep as a separate report
+                          {matchedThreadFinished ? "Keep as a new ticket" : "Keep as a separate report"}
                         </Button>
                       </div>
                     </div>
@@ -388,6 +388,16 @@ export function SmsGrievanceDetailView({
                       <p className="mb-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
                         Decide whether this belongs in InfraWatch, then, if it does, find the actual project. The original message will not be changed.
                       </p>
+                      {isLiveMessage && (
+                        <div className="mb-5">
+                          <SmsDetailsRequestPanel
+                            key={selected.id}
+                            record={selected}
+                            disabled={actionPending}
+                            onSend={(body) => runAction({ type: "request_details", body }, "Question sent. The message stays in Needs checking until you decide.")}
+                          />
+                        </div>
+                      )}
                       <SmsProjectTaggingWizard
                         key={selected.id}
                         intakeDecision={intakeDecision}
@@ -436,8 +446,6 @@ export function SmsGrievanceDetailView({
                         <SmsCaseResponsePanel
                           tutorial={tutorial}
                           isLinked={isLinked}
-                          responseBody={responseBody}
-                          onResponseBodyChange={setResponseBody}
                           assignedRegion={assignedRegion}
                           onAssignedRegionChange={setAssignedRegion}
                           currentRegion={selected.assignedRegion ?? ""}
@@ -471,7 +479,16 @@ export function SmsGrievanceDetailView({
               </div>
 
               <div data-tour="sms-history" className="mt-6 space-y-4">
-                <SmsConversationTimeline conversation={selected.conversation} />
+                <SmsConversationTimeline
+                  conversation={selected.conversation}
+                  composer={isLinked ? {
+                    value: responseBody,
+                    onChange: setResponseBody,
+                    onSend: () => runAction({ type: "simulate_response", body: responseBody }, "Reply sent."),
+                    disabled: actionPending,
+                    helper: tutorial ? "Practice a reply here. No SMS will be sent." : "Your reply is sent to the sender by SMS.",
+                  } : undefined}
+                />
                 <p className="border-t border-slate-200 pt-4 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:text-slate-200" aria-live="polite">{feedback}</p>
               </div>
             </div>

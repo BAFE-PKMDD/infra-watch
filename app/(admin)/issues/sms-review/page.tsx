@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { SmsGrievanceTable } from "@/components/admin/issues/sms-grievance-table";
+import { SmsQueueAutoRefresh } from "@/components/admin/issues/sms-queue-auto-refresh";
 import { getSmsGrievanceQueue } from "@/lib/sms-grievance/live-source";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ export default async function SmsReviewPage() {
       title="SMS Grievance"
       description="Review each message, confirm whether it belongs in InfraWatch, and route it to the right team."
     >
+      {dataSource === "live" && <SmsQueueAutoRefresh />}
       <SmsGrievanceTable initialRecords={records} dataSource={dataSource} liveFetchError={liveFetchError} />
     </AdminPageWrapper>
   );

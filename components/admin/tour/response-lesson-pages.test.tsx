@@ -17,7 +17,7 @@ test("SMS lesson reuses the actual list and reply controls without real-send or 
   assert.match(html, /\/learn\/sms-grievances\/tutorial-example-sms/);
   assert.doesNotMatch(html, /Simulate incoming message|Restore sample messages|\/issues\/sms-review/);
   const detail = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><SmsGrievanceDetailView tutorial initialRecords={[record]} id={record.id} /></QueryClientProvider>);
-  for (const anchor of ["sms-detail", "sms-reply-tab", "sms-send", "sms-history"]) assert.ok(detail.includes(`data-tour="${anchor}"`));
+  for (const anchor of ["sms-detail", "sms-reply-box", "sms-send", "sms-history"]) assert.ok(detail.includes(`data-tour="${anchor}"`));
   assert.match(detail, /id="simulated-response"/);
   assert.match(detail, /No SMS will be sent/);
 });

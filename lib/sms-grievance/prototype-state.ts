@@ -22,6 +22,7 @@ export type PrototypeAction =
   | { type: "transition"; to: SmsCaseStatus; reason: string; authorized?: boolean }
   | { type: "restrict"; reason: string; authorized: boolean }
   | { type: "simulate_response"; body: string }
+  | { type: "request_details"; body: string }
   | { type: "add_internal_note"; body: string };
 
 function requireText(value: string, label: string) {
@@ -196,6 +197,29 @@ export function applySmsPrototypeAction(candidate: SmsMockScenario, action: Prot
       ...candidate,
       sensitive: true,
       relevanceReason: `${candidate.relevanceReason} Restriction reason: ${requireText(action.reason, "Reason")}`,
+    };
+  }
+
+  // Asking the sender for more information is a review step: the message stays in "needs
+  // checking" until staff can decide, and the question is flagged so the page can show the
+  // sender hasn't answered yet.
+  if (action.type === "request_details") {
+    if (candidate.status !== "needs_relevance_review") throw new Error("This action is available only while the message needs checking.");
+    const detailsBody = requireText(action.body, "Question for the sender");
+    return {
+      ...candidate,
+      deliveryStatus: outboundStatus,
+      conversation: [
+        ...candidate.conversation,
+        {
+          id: `${candidate.id}-prototype-event-${candidate.conversation.length + 1}`,
+          kind: "outbound_sms",
+          body: live ? detailsBody : `SAMPLE SMS ONLY. No message was sent. ${detailsBody}`,
+          occurredAt: eventTime(PROTOTYPE_EVENT_TIME),
+          deliveryStatus: outboundStatus,
+          purpose: "details_request",
+        },
+      ],
     };
   }
 

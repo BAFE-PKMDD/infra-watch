@@ -8,6 +8,7 @@ import {
   runLiveSmsAction,
   runLiveSmsLink,
   runSmsAutoAcknowledgments,
+  runSmsAutoLinks,
   type LiveReviewDeps,
 } from "./live-review";
 import { mapRawGrievanceToRecord, type RawSmsGrievanceMessage } from "./live-source";
@@ -70,6 +71,32 @@ test("a reply is saved, sends one real SMS with exactly the staff text, and is r
   assert.equal(outbound.length, 1);
   assert.equal(outbound[0].deliveryStatus, "sent");
   assert.equal(outbound[0].occurredAt, "2026-10-05T01:00:00.000Z");
+});
+
+test("asking for details texts the sender, flags the question, and leaves the message in needs-checking", async () => {
+  const live = mapRawGrievanceToRecord(rawMessage(11));
+  const { deps, store, sent } = setup([live]);
+  const body = "Pakibigay po ang pangalan ng proyekto.";
+
+  const result = await runLiveSmsAction(deps, live.id, { type: "request_details", body }, "staff-1");
+
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].message, body);
+  assert.equal(result.delivery?.success, true);
+  const saved = store.rows.get(live.id)!.record;
+  assert.equal(saved.status, "needs_relevance_review");
+  const asked = saved.conversation.filter((item) => item.purpose === "details_request");
+  assert.equal(asked.length, 1);
+  assert.equal(asked[0].deliveryStatus, "sent");
+});
+
+test("asking for details is refused once the message has already been decided", async () => {
+  const live = mapRawGrievanceToRecord(rawMessage(12));
+  const { deps, sent } = setup([live]);
+  await runLiveSmsAction(deps, live.id, notBafe, "staff-1");
+
+  await assert.rejects(() => runLiveSmsAction(deps, live.id, { type: "request_details", body: "Hello" }, "staff-1"), /only while the message needs checking/);
+  assert.equal(sent.length, 0);
 });
 
 test("marking a message not-BAFE files it away without texting the sender", async () => {
@@ -150,20 +177,19 @@ test("an unknown message id is rejected", async () => {
   await assert.rejects(runLiveSmsAction(deps, "live-sms-404", notBafe, "staff-1"), /no longer on the SMS grievance line/);
 });
 
-test("linking folds the new message into the sender's case and sends one follow-up SMS", async () => {
+test("linking folds the new message into the sender's case without texting the sender", async () => {
   const first = mapRawGrievanceToRecord(rawMessage(20, { sms_content: "first report" }));
   const second = mapRawGrievanceToRecord(rawMessage(21, { sms_content: "more details" }));
   const { deps, store, sent } = setup([first, second]);
 
   const result = await runLiveSmsLink(deps, second.id, first.id, "staff-1");
 
-  assert.equal(sent.length, 1);
-  assert.match(sent[0].message, /karagdagang mensahe/);
-  assert.equal(result.delivery?.success, true);
+  assert.equal(sent.length, 0);
+  assert.equal(result.delivery, undefined);
 
   const thread = store.rows.get(first.id)!.record;
   assert.equal(thread.conversation.filter((item) => item.kind === "inbound_sms").length, 2);
-  assert.equal(thread.conversation.find((item) => item.kind === "outbound_sms")?.deliveryStatus, "sent");
+  assert.equal(thread.conversation.some((item) => item.kind === "outbound_sms"), false);
   const closed = store.rows.get(second.id)!.record;
   assert.equal(closed.relevance, "duplicate");
   assert.equal(closed.status, "closed");
@@ -247,4 +273,81 @@ test("a failed auto-acknowledgment is recorded as failed and not retried", async
   assert.deepEqual(await runSmsAutoAcknowledgments(failingDeps, options), { acknowledged: 0, failed: 1 });
   assert.deepEqual(await runSmsAutoAcknowledgments(failingDeps, options), { acknowledged: 0, failed: 0 });
   assert.equal(store.rows.get(live.id)!.record.conversation.at(-1)?.deliveryStatus, "send_failed");
+});
+
+function autoLinkSetup(records: SmsMockScenario[]) {
+  const { deps, store, sent } = setup(records);
+  return { store, sent, run: () => runSmsAutoLinks({ ...deps, listLive: async () => records }) };
+}
+
+test("auto-link folds a same-sender message from the same week into the earlier case without texting", async () => {
+  const first = mapRawGrievanceToRecord(rawMessage(40, { sms_content: "hello", sms_receive_time: "09:00:00 AM" }));
+  const second = mapRawGrievanceToRecord(rawMessage(41, { sms_content: "testt", sms_receive_time: "10:00:00 AM" }));
+  const { run, store, sent } = autoLinkSetup([first, second]);
+
+  const result = await run();
+
+  assert.deepEqual(result, { linked: 1, failed: 0 });
+  assert.equal(sent.length, 0);
+  const thread = store.rows.get(first.id)!.record;
+  assert.deepEqual(thread.conversation.filter((item) => item.kind === "inbound_sms").map((item) => item.body).slice(-1), ["testt"]);
+  assert.equal(thread.conversation.some((item) => item.kind === "outbound_sms"), false);
+  assert.equal(store.rows.get(second.id)!.record.status, "closed");
+  assert.equal(store.rows.get(second.id)!.record.relevance, "duplicate");
+
+  assert.deepEqual(await run(), { linked: 0, failed: 0 });
+});
+
+test("auto-link leaves messages alone when they are more than a week apart, from different senders, or the earlier case was dismissed", async () => {
+  const oldOne = mapRawGrievanceToRecord(rawMessage(44, { sms_receive_date: "09/20/2026" }));
+  const recent = mapRawGrievanceToRecord(rawMessage(45));
+  const stranger = mapRawGrievanceToRecord(rawMessage(46, { sms_number: "+639170000002", sms_id: "+639170000002" }));
+  const { run, store } = autoLinkSetup([oldOne, recent, stranger]);
+  assert.deepEqual(await run(), { linked: 0, failed: 0 });
+  assert.equal(store.rows.size, 0);
+
+  const dismissed = mapRawGrievanceToRecord(rawMessage(47, { sms_receive_time: "08:00:00 AM" }));
+  const later = mapRawGrievanceToRecord(rawMessage(48, { sms_receive_time: "09:00:00 AM" }));
+  const second = autoLinkSetup([dismissed, later]);
+  await runLiveSmsAction({ ...setup([dismissed]).deps, store: second.store }, dismissed.id, notBafe, "staff-1");
+  assert.deepEqual(await second.run(), { linked: 0, failed: 0 });
+});
+
+test("a new text after the sender's earlier case was closed or resolved stays its own ticket", async () => {
+  for (const status of ["closed", "resolved"] as const) {
+    const earlier = mapRawGrievanceToRecord(rawMessage(50, { sms_receive_time: "09:00:00 AM" }));
+    const later = mapRawGrievanceToRecord(rawMessage(51, { sms_receive_time: "10:00:00 AM" }));
+    const { run, store } = autoLinkSetup([earlier, later]);
+    await store.create({ ...earlier, status, relevance: "confirmed_in_scope" }, "staff-1");
+
+    assert.deepEqual(await run(), { linked: 0, failed: 0 });
+    assert.equal(store.rows.has(later.id), false, status);
+  }
+});
+
+test("a still-open case is preferred over a closed one for the same sender", async () => {
+  const closedOne = mapRawGrievanceToRecord(rawMessage(52, { sms_receive_time: "08:00:00 AM" }));
+  const openOne = mapRawGrievanceToRecord(rawMessage(53, { sms_receive_time: "09:00:00 AM" }));
+  const later = mapRawGrievanceToRecord(rawMessage(54, { sms_receive_time: "10:00:00 AM" }));
+  const { run, store } = autoLinkSetup([closedOne, openOne, later]);
+  await store.create({ ...closedOne, status: "closed", relevance: "confirmed_in_scope" }, "staff-1");
+  await store.create({ ...openOne, status: "under_review", relevance: "confirmed_in_scope" }, "staff-1");
+
+  assert.deepEqual(await run(), { linked: 1, failed: 0 });
+  assert.equal(store.rows.get(later.id)!.record.duplicateOf, openOne.id);
+});
+
+test("linking by hand reopens a closed case and records why", async () => {
+  const earlier = mapRawGrievanceToRecord(rawMessage(55, { sms_receive_time: "09:00:00 AM" }));
+  const later = mapRawGrievanceToRecord(rawMessage(56, { sms_content: "may bago po", sms_receive_time: "10:00:00 AM" }));
+  const { deps, store, sent } = setup([earlier, later]);
+  await store.create({ ...earlier, status: "closed", relevance: "confirmed_in_scope" }, "staff-1");
+
+  await runLiveSmsLink(deps, later.id, earlier.id, "staff-1");
+
+  const thread = store.rows.get(earlier.id)!.record;
+  assert.equal(thread.status, "under_review");
+  assert.match(thread.conversation.at(-1)?.body ?? "", /Reopened/);
+  assert.ok(thread.conversation.some((item) => item.body === "may bago po"));
+  assert.equal(sent.length, 0);
 });

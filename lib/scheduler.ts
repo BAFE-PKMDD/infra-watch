@@ -8,7 +8,7 @@ import { hasRecentSuccessfulSync, syncAbemisProjects } from "./abemis/sync";
 import { purgeExpiredChatHistory } from "./chat-history";
 import { runSlaFollowUpReminders } from "./sla-followup";
 import { runCitizenAnalyticsMaintenance } from "./analytics/citizen-analytics-maintenance";
-import { runScheduledSmsAcknowledgments } from "./sms-grievance/auto-acknowledge";
+import { runScheduledSmsAcknowledgments, runScheduledSmsAutoLink } from "./sms-grievance/auto-acknowledge";
 
 let isSchedulerInitialized = false;
 
@@ -166,6 +166,12 @@ export function initScheduler() {
     "* * * * *",
     async () => {
       try {
+        // Link first so a follow-up text joins its existing case instead of being
+        // acknowledged as a brand-new report.
+        const linkResult = await runScheduledSmsAutoLink();
+        if (linkResult && (linkResult.linked > 0 || linkResult.failed > 0)) {
+          console.log(`[Scheduler] SMS auto-link — linked ${linkResult.linked}, failed ${linkResult.failed}.`);
+        }
         const result = await runScheduledSmsAcknowledgments();
         if (result?.skippedReason && result.skippedReason !== "disabled") {
           console.warn(`[Scheduler] SMS auto-acknowledgment skipped: ${result.skippedReason}.`);

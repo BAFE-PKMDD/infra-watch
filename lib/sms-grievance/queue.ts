@@ -1,9 +1,11 @@
+import { isSmsUnseen, type SmsSeenMap } from "@/lib/sms-grievance/attention";
 import type { SmsCaseStatus, SmsMockScenario } from "@/types/sms-grievance.types";
 
-export type QueueFilter = "all" | "needs_review" | "accepted" | "unrelated" | "restricted" | "urgent";
+export type QueueFilter = "all" | "attention" | "needs_review" | "accepted" | "unrelated" | "restricted" | "urgent";
 
 export const QUEUE_FILTERS: Array<{ value: QueueFilter; label: string }> = [
   { value: "all", label: "All messages" },
+  { value: "attention", label: "New" },
   { value: "needs_review", label: "Needs checking" },
   { value: "accepted", label: "Ready as a case" },
   { value: "unrelated", label: "Not a BAFE project" },
@@ -11,12 +13,13 @@ export const QUEUE_FILTERS: Array<{ value: QueueFilter; label: string }> = [
   { value: "urgent", label: "Needs urgent attention" },
 ];
 
-export function filterSmsReviewRecords(records: SmsMockScenario[], filter: QueueFilter) {
+export function filterSmsReviewRecords(records: SmsMockScenario[], filter: QueueFilter, seen: SmsSeenMap = {}) {
   // A message linked into another case isn't a separate thing anymore — its content now
   // lives in the thread it was linked to, so it's excluded from every queue view, not
   // just the default one. There's no dedicated filter for these; the only way to see one
   // is from the case it was linked into.
   const visible = records.filter((item) => item.relevance !== "duplicate");
+  if (filter === "attention") return visible.filter((item) => isSmsUnseen(item, seen));
   if (filter === "needs_review") return visible.filter((item) => item.status === "needs_relevance_review");
   if (filter === "accepted") return visible.filter((item) => item.relevance === "confirmed_in_scope");
   if (filter === "unrelated") return visible.filter((item) => item.relevance === "out_of_scope");

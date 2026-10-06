@@ -94,21 +94,38 @@ function isIdentifyingContact(contactNumber: string) {
 // sms-grievance-detail-view.tsx), not something decided automatically the moment a
 // message is received, since a real incoming message has no step where anyone could make
 // that call before it reaches the review queue.
-export function findLatestThreadForContact(records: SmsMockScenario[], contactNumber: string, excludeId?: string): SmsMockScenario | null {
+// Texts from the same number this close together are treated as one conversation; further
+// apart they're more likely a new report, so they are never merged automatically.
+export const SMS_LINK_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function findLatestThreadForContact(
+  records: SmsMockScenario[],
+  contactNumber: string,
+  excludeId?: string,
+  // When given, only records received within `withinMs` of `referenceAt` (either side) match.
+  window?: { referenceAt: string; withinMs: number },
+): SmsMockScenario | null {
   if (!isIdentifyingContact(contactNumber)) return null;
   const trimmed = contactNumber.trim();
-  const matches = records.filter((record) => record.id !== excludeId && record.contactNumber === trimmed);
+  const referenceTime = window ? new Date(window.referenceAt).getTime() : null;
+  const matches = records.filter((record) => (
+    record.id !== excludeId
+    && record.contactNumber === trimmed
+    // Copies already folded into another case, and messages dismissed as not ours, are not
+    // threads a new message could join.
+    && record.relevance !== "duplicate"
+    && record.relevance !== "out_of_scope"
+    && (!window || referenceTime === null || Number.isNaN(referenceTime)
+      || Math.abs(new Date(record.receivedAt).getTime() - referenceTime) < window.withinMs)
+  ));
   if (matches.length === 0) return null;
-  return matches.reduce((latest, candidate) => (
+  // An open case wins over a finished one; a finished one is still offered (to reopen) when
+  // it is the only match.
+  const open = matches.filter((record) => record.status !== "closed" && record.status !== "resolved");
+  const pool = open.length > 0 ? open : matches;
+  return pool.reduce((latest, candidate) => (
     new Date(candidate.receivedAt).getTime() > new Date(latest.receivedAt).getTime() ? candidate : latest
   ));
-}
-
-// A short real reply for a message that joins an existing thread — the full
-// Project Type/Name/Age/Gender/Location request (buildAcknowledgmentReply) already went
-// out once for this ticket, so asking again on every follow-up would be redundant.
-export function buildFollowUpAcknowledgment(ticketId: string): string {
-  return `Natanggap po namin ang karagdagang mensahe ninyo para sa Ticket Blg. ${ticketId}. Idinagdag na ito sa parehong ulat. Maraming salamat.`;
 }
 
 // Appends a new inbound message to an existing staff-simulated thread instead of creating
@@ -116,9 +133,11 @@ export function buildFollowUpAcknowledgment(ticketId: string): string {
 // land in one thread rather than scattering across the queue. A thread that was already
 // resolved or closed reopens to "under_review" (the only state both of those can move to
 // — see policy.ts's ALLOWED_TRANSITIONS) with a status event recording why.
-export function appendFollowUpMessage(thread: SmsMockScenario, originalText: string): SmsMockScenario {
+// `at` is when the follow-up was actually received; it defaults to the current time for a
+// message that has just arrived.
+export function appendFollowUpMessage(thread: SmsMockScenario, originalText: string, at?: string): SmsMockScenario {
   const text = requireField(originalText, "Message text");
-  const now = new Date().toISOString();
+  const now = at ?? new Date().toISOString();
   const wasClosedOrResolved = thread.status === "resolved" || thread.status === "closed";
   const baseIndex = thread.conversation.length;
 
@@ -130,18 +149,11 @@ export function appendFollowUpMessage(thread: SmsMockScenario, originalText: str
       occurredAt: now,
       deliveryStatus: "not_requested",
     },
-    {
-      id: `${thread.id}-followup-outbound-${baseIndex + 2}`,
-      kind: "outbound_sms",
-      body: buildFollowUpAcknowledgment(thread.externalMessageId),
-      occurredAt: now,
-      deliveryStatus: "simulated_pending",
-    },
   ];
 
   if (wasClosedOrResolved) {
     newItems.push({
-      id: `${thread.id}-followup-status-${baseIndex + 3}`,
+      id: `${thread.id}-followup-status-${baseIndex + 2}`,
       kind: "status_event",
       body: `Reopened — a new message arrived from the same sender after this case was ${thread.status}.`,
       occurredAt: now,
@@ -150,9 +162,9 @@ export function appendFollowUpMessage(thread: SmsMockScenario, originalText: str
 
   return {
     ...thread,
-    receivedAt: now,
+    // The thread's "last activity" time, which the link window is measured from.
+    receivedAt: new Date(now).getTime() > new Date(thread.receivedAt).getTime() ? now : thread.receivedAt,
     status: wasClosedOrResolved ? "under_review" : thread.status,
-    deliveryStatus: "simulated_pending",
     conversation: [...thread.conversation, ...newItems],
   };
 }

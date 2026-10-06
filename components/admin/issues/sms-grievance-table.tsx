@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { applyLiveSmsAction, sendSimulatedAcknowledgmentSms } from "@/actions/mutation/sms-grievance.mutation";
 import { clearSmsPrototypeRecords, readSmsPrototypeRecords, writeSmsPrototypeRecords } from "@/lib/sms-grievance/mock-store";
 import { applySmsPrototypeAction } from "@/lib/sms-grievance/prototype-state";
+import { SMS_ATTENTION_LABELS, countUnseenSmsAttention, isSmsUnseen, smsAttention, type SmsSeenMap } from "@/lib/sms-grievance/attention";
+import { useSmsSeen } from "@/lib/sms-grievance/seen-store";
 import { QUEUE_FILTERS, filterSmsReviewRecords, smsStatusLabel } from "@/lib/sms-grievance/queue";
 import type { QueueFilter } from "@/lib/sms-grievance/queue";
 import { createSimulatedIncomingMessage } from "@/lib/sms-grievance/simulate-incoming";
@@ -46,6 +48,20 @@ function StatusBadge({ item }: { item: SmsMockScenario }) {
   );
 }
 
+// Marks a row that is waiting on staff and that this browser hasn't opened yet: a text
+// nobody has checked, or a case where the sender spoke last. It goes away once the message
+// is opened, and comes back if the sender writes again. Solid and high-contrast so it reads
+// at a glance down a long queue.
+function AttentionPill({ item, seen }: { item: SmsMockScenario; seen: SmsSeenMap }) {
+  const attention = smsAttention(item);
+  if (!attention || !isSmsUnseen(item, seen)) return null;
+  return (
+    <Badge className="h-auto rounded-md border-transparent bg-red-600 px-2 py-0.5 text-xs font-bold text-white hover:bg-red-600">
+      {SMS_ATTENTION_LABELS[attention]}
+    </Badge>
+  );
+}
+
 function MessageFlags({ item }: { item: SmsMockScenario }) {
   if (!item.urgentReview && !item.sensitive) return null;
 
@@ -57,13 +73,14 @@ function MessageFlags({ item }: { item: SmsMockScenario }) {
   );
 }
 
-function MessageIdentity({ item }: { item: SmsMockScenario }) {
+function MessageIdentity({ item, seen }: { item: SmsMockScenario; seen: SmsSeenMap }) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <Badge variant="outline" className="h-auto rounded-md border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
         {item.categoryLabel}
       </Badge>
       <span className="font-mono text-xs font-normal text-slate-500 dark:text-slate-400">{item.externalMessageId}</span>
+      <AttentionPill item={item} seen={seen} />
       <MessageFlags item={item} />
     </div>
   );
@@ -197,7 +214,9 @@ export function SmsGrievanceTable({
     return () => window.clearTimeout(timeout);
   }, [initialRecords, tutorial, isLive]);
 
-  const filtered = filterSmsReviewRecords(records, filter);
+  const seen = useSmsSeen();
+  const filtered = filterSmsReviewRecords(records, filter, seen);
+  const attentionCount = countUnseenSmsAttention(records, seen);
 
   const handleSimulateIncoming = async (input: { contactNumber: string; originalText: string; locationLabel: string }) => {
     if (tutorial) return "Incoming SMS simulation is unavailable during this guide.";
@@ -315,6 +334,9 @@ export function SmsGrievanceTable({
                 )}
               >
                 {option.label}
+                {option.value === "attention" && attentionCount > 0 && (
+                  <span className={cn("ml-2 rounded-full px-1.5 text-xs font-bold", filter === "attention" ? "bg-white text-primary" : "bg-red-600 text-white")}>{attentionCount}</span>
+                )}
               </button>
             ))}
           </div>
@@ -339,7 +361,7 @@ export function SmsGrievanceTable({
                 <li key={item.id} data-tour="sms-row" data-tour-record-id={item.id} className="p-4 sm:p-5">
                   <article className="space-y-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <MessageIdentity item={item} />
+                      <MessageIdentity item={item} seen={seen} />
                       <StatusBadge item={item} />
                     </div>
 
@@ -395,7 +417,7 @@ export function SmsGrievanceTable({
                   <TableRow key={item.id} data-tour="sms-row" data-tour-record-id={item.id} className="align-top dark:border-slate-800">
                     <TableCell className="max-w-[520px] whitespace-normal px-5 py-5">
                       <div className="space-y-2">
-                        <MessageIdentity item={item} />
+                        <MessageIdentity item={item} seen={seen} />
                         <ProjectLabel value={item.projectLabel} />
                         <p className="line-clamp-2 text-sm font-medium leading-6 text-slate-900 dark:text-slate-100">{item.originalText}</p>
                         <ContactNumber value={item.contactNumber} />

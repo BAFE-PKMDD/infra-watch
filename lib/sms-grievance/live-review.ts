@@ -1,8 +1,9 @@
 import { buildAcknowledgmentReply } from "@/lib/sms-grievance/auto-response";
-import { fetchLiveSmsGrievanceRecords } from "@/lib/sms-grievance/live-source";
+import { isReplyableContact } from "@/lib/sms-grievance/contact";
+import { fetchLiveSmsGrievanceRecords, overlaySavedReviews } from "@/lib/sms-grievance/live-source";
 import { applySmsPrototypeAction, type PrototypeAction } from "@/lib/sms-grievance/prototype-state";
 import type { SmsReviewStore } from "@/lib/sms-grievance/review-store";
-import { appendFollowUpMessage } from "@/lib/sms-grievance/simulate-incoming";
+import { appendFollowUpMessage, SMS_LINK_WINDOW_MS } from "@/lib/sms-grievance/simulate-incoming";
 import type { SmsConversationItem, SmsMockScenario } from "@/types/sms-grievance.types";
 
 export type SendSms = (mobile: string, message: string) => Promise<{ success: boolean; error?: string }>;
@@ -28,14 +29,7 @@ export class LiveReviewConflictError extends Error {
   }
 }
 
-// Mobile numbers the gateway can actually deliver to: 09XXXXXXXXX, 639XXXXXXXXX or
-// +639XXXXXXXXX. Anything else (the feed's "Not provided", a telco short code or sender
-// name) is a message we can read but cannot reply to.
-const PH_MOBILE_PATTERN = /^(?:\+?63|0)9\d{9}$/;
-
-export function isReplyableContact(contactNumber: string): boolean {
-  return PH_MOBILE_PATTERN.test(contactNumber.replace(/[\s-]/g, ""));
-}
+export { isReplyableContact };
 
 const NO_REPLY_NUMBER_ERROR = "This message has no mobile number to reply to.";
 
@@ -118,8 +112,9 @@ export async function runLiveSmsAction(
   return { records: [record], delivery };
 }
 
-// Folds a second message from the same sender into their existing case, closes the new
-// message as a copy, and tells the sender the follow-up was added to their ticket.
+// Folds a second message from the same sender into their existing case and closes the new
+// message as a copy. The sender is not texted: the conversation view already shows the
+// link, and an extra "we got your message" SMS would just be noise.
 export async function runLiveSmsLink(
   deps: LiveReviewDeps,
   messageId: string,
@@ -145,16 +140,84 @@ export async function runLiveSmsLink(
     : await deps.store.create(closedCopy, actor);
   if (!claimedSelected) throw new LiveReviewConflictError();
 
-  const updatedThread = appendFollowUpMessage(thread, selected.originalText);
+  const updatedThread = appendFollowUpMessage(thread, selected.originalText, selected.receivedAt);
   const claimedThread = threadStored
     ? await deps.store.update(updatedThread, threadStored.version, actor)
     : await deps.store.create(updatedThread, actor);
   if (!claimedThread) throw new LiveReviewConflictError();
 
-  const outbound = newOutboundItems(thread, updatedThread);
-  const threadVersion = (threadStored?.version ?? 0) + 1;
-  const { record, delivery } = await sendAndRecord(deps, updatedThread, threadVersion, outbound, actor);
-  return { records: [record, closedCopy], delivery };
+  return { records: [updatedThread, closedCopy] };
+}
+
+export type AutoLinkOptions = { maxPerRun?: number };
+
+export type AutoLinkResult = { linked: number; failed: number };
+
+// A target a later message can be folded into automatically: a real case from the same
+// sender that is still open. Once a case is resolved or closed, a new text from the same
+// number starts a new ticket; staff can still link it by hand, which reopens the case.
+function isLinkTarget(record: SmsMockScenario) {
+  return record.status !== "closed" && record.status !== "resolved"
+    && record.relevance !== "out_of_scope" && record.relevance !== "duplicate";
+}
+
+// Folds each new message into the sender's earlier case when that case was last active
+// within the link window, so one person's back-and-forth shows up as one conversation
+// instead of several rows to review. Only messages from the last window are considered,
+// so turning this on never rewrites older history. A case staff already reviewed is
+// preferred over one that is still waiting, and failures leave the message as it was.
+export async function runSmsAutoLinks(
+  deps: Pick<LiveReviewDeps, "store" | "now"> & { listLive: () => Promise<SmsMockScenario[]> },
+  options: AutoLinkOptions = {},
+): Promise<AutoLinkResult> {
+  const nowMs = new Date((deps.now ?? (() => new Date().toISOString()))()).getTime();
+  const live = await deps.listLive();
+  const saved = await deps.store.getMany(live.map((record) => record.id));
+  const effective = new Map(overlaySavedReviews(live, saved).map((record) => [record.id, record]));
+  const liveById = new Map(live.map((record) => [record.id, record]));
+  const timeOf = (record: SmsMockScenario) => new Date(record.receivedAt).getTime();
+
+  const candidates = [...effective.values()]
+    .filter((record) => (
+      record.status === "needs_relevance_review"
+      && !saved.has(record.id)
+      && isReplyableContact(record.contactNumber)
+      && nowMs - timeOf(record) < SMS_LINK_WINDOW_MS
+    ))
+    .sort((a, b) => timeOf(a) - timeOf(b));
+
+  const maxPerRun = options.maxPerRun ?? 20;
+  let linked = 0;
+  let failed = 0;
+  for (const candidate of candidates) {
+    if (linked + failed >= maxPerRun) break;
+    const targets = [...effective.values()].filter((record) => (
+      record.id !== candidate.id
+      && record.contactNumber === candidate.contactNumber
+      && isLinkTarget(record)
+      && timeOf(record) <= timeOf(candidate)
+      && timeOf(candidate) - timeOf(record) < SMS_LINK_WINDOW_MS
+    ));
+    if (targets.length === 0) continue;
+    const reviewed = targets.filter((record) => record.status !== "needs_relevance_review");
+    const pool = reviewed.length > 0 ? reviewed : targets;
+    const target = pool.reduce((best, record) => (timeOf(record) > timeOf(best) ? record : best));
+
+    try {
+      const result = await runLiveSmsLink(
+        { ...deps, send: async () => ({ success: true }), loadLive: async (id) => liveById.get(id) ?? null },
+        candidate.id,
+        target.id,
+        "system:auto-link",
+      );
+      for (const record of result.records) effective.set(record.id, record);
+      linked += 1;
+    } catch (error) {
+      failed += 1;
+      console.error("[SMS Grievance] Auto-link failed:", error instanceof Error ? error.message : error);
+    }
+  }
+  return { linked, failed };
 }
 
 export type AutoAcknowledgeOptions = {

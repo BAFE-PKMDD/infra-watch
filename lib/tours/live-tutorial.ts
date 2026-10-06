@@ -27,9 +27,9 @@ export function liveTutorialSteps(tutorial: TaskTutorial): LiveStep[] {
   if (tutorial.kind === "sms-reply") return [
     { id: "record", title: "Read this SMS grievance", description: "Review the example concern and its status. The project and routing are already set so you can practice replying.", target: anchor("sms-row"), scope: "row", advance: "next" },
     { id: "open", title: "Open the message", description: "Click Review message. The guide follows you to the SMS case page.", target: anchor("sms-open"), scope: "row", advance: "action", opens: anchor("sms-detail") },
-    { id: "action", title: "Use the Reply tab", description: "The Reply tab contains the response field. Select Next to write a reply. This guide focuses on the response workflow.", target: anchor("sms-reply-tab"), advance: "next" },
+    { id: "action", title: "Use the reply box", description: "The reply box sits at the bottom of the conversation, like a chat. Select Next to write a reply. This guide focuses on the response workflow.", target: anchor("sms-reply-box"), advance: "next" },
     { id: "write", title: "Write an SMS reply", description: "Explain the next step to the sender in the highlighted field, then select Next. Use example text; nothing will be sent.", target: "#simulated-response", advance: "next", minLength: 1 },
-    { id: "save", title: "Send the example reply", description: "Click Send reply to add it to this example conversation. No SMS is sent, and the example is discarded when you close the guide.", target: anchor("sms-send"), advance: "submit" },
+    { id: "save", title: "Send the example reply", description: "Click the send button to add your reply to this example conversation. No SMS is sent, and the example is discarded when you close the guide.", target: anchor("sms-send"), advance: "submit" },
     { id: "result", title: "Review the message history", description: "Open the message history to review the example reply. Select Done to close the guide and discard the example data.", target: anchor("sms-history"), advance: "done" },
   ];
   if (tutorial.kind === "contact-reply") return [
