@@ -202,6 +202,8 @@ async function fetchIssueItems(params: ActivityFeedParams): Promise<IssueActivit
       createdAt: issues.createdAt,
       projectName: projects.name,
       projectAbemisId: projects.abemisId,
+      // Reduced to staff-approved image proxy URLs by formatPublicIssueActivity.
+      evidence: issues.evidence,
     })
     .from(issues)
     .leftJoin(projects, eq(projects.abemisId, issues.projectId))

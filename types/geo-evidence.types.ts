@@ -25,4 +25,11 @@ export interface IssueEvidenceItem {
   track?: GeoTrackPoint[];
 }
 
-export type StoredIssueEvidenceItem = Omit<IssueEvidenceItem, "track">;
+/**
+ * `publicApprovedAt` is set only by staff (never accepted from a submission)
+ * and marks an image as cleared for the public report page and feed.
+ */
+export type StoredIssueEvidenceItem = Omit<IssueEvidenceItem, "track"> & {
+  publicApprovedAt?: string;
+  publicApprovedBy?: string;
+};

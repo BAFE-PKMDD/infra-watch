@@ -43,6 +43,8 @@ export interface IssueActivityItem {
     responderName: string;
     attachmentUrls: string[];
   }[];
+  // Staff-approved, location-stripped image URLs only
+  images: string[];
   // Timestamps
   createdAt: Date | string;
   resolvedAt?: Date | string | null;

@@ -36,11 +36,35 @@ test("public citizen-feed issue items use a complete allowlist without reporter,
     barangay: "",
     responseCount: 0,
     recentResponses: [],
+    images: [],
     createdAt: source.createdAt,
     resolvedAt: null,
     project: { id: "ABEMIS-1", name: "Public Project" },
   });
   assert.doesNotMatch(JSON.stringify(item), /Private Reporter|639171234567|Private home landmark|private\.jpg|"lat"|"lon"/);
+});
+
+test("public citizen-feed issue items expose only staff-approved images through the sanitized proxy", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  const item = formatPublicIssueActivity({
+    id,
+    category: "Quality",
+    status: "reviewing",
+    description: "Publicly moderated description",
+    province: "Pampanga",
+    resolvedAt: null,
+    createdAt: new Date("2026-08-24T00:00:00.000Z"),
+    projectName: null,
+    projectAbemisId: null,
+    evidence: [
+      { type: "image", url: "issue-evidence/1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg", lat: 15.1, lon: 120.6 },
+      { type: "image", url: "issue-evidence/2-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.jpg", name: "home.jpg", lat: 15.1, lon: 120.6, publicApprovedAt: "2026-10-06T00:00:00.000Z" },
+      { type: "video", url: "issue-evidence/3-cccccccccccccccccccccccccccccccc.mp4", publicApprovedAt: "2026-10-06T00:00:00.000Z" },
+    ],
+  });
+
+  assert.deepEqual(item.images, [`/api/issues/${id}/public-evidence/1`]);
+  assert.doesNotMatch(JSON.stringify(item), /issue-evidence|home\.jpg|"lat"|"lon"/);
 });
 
 test("public activity-feed query does not select private issue fields", () => {
@@ -50,7 +74,7 @@ test("public activity-feed query does not select private issue fields", () => {
   );
   assert.doesNotMatch(
     querySource,
-    /issues\.(?:reporterName|reporterContact|reporterEmail|isAnonymous|landmark|evidence|geoVideoTrack|geoVideoUrl)/,
+    /issues\.(?:reporterName|reporterContact|reporterEmail|isAnonymous|landmark|geoVideoTrack|geoVideoUrl)/,
   );
   assert.match(querySource, /rows\.map\(formatPublicIssueActivity\)/);
   assert.match(querySource, /issues\.publicApprovedAt/);

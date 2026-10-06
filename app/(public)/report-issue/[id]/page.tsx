@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -21,7 +22,9 @@ import { categoryText, issueTypeValueText } from "@/components/report-issue/issu
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { MediaViewer } from "@/components/ui/media-viewer";
 import { useTranslation } from "@/i18n";
+import { getFullUrl } from "@/lib/minio-url";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -46,6 +49,7 @@ type IssueDetails = {
   category?: string | null;
   farmOperation?: string | null;
   issueDescription: string;
+  photoUrls?: string[];
   status: string;
   fmrStatus?: IssueStatus;
   region: string;
@@ -101,6 +105,8 @@ export default function IssueDetailPage({ params }: PageProps) {
   const status = issue ? normalizeStatus(issue) : "pending";
   const StatusIcon = statusConfig[status].icon;
   const responses = useMemo(() => issue?.responses || issue?.comments || [], [issue]);
+  const photoUrls = issue?.photoUrls ?? [];
+  const [viewingPhoto, setViewingPhoto] = useState<number | null>(null);
 
   if (isLoading) {
     return (
@@ -177,6 +183,42 @@ export default function IssueDetailPage({ params }: PageProps) {
                 <DetailCell label={t("eReport.detail.fields.barangay")} value={issue.barangay || na} />
               </div>
             </Card>
+
+            {photoUrls.length > 0 && (
+              <Card className="rounded-xl border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-slate-950 dark:text-white">
+                  <FileImage className="size-4 text-emerald-400" /> {t("eReport.detail.photosTitle")}
+                </h2>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {photoUrls.map((url, index) => {
+                    const src = getFullUrl(url) || url;
+                    return (
+                      <button
+                        key={url}
+                        type="button"
+                        onClick={() => setViewingPhoto(index)}
+                        className="relative aspect-square min-h-11 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 dark:border-slate-700 dark:bg-slate-950"
+                      >
+                        <Image
+                          src={src}
+                          alt={t("eReport.detail.photoAlt", { number: index + 1 })}
+                          fill
+                          sizes="(max-width: 768px) 50vw, 200px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+                <MediaViewer
+                  media={photoUrls.map((url) => ({ type: "image" as const, url }))}
+                  initialIndex={viewingPhoto ?? 0}
+                  open={viewingPhoto !== null}
+                  onClose={() => setViewingPhoto(null)}
+                />
+              </Card>
+            )}
 
             <Card className="rounded-xl border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
               <h2 className="mb-2 flex items-center gap-2 text-base font-bold text-slate-950 dark:text-white">

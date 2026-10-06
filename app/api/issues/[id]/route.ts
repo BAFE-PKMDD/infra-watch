@@ -72,7 +72,7 @@ function formatIssueDetail(
   const isOwner = access === "owner";
   const evidence = isOwner
     ? (Array.isArray(row.evidence) ? row.evidence : [])
-    : sanitizePublicIssueEvidence(row.evidence);
+    : sanitizePublicIssueEvidence(row.evidence, row.id);
   const safeResponses = sanitizeCitizenIssueResponses(responses);
 
   return {

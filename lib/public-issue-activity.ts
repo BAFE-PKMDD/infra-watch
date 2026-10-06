@@ -1,4 +1,6 @@
 import type { IssueActivityItem } from "@/types/activity-feed.types";
+import type { StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
+import { sanitizePublicIssueEvidence } from "@/lib/public-issue-dto";
 
 export type PublicIssueActivityRow = {
   id: string;
@@ -10,6 +12,7 @@ export type PublicIssueActivityRow = {
   createdAt: Date;
   projectName: string | null;
   projectAbemisId: string | null;
+  evidence?: StoredIssueEvidenceItem[] | null;
 };
 
 function normalizeIssueStatus(status: string): IssueActivityItem["status"] {
@@ -42,6 +45,7 @@ export function formatPublicIssueActivity(row: PublicIssueActivityRow): IssueAct
     barangay: "",
     responseCount: 0,
     recentResponses: [],
+    images: sanitizePublicIssueEvidence(row.evidence ?? null, row.id).map((item) => item.url),
     createdAt: row.createdAt,
     resolvedAt: row.resolvedAt,
     project: row.projectAbemisId && row.projectName

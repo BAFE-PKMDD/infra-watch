@@ -1,12 +1,23 @@
 import type { StoredIssueEvidenceItem } from "@/types/geo-evidence.types";
 
+export function publicEvidencePath(issueId: string, evidenceIndex: number) {
+  return `/api/issues/${issueId}/public-evidence/${evidenceIndex}`;
+}
+
+/**
+ * Only images that staff explicitly approved are public, and they are exposed
+ * through a sanitized proxy route (location metadata stripped) rather than by
+ * their private storage URL. Names and coordinates are never included.
+ */
 export function sanitizePublicIssueEvidence(
   evidence: StoredIssueEvidenceItem[] | null,
+  issueId: string,
 ): Array<Pick<StoredIssueEvidenceItem, "type" | "url">> {
-  void evidence;
-  // Evidence has no explicit publication-approval flag yet. Keep it private
-  // rather than exposing original media that may contain embedded location data.
-  return [];
+  return (Array.isArray(evidence) ? evidence : []).flatMap((item, index) => (
+    item.type === "image" && item.publicApprovedAt
+      ? [{ type: "image" as const, url: publicEvidencePath(issueId, index) }]
+      : []
+  ));
 }
 
 export type CitizenVisibleIssueResponse = {
@@ -65,7 +76,7 @@ function toPublicStatus(status: string) {
 }
 
 export function formatPublicIssue(row: PublicIssueRow) {
-  const evidence = sanitizePublicIssueEvidence(row.evidence);
+  const evidence = sanitizePublicIssueEvidence(row.evidence, row.id);
   const firstImage = evidence.find((item) => item.type === "image");
 
   return {

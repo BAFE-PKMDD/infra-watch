@@ -100,7 +100,9 @@ export const eReport = {
       },
       evidencePrivacyTitle: "Evidence privacy",
       evidencePrivacyBody:
-        "Submitted evidence is retained for authorized review and is not published until an explicit evidence-publication workflow is available.",
+        "Submitted evidence is retained for authorized review. Only photos that staff have reviewed and approved are shown publicly, and their location data is removed.",
+      photosTitle: "Photos",
+      photoAlt: "Report photo {number}",
       relatedProject: "Related Project",
       viewProject: "View Project",
       responsesTitle: "Official Responses",
@@ -439,7 +441,9 @@ export const eReport = {
       },
       evidencePrivacyTitle: "Privacy ng ebidensya",
       evidencePrivacyBody:
-        "Itinatago ang na-submit na ebidensya para ma-review lang ng mga awtorisadong staff. Hindi ito ipo-post sa publiko hangga't wala pang malinaw na proseso para i-publish ang ebidensya.",
+        "Itinatago ang na-submit na ebidensya para ma-review ng mga awtorisadong staff. Ang mga litratong na-review at inaprubahan lang ng staff ang ipinapakita sa publiko, at tinatanggal ang location data nito.",
+      photosTitle: "Mga Litrato",
+      photoAlt: "Litrato {number} ng report",
       relatedProject: "Kaugnay na Project",
       viewProject: "Tingnan ang Project",
       responsesTitle: "Mga Opisyal na Sagot",
