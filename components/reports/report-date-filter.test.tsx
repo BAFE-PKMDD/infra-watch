@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
+import type { ContextType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { ReportDateFilter } from "./report-date-filter";
 
-const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {}, bfcacheId: null } as any;
+const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {}, bfcacheId: null } as unknown as ContextType<typeof AppRouterContext>;
 function render(query: string) {
   return renderToStaticMarkup(
     <AppRouterContext.Provider value={router}>
