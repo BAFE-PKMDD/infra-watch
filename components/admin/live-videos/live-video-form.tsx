@@ -407,7 +407,7 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
                             </label>
                           </div>
                           <p className="ml-6 text-xs text-slate-500 dark:text-slate-400">
-                            Show popup notification on landing page
+                            Shown on the Live page alongside other live broadcasts. The landing page popup shows the first one.
                           </p>
                         </div>
                         <Switch

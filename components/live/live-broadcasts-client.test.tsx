@@ -60,3 +60,20 @@ test("separates live broadcasts from recordings and selects the live broadcast f
   assert.match(html, /<iframe/);
   assert.doesNotMatch(html, /<video/);
 });
+
+test("shows every simultaneous live broadcast and keeps recordings in the past grid", () => {
+  const broadcast = {
+    ...recording, id: "broadcast-a", title: "Opening of bids A", videoType: "youtube",
+    facebookVideoUrl: "https://youtu.be/dQw4w9WgXcQ", expiresAt: null,
+  } satisfies PublicLiveVideo;
+  const html = render(createElement(LiveBroadcastsClient, {
+    videos: [recording, broadcast, { ...broadcast, id: "broadcast-b", title: "Opening of bids B" }],
+  }));
+  assert.equal(html.match(/<iframe/g)?.length, 2);
+  assert.match(html, /Opening of bids A/);
+  assert.match(html, /Opening of bids B/);
+  assert.equal(html.match(/Currently live/g)?.length, 1);
+  assert.match(html, /lg:grid-cols-2/);
+  assert.match(html, /Watch Past field visit/);
+  assert.doesNotMatch(html, /Watch Opening of bids/);
+});

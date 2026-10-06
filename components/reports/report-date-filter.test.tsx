@@ -5,7 +5,7 @@ import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared
 import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { ReportDateFilter } from "./report-date-filter";
 
-const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {} };
+const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {}, bfcacheId: null } as any;
 function render(query: string) {
   return renderToStaticMarkup(
     <AppRouterContext.Provider value={router}>

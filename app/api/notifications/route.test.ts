@@ -5,7 +5,7 @@ import {
   createNotificationsGetHandler,
   createNotificationsPostHandler,
   type NotificationRouteDependencies,
-} from "./route";
+} from "./handlers";
 
 function dependencies(
   overrides: Partial<NotificationRouteDependencies> = {},

@@ -109,11 +109,7 @@ export function LiveVideoTable({ videos, canReview = false }: LiveVideoTableProp
     setLoading(id);
 
     setItems(
-      items.map((item) => {
-        if (item.id === id) return { ...item, isLive: newIsLive };
-        if (newIsLive) return { ...item, isLive: false };
-        return item;
-      })
+      items.map((item) => (item.id === id ? { ...item, isLive: newIsLive } : item))
     );
 
     const result = await toggleLiveVideoLive(id);

@@ -28,12 +28,14 @@ test("creates the complete multi-provider live-video schema", () => {
   assert.equal(snapshot.tables["public.live_videos"].columns.facebook_video_url.notNull, false);
 });
 
-test("enforces a single currently-live broadcast in the database", () => {
-  assert.match(
-    migration,
-    /CREATE UNIQUE INDEX "live_videos_single_live_uidx"[\s\S]*WHERE "live_videos"\."is_live" = true/,
-  );
-  const index = snapshot.tables["public.live_videos"].indexes.live_videos_single_live_uidx;
-  assert.equal(index.isUnique, true);
-  assert.match(index.where ?? "", /is_live.*=.*true/);
+test("allows simultaneous live broadcasts once the single-live index is dropped", () => {
+  assert.match(migration, /CREATE UNIQUE INDEX "live_videos_single_live_uidx"/);
+  assert.ok(snapshot.tables["public.live_videos"].indexes.live_videos_single_live_uidx);
+
+  const dropMigration = readFileSync(new URL("../drizzle/0035_allow_simultaneous_live_videos.sql", import.meta.url), "utf8");
+  assert.match(dropMigration, /DROP INDEX IF EXISTS "live_videos_single_live_uidx"/);
+  const latest = JSON.parse(
+    readFileSync(new URL("../drizzle/meta/0035_snapshot.json", import.meta.url), "utf8"),
+  ) as typeof snapshot;
+  assert.equal(latest.tables["public.live_videos"].indexes.live_videos_single_live_uidx, undefined);
 });

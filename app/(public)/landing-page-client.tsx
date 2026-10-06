@@ -24,12 +24,12 @@ const STATS_REVEAL_DELAY = 2.2;
 
 export function LandingPageClient({
   initialAnalytics,
-  liveVideo = null,
+  liveVideos = [],
   feedbackHighlights = [],
   provincesMap = null,
 }: {
   initialAnalytics: InfraAnalyticsResult;
-  liveVideo?: PublicLiveVideo | null;
+  liveVideos?: PublicLiveVideo[];
   feedbackHighlights?: FeedbackActivityItem[];
   provincesMap?: GeoFeatureCollection | null;
 }) {
@@ -515,7 +515,7 @@ export function LandingPageClient({
 
       <CitizenFeedbackSpotlight items={feedbackHighlights} />
 
-      <LiveVideoPopup video={liveVideo} />
+      <LiveVideoPopup video={liveVideos[0] ?? null} />
     </div>
   );
 }

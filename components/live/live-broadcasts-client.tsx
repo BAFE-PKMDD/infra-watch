@@ -22,8 +22,9 @@ export function LiveBroadcastsClient({ videos }: { videos: PublicLiveVideo[] }) 
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const playerRef = useRef<HTMLDivElement>(null);
-  const liveVideo = videos.find((video) => video.isLive && video.videoType !== "recorded");
-  const selected = videos.find((video) => video.id === selectedId) ?? liveVideo;
+  const liveVideos = videos.filter((video) => video.isLive && video.videoType !== "recorded");
+  const selected = videos.find((video) => video.id === selectedId);
+  const playing = selected ? [selected] : liveVideos;
   const query = search.trim().toLowerCase();
   const pastVideos = videos.filter((video) => (!video.isLive || video.videoType === "recorded") &&
     `${video.title} ${video.description ?? ""}`.toLowerCase().includes(query));
@@ -50,13 +51,15 @@ export function LiveBroadcastsClient({ videos }: { videos: PublicLiveVideo[] }) 
         </div>
       </div>
 
-      {selected && (
+      {playing.length > 0 && (
         <div ref={playerRef} tabIndex={-1} className="scroll-mt-24 space-y-3 rounded-xl focus-visible:outline-2 focus-visible:outline-primary">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-bold">{selected.isLive && selected.videoType !== "recorded" ? t("site.live.currentlyLive") : t("site.live.pastVideo")}</h2>
-            {selectedId && <button type="button" onClick={() => setSelectedId(null)} className="flex min-h-11 items-center gap-2 rounded-md px-3 text-sm focus-visible:outline-2 focus-visible:outline-primary"><X className="size-4" aria-hidden />{liveVideo ? t("site.live.returnToLive") : t("site.live.closePlayer")}</button>}
+            <h2 className="text-xl font-bold">{playing[0].isLive && playing[0].videoType !== "recorded" ? t("site.live.currentlyLive") : t("site.live.pastVideo")}</h2>
+            {selectedId && <button type="button" onClick={() => setSelectedId(null)} className="flex min-h-11 items-center gap-2 rounded-md px-3 text-sm focus-visible:outline-2 focus-visible:outline-primary"><X className="size-4" aria-hidden />{liveVideos.length > 0 ? t("site.live.returnToLive") : t("site.live.closePlayer")}</button>}
           </div>
-          <LiveBroadcastPlayer video={selected} />
+          <div className={playing.length > 1 ? "grid grid-cols-1 gap-6 lg:grid-cols-2" : undefined}>
+            {playing.map((video) => <LiveBroadcastPlayer key={video.id} video={video} />)}
+          </div>
         </div>
       )}
 

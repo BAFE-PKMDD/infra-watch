@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { getAuditContextFromRequest, logFailedAuthAttempt } from "@/lib/audit";
 import { toNextJsHandler } from "better-auth/next-js";
 
-const handlers = toNextJsHandler(auth.handler);
+const handlers = toNextJsHandler(auth);
 
 export const GET = handlers.GET;
 

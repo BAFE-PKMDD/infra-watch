@@ -628,9 +628,6 @@ export const liveVideos = pgTable(
       table.expiresAt,
     ),
     createdAtIdx: index("live_videos_created_at_idx").on(table.createdAt),
-    singleLiveIdx: uniqueIndex("live_videos_single_live_uidx")
-      .on(table.isLive)
-      .where(sql`${table.isLive} = true`),
   }),
 );
 

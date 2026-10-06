@@ -1,6 +1,6 @@
 import { getInfraAnalyticsData } from "@/actions/query/analytics.query";
 import { getActivityFeed } from "@/actions/query/activity-feed.query";
-import { getCurrentLiveVideo } from "@/actions/query/live-videos.query";
+import { getCurrentLiveVideos } from "@/actions/query/live-videos.query";
 import { getPhilippineProvincesGeoJson } from "@/lib/ph-provinces-geojson";
 import type { FeedbackActivityItem } from "@/types/activity-feed.types";
 import { LandingPageClient } from "./landing-page-client";
@@ -8,9 +8,9 @@ import { LandingPageClient } from "./landing-page-client";
 export const revalidate = 300;
 
 export default async function LandingPage() {
-  const [analytics, liveVideo, feedbackFeed, provincesMap] = await Promise.all([
+  const [analytics, liveVideos, feedbackFeed, provincesMap] = await Promise.all([
     getInfraAnalyticsData(),
-    getCurrentLiveVideo(),
+    getCurrentLiveVideos(),
     getActivityFeed({ type: "feedback", limit: 12, sort: "newest" }),
     getPhilippineProvincesGeoJson(),
   ]);
@@ -20,7 +20,7 @@ export default async function LandingPage() {
   return (
     <LandingPageClient
       initialAnalytics={analytics}
-      liveVideo={liveVideo}
+      liveVideos={liveVideos}
       feedbackHighlights={feedbackHighlights}
       provincesMap={provincesMap}
     />

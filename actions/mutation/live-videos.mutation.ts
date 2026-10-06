@@ -74,13 +74,6 @@ export async function createLiveVideo(data: {
     });
 
     const video = await db.transaction(async (tx) => {
-      if (shouldBeLive) {
-        await tx
-          .update(liveVideos)
-          .set({ isLive: false, updatedAt: new Date() })
-          .where(eq(liveVideos.isLive, true));
-      }
-
       if (reviewer && data.isFeatured) {
         await tx
           .update(liveVideos)
@@ -180,13 +173,6 @@ export async function updateLiveVideo(
         publishedAt: nextPublishedAt,
         expiresAt: nextExpiresAt,
       });
-
-      if (nextIsLive) {
-        await tx
-          .update(liveVideos)
-          .set({ isLive: false, updatedAt: new Date() })
-          .where(and(eq(liveVideos.isLive, true), not(eq(liveVideos.id, id))));
-      }
 
       if (nextIsFeatured) {
         await tx
@@ -327,11 +313,6 @@ export async function toggleLiveVideoLive(id: string): Promise<{ success: boolea
           publishedAt: current.publishedAt,
           expiresAt: current.expiresAt,
         });
-
-        await tx
-          .update(liveVideos)
-          .set({ isLive: false, updatedAt: new Date() })
-          .where(eq(liveVideos.isLive, true));
       }
 
       await tx

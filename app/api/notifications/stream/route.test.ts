@@ -4,7 +4,7 @@ import { test } from "bun:test";
 import {
   createNotificationStreamGetHandler,
   type NotificationStreamDependencies,
-} from "./route";
+} from "./stream-handler";
 
 function dependencies(
   overrides: Partial<NotificationStreamDependencies> = {},
