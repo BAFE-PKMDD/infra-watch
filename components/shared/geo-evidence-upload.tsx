@@ -66,6 +66,35 @@ const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 const VIDEO_BITS_PER_SECOND = 1_500_000;
 const AUDIO_BITS_PER_SECOND = 64_000;
 const GEO_EVIDENCE_ACCEPT = `${UPLOAD_ACCEPT},${GPS_INFO_ACCEPT}`;
+// Some mobile browsers leave getUserMedia pending forever when the permission
+// prompt never appears, so give up instead of spinning indefinitely.
+const CAMERA_START_TIMEOUT_MS = 20_000;
+
+function isCameraTimeout(error: unknown) {
+  return error instanceof DOMException && error.name === "TimeoutError";
+}
+
+function getUserMediaWithTimeout(constraints: MediaStreamConstraints) {
+  return new Promise<MediaStream>((resolve, reject) => {
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      reject(new DOMException("Camera start timed out", "TimeoutError"));
+    }, CAMERA_START_TIMEOUT_MS);
+    navigator.mediaDevices.getUserMedia(constraints).then(
+      (stream) => {
+        window.clearTimeout(timer);
+        // A stream that arrives after the timeout would keep the camera on.
+        if (timedOut) stream.getTracks().forEach((track) => track.stop());
+        else resolve(stream);
+      },
+      (error: unknown) => {
+        window.clearTimeout(timer);
+        if (!timedOut) reject(error);
+      },
+    );
+  });
+}
 
 export type GeoEvidenceReadyItem = {
   file: File;
@@ -713,7 +742,6 @@ export function GeoEvidenceUpload({
     cameraSessionRef.current = session;
     setCameraMode(mode);
     setCameraStarting(true);
-    void requestCameraLocation(session);
     try {
       // Cap the video-mode capture resolution so the recording stays well under
       // MAX_VIDEO_BYTES at a longer duration; photo mode keeps the camera's native
@@ -724,14 +752,11 @@ export function GeoEvidenceUpload({
       let stream: MediaStream;
       let withoutAudio = false;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video,
-          audio: mode === "video",
-        });
+        stream = await getUserMediaWithTimeout({ video, audio: mode === "video" });
       } catch (initialError) {
         if (cameraSessionRef.current !== session) throw initialError;
-        if (mode !== "video") throw initialError;
-        stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+        if (mode !== "video" || isCameraTimeout(initialError)) throw initialError;
+        stream = await getUserMediaWithTimeout({ video, audio: false });
         withoutAudio = true;
       }
       if (cameraSessionRef.current !== session) {
@@ -740,6 +765,10 @@ export function GeoEvidenceUpload({
       }
       streamRef.current = stream;
       setCameraStarting(false);
+      // Ask for location only after the camera prompt is settled: mobile browsers
+      // (notably iOS Safari) can leave getUserMedia pending when the geolocation
+      // prompt is raised in the same tick.
+      void requestCameraLocation(session);
       if (withoutAudio) {
         toast.info(t("site.geoEvidence.toasts.micUnavailable"), {
           description: t("site.geoEvidence.toasts.micUnavailableDesc"),
@@ -748,9 +777,11 @@ export function GeoEvidenceUpload({
     } catch (error) {
       if (cameraSessionRef.current !== session) return;
       stopCamera();
-      const message = error instanceof DOMException && error.name === "NotAllowedError"
-        ? t("site.geoEvidence.toasts.cameraDenied")
-        : t("site.geoEvidence.toasts.cameraFailed");
+      const message = isCameraTimeout(error)
+        ? t("site.geoEvidence.toasts.cameraTimeout")
+        : error instanceof DOMException && error.name === "NotAllowedError"
+          ? t("site.geoEvidence.toasts.cameraDenied")
+          : t("site.geoEvidence.toasts.cameraFailed");
       toast.error(message);
     }
   };
