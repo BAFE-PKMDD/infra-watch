@@ -115,6 +115,18 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
                   </button>
                 </>
               )}
+              {!item.project && locationText && (
+                <>
+                  <span className="text-slate-400 dark:text-slate-600">·</span>
+                  <span
+                    className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400 truncate max-w-[200px] sm:max-w-[320px] md:max-w-[420px]"
+                    title={locationText}
+                  >
+                    <MapPin className="w-3 h-3 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span className="truncate">{locationText}</span>
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -142,14 +154,6 @@ export function IssueFeedCard({ item }: IssueFeedCardProps) {
           >
             {isExpandedText ? t("community.common.seeLess") : t("community.common.seeMore")}
           </button>
-        )}
-
-        {/* Location badge */}
-        {locationText && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-2">
-            <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-            <span>{locationText}</span>
-          </div>
         )}
       </div>
 
