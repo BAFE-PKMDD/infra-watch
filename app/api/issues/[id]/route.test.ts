@@ -142,7 +142,7 @@ test("explicitly approved public issue details use the reviewed summary and reda
   ]) {
     assert.equal(Object.hasOwn(payload.data, forbidden), false, forbidden);
   }
-  assert.deepEqual(payload.data.evidence, []);
+  assert.deepEqual(payload.data.evidence, [{ type: "image", url: `/api/issues/${issue.id}/public-evidence/0` }]);
   assert.deepEqual(payload.data.responses, [
     {
       id: "22222222-2222-4222-8222-222222222222",

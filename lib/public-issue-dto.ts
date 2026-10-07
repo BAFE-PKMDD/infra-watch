@@ -5,16 +5,17 @@ export function publicEvidencePath(issueId: string, evidenceIndex: number) {
 }
 
 /**
- * Only images that staff explicitly approved are public, and they are exposed
- * through a sanitized proxy route (location metadata stripped) rather than by
- * their private storage URL. Names and coordinates are never included.
+ * Images are exposed through a sanitized proxy route (location metadata
+ * stripped) rather than by their private storage URL. Callers only reach this
+ * for issues whose public summary is published. Names and coordinates are never
+ * included.
  */
 export function sanitizePublicIssueEvidence(
   evidence: StoredIssueEvidenceItem[] | null,
   issueId: string,
 ): Array<Pick<StoredIssueEvidenceItem, "type" | "url">> {
   return (Array.isArray(evidence) ? evidence : []).flatMap((item, index) => (
-    item.type === "image" && item.publicApprovedAt
+    item.type === "image"
       ? [{ type: "image" as const, url: publicEvidencePath(issueId, index) }]
       : []
   ));

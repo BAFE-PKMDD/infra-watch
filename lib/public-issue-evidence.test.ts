@@ -11,8 +11,8 @@ const published = {
   publicDescription: "Reviewed public summary",
 };
 
-test("resolves the storage path only for an approved image on a published issue", () => {
-  const evidence = [{ type: "image" as const, url: PATH, publicApprovedAt: APPROVED }];
+test("resolves the storage path for any image on a published issue", () => {
+  const evidence = [{ type: "image" as const, url: PATH }];
   assert.equal(resolveApprovedPublicImagePath({ ...published, evidence }, 0), PATH);
 });
 
@@ -24,14 +24,13 @@ test("accepts legacy full storage URLs but never returns a non-evidence path", (
   assert.equal(resolveApprovedPublicImagePath({ ...published, evidence: other }, 0), null);
 });
 
-test("refuses unapproved images, videos, bad indexes, and unpublished issues", () => {
+test("refuses videos, bad indexes, and unpublished issues", () => {
   const evidence = [
     { type: "image" as const, url: PATH },
-    { type: "video" as const, url: "issue-evidence/2-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.mp4", publicApprovedAt: APPROVED },
-    { type: "image" as const, url: PATH, publicApprovedAt: APPROVED },
+    { type: "video" as const, url: "issue-evidence/2-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.mp4" },
+    { type: "image" as const, url: PATH },
   ];
 
-  assert.equal(resolveApprovedPublicImagePath({ ...published, evidence }, 0), null);
   assert.equal(resolveApprovedPublicImagePath({ ...published, evidence }, 1), null);
   assert.equal(resolveApprovedPublicImagePath({ ...published, evidence }, 9), null);
   assert.equal(resolveApprovedPublicImagePath({ ...published, evidence }, -1), null);

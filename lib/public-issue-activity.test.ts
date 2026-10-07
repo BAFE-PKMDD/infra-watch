@@ -36,7 +36,7 @@ test("public citizen-feed issue items use a complete allowlist without reporter,
     barangay: "",
     responseCount: 0,
     recentResponses: [],
-    images: [],
+    images: [`/api/issues/${source.id}/public-evidence/0`],
     createdAt: source.createdAt,
     resolvedAt: null,
     project: { id: "ABEMIS-1", name: "Public Project" },
@@ -44,7 +44,7 @@ test("public citizen-feed issue items use a complete allowlist without reporter,
   assert.doesNotMatch(JSON.stringify(item), /Private Reporter|639171234567|Private home landmark|private\.jpg|"lat"|"lon"/);
 });
 
-test("public citizen-feed issue items expose only staff-approved images through the sanitized proxy", () => {
+test("public citizen-feed issue items expose images, but no videos or coordinates, through the sanitized proxy", () => {
   const id = "11111111-1111-4111-8111-111111111111";
   const item = formatPublicIssueActivity({
     id,
@@ -58,12 +58,12 @@ test("public citizen-feed issue items expose only staff-approved images through 
     projectAbemisId: null,
     evidence: [
       { type: "image", url: "issue-evidence/1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg", lat: 15.1, lon: 120.6 },
-      { type: "image", url: "issue-evidence/2-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.jpg", name: "home.jpg", lat: 15.1, lon: 120.6, publicApprovedAt: "2026-10-06T00:00:00.000Z" },
-      { type: "video", url: "issue-evidence/3-cccccccccccccccccccccccccccccccc.mp4", publicApprovedAt: "2026-10-06T00:00:00.000Z" },
+      { type: "image", url: "issue-evidence/2-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.jpg", name: "home.jpg", lat: 15.1, lon: 120.6 },
+      { type: "video", url: "issue-evidence/3-cccccccccccccccccccccccccccccccc.mp4" },
     ],
   });
 
-  assert.deepEqual(item.images, [`/api/issues/${id}/public-evidence/1`]);
+  assert.deepEqual(item.images, [`/api/issues/${id}/public-evidence/0`, `/api/issues/${id}/public-evidence/1`]);
   assert.doesNotMatch(JSON.stringify(item), /issue-evidence|home\.jpg|"lat"|"lon"/);
 });
 

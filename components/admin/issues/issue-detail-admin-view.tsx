@@ -15,8 +15,6 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
-  Eye,
-  EyeOff,
   FileText,
   ImageOff,
   Loader2,
@@ -251,27 +249,6 @@ function IssueDetailContent({ issueId, sandbox }: { issueId: string; sandbox: Tu
     },
   });
 
-  const evidenceVisibilityMutation = useMutation({
-    mutationFn: async ({ evidenceIndex, approved }: { evidenceIndex: number; approved: boolean }) => {
-      const response = await fetch(`/api/admin/issues/${issueId}/evidence/${evidenceIndex}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approved }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to update photo visibility");
-      return result;
-    },
-    onSuccess: (_result, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["admin-issue", issueId] });
-      queryClient.invalidateQueries({ queryKey: ["public-issue", issueId] });
-      toast.success(variables.approved
-        ? "Photo approved. It appears publicly once the public summary is published."
-        : "Photo withdrawn from public view");
-    },
-    onError: (mutationError: Error) => toast.error(mutationError.message),
-  });
-
   return (
     <AdminPageWrapper
       breadcrumbs={[{ label: "Admin" }, { label: "E-Report" }, { label: "Review" }]}
@@ -457,7 +434,7 @@ function IssueDetailContent({ issueId, sandbox }: { issueId: string; sandbox: Tu
                             rows={5}
                             required
                           />
-                          <span className="text-sm font-normal leading-5 text-slate-600 dark:text-slate-300">Only the reviewed summary will be public. The original report, exact location, reporter details, and evidence stay private.</span>
+                          <span className="text-sm font-normal leading-5 text-slate-600 dark:text-slate-300">Only the reviewed summary and the report photos will be public. Photos are shown without location data. The original report text, exact location, and reporter details stay private.</span>
                           {issue.publicApprovedAt && (
                             <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">A summary was published on {formatDate(issue.publicApprovedAt, true)}. Saving replaces it.</span>
                           )}
@@ -488,11 +465,10 @@ function IssueDetailContent({ issueId, sandbox }: { issueId: string; sandbox: Tu
                           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {media.map((item, index) => {
                               const src = getFullUrl(item.url);
-                              const publicApproved = Boolean(item.publicApprovedAt);
                               return (
-                                <div key={`${item.url}-${index}`} className="flex flex-col gap-2">
                                 <button
                                   type="button"
+                                  key={`${item.url}-${index}`}
                                   id={`evidence-${item.evidenceIndex}`}
                                   aria-label={`Open evidence ${index + 1}`}
                                   className="group relative min-h-44 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-left outline-none transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-slate-700 dark:bg-slate-950"
@@ -524,20 +500,6 @@ function IssueDetailContent({ issueId, sandbox }: { issueId: string; sandbox: Tu
                                     </span>
                                   ) : null}
                                 </button>
-                                {item.type === "image" && !sandbox ? (
-                                  <Button
-                                    type="button"
-                                    variant={publicApproved ? "default" : "outline"}
-                                    className="min-h-11 w-full"
-                                    aria-pressed={publicApproved}
-                                    disabled={evidenceVisibilityMutation.isPending}
-                                    onClick={() => evidenceVisibilityMutation.mutate({ evidenceIndex: item.evidenceIndex, approved: !publicApproved })}
-                                  >
-                                    {publicApproved ? <Eye className="size-4" aria-hidden="true" /> : <EyeOff className="size-4" aria-hidden="true" />}
-                                    {publicApproved ? "Shown publicly. Withdraw" : "Approve for public view"}
-                                  </Button>
-                                ) : null}
-                                </div>
                               );
                             })}
                           </div>

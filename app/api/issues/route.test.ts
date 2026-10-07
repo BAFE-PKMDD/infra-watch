@@ -51,18 +51,18 @@ test("public issue listing DTO omits reporter PII, internal priority, exact land
   }
 
   const evidence = data.evidence as Array<Record<string, unknown>>;
-  assert.deepEqual(evidence, []);
+  assert.deepEqual(evidence, [{ type: "image", url: `/api/issues/${row.id}/public-evidence/0` }]);
   assert.equal(data.description, "Privacy-reviewed public summary");
   assert.equal(data.city, "");
   assert.equal(data.barangay, "");
 });
 
-test("public issue listing DTO exposes only staff-approved photos, via the sanitized proxy and without coordinates", () => {
+test("public issue listing DTO exposes photos only via the sanitized proxy and without coordinates", () => {
   const data = formatPublicIssue({
     ...row,
     evidence: [
-      { ...row.evidence![0], publicApprovedAt: "2026-10-06T00:00:00.000Z" },
-      { type: "image", url: "https://storage.example/unapproved.jpg" },
+      row.evidence![0],
+      { type: "video", url: "https://storage.example/clip.mp4" },
     ],
   }) as Record<string, unknown>;
 
@@ -70,5 +70,5 @@ test("public issue listing DTO exposes only staff-approved photos, via the sanit
     { type: "image", url: `/api/issues/${row.id}/public-evidence/0` },
   ]);
   assert.deepEqual(data.photoUrls, [`/api/issues/${row.id}/public-evidence/0`]);
-  assert.doesNotMatch(JSON.stringify(data), /storage\.example|evidence\.jpg|15\.028|120\.694/);
+  assert.doesNotMatch(JSON.stringify(data), /storage\.example|clip\.mp4|evidence\.jpg|15\.028|120\.694/);
 });

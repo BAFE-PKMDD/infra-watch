@@ -27,8 +27,8 @@ test("previous updates retain the actual status transition", () => {
   assert.match(source, /formatStatusChange\(response\.statusChange\)/);
 });
 
-test("public publication is an explicit staff approval and internal-only checkboxes are removed", () => {
-  assert.match(source, /Approve for public view/);
+test("public publication is the reviewed summary, photos need no separate approval, and internal-only checkboxes are removed", () => {
+  assert.doesNotMatch(source, /Approve for public view/);
   assert.doesNotMatch(source, />\s*Internal only\s*</);
-  assert.match(source, /Only the reviewed summary will be public/);
+  assert.match(source, /Only the reviewed summary and the report photos will be public/);
 });

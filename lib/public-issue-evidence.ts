@@ -10,7 +10,7 @@ type PublicEvidenceIssue = {
 
 /**
  * Resolves the private storage path of an evidence image, but only when the
- * issue is publicly approved and staff approved that specific image.
+ * issue's public summary is published.
  */
 export function resolveApprovedPublicImagePath(
   issue: PublicEvidenceIssue,
@@ -20,7 +20,7 @@ export function resolveApprovedPublicImagePath(
   if (!Number.isInteger(evidenceIndex) || evidenceIndex < 0) return null;
 
   const item = Array.isArray(issue.evidence) ? issue.evidence[evidenceIndex] : undefined;
-  if (!item || item.type !== "image" || !item.publicApprovedAt) return null;
+  if (!item || item.type !== "image") return null;
 
   let pathname = item.url;
   try {
