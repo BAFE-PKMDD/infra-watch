@@ -53,6 +53,40 @@ test("rejects cross-origin or origin-less event submissions", async () => {
   assert.equal(called, false);
 });
 
+test("accepts the https origin when a TLS-terminating proxy makes request.url http", async () => {
+  const response = await createCitizenEventPostHandler({
+    getRole: async () => null,
+    recordEvent: async () => "recorded",
+  })(new Request("http://infra-watch.bafe.gov.ph/api/analytics/events", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "https://infra-watch.bafe.gov.ph",
+      "x-forwarded-proto": "https",
+    },
+    body: JSON.stringify(validMapEvent),
+  }));
+
+  assert.equal(response.status, 202);
+});
+
+test("rejects a forwarded-scheme request from a different host", async () => {
+  const response = await createCitizenEventPostHandler({
+    getRole: async () => null,
+    recordEvent: async () => "recorded",
+  })(new Request("http://infra-watch.bafe.gov.ph/api/analytics/events", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "https://attacker.example",
+      "x-forwarded-proto": "https",
+    },
+    body: JSON.stringify(validMapEvent),
+  }));
+
+  assert.equal(response.status, 403);
+});
+
 test("rejects invalid or privacy-sensitive payloads", async () => {
   const response = await createCitizenEventPostHandler({
     getRole: async () => null,

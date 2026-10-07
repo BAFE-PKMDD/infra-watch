@@ -48,6 +48,30 @@ async function readBoundedEventBody(request: Request): Promise<unknown | null> {
   }
 }
 
+function configuredOrigin(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+// Behind a TLS-terminating proxy request.url is http://, while the browser's
+// Origin is https://. Accept the proxy-reported scheme or the configured app URL.
+function isSameSiteOrigin(request: Request, origin: string): boolean {
+  const requestUrl = new URL(request.url);
+  if (origin === requestUrl.origin) return true;
+
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  if (forwardedProto === "https" || forwardedProto === "http") {
+    if (origin === `${forwardedProto}://${requestUrl.host}`) return true;
+  }
+
+  return [process.env.NEXT_PUBLIC_APP_URL, process.env.BETTER_AUTH_URL]
+    .some((value) => configuredOrigin(value) === origin);
+}
+
 export type CitizenEventRouteDependencies = {
   getRole: (request: Request) => Promise<string | null | undefined>;
   resolveNetworkRegion?: (request: Request) => Promise<{ code: string; label: string } | null>;
@@ -85,7 +109,7 @@ export function createCitizenEventPostHandler(
 ) {
   return async function POST(request: Request) {
     const origin = request.headers.get("origin");
-    if (!origin || origin !== new URL(request.url).origin) {
+    if (!origin || !isSameSiteOrigin(request, origin)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) {

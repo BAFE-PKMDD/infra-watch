@@ -7,9 +7,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SmsPhoneMockup } from "@/components/report-issue/sms-phone-mockup";
 import { eReport } from "@/i18n/sections/eReport";
+import { SMS_REPLY_NUMBER } from "@/lib/sms-grievance/auto-response";
 
 const SMS_TEMPLATE = "Project Type\nName of Sender (Optional)\nAge\nGender\nLocation\n\nConcern";
-const OFFICIAL_NUMBER = "0912-345-6789";
+const OFFICIAL_NUMBER = SMS_REPLY_NUMBER;
 const EXAMPLE_TICKET_ID = "BAFE-2026-000842";
 const TICKET_PLACEHOLDER = "{{TICKET_ID}}";
 

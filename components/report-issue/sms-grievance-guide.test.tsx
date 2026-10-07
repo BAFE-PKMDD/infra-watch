@@ -9,7 +9,7 @@ test("SMS grievance guidance renders honest prototype status and the SMS format"
 
   assert.match(html, /UI prototype/);
   assert.match(html, /No message will be sent/);
-  assert.match(html, /0912-345-6789/);
+  assert.match(html, /\+63 956 234 9888/);
   assert.match(html, /Project Type\nName of Sender \(Optional\)\nAge\nGender\nLocation\n\nConcern/);
   assert.match(html, /not an emergency service/i);
   assert.doesNotMatch(html, /href="sms:/);
