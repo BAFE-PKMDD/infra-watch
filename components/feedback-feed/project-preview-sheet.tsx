@@ -20,7 +20,7 @@ import { useTranslation } from "@/i18n";
 import { getProjectPreview } from "@/actions/query/project-preview.query";
 import { formatCurrency } from "@/lib/format";
 import { getBlurDataURL } from "@/lib/image-utils";
-import { getProjectLengthDisplay } from "@/lib/project-length-display";
+import { getProjectLengthDisplay, getTargetMeasureKind } from "@/lib/project-length-display";
 import {
   getProjectPreviewView,
   type ProjectPreviewRequestState,
@@ -272,7 +272,9 @@ function PreviewContent({
             icon={Ruler}
             label={projectLength.source === "post-geotagged"
               ? t("community.projectPreview.postGeotagged")
-              : t("community.projectPreview.targetLength")}
+              : getTargetMeasureKind(project.projectLength) === "quantity"
+                ? t("community.projectPreview.targetQuantity")
+                : t("community.projectPreview.targetLength")}
             // getProjectLengthDisplay (lib) spells its unavailable state in English.
             value={projectLength.value === "Unavailable" ? t("community.projectPreview.unavailable") : projectLength.value}
           />

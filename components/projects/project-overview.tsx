@@ -18,6 +18,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { usePublicAnalyticsStrings } from "@/components/public-analytics/use-strings";
+import { getTargetMeasureKind } from "@/lib/project-length-display";
 import type { ProjectDetail } from "@/types";
 import { useTranslation } from "@/i18n";
 
@@ -116,6 +117,7 @@ function DataField({ label, tooltip, value, isMono = false }: DataFieldProps) {
 
 export function ProjectOverview({ project, onShowOnMap }: ProjectOverviewProps) {
   const { t, language } = useTranslation();
+  const isQuantityTarget = getTargetMeasureKind(project.projectLength) === "quantity";
   const publicStrings = usePublicAnalyticsStrings();
 
   const formatBudget = (amount: number | null) => {
@@ -302,12 +304,12 @@ export function ProjectOverview({ project, onShowOnMap }: ProjectOverviewProps) 
             {/* ── Card 5: Specifications ──────────────────── */}
             <SectionCard
               icon={<Ruler className="w-4 h-4" />}
-              title={t("projectDetail.overview.targetLength")}
+              title={isQuantityTarget ? t("projectDetail.overview.targetQuantity") : t("projectDetail.overview.targetLength")}
             >
               <div className="grid grid-cols-2 gap-4">
                 <DataField
-                  label={t("projectDetail.overview.targetLength")}
-                  tooltip={t("projectDetail.overview.targetLengthTooltip")}
+                  label={isQuantityTarget ? t("projectDetail.overview.targetQuantity") : t("projectDetail.overview.targetLength")}
+                  tooltip={isQuantityTarget ? t("projectDetail.overview.targetQuantityTooltip") : t("projectDetail.overview.targetLengthTooltip")}
                   value={project.projectLength}
                 />
                 {project.postGeotaggedLength && (

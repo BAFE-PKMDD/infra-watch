@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
+import { useTranslation } from "@/i18n";
 import { useNotifications } from "@/providers/notification-provider";
 
 interface NotificationBellProps {
@@ -11,7 +12,8 @@ interface NotificationBellProps {
 
 export function NotificationBell({ open: controlledOpen, onOpenChange }: NotificationBellProps = {}) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
+  const { notifications, unreadCount, isError, refetch, markAllAsRead, markAsRead } = useNotifications();
+  const { t } = useTranslation();
   const open = controlledOpen ?? uncontrolledOpen;
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -41,7 +43,7 @@ export function NotificationBell({ open: controlledOpen, onOpenChange }: Notific
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        className="relative inline-flex size-11 items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         aria-label="Notifications"
       >
         <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
@@ -71,7 +73,18 @@ export function NotificationBell({ open: controlledOpen, onOpenChange }: Notific
           </div>
 
           <div className="max-h-96 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {isError ? (
+              <div role="alert" className="px-4 py-6 text-center text-sm text-slate-600 dark:text-slate-300">
+                <p className="font-semibold text-slate-900 dark:text-white">{t("account.notifications.loadFailedTitle")}</p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="mt-3 inline-flex min-h-11 items-center rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  {t("account.notifications.retry")}
+                </button>
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-slate-500">
                 No notifications yet
               </div>

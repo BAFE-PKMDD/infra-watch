@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 
-import { getProjectLengthDisplay } from "./project-length-display";
+import { getProjectLengthDisplay, getTargetMeasureKind } from "./project-length-display";
+
+test("labels counted units as quantity and linear measures as length", () => {
+  assert.equal(getTargetMeasureKind("1.00 unit"), "quantity");
+  assert.equal(getTargetMeasureKind("3 units"), "quantity");
+  assert.equal(getTargetMeasureKind("2.5"), "length");
+  assert.equal(getTargetMeasureKind("12 km"), "length");
+  assert.equal(getTargetMeasureKind("350 meters"), "length");
+  assert.equal(getTargetMeasureKind("Unavailable"), "length");
+  assert.equal(getTargetMeasureKind(null), "length");
+});
 
 test("shows unavailable instead of NaN km when source length is missing", () => {
   assert.deepEqual(

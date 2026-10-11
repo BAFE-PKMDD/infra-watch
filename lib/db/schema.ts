@@ -539,7 +539,7 @@ export const kbDocuments = pgTable(
     fileSize: integer("file_size"),
     chunkCount: integer("chunk_count").notNull().default(0),
     status: text("status").notNull().default("pending"),
-    // 'public' is searchable from both ARIA surfaces; 'admin_only' is filtered out
+    // 'public' is searchable from both ANIA surfaces; 'admin_only' is filtered out
     // of any search made from the public citizen surface (enforced in kb-search.ts,
     // not left to the model to self-restrict).
     visibility: text("visibility").notNull().default("public"),

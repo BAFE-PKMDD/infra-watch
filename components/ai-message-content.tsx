@@ -228,7 +228,7 @@ export function AiMessageContent({
   isStreaming?: boolean;
 }) {
   // Only the interface labels around the answer follow the language switch; the generated
-  // answer itself is rendered exactly as ARIA wrote it.
+  // answer itself is rendered exactly as ANIA wrote it.
   const { t } = useTranslation();
   return (
     <div className="min-w-0 text-[13px] leading-5 text-slate-800 dark:text-slate-100">

@@ -165,7 +165,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
             <button
               type="button"
               onClick={toggleTheme}
-              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
+              className="inline-flex size-11 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
               aria-label={t("nav.toggleTheme")}
               title={t("nav.toggleThemeTitle")}
               suppressHydrationWarning
@@ -177,7 +177,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
               type="button"
               onClick={() => setMobileOpen((prev) => !prev)}
               data-citizen-nav="menu"
-              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
+              className="inline-flex size-11 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
               aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
               aria-expanded={mobileOpen}
               suppressHydrationWarning
@@ -386,7 +386,9 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
 
         {/* Mobile menu panel */}
         {mobileOpen && (
-          <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 pt-4 pb-6 space-y-4">
+          // Bounded to the space under the bar so the account links and Sign In stay reachable
+          // on short phones; the sticky header would otherwise grow past the viewport.
+          <div className="xl:hidden max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-slate-200 dark:border-slate-800 pt-4 pb-6 space-y-4 sm:max-h-[calc(100dvh-5rem)]">
             <div className="flex flex-col space-y-3">
               {translatedNavItems
                 .filter(item => !item.requiresAuth || user || resolvedActiveItem === item.key)
@@ -397,7 +399,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                     data-citizen-nav={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      "text-base font-medium px-3 py-2 rounded-lg transition-colors",
+                      "min-h-11 text-base font-medium px-3 py-2 rounded-lg transition-colors",
                       resolvedActiveItem === item.key
                         ? "bg-primary/10 text-primary"
                         : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
@@ -436,7 +438,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                 {user.role !== "citizen" && (
                   <Link
                     href="/dashboard"
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                    className="flex min-h-11 items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                     onClick={() => setMobileOpen(false)}
                   >
                     <LayoutDashboard className="w-4 h-4" />
@@ -444,8 +446,16 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                   </Link>
                 )}
                 <Link
+                  href="/my-profile"
+                  className="flex min-h-11 items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <UserRound className="w-4 h-4" />
+                  {t("nav.myProfile")}
+                </Link>
+                <Link
                   href="/my-feedbacks"
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  className="flex min-h-11 items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                   onClick={() => setMobileOpen(false)}
                 >
                   <MessageSquareDot className="w-4 h-4" />
@@ -453,7 +463,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                 </Link>
                 <Link
                   href="/my-issues"
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  className="flex min-h-11 items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                   onClick={() => setMobileOpen(false)}
                 >
                   <AlertCircle className="w-4 h-4" />
@@ -462,7 +472,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                 {user.role === "citizen" && (
                   <Link
                     href="/my-notifications"
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                    className="flex min-h-11 items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                     onClick={() => setMobileOpen(false)}
                   >
                     <Bell className="w-4 h-4" />
@@ -474,7 +484,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                     setMobileOpen(false);
                     await logout();
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  className="w-full flex min-h-11 items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                   suppressHydrationWarning
                 >
                   <LogOut className="w-4 h-4" />

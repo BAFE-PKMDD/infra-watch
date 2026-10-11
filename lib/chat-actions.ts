@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Fixed allowlist of navigation targets ARIA/ANIA may suggest as action buttons.
+ * Fixed allowlist of navigation targets ANIA may suggest as action buttons.
  * The model only ever picks a key from this list - it never supplies its own
  * label or href, so a manipulated tool result or prompt-injected project field
  * can't turn a chat answer into an open redirect or a spoofed call to action.

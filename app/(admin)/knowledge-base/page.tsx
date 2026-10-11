@@ -769,7 +769,7 @@ export default function KnowledgeBasePage() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Visibility to ARIA
+                  Visibility to ANIA
                 </label>
                 <select
                   value={newFaqVisibility}
@@ -780,7 +780,7 @@ export default function KnowledgeBasePage() {
                   <option value="admin_only">Admin only - searchable from the admin surface only</option>
                 </select>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  This is enforced when ARIA searches the knowledge base, not just a display label.
+                  This is enforced when ANIA searches the knowledge base, not just a display label.
                 </p>
               </div>
 

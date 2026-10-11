@@ -66,11 +66,21 @@ export function MyProfileClient({
           <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
             {t("account.profile.mobileLabel")}
           </label>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!isPending && isDirty) handleSave();
+            }}
+            className="flex flex-col gap-2 sm:flex-row"
+          >
             <div className="relative flex-1">
               <Phone className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <Input
                 id="phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 value={phoneInput}
                 onChange={(event) => setPhoneInput(event.target.value)}
                 placeholder="09171234567"
@@ -78,10 +88,10 @@ export function MyProfileClient({
                 disabled={isPending}
               />
             </div>
-            <Button onClick={handleSave} disabled={isPending || !isDirty} className="min-h-11 sm:w-28">
+            <Button type="submit" disabled={isPending || !isDirty} className="min-h-11 sm:w-28">
               {isPending ? t("account.profile.saving") : t("account.profile.save")}
             </Button>
-          </div>
+          </form>
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             {showsSmsNote ? t("account.profile.smsNote") : t("account.profile.formatNote")}
           </p>

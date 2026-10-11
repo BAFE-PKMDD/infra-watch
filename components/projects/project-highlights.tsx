@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import { formatCurrency } from "@/lib/format";
-import { getProjectLengthDisplay } from "@/lib/project-length-display";
+import { getProjectLengthDisplay, getTargetMeasureKind } from "@/lib/project-length-display";
 import type { ProjectDetail } from "@/types";
 import { useTranslation } from "@/i18n";
 import { getAgencyLogo } from "@/constants/agencies";
@@ -61,6 +61,7 @@ export function ProjectHighlights({ project }: ProjectHighlightsProps) {
   // Resolve agency logo for QR code
   const agencyLogo = getAgencyLogo(project.sourceAgency);
   const projectLength = getProjectLengthDisplay(project);
+  const isQuantityTarget = getTargetMeasureKind(project.projectLength) === "quantity";
 
   // Use a consistent URL for both server and client
   const projectUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/projects/${project.id}`;
@@ -231,8 +232,8 @@ export function ProjectHighlights({ project }: ProjectHighlightsProps) {
                 value={project.budget === null ? "Unavailable" : formatCurrency(project.budget)}
               />
               <HighlightField
-                label={projectLength.source === "post-geotagged" ? t("projectDetail.overview.postGeotaggedLength") : t("projectDetail.overview.targetLength")}
-                tooltip={projectLength.source === "post-geotagged" ? t("projectDetail.overview.postGeotaggedLengthTooltip") : t("projectDetail.overview.targetLengthTooltip")}
+                label={projectLength.source === "post-geotagged" ? t("projectDetail.overview.postGeotaggedLength") : isQuantityTarget ? t("projectDetail.overview.targetQuantity") : t("projectDetail.overview.targetLength")}
+                tooltip={projectLength.source === "post-geotagged" ? t("projectDetail.overview.postGeotaggedLengthTooltip") : isQuantityTarget ? t("projectDetail.overview.targetQuantityTooltip") : t("projectDetail.overview.targetLengthTooltip")}
                 value={projectLength.value}
               />
               <HighlightField

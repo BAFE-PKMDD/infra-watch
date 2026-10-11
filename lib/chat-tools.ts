@@ -6,6 +6,18 @@ import { user as authUser } from "@/auth-schema";
 import { and, count, eq, ilike, or, sum, desc } from "drizzle-orm";
 import { searchKnowledgeBase as kbSearch } from "@/lib/kb-search";
 import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
+import { publicStageCondition } from "@/lib/public-analytics/public-stage-condition";
+
+/**
+ * The public surface lists exactly what the public project pages show: proposals and
+ * other non-public stages are excluded (same rule as the /projects list). The admin
+ * surface keeps the wider year-scoped view.
+ */
+function surfaceVisibilityConditions(context: ChatToolsContext) {
+  return context.isAdminSurface
+    ? [projectYearScopeCondition()]
+    : [projectYearScopeCondition(), publicStageCondition()];
+}
 
 function projectOverviewUrl(...identifiers: Array<string | null>) {
   const identifier = identifiers.find((value): value is string => Boolean(value));
@@ -52,105 +64,108 @@ const searchProjectsSchema = z.object({
     .describe("Year the project was funded (e.g. 2024, 2025)"),
 });
 
-export const searchProjects = tool({
-  description:
-    "Search infrastructure projects by location, status, program, or keyword. Returns up to 10 matching projects with key details.",
-  inputSchema: searchProjectsSchema,
-  execute: async (params: z.infer<typeof searchProjectsSchema>) => {
-    const conditions = [projectYearScopeCondition()];
+function buildSearchProjectsTool(context: ChatToolsContext) {
+  return tool({
+    description:
+      "Search infrastructure projects by location, status, program, or keyword. Returns up to 10 matching projects with key details.",
+    inputSchema: searchProjectsSchema,
+    execute: async (params: z.infer<typeof searchProjectsSchema>) => {
+      const conditions = surfaceVisibilityConditions(context);
 
-    if (params.query) {
-      const pattern = `%${params.query}%`;
-      conditions.push(
-        or(
-          ilike(projects.name, pattern),
-          ilike(projects.contractorName, pattern),
-          ilike(projects.abemisId, pattern),
-          ilike(projects.projectCode, pattern),
-        )!,
-      );
-    }
-    if (params.province) {
-      conditions.push(ilike(projects.province, `%${params.province}%`));
-    }
-    if (params.municipality) {
-      conditions.push(
-        ilike(projects.municipality, `%${params.municipality}%`),
-      );
-    }
-    if (params.region) {
-      conditions.push(ilike(projects.region, `%${params.region}%`));
-    }
-    if (params.status) {
-      conditions.push(ilike(projects.status, `%${params.status}%`));
-    }
-    if (params.program) {
-      conditions.push(ilike(projects.program, `%${params.program}%`));
-    }
-    if (params.yearFunded) {
-      conditions.push(eq(projects.yearFunded, params.yearFunded));
-    }
+      if (params.query) {
+        const pattern = `%${params.query}%`;
+        conditions.push(
+          or(
+            ilike(projects.name, pattern),
+            ilike(projects.contractorName, pattern),
+            ilike(projects.abemisId, pattern),
+            ilike(projects.projectCode, pattern),
+          )!,
+        );
+      }
+      if (params.province) {
+        conditions.push(ilike(projects.province, `%${params.province}%`));
+      }
+      if (params.municipality) {
+        conditions.push(
+          ilike(projects.municipality, `%${params.municipality}%`),
+        );
+      }
+      if (params.region) {
+        conditions.push(ilike(projects.region, `%${params.region}%`));
+      }
+      if (params.status) {
+        conditions.push(ilike(projects.status, `%${params.status}%`));
+      }
+      if (params.program) {
+        conditions.push(ilike(projects.program, `%${params.program}%`));
+      }
+      if (params.yearFunded) {
+        conditions.push(eq(projects.yearFunded, params.yearFunded));
+      }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereClause =
+        conditions.length > 0 ? and(...conditions) : undefined;
 
-    const rows = await db
-      .select({
-        abemisId: projects.abemisId,
-        projectCode: projects.projectCode,
-        name: projects.name,
-        status: projects.status,
-        stage: projects.stage,
-        program: projects.program,
-        province: projects.province,
-        municipality: projects.municipality,
-        barangay: projects.barangay,
-        region: projects.region,
-        budget: projects.budget,
-        actualBidAmount: projects.abc,
-        physicalProgress: projects.physicalProgress,
-        financialProgress: projects.financialProgress,
-        contractorName: projects.contractorName,
-        yearFunded: projects.yearFunded,
-        projectType: projects.projectType,
-        startDate: projects.startDate,
-        targetCompletionDate: projects.targetCompletionDate,
-      })
-      .from(projects)
-      .where(whereClause)
-      .orderBy(desc(projects.lastSyncedAt))
-      .limit(10);
+      const rows = await db
+        .select({
+          abemisId: projects.abemisId,
+          projectCode: projects.projectCode,
+          name: projects.name,
+          status: projects.status,
+          stage: projects.stage,
+          program: projects.program,
+          province: projects.province,
+          municipality: projects.municipality,
+          barangay: projects.barangay,
+          region: projects.region,
+          budget: projects.budget,
+          actualBidAmount: projects.abc,
+          physicalProgress: projects.physicalProgress,
+          financialProgress: projects.financialProgress,
+          contractorName: projects.contractorName,
+          yearFunded: projects.yearFunded,
+          projectType: projects.projectType,
+          startDate: projects.startDate,
+          targetCompletionDate: projects.targetCompletionDate,
+        })
+        .from(projects)
+        .where(whereClause)
+        .orderBy(desc(projects.lastSyncedAt))
+        .limit(10);
 
-    return {
-      resultCount: rows.length,
-      projects: rows.map((row) => ({
-        id: row.abemisId,
-        url: projectOverviewUrl(row.abemisId, row.projectCode),
-        projectCode: row.projectCode,
-        name: row.name,
-        status: row.status,
-        stage: row.stage,
-        program: row.program,
-        location: [row.barangay, row.municipality, row.province, row.region]
-          .filter(Boolean)
-          .join(", "),
-        budget: row.budget
-          ? `₱${Number(row.budget).toLocaleString()}`
-          : "N/A",
-        actualBidAmount: row.actualBidAmount
-          ? `₱${Number(row.actualBidAmount).toLocaleString()}`
-          : "N/A",
-        physicalProgress: `${row.physicalProgress}%`,
-        financialProgress: `${row.financialProgress}%`,
-        contractor: row.contractorName ?? "N/A",
-        yearFunded: row.yearFunded ?? "N/A",
-        projectType: row.projectType,
-        startDate: row.startDate?.toLocaleDateString() ?? "N/A",
-        targetCompletion:
-          row.targetCompletionDate?.toLocaleDateString() ?? "N/A",
-      })),
-    };
-  },
-});
+      return {
+        resultCount: rows.length,
+        projects: rows.map((row) => ({
+          id: row.abemisId,
+          url: projectOverviewUrl(row.abemisId, row.projectCode),
+          projectCode: row.projectCode,
+          name: row.name,
+          status: row.status,
+          stage: row.stage,
+          program: row.program,
+          location: [row.barangay, row.municipality, row.province, row.region]
+            .filter(Boolean)
+            .join(", "),
+          budget: row.budget
+            ? `₱${Number(row.budget).toLocaleString()}`
+            : "N/A",
+          actualBidAmount: row.actualBidAmount
+            ? `₱${Number(row.actualBidAmount).toLocaleString()}`
+            : "N/A",
+          physicalProgress: `${row.physicalProgress}%`,
+          financialProgress: `${row.financialProgress}%`,
+          contractor: row.contractorName ?? "N/A",
+          yearFunded: row.yearFunded ?? "N/A",
+          projectType: row.projectType,
+          startDate: row.startDate?.toLocaleDateString() ?? "N/A",
+          targetCompletion:
+            row.targetCompletionDate?.toLocaleDateString() ?? "N/A",
+        })),
+      };
+    },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // getProjectStats — aggregate counts, budget, status breakdown
@@ -163,58 +178,61 @@ const getProjectStatsSchema = z.object({
   program: z.string().optional().describe("Filter stats by program"),
 });
 
-export const getProjectStats = tool({
-  description:
-    "Get aggregate statistics: total count of projects, total budget, and breakdown by status. Optionally filtered by region, province, or status.",
-  inputSchema: getProjectStatsSchema,
-  execute: async (params: z.infer<typeof getProjectStatsSchema>) => {
-    const conditions = [projectYearScopeCondition()];
+function buildGetProjectStatsTool(context: ChatToolsContext) {
+  return tool({
+    description:
+      "Get aggregate statistics: total count of projects, total budget, and breakdown by status. Optionally filtered by region, province, or status.",
+    inputSchema: getProjectStatsSchema,
+    execute: async (params: z.infer<typeof getProjectStatsSchema>) => {
+      const conditions = surfaceVisibilityConditions(context);
 
-    if (params.region) {
-      conditions.push(ilike(projects.region, `%${params.region}%`));
-    }
-    if (params.province) {
-      conditions.push(ilike(projects.province, `%${params.province}%`));
-    }
-    if (params.status) {
-      conditions.push(ilike(projects.status, `%${params.status}%`));
-    }
-    if (params.program) {
-      conditions.push(ilike(projects.program, `%${params.program}%`));
-    }
+      if (params.region) {
+        conditions.push(ilike(projects.region, `%${params.region}%`));
+      }
+      if (params.province) {
+        conditions.push(ilike(projects.province, `%${params.province}%`));
+      }
+      if (params.status) {
+        conditions.push(ilike(projects.status, `%${params.status}%`));
+      }
+      if (params.program) {
+        conditions.push(ilike(projects.program, `%${params.program}%`));
+      }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereClause =
+        conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [totals] = await db
-      .select({
-        totalProjects: count(),
-        totalBudget: sum(projects.budget),
-      })
-      .from(projects)
-      .where(whereClause);
+      const [totals] = await db
+        .select({
+          totalProjects: count(),
+          totalBudget: sum(projects.budget),
+        })
+        .from(projects)
+        .where(whereClause);
 
-    const statusBreakdown = await db
-      .select({
-        status: projects.status,
-        count: count(),
-      })
-      .from(projects)
-      .where(whereClause)
-      .groupBy(projects.status)
-      .orderBy(desc(count()));
+      const statusBreakdown = await db
+        .select({
+          status: projects.status,
+          count: count(),
+        })
+        .from(projects)
+        .where(whereClause)
+        .groupBy(projects.status)
+        .orderBy(desc(count()));
 
-    return {
-      totalProjects: totals.totalProjects,
-      totalBudget: totals.totalBudget
-        ? `₱${Number(totals.totalBudget).toLocaleString()}`
-        : "₱0",
-      statusBreakdown: statusBreakdown.map((row) => ({
-        status: row.status,
-        count: row.count,
-      })),
-    };
-  },
-});
+      return {
+        totalProjects: totals.totalProjects,
+        totalBudget: totals.totalBudget
+          ? `₱${Number(totals.totalBudget).toLocaleString()}`
+          : "₱0",
+        statusBreakdown: statusBreakdown.map((row) => ({
+          status: row.status,
+          count: row.count,
+        })),
+      };
+    },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // getProjectById — full details for a single project
@@ -224,81 +242,93 @@ const getProjectByIdSchema = z.object({
   id: z.string().describe("The project ABEMIS ID, project code, or UUID"),
 });
 
-export const getProjectById = tool({
-  description:
-    "Get full details of a specific project by its ABEMIS ID, project code, or UUID.",
-  inputSchema: getProjectByIdSchema,
-  execute: async ({ id }: z.infer<typeof getProjectByIdSchema>) => {
-    const isUuid =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        id,
+function buildGetProjectByIdTool(context: ChatToolsContext) {
+  return tool({
+    description:
+      "Get full details of a specific project by its ABEMIS ID, project code, or UUID.",
+    inputSchema: getProjectByIdSchema,
+    execute: async ({ id }: z.infer<typeof getProjectByIdSchema>) => {
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          id,
+        );
+
+      const identityCondition = isUuid
+        ? or(
+            eq(projects.abemisId, id),
+            eq(projects.projectCode, id),
+            eq(projects.id, id),
+          )
+        : or(eq(projects.abemisId, id), eq(projects.projectCode, id));
+      const condition = and(
+        identityCondition,
+        ...surfaceVisibilityConditions(context),
       );
 
-    const identityCondition = isUuid
-      ? or(
-          eq(projects.abemisId, id),
-          eq(projects.projectCode, id),
-          eq(projects.id, id),
-        )
-      : or(eq(projects.abemisId, id), eq(projects.projectCode, id));
-    const condition = and(identityCondition, projectYearScopeCondition());
+      const [row] = await db.select().from(projects).where(condition).limit(1);
 
-    const [row] = await db.select().from(projects).where(condition).limit(1);
+      if (!row) {
+        return { found: false, message: `No project found with ID "${id}".` };
+      }
 
-    if (!row) {
-      return { found: false, message: `No project found with ID "${id}".` };
-    }
-
-    return {
-      found: true,
-      project: {
-        id: row.abemisId,
-        url: projectOverviewUrl(row.abemisId, row.projectCode, row.id),
-        projectCode: row.projectCode,
-        name: row.name,
-        description: row.description ?? "No description provided.",
-        status: row.status,
-        stage: row.stage,
-        program: row.program,
-        projectType: row.projectType,
-        location: [row.barangay, row.municipality, row.province, row.region]
-          .filter(Boolean)
-          .join(", "),
-        province: row.province,
-        municipality: row.municipality,
-        barangay: row.barangay,
-        region: row.region,
-        budget: row.budget
-          ? `₱${Number(row.budget).toLocaleString()}`
-          : "N/A",
-        actualBidAmount: row.abc
-          ? `₱${Number(row.abc).toLocaleString()}`
-          : "N/A",
-        physicalProgress: `${row.physicalProgress}%`,
-        financialProgress: `${row.financialProgress}%`,
-        contractor: row.contractorName ?? "N/A",
-        implementingAgency: row.implementingAgency ?? "N/A",
-        yearFunded: row.yearFunded ?? "N/A",
-        calendarDays: row.calendarDays ?? "N/A",
-        startDate: row.startDate?.toLocaleDateString() ?? "N/A",
-        targetCompletion:
-          row.targetCompletionDate?.toLocaleDateString() ?? "N/A",
-        actualCompletion:
-          row.actualCompletionDate?.toLocaleDateString() ?? "N/A",
-        bannerProgram: row.bannerProgram ?? "N/A",
-        operatingUnit: row.operatingUnit ?? "N/A",
-      },
-    };
-  },
-});
+      return {
+        found: true,
+        project: {
+          id: row.abemisId,
+          url: projectOverviewUrl(row.abemisId, row.projectCode, row.id),
+          projectCode: row.projectCode,
+          name: row.name,
+          description: row.description ?? "No description provided.",
+          status: row.status,
+          stage: row.stage,
+          program: row.program,
+          projectType: row.projectType,
+          location: [row.barangay, row.municipality, row.province, row.region]
+            .filter(Boolean)
+            .join(", "),
+          province: row.province,
+          municipality: row.municipality,
+          barangay: row.barangay,
+          region: row.region,
+          budget: row.budget
+            ? `₱${Number(row.budget).toLocaleString()}`
+            : "N/A",
+          actualBidAmount: row.abc
+            ? `₱${Number(row.abc).toLocaleString()}`
+            : "N/A",
+          physicalProgress: `${row.physicalProgress}%`,
+          financialProgress: `${row.financialProgress}%`,
+          contractor: row.contractorName ?? "N/A",
+          implementingAgency: row.implementingAgency ?? "N/A",
+          yearFunded: row.yearFunded ?? "N/A",
+          calendarDays: row.calendarDays ?? "N/A",
+          startDate: row.startDate?.toLocaleDateString() ?? "N/A",
+          targetCompletion:
+            row.targetCompletionDate?.toLocaleDateString() ?? "N/A",
+          actualCompletion:
+            row.actualCompletionDate?.toLocaleDateString() ?? "N/A",
+          bannerProgram: row.bannerProgram ?? "N/A",
+          operatingUnit: row.operatingUnit ?? "N/A",
+        },
+      };
+    },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // getDelayedProjectsSummary — region ranking and delayed project breakdown
 // ---------------------------------------------------------------------------
 
 const getDelayedProjectsSummarySchema = z.object({
-  region: z.string().optional().describe("Filter by specific region code or name"),
-  limit: z.number().optional().default(10).describe("Number of regions to return"),
+  region: z
+    .string()
+    .optional()
+    .describe("Filter by specific region code or name"),
+  limit: z
+    .number()
+    .optional()
+    .default(10)
+    .describe("Number of regions to return"),
 });
 
 export const getDelayedProjectsSummary = tool({
@@ -306,7 +336,10 @@ export const getDelayedProjectsSummary = tool({
     "Get ranking of regions by number of delayed projects, total delayed budget, and breakdown of problem areas across the country.",
   inputSchema: getDelayedProjectsSummarySchema,
   execute: async (params: z.infer<typeof getDelayedProjectsSummarySchema>) => {
-    const delayedCondition = and(ilike(projects.status, "%delay%"), projectYearScopeCondition())!;
+    const delayedCondition = and(
+      ilike(projects.status, "%delay%"),
+      projectYearScopeCondition(),
+    )!;
     const conditions = [delayedCondition];
 
     if (params.region) {
@@ -349,7 +382,6 @@ export const getDelayedProjectsSummary = tool({
   },
 });
 
-
 // ---------------------------------------------------------------------------
 // searchKnowledgeBase — semantic search over uploaded documents, FAQs, policies
 // ---------------------------------------------------------------------------
@@ -363,7 +395,9 @@ const searchKnowledgeBaseSchema = z.object({
   category: z
     .string()
     .optional()
-    .describe("Optional exact knowledge-base category filter; categories are admin-defined"),
+    .describe(
+      "Optional exact knowledge-base category filter; categories are admin-defined",
+    ),
 });
 
 function buildSearchKnowledgeBaseTool(context: ChatToolsContext) {
@@ -416,7 +450,8 @@ function buildGetUserStatsTool(context: ChatToolsContext) {
       if (!context.isAdminSurface) {
         return {
           allowed: false,
-          message: "Account statistics are only available on the admin interface.",
+          message:
+            "Account statistics are only available on the admin interface.",
         };
       }
 
@@ -438,7 +473,10 @@ function buildGetUserStatsTool(context: ChatToolsContext) {
       return {
         allowed: true,
         totalUsers: totals?.value ?? 0,
-        byRole: byRole.map((row) => ({ role: row.role ?? "unspecified", count: row.value })),
+        byRole: byRole.map((row) => ({
+          role: row.role ?? "unspecified",
+          count: row.value,
+        })),
         emailVerifiedCount: verified?.value ?? 0,
         bannedCount: banned?.value ?? 0,
       };
@@ -464,10 +502,10 @@ export interface ChatToolsContext {
  */
 export function createChatTools(context: ChatToolsContext) {
   return {
-    searchProjects,
-    getProjectStats,
+    searchProjects: buildSearchProjectsTool(context),
+    getProjectStats: buildGetProjectStatsTool(context),
     getDelayedProjectsSummary,
-    getProjectById,
+    getProjectById: buildGetProjectByIdTool(context),
     searchKnowledgeBase: buildSearchKnowledgeBaseTool(context),
     getUserStats: buildGetUserStatsTool(context),
   };

@@ -22,6 +22,8 @@ interface NotificationContextValue {
   notifications: Notification[];
   unreadCount: number;
   isLoading: boolean;
+  /** True when the inbox could not be loaded and there is no earlier data to show. */
+  isError: boolean;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   refetch: () => void;
@@ -47,6 +49,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const {
     data: notificationsData,
     isLoading: notificationsLoading,
+    isError: notificationsFailed,
     refetch,
   } = useQuery({
     queryKey: notificationKey,
@@ -186,6 +189,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     notifications: notificationsData || [],
     unreadCount,
     isLoading: notificationsLoading,
+    isError: notificationsFailed && notificationsData === undefined,
     markAsRead,
     markAllAsRead,
     refetch,

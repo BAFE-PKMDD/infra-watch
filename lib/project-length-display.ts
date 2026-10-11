@@ -19,6 +19,20 @@ function finiteNonNegativeNumber(value: string | null | undefined): number | nul
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+const LENGTH_UNIT = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)\s*(?:km|kms|kilomet(?:er|re)s?|m|lm|l\.m\.|mt|mts|met(?:er|re)s?|linear\s+met(?:er|re)s?)\.?$/i;
+
+/**
+ * A target is a "length" for roads and other linear works (bare numbers are
+ * treated as kilometers), and a "quantity" for counted items such as
+ * "1.00 unit" or "3 units". Unavailable values default to "length".
+ */
+export function getTargetMeasureKind(value: string | null | undefined): "length" | "quantity" {
+  const normalized = value?.trim();
+  if (!normalized || finiteNonNegativeNumber(normalized) !== null) return "length";
+  if (!NUMBER_WITH_UNIT.test(normalized)) return "length";
+  return LENGTH_UNIT.test(normalized) ? "length" : "quantity";
+}
+
 function targetLengthValue(value: string | null | undefined): string {
   const normalized = value?.trim();
   if (!normalized) return "Unavailable";

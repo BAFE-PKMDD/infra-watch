@@ -162,9 +162,12 @@ export default function GISMapPage() {
   );
 
   return (
-    <div className="h-[calc(100vh-5rem)] flex flex-col md:flex-row relative overflow-hidden bg-slate-100 dark:bg-slate-950">
+    // On phones the page scrolls: the map comes first at a fixed height and the controls follow,
+    // so a tall controls panel can never squeeze the map to nothing. From md up it is a fixed
+    // full-height row with the controls beside the map.
+    <div className="min-h-[calc(100dvh-5rem)] flex flex-col md:h-[calc(100dvh-5rem)] md:flex-row relative overflow-hidden bg-slate-100 dark:bg-slate-950">
       {/* Side Control Panel */}
-      <aside className="w-full md:w-80 bg-white dark:bg-slate-900 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between z-10 shadow-md shrink-0">
+      <aside className="order-2 md:order-1 w-full md:w-80 bg-white dark:bg-slate-900 border-t md:border-t-0 md:border-r border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between z-10 shadow-md shrink-0 md:overflow-y-auto">
         <div className="space-y-6">
           <div className="space-y-5">
             {/* Program Toggles */}
@@ -335,7 +338,7 @@ export default function GISMapPage() {
       <div
         ref={mapPanelRef}
         className={cn(
-          "flex-1 relative flex items-center justify-center overflow-hidden bg-slate-200 dark:bg-slate-900",
+          "order-1 md:order-2 h-[65dvh] min-h-80 md:h-auto md:min-h-0 md:flex-1 relative flex items-center justify-center overflow-hidden bg-slate-200 dark:bg-slate-900",
           isMapFullscreen && "bg-slate-950"
         )}
       >

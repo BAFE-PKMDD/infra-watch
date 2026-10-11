@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { formatDistanceToNow, type FormatDistanceFn } from "date-fns";
 import {
+  AlertCircle,
   Bell,
   Check,
   CheckCheck,
@@ -106,6 +107,33 @@ function EmptyState() {
   );
 }
 
+function LoadErrorState({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div
+      role="alert"
+      className="rounded-xl border border-rose-200 bg-white p-12 text-center dark:border-rose-900 dark:bg-slate-900"
+    >
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/40">
+        <AlertCircle className="h-8 w-8 text-rose-600 dark:text-rose-400" />
+      </div>
+      <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">
+        {t("account.notifications.loadFailedTitle")}
+      </h3>
+      <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
+        {t("account.notifications.loadFailedBody")}
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+      >
+        {t("account.notifications.retry")}
+      </button>
+    </div>
+  );
+}
+
 function NoResultsState() {
   const { t } = useTranslation();
   return (
@@ -157,10 +185,27 @@ function NotificationCard({
   const projectName = getMetadataString(notification, "projectName");
   const link = projectId ? `/projects/${projectId}` : null;
 
+  // With a project link the wrapping <Link> is already focusable, and activating it clicks this
+  // div. Without one the card has to be a focusable control itself so keyboard users can mark it read.
+  const keyboardProps = link
+    ? {}
+    : {
+        role: "button" as const,
+        tabIndex: 0,
+        onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onClick();
+          }
+        },
+      };
+
   const content = (
     <div
       onClick={onClick}
-      className={`cursor-pointer rounded-xl border bg-white transition-all hover:shadow-md dark:bg-slate-900 ${
+      {...keyboardProps}
+      className={`cursor-pointer rounded-xl border bg-white transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:bg-slate-900 ${
         !notification.isRead
           ? "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20"
           : "border-slate-200 dark:border-slate-800"
@@ -276,7 +321,7 @@ export default function MyNotificationsPage() {
   const { user, isLoading: isAuthPending } = useAuth();
   const { t } = useTranslation();
   const router = useRouter();
-  const { notifications, isLoading, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, isLoading, isError, refetch, markAsRead, markAllAsRead } = useNotifications();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -366,7 +411,8 @@ export default function MyNotificationsPage() {
         </div>
 
         {isLoading && <LoadingSkeleton />}
-        {!isLoading && notifications.length === 0 && <EmptyState />}
+        {!isLoading && isError && <LoadErrorState onRetry={() => refetch()} />}
+        {!isLoading && !isError && notifications.length === 0 && <EmptyState />}
 
         {!isLoading && notifications.length > 0 && (
           <>

@@ -119,12 +119,26 @@ function normalizeIssueStatus(status: string): IssueStatus {
   return "pending";
 }
 
+class IssueRequestError extends Error {
+  constructor(readonly status: number) {
+    super(`Failed to fetch issue (HTTP ${status}).`);
+    this.name = "IssueRequestError";
+  }
+}
+
+// 404 and 403 mean the report is not there for this citizen; anything else is a failed load.
+function isMissingIssueError(error: unknown) {
+  return error instanceof IssueRequestError && (error.status === 404 || error.status === 403);
+}
+
 function IssueStateMessage({
   title,
   message,
+  onRetry,
 }: {
   title: string;
   message: string;
+  onRetry?: () => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -135,9 +149,14 @@ function IssueStateMessage({
           <AlertCircle className="mx-auto mb-4 h-16 w-16 text-slate-400" />
           <h2 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">{title}</h2>
           <p className="mb-6 text-slate-600 dark:text-slate-300">{message}</p>
-          <Link href="/my-issues">
-            <Button>{t("account.issueDetail.backToList")}</Button>
-          </Link>
+          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+            {onRetry && (
+              <Button onClick={onRetry}>{t("account.issueDetail.retry")}</Button>
+            )}
+            <Link href="/my-issues">
+              <Button variant={onRetry ? "outline" : "default"}>{t("account.issueDetail.backToList")}</Button>
+            </Link>
+          </div>
         </div>
       </div>
       <AppFooter />
@@ -166,17 +185,19 @@ export default function MyIssueDetailPage() {
   const router = useRouter();
   const issueId = params.id as string;
 
-  const { data: issue, isLoading } = useQuery({
+  const { data: issue, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["issue", issueId],
     queryFn: async () => {
       const response = await fetch(`/api/issues/${issueId}`);
       if (!response.ok) {
         if (response.status === 401) throw new Error("Please sign in to view this issue.");
-        throw new Error("Failed to fetch issue.");
+        throw new IssueRequestError(response.status);
       }
       const result = (await response.json()) as { data: IssueDetail };
       return result.data;
     },
+    // A missing or forbidden report will not appear on retry; only transient failures are retried.
+    retry: (failureCount, requestError) => !isMissingIssueError(requestError) && failureCount < 3,
     enabled: !sessionLoading && !!user,
   });
 
@@ -187,6 +208,16 @@ export default function MyIssueDetailPage() {
 
   if (sessionLoading || isLoading) {
     return <LoadingSkeleton />;
+  }
+
+  if (isError && !isMissingIssueError(error)) {
+    return (
+      <IssueStateMessage
+        title={t("account.issueDetail.loadFailedTitle")}
+        message={t("account.issueDetail.loadFailedBody")}
+        onRetry={() => refetch()}
+      />
+    );
   }
 
   if (!issue) {

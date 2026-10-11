@@ -30,7 +30,7 @@ test("the widget displays a single unified ANIA identity on both surfaces, while
   assert.doesNotMatch(siteTranslations, /"ARIA"/);
 });
 
-test("keeps public ARIA separate and mounts ANIA only in the admin layout", async () => {
+test("keeps the public widget separate and mounts ANIA only in the admin layout", async () => {
   const [rootLayout, publicLayout, adminLayout] = await Promise.all([
     readFile(rootLayoutUrl, "utf8"),
     readFile(publicLayoutUrl, "utf8"),

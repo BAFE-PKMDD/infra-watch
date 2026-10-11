@@ -7,7 +7,7 @@ export interface FaqEntry {
 
 /**
  * Single source of truth for the public FAQ - rendered on the /faq page and
- * inlined into ARIA's system prompt so the two never drift out of sync.
+ * inlined into ANIA's system prompt so the two never drift out of sync.
  * FAQ_ENTRIES_TL below is the everyday-Tagalog version, in the same order.
  */
 export const FAQ_ENTRIES: FaqEntry[] = [
@@ -77,9 +77,9 @@ export const FAQ_ENTRIES: FaqEntry[] = [
       "You may attach supported images or videos relevant to the selected project. Geotagged evidence can include approximate coordinates and device-reported accuracy. Do not upload confidential information or content you do not have permission to share.",
   },
   {
-    question: "Can I rely on ARIA's answers?",
+    question: "Can I rely on ANIA's answers?",
     answer:
-      "ARIA is an AI assistant that answers from InfraWatch records you are authorized to view. Its answers are AI-generated and can be incomplete or wrong, so verify them against the project page or dashboard before relying on them or making official decisions.",
+      "ANIA is an AI assistant that answers from InfraWatch records you are authorized to view. Its answers are AI-generated and can be incomplete or wrong, so verify them against the project page or dashboard before relying on them or making official decisions.",
   },
   {
     question: "How do I request deletion of my personal data?",
@@ -95,7 +95,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
 
 /**
  * Everyday Tagalog (see i18n/TAGALOG_STYLE.md) for the /faq page, one entry per English
- * entry in the same order. ARIA's prompt keeps using the English FAQ_ENTRIES.
+ * entry in the same order. ANIA's prompt keeps using the English FAQ_ENTRIES.
  */
 export const FAQ_ENTRIES_TL: FaqEntry[] = [
   {
@@ -164,9 +164,9 @@ export const FAQ_ENTRIES_TL: FaqEntry[] = [
       "Puwede kang mag-attach ng photo o video, sa format na tinatanggap ng site, na may kinalaman sa napiling project. Ang ebidensyang may geotag ay puwedeng may kasamang tantyang coordinates at accuracy na galing sa device mo. Huwag mag-upload ng confidential na info o content na wala kang permisong i-share.",
   },
   {
-    question: "Maaasahan ba ang mga sagot ng ARIA?",
+    question: "Maaasahan ba ang mga sagot ng ANIA?",
     answer:
-      "Ang ARIA ay AI assistant na sumasagot gamit ang mga record sa InfraWatch na may access kang makita. AI ang gumawa ng mga sagot nito at puwedeng kulang o mali, kaya i-check muna sa page ng project o sa dashboard bago ka umasa rito o gumawa ng opisyal na desisyon.",
+      "Ang ANIA ay AI assistant na sumasagot gamit ang mga record sa InfraWatch na may access kang makita. AI ang gumawa ng mga sagot nito at puwedeng kulang o mali, kaya i-check muna sa page ng project o sa dashboard bago ka umasa rito o gumawa ng opisyal na desisyon.",
   },
   {
     question: "Paano ko ipapabura ang personal data ko?",

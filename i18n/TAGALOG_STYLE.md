@@ -33,7 +33,7 @@ hindi masyadong pormal".
 
 ## Keep as is
 
-- Names: INFRA Watch, InfraWatch, BAFE, DA, ABEMIS, ARIA, program names (FMR, SAAD...),
+- Names: INFRA Watch, InfraWatch, BAFE, DA, ABEMIS, ANIA, program names (FMR, SAAD...),
   place names, facility and commodity names that come from the data.
 - Placeholders like `{count}` or `{name}`: same names, same number of them.
 - Numbers, pesos and dates: formatted the same way in both languages.
