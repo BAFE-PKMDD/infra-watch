@@ -5,7 +5,7 @@ import {
   createVoiceTranscriptionPostHandler,
   isSupportedVoiceAudio,
   type VoiceTranscriptionDependencies,
-} from "./route";
+} from "./handlers";
 
 const audio = new File([new Uint8Array([1, 2, 3])], "command.webm", {
   type: "audio/webm",

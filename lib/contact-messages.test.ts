@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
+import { build } from "esbuild";
 
-import { contactMessageInputSchema, getContactSenderKey, isContactMessageStatus } from "./contact-messages";
+import { contactMessageInputSchema, isContactMessageStatus } from "./contact-messages";
+import { getContactSenderKey } from "./contact-message-sender";
 
 const valid = {
   name: " Juan Dela Cruz ",
@@ -35,4 +38,14 @@ test("only known statuses are accepted", () => {
   assert.equal(isContactMessageStatus("resolved"), true);
   assert.equal(isContactMessageStatus("deleted"), false);
   assert.equal(isContactMessageStatus(undefined), false);
+});
+
+test("shared contact validation and statuses can be bundled for the browser", async () => {
+  await build({
+    entryPoints: [fileURLToPath(new URL("./contact-messages.ts", import.meta.url))],
+    bundle: true,
+    platform: "browser",
+    write: false,
+    logLevel: "silent",
+  });
 });

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 
-import { createCitizenEngagementAnalyticsGetHandler } from "./route";
+import { createCitizenEngagementAnalyticsGetHandler } from "./handlers";
 
 const analytics = {
   range: { from: "2026-09-01", to: "2026-09-22", earliestAvailable: "2026-06-25", timeZone: "Asia/Manila", maximumDays: 90 },

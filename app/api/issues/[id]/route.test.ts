@@ -5,7 +5,7 @@ import {
   createIssueDetailGetHandler,
   type IssueDetailRouteDependencies,
   type IssueDetailRow,
-} from "./route";
+} from "./handlers";
 
 const issue: IssueDetailRow = {
   id: "11111111-1111-4111-8111-111111111111",

@@ -1,5 +1,3 @@
-import { createHmac } from "node:crypto";
-
 import { z } from "zod";
 
 export const CONTACT_MESSAGE_STATUSES = ["new", "in_progress", "resolved"] as const;
@@ -32,12 +30,4 @@ export type ContactMessageInput = z.input<typeof contactMessageInputSchema>;
 
 export function isContactMessageStatus(value: unknown): value is ContactMessageStatus {
   return typeof value === "string" && (CONTACT_MESSAGE_STATUSES as readonly string[]).includes(value);
-}
-
-/**
- * Keyed hash of the sender's network address, stored instead of the raw IP so repeat
- * submissions can be rate limited without keeping the address itself.
- */
-export function getContactSenderKey(ipAddress: string, secret: string) {
-  return createHmac("sha256", secret).update(`contact:${ipAddress}`).digest("hex");
 }

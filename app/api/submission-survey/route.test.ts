@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 import { NextRequest } from "next/server";
-import { createSubmissionSurveyHandler, type SaveSurveyInput } from "./route";
+import { createSubmissionSurveyHandler, type SaveSurveyInput } from "./handlers";
 
 test("submission-survey route: rejects non-object or invalid JSON body", async () => {
   const handler = createSubmissionSurveyHandler({

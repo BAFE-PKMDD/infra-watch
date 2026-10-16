@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 
-import { createCostByRegionGetHandler } from "./route";
+import { createCostByRegionGetHandler } from "./handlers";
 
 const emptyResult = {
   asOf: "2026-08-26",

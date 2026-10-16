@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 import { NextRequest } from "next/server";
-import { createSubmissionSurveyStatusHandler } from "./route";
+import { createSubmissionSurveyStatusHandler } from "./handlers";
 
 function makeRequest() {
   return new NextRequest("http://localhost:3001/api/submission-survey/status");

@@ -8,10 +8,10 @@ import {
   CONTACT_RATE_LIMIT_MAX,
   CONTACT_RATE_LIMIT_WINDOW_MS,
   contactMessageInputSchema,
-  getContactSenderKey,
   isContactMessageStatus,
   type ContactMessageInput,
 } from "@/lib/contact-messages";
+import { getContactSenderKey } from "@/lib/contact-message-sender";
 import { db } from "@/lib/db";
 import { contactMessages } from "@/lib/db/schema";
 import { requirePermission } from "@/lib/permissions";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 
-import { createProgressCurveGetHandler } from "./route";
+import { createProgressCurveGetHandler } from "./handlers";
 
 const sampleResult = {
   projectId: "2022-R3-BUL-INFRA-1",

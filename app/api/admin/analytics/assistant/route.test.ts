@@ -13,7 +13,7 @@ import {
   managerialAiStepPreparation,
   managerialDashboardContextMatches,
   resolveManagerialAiSystemInstruction,
-} from "./route";
+} from "./handlers";
 import { EXECUTIVE_BRIEF_PROMPT } from "@/lib/analytics/executive-brief";
 import {
   EXECUTIVE_BRIEF_SYSTEM_INSTRUCTION,
