@@ -13,11 +13,19 @@ test("the production image build defines the GeoServer public env the map overla
   assert.match(dockerfile, /NEXT_PUBLIC_GEOSERVER_WORKSPACE=\$\{NEXT_PUBLIC_GEOSERVER_WORKSPACE\}/);
 });
 
+test("the production image build passes the Google Analytics measurement id through to the client bundle", () => {
+  // Same reason as above: NEXT_PUBLIC_* is inlined at build time, so a missing ARG means no analytics.
+  assert.match(dockerfile, /^ARG NEXT_PUBLIC_GA_MEASUREMENT_ID=/m);
+  assert.match(dockerfile, /NEXT_PUBLIC_GA_MEASUREMENT_ID=\$\{NEXT_PUBLIC_GA_MEASUREMENT_ID\}/);
+  const compose = readFileSync(new URL("../docker-compose.production.yml", import.meta.url), "utf8");
+  assert.match(compose, /NEXT_PUBLIC_GA_MEASUREMENT_ID: \$\{NEXT_PUBLIC_GA_MEASUREMENT_ID/);
+});
+
 test("the ENV block keeps one variable per continuation line", () => {
   const envBlock = /^ENV NEXT_PUBLIC_APP_URL=[\s\S]*?(?=\r?\n\r?\n)/m.exec(dockerfile)?.[0] ?? "";
   const lines = envBlock.split(/\r?\n/);
 
-  assert.ok(lines.length === 7, "expected every NEXT_PUBLIC_* variable on its own line");
+  assert.ok(lines.length === 8, "expected every NEXT_PUBLIC_* variable on its own line");
   lines.slice(0, -1).forEach((line) => assert.match(line, / \\$/, line));
   lines.forEach((line) => assert.equal((line.match(/NEXT_PUBLIC_\w+=/g) ?? []).length, 1, line));
 });

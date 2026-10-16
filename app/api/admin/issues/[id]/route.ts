@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { formatAdminIssue, getIssueByIdOrTicket, getIssueResponses, requireIssuePermission } from "@/lib/admin-issues";
 import { getAuditContextFromRequest, logAudit } from "@/lib/audit";
-import { db } from "@/lib/db";
-import { issues } from "@/lib/db/schema";
 import { checkIssueScope } from "@/lib/scope";
-import { eq } from "drizzle-orm";
+import { deleteSubmissionWithNotifications } from "@/lib/submission-notifications";
 
 export const runtime = "nodejs";
 
@@ -60,7 +58,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: `Forbidden: ${scopeCheck.reason}` }, { status: 403 });
     }
 
-    await db.delete(issues).where(eq(issues.id, row.id));
+    await deleteSubmissionWithNotifications({ kind: "issue", id: row.id, ticketNumber: row.ticketNumber });
 
     await logAudit({
       tableName: "issues",

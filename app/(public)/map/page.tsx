@@ -13,6 +13,8 @@ import { getRegions } from "@/actions/query/get-location-options";
 import { MAP_PIN_LOCATION_UNAVAILABLE, PROJECT_MARKER_LEGEND, toSourceBackedMapPins } from "@/lib/public-project-map";
 import { sendCitizenEngagementEvent } from "@/lib/analytics/citizen-event-client";
 import { useTranslation } from "@/i18n";
+import { MapLayerLegend } from "@/components/map/map-layer-legend";
+import type { MapOverlayLayer } from "@/types/map-layer.types";
 
 
 // Dynamically import Leaflet Map Component with SSR disabled
@@ -77,13 +79,17 @@ export default function GISMapPage() {
   const [selectedProject, setSelectedProject] = useState<PublicMapPin | null>(null);
   const [insActive, setInsActive] = useState(true);
   const [amefipActive, setAmefipActive] = useState(true);
-  const [watershedOverlay, setWatershedOverlay] = useState(false);
-  const [agriZoneOverlay, setAgriZoneOverlay] = useState(false);
-  const [postharvestOverlay, setPostharvestOverlay] = useState(false);
-  const [riceProcessingOverlay, setRiceProcessingOverlay] = useState(false);
-  const [tradingCentersOverlay, setTradingCentersOverlay] = useState(false);
-  const [agriProcessingOverlay, setAgriProcessingOverlay] = useState(false);
-  const [productionAreaOverlay, setProductionAreaOverlay] = useState(false);
+  const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>([]);
+  const { data: configuredLayers = [], isLoading: layersLoading, isError: layersError, refetch: refetchLayers } = useQuery({
+    queryKey: ["public-map-layers"],
+    queryFn: async () => {
+      const response = await fetch("/api/map-layers", { cache: "no-store" });
+      if (!response.ok) throw new Error("Map layers unavailable");
+      return ((await response.json()) as { data: MapOverlayLayer[] }).data;
+    },
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [measureActive, setMeasureActive] = useState(false);
   const [serviceAreaEnabled, setServiceAreaEnabled] = useState(false);
@@ -197,77 +203,18 @@ export default function GISMapPage() {
               </div>
             </div>
 
-            {/* Shapefile Layers */}
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-2.5">
-                {t("directory.infraMap.overlays")}
-              </span>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={watershedOverlay}
-                    onChange={() => setWatershedOverlay(!watershedOverlay)}
-                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
-                  />
-                  {t("directory.infraMap.watersheds")}
-                </label>
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={agriZoneOverlay}
-                    onChange={() => setAgriZoneOverlay(!agriZoneOverlay)}
-                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
-                  />
-                  {t("directory.infraMap.agriZones")}
-                </label>
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={postharvestOverlay}
-                    onChange={() => setPostharvestOverlay(!postharvestOverlay)}
-                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
-                  />
-                  {t("directory.infraMap.postharvestFacilities")}
-                </label>
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={riceProcessingOverlay}
-                    onChange={() => setRiceProcessingOverlay(!riceProcessingOverlay)}
-                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
-                  />
-                  {t("directory.infraMap.riceProcessingCenters")}
-                </label>
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={tradingCentersOverlay}
-                    onChange={() => setTradingCentersOverlay(!tradingCentersOverlay)}
-                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
-                  />
-                  {t("directory.infraMap.tradingCenters")}
-                </label>
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={agriProcessingOverlay}
-                    onChange={() => setAgriProcessingOverlay(!agriProcessingOverlay)}
-                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
-                  />
-                  {t("directory.infraMap.agriProcessingCenters")}
-                </label>
-                <label className="flex items-center gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={productionAreaOverlay}
-                    onChange={() => setProductionAreaOverlay(!productionAreaOverlay)}
-                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary w-4 h-4"
-                  />
-                  {t("directory.infraMap.productionArea")}
-                </label>
-              </div>
-            </div>
+            <section aria-labelledby="configured-layer-heading">
+              <h2 id="configured-layer-heading" className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-200">{t("directory.infraMap.overlays")}</h2>
+              {layersLoading ? <p role="status" className="text-sm">{t("publicContent.overlaysLoading")}</p> : layersError ? <div role="alert" className="text-sm"><p>{t("publicContent.overlaysError")}</p><button type="button" onClick={() => refetchLayers()} className="min-h-11 text-primary underline dark:text-indigo-300">{t("publicContent.retry")}</button></div> : configuredLayers.length === 0 ? <p className="text-sm text-slate-600 dark:text-slate-300">{t("publicContent.overlaysEmpty")}</p> : (
+                <div className="space-y-1">
+                  {configuredLayers.map(layer => <label key={layer.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+                    <input type="checkbox" checked={selectedLayerIds.includes(layer.id)} onChange={() => setSelectedLayerIds(ids => ids.includes(layer.id) ? ids.filter(id => id !== layer.id) : [...ids, layer.id])} className="size-5 accent-primary focus-visible:outline-2 focus-visible:outline-primary" />
+                    <MapLayerLegend shape={layer.legendShape} color={layer.legendColor} />
+                    <span>{layer.name}</span>
+                  </label>)}
+                </div>
+              )}
+            </section>
 
             {/* Serviceable Area — radius of effect around every visible infrastructure pin */}
             <div>
@@ -351,13 +298,7 @@ export default function GISMapPage() {
             filteredPins={filteredPins}
             selectedProject={selectedProject}
             setSelectedProject={handleSelectProject}
-            watershedOverlay={watershedOverlay}
-            agriZoneOverlay={agriZoneOverlay}
-            postharvestOverlay={postharvestOverlay}
-            riceProcessingOverlay={riceProcessingOverlay}
-            tradingCentersOverlay={tradingCentersOverlay}
-            agriProcessingOverlay={agriProcessingOverlay}
-            productionAreaOverlay={productionAreaOverlay}
+            overlayLayers={configuredLayers.filter(layer => selectedLayerIds.includes(layer.id))}
             theme={(resolvedTheme as "light" | "dark") || "light"}
             mapCenter={mapCenter}
             mapZoom={mapZoom}

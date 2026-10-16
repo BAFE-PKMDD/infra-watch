@@ -94,6 +94,27 @@ export function publishNotification(
   );
 }
 
+export function broadcastNotificationRemoval(
+  removals: { userId: string; notificationId: string }[],
+) {
+  const idsByUser = new Map<string, Set<string>>();
+  for (const { userId, notificationId } of removals) {
+    const ids = idsByUser.get(userId) ?? new Set<string>();
+    ids.add(notificationId);
+    idsByUser.set(userId, ids);
+  }
+
+  for (const [clientId, client] of store.clients) {
+    const ids = idsByUser.get(client.userId);
+    if (!ids?.size) continue;
+    try {
+      writeSse(client.controller, "notifications-removed", { ids: [...ids] });
+    } catch {
+      store.clients.delete(clientId);
+    }
+  }
+}
+
 export function resetNotificationStoreForTests() {
   if (process.env.NODE_ENV !== "test") return;
   store.clients.clear();

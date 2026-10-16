@@ -6,10 +6,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
-  BookOpen,
   ChevronDown,
   CircleAlert,
-  DatabaseZap,
   FileText,
   FolderKanban,
   Home,
@@ -17,19 +15,17 @@ import {
   LayoutDashboard,
   MessageSquare,
   MessageSquareText,
-  Radio,
-  RefreshCw,
-  ScrollText,
-  Settings,
   ShieldCheck,
-  Sparkles,
-  Users,
 } from "lucide-react";
 
 import { hasAssignedModeratorScope } from "@/lib/moderator-scope";
 import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import { SmsAttentionBadge, useSmsAttentionCount } from "@/components/admin/sms-attention-badge";
+import { adminSystemGroups } from "./admin-system-menu";
+import {
+  SmsAttentionBadge,
+  useSmsAttentionCount,
+} from "@/components/admin/sms-attention-badge";
 
 type AdminSidebarProps = {
   role?: string | null;
@@ -41,12 +37,48 @@ const menu = [
   {
     label: "Main",
     items: [
-      { label: "Analytics", href: "/dashboard", icon: LayoutDashboard, resource: "analytics", action: "view" },
-      { label: "Executive Brief", href: "/executive-brief", icon: FileText, resource: "analytics", action: "view" },
-      { label: "Projects", href: "/admin-projects", icon: FolderKanban, resource: "projects", action: "list" },
-      { label: "Feedbacks", href: "/feedbacks", icon: MessageSquare, resource: "feedback", action: "list" },
-      { label: "Reported Issues", href: "/issues", icon: CircleAlert, resource: "issues", action: "list" },
-      { label: "Contact Messages", href: "/contact-messages", icon: Inbox, resource: "contact_messages", action: "list" },
+      {
+        label: "Analytics",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+        resource: "analytics",
+        action: "view",
+      },
+      {
+        label: "Executive Brief",
+        href: "/executive-brief",
+        icon: FileText,
+        resource: "analytics",
+        action: "view",
+      },
+      {
+        label: "Projects",
+        href: "/admin-projects",
+        icon: FolderKanban,
+        resource: "projects",
+        action: "list",
+      },
+      {
+        label: "Feedbacks",
+        href: "/feedbacks",
+        icon: MessageSquare,
+        resource: "feedback",
+        action: "list",
+      },
+      {
+        label: "Reported Issues",
+        href: "/issues",
+        icon: CircleAlert,
+        resource: "issues",
+        action: "list",
+      },
+      {
+        label: "Contact Messages",
+        href: "/contact-messages",
+        icon: Inbox,
+        resource: "contact_messages",
+        action: "list",
+      },
     ],
   },
   {
@@ -57,41 +89,63 @@ const menu = [
     // regional admins are themselves unrestricted by region (see lib/scope.ts).
     roles: ["admin", "regional_admin"],
     items: [
-      { label: "Issue Reports", href: "/reports/issues", icon: BarChart3, resource: "reports", action: "view" },
-      { label: "Feedback Reports", href: "/reports/feedbacks", icon: BarChart3, resource: "reports", action: "view" },
-      { label: "Citizen Engagement", href: "/reports/citizen-engagement", icon: BarChart3, resource: "reports", action: "view" },
+      {
+        label: "Issue Reports",
+        href: "/reports/issues",
+        icon: BarChart3,
+        resource: "reports",
+        action: "view",
+      },
+      {
+        label: "Feedback Reports",
+        href: "/reports/feedbacks",
+        icon: BarChart3,
+        resource: "reports",
+        action: "view",
+      },
+      {
+        label: "Citizen Engagement",
+        href: "/reports/citizen-engagement",
+        icon: BarChart3,
+        resource: "reports",
+        action: "view",
+      },
     ],
   },
-  {
-    label: "System",
-    items: [
-      // Admin-only: instance-wide operational tools, not region/agency-scoped work.
-      { label: "MYDAS", href: "/mydas", icon: Sparkles, resource: "mydas", action: "view", roles: ["admin"] },
-      { label: "ABEMIS Sync", href: "/sync", icon: RefreshCw, resource: "abemis_sync", action: "view", roles: ["admin"] },
-      { label: "Data Quality", href: "/data-quality", icon: DatabaseZap, resource: "data_quality", action: "view", roles: ["admin"] },
-      { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, resource: "audit_logs", action: "view", roles: ["admin"] },
-      { label: "Knowledge Base", href: "/knowledge-base", icon: BookOpen, resource: "knowledge_base", action: "list", roles: ["admin"] },
-      // Admin and regional-admin.
-      { label: "Live Videos", href: "/live-videos", icon: Radio, resource: "system_settings", action: "read", roles: ["admin", "regional_admin"] },
-      { label: "Settings", href: "/settings", icon: Settings, resource: "system_settings", action: "read", roles: ["admin", "regional_admin"] },
-      { label: "User Management", href: "/user-management", icon: Users, resource: "user", action: "list", roles: ["admin", "regional_admin"] },
-    ],
-  },
+  ...adminSystemGroups,
 ] as const;
 
 function isEReportPath(pathname: string) {
-  return pathname === "/issues" || (pathname.startsWith("/issues/") && !pathname.startsWith("/issues/sms-review"));
+  return (
+    pathname === "/issues" ||
+    (pathname.startsWith("/issues/") &&
+      !pathname.startsWith("/issues/sms-review"))
+  );
 }
 
-export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps) {
+export function AdminSidebar({
+  role,
+  region,
+  assignedAgency,
+}: AdminSidebarProps) {
   const pathname = usePathname();
-  const smsAttentionCount = useSmsAttentionCount(hasPermission(role, "issues" as never, "list" as never));
-  const issuesActive = pathname === "/issues" || pathname.startsWith("/issues/");
+  const smsAttentionCount = useSmsAttentionCount(
+    hasPermission(role, "issues" as never, "list" as never),
+  );
+  const issuesActive =
+    pathname === "/issues" || pathname.startsWith("/issues/");
   const [issuesOpen, setIssuesOpen] = useState(issuesActive);
+  const [groupOverrides, setGroupOverrides] = useState<Record<string, boolean>>(
+    {},
+  );
   // A moderator with no region/agency assigned yet gets a 403 from every analytics
   // endpoint (see hasAssignedModeratorScope in lib/scope.ts) — hide the links rather
   // than send them to a page that can only ever show "Forbidden".
-  const canViewAnalytics = hasAssignedModeratorScope({ role, region, assignedAgency });
+  const canViewAnalytics = hasAssignedModeratorScope({
+    role,
+    region,
+    assignedAgency,
+  });
 
   return (
     <aside className="hidden min-h-screen w-72 shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col dark:border-slate-800 dark:bg-slate-950">
@@ -106,26 +160,89 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
             unoptimized
           />
           <div className="min-w-0">
-            <p className="text-base font-bold text-slate-950 dark:text-white">INFRA WATCH</p>
-            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Admin Console</p>
+            <p className="text-base font-bold text-slate-950 dark:text-white">
+              INFRA WATCH
+            </p>
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Admin Console
+            </p>
           </div>
         </Link>
       </div>
 
-      <nav aria-label="Admin navigation" className="flex-1 space-y-6 overflow-y-auto p-3">
+      <nav
+        aria-label="Admin navigation"
+        className="flex-1 space-y-6 overflow-y-auto p-3"
+      >
         {menu.map((category) => {
-          if ("roles" in category && category.roles && !(category.roles as readonly string[]).includes(role ?? "")) return null;
-          const visibleItems = category.items.filter((item) =>
-            hasPermission(role, item.resource as never, item.action as never) &&
-            (item.resource !== "analytics" || canViewAnalytics) &&
-            (!("roles" in item && item.roles) || (item.roles as readonly string[]).includes(role ?? "")),
+          if (
+            "roles" in category &&
+            category.roles &&
+            !(category.roles as readonly string[]).includes(role ?? "")
+          )
+            return null;
+          const visibleItems = category.items.filter(
+            (item) =>
+              hasPermission(
+                role,
+                item.resource as never,
+                item.action as never,
+              ) &&
+              (item.resource !== "analytics" || canViewAnalytics) &&
+              (!("roles" in item && item.roles) ||
+                (item.roles as readonly string[]).includes(role ?? "")),
           );
           if (visibleItems.length === 0) return null;
+          const collapsible = "collapsible" in category;
+          const active = visibleItems.some(
+            (item) =>
+              pathname === item.href || pathname.startsWith(`${item.href}/`),
+          );
+          const overrideKey = `${pathname}:${category.label}`;
+          const open = !collapsible || (groupOverrides[overrideKey] ?? active);
+          const panelId = `desktop-admin-${"id" in category ? category.id : category.label.replaceAll(" ", "-")}`;
 
           return (
             <div key={category.label} className="space-y-2">
-              <p className="px-3 text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{category.label}</p>
-              <div className="space-y-1.5">
+              {collapsible ? (
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  aria-controls={panelId}
+                  onClick={() =>
+                    setGroupOverrides((current) => ({
+                      ...current,
+                      [overrideKey]: !open,
+                    }))
+                  }
+                  className={cn(
+                    "flex min-h-11 w-full items-center justify-between gap-2 rounded-md px-3 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    active
+                      ? "text-primary"
+                      : "text-slate-700 dark:text-slate-200",
+                    "hover:bg-slate-100 dark:hover:bg-slate-900",
+                  )}
+                >
+                  {category.label}
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={cn("size-4 shrink-0", open && "rotate-180")}
+                  />
+                </button>
+              ) : (
+                <p className="px-3 text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {category.label}
+                </p>
+              )}
+              <div
+                id={panelId}
+                hidden={!open}
+                className={cn(
+                  "space-y-1.5",
+                  collapsible &&
+                    "ml-3 border-l border-slate-200 pl-2 dark:border-slate-800",
+                )}
+              >
                 {visibleItems.map((item) => {
                   const Icon = item.icon;
                   if (item.href === "/issues") {
@@ -146,14 +263,24 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
                         >
                           <Icon aria-hidden="true" className="size-5" />
                           <span className="flex-1">Reported Issues</span>
-                          {!issuesOpen && <SmsAttentionBadge count={smsAttentionCount} />}
-                          <ChevronDown aria-hidden="true" className={cn("size-4", issuesOpen && "rotate-180")} />
+                          {!issuesOpen && (
+                            <SmsAttentionBadge count={smsAttentionCount} />
+                          )}
+                          <ChevronDown
+                            aria-hidden="true"
+                            className={cn("size-4", issuesOpen && "rotate-180")}
+                          />
                         </button>
                         {issuesOpen && (
-                          <div id="desktop-reported-issues-menu" className="mt-1 space-y-1 border-l border-slate-300 pl-4 dark:border-slate-700">
+                          <div
+                            id="desktop-reported-issues-menu"
+                            className="mt-1 space-y-1 border-l border-slate-300 pl-4 dark:border-slate-700"
+                          >
                             <Link
                               href="/issues"
-                              aria-current={isEReportPath(pathname) ? "page" : undefined}
+                              aria-current={
+                                isEReportPath(pathname) ? "page" : undefined
+                              }
                               className={cn(
                                 "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                                 isEReportPath(pathname)
@@ -166,7 +293,11 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
                             </Link>
                             <Link
                               href="/issues/sms-review"
-                              aria-current={pathname.startsWith("/issues/sms-review") ? "page" : undefined}
+                              aria-current={
+                                pathname.startsWith("/issues/sms-review")
+                                  ? "page"
+                                  : undefined
+                              }
                               className={cn(
                                 "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                                 pathname.startsWith("/issues/sms-review")
@@ -174,7 +305,10 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
                                   : "text-slate-700 hover:bg-slate-100 hover:text-primary dark:text-slate-200 dark:hover:bg-slate-900",
                               )}
                             >
-                              <MessageSquareText aria-hidden="true" className="size-4" />
+                              <MessageSquareText
+                                aria-hidden="true"
+                                className="size-4"
+                              />
                               <span className="flex-1">SMS Grievance</span>
                               <SmsAttentionBadge count={smsAttentionCount} />
                             </Link>
@@ -184,7 +318,9 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
                     );
                   }
 
-                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  const active =
+                    pathname === item.href ||
+                    pathname.startsWith(`${item.href}/`);
                   return (
                     <Link
                       key={item.href}
@@ -192,7 +328,7 @@ export function AdminSidebar({ role, region, assignedAgency }: AdminSidebarProps
                       data-tour-nav={item.href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "flex min-h-11 items-center gap-3 rounded-lg px-3.5 py-3 text-[15px] font-medium transition-colors motion-reduce:transition-none",
+                        "flex min-h-11 items-center gap-3 rounded-lg px-3.5 py-3 text-[15px] font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                         active
                           ? "bg-primary font-semibold text-white"
                           : "text-slate-700 hover:translate-x-0.5 hover:bg-slate-100 hover:text-primary motion-reduce:hover:translate-x-0 dark:text-slate-200 dark:hover:bg-slate-900",

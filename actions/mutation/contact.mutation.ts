@@ -16,6 +16,7 @@ import { db } from "@/lib/db";
 import { contactMessages } from "@/lib/db/schema";
 import { requirePermission } from "@/lib/permissions";
 import { getCurrentUser, requireAuth } from "@/lib/session";
+import { sendTemplatedEmail } from "@/lib/email-templates";
 
 type ContactResult = {
   success: boolean;
@@ -74,6 +75,13 @@ export async function createContactMessage(data: ContactMessageInput): Promise<C
       userId: currentUser?.id ?? null,
     });
 
+    // Receipt delivery must not turn a successfully saved message into a failed submission.
+    // sendTemplatedEmail reports delivery failures in its result instead of throwing.
+    const receiptFailed = () => console.error("Contact message saved, but its email receipt could not be delivered");
+    void sendTemplatedEmail("contact-auto-reply", input.email, { recipientName: input.name, originalSubject: input.subject })
+      .then(result => { if (!result.success) receiptFailed(); })
+      .catch(receiptFailed);
+
     revalidatePath("/contact-messages");
     return { success: true, message: "Message received." };
   } catch (error) {
@@ -82,6 +90,25 @@ export async function createContactMessage(data: ContactMessageInput): Promise<C
       success: false,
       message: "Your message could not be saved. Please try again, or email bafe@da.gov.ph directly.",
     };
+  }
+}
+
+export async function replyToContactMessage(id: string, response: string) {
+  try {
+    const user = await requireAuth();
+    requirePermission(user.role, "contact_messages", "update");
+    const body = response.trim();
+    if (body.length < 10 || body.length > 10000) throw new Error("Response must contain 10 to 10,000 characters");
+    const [message] = await db.select().from(contactMessages).where(eq(contactMessages.id, id)).limit(1);
+    if (!message) throw new Error("Message not found");
+    const result = await sendTemplatedEmail("contact-response", message.email, { recipientName: message.name, originalSubject: message.subject, originalMessage: message.message, adminResponse: body });
+    if (!result.success) throw new Error(result.error || "Email could not be sent");
+    await db.update(contactMessages).set({ status: "in_progress", handledBy: user.id, handledAt: new Date(), updatedAt: new Date() }).where(eq(contactMessages.id, id));
+    await logAudit({ tableName: "contact_messages", recordId: id, action: "UPDATE", notes: "Staff email response sent using the contact-response template", context: await getAuditContextFromServerAction(user) });
+    revalidatePath("/contact-messages");
+    return { success: true as const };
+  } catch (error) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Response could not be sent" };
   }
 }
 

@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, CheckCheck } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { useNotifications } from "@/providers/notification-provider";
+import { useAuth } from "@/providers/auth-provider";
+import { getNotificationDestination } from "@/lib/notification-destination";
 
 interface NotificationBellProps {
   open?: boolean;
@@ -14,6 +17,8 @@ export function NotificationBell({ open: controlledOpen, onOpenChange }: Notific
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const { notifications, unreadCount, isError, refetch, markAllAsRead, markAsRead } = useNotifications();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const router = useRouter();
   const open = controlledOpen ?? uncontrolledOpen;
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -93,7 +98,14 @@ export function NotificationBell({ open: controlledOpen, onOpenChange }: Notific
                 <button
                   key={notification.id}
                   type="button"
-                  onClick={() => markAsRead(notification.id)}
+                  onClick={() => {
+                    void markAsRead(notification.id);
+                    const destination = getNotificationDestination(notification, user?.role);
+                    if (destination) {
+                      setOpen(false);
+                      router.push(destination);
+                    }
+                  }}
                   className="block w-full border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900"
                 >
                   <div className="flex gap-3">

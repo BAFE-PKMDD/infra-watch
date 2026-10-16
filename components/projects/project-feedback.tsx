@@ -138,6 +138,7 @@ export function ProjectFeedback({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-feedback", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       setDeletingFeedbackId(null);
     },
   });

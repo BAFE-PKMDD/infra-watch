@@ -6,8 +6,10 @@ import { Cookie, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "@/i18n";
-
-const CONSENT_STORAGE_KEY = "cookie_consent";
+import {
+  COOKIE_CONSENT_CHANGED_EVENT,
+  COOKIE_CONSENT_STORAGE_KEY as CONSENT_STORAGE_KEY,
+} from "@/lib/analytics/google-analytics";
 
 // storage events only fire in *other* tabs, but that's fine here: we only need
 // this to reflect an existing decision at mount, not live-sync across tabs.
@@ -36,6 +38,8 @@ function storeConsent(analytics: boolean) {
       CONSENT_STORAGE_KEY,
       JSON.stringify({ essential: true, analytics, decidedAt: new Date().toISOString() }),
     );
+    // Same-tab listeners (the Google Analytics loader) don't get the `storage` event.
+    window.dispatchEvent(new Event(COOKIE_CONSENT_CHANGED_EVENT));
   } catch {
     // Ignore storage errors (private browsing, quota, etc.) - the banner will just reappear.
   }

@@ -4,6 +4,8 @@ import { directory } from "./sections/directory";
 import { eReport } from "./sections/eReport";
 import { landing } from "./sections/landing";
 import { site } from "./sections/site";
+import { suggestions } from "./sections/suggestions";
+import { publicContent } from "./sections/public-content";
 
 export type Language = "en" | "tl";
 
@@ -16,6 +18,8 @@ export const translations = {
       evidenceMap: "Citizen Reports Map",
       faq: "FAQ",
       contact: "Contact Us",
+      suggestions: "Suggestions",
+      articlesAndUpdates: "Articles & Updates",
       report: "E-Reports",
       signIn: "Sign In",
       signOut: "Sign Out",
@@ -563,6 +567,8 @@ export const translations = {
     community: community.en,
     site: site.en,
     account: account.en,
+    suggestions: suggestions.en,
+    publicContent: publicContent.en,
   },
   tl: {
     nav: {
@@ -572,6 +578,8 @@ export const translations = {
       evidenceMap: "Mapa ng mga Citizen Report",
       faq: "FAQ",
       contact: "Kontakin Kami",
+      suggestions: "Mga Mungkahi",
+      articlesAndUpdates: "Mga Artikulo at Update",
       report: "E-Reports",
       signIn: "Mag-login",
       signOut: "Mag-logout",
@@ -1119,6 +1127,8 @@ export const translations = {
     community: community.tl,
     site: site.tl,
     account: account.tl,
+    suggestions: suggestions.tl,
+    publicContent: publicContent.tl,
   },
 } as const;
 

@@ -4,9 +4,9 @@ import { test } from "bun:test";
 
 const source = readFileSync(new URL("./app-header.tsx", import.meta.url), "utf8");
 
-test("does not expose the unavailable Articles & Updates route", () => {
-  assert.doesNotMatch(source, /articles-and-updates/);
-  assert.doesNotMatch(source, /Articles & Updates/);
+test("exposes Articles & Updates after its public route is implemented", () => {
+  assert.match(source, /href: "\/articles-and-updates"/);
+  assert.match(source, /Articles & Updates/);
 });
 
 test("links the public header to the embedded live broadcasts page exactly once", () => {

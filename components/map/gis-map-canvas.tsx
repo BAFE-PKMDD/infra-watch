@@ -5,10 +5,8 @@ import { Circle, CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, WMSTi
 import type { LatLngTuple } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getProjectMarkerColor } from "@/lib/public-project-map";
-
-const GEOSERVER_URL = process.env.NEXT_PUBLIC_GEOSERVER_URL ?? "";
-const GEOSERVER_WORKSPACE = process.env.NEXT_PUBLIC_GEOSERVER_WORKSPACE ?? "geoagri";
-const WMS_BASE = `${GEOSERVER_URL}/${GEOSERVER_WORKSPACE}/wms`;
+import { getWmsUrl } from "@/lib/map-layer-config";
+import type { MapOverlayLayer } from "@/types/map-layer.types";
 
 interface ProjectPin {
   id: string;
@@ -25,13 +23,7 @@ interface GISMapCanvasProps {
   filteredPins: ProjectPin[];
   selectedProject: ProjectPin | null;
   setSelectedProject: (pin: ProjectPin | null) => void;
-  watershedOverlay: boolean;
-  agriZoneOverlay: boolean;
-  postharvestOverlay: boolean;
-  riceProcessingOverlay: boolean;
-  tradingCentersOverlay: boolean;
-  agriProcessingOverlay: boolean;
-  productionAreaOverlay: boolean;
+  overlayLayers?: MapOverlayLayer[];
   measureActive?: boolean;
   serviceAreaEnabled?: boolean;
   serviceRadius?: number;
@@ -232,13 +224,7 @@ export default function GISMapCanvas({
   filteredPins,
   selectedProject,
   setSelectedProject,
-  watershedOverlay,
-  agriZoneOverlay,
-  postharvestOverlay,
-  riceProcessingOverlay,
-  tradingCentersOverlay,
-  agriProcessingOverlay,
-  productionAreaOverlay,
+  overlayLayers = [],
   measureActive = false,
   serviceAreaEnabled = false,
   serviceRadius,
@@ -247,7 +233,7 @@ export default function GISMapCanvas({
   selectedRegion = "all",
 }: GISMapCanvasProps) {
   const tileUrl = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";
-  const attribution = '&copy; <a href="https://www.google.com/maps">Google</a>, FMR Watch Projects';
+  const attribution = '&copy; <a href="https://www.google.com/maps">Google</a>, INFRA Watch Projects';
 
   const wmsParams = {
     transparent: true,
@@ -282,82 +268,17 @@ export default function GISMapCanvas({
           />
         ))}
 
-        {/* Watersheds / Waterways — live GeoServer WMS */}
-        {watershedOverlay && GEOSERVER_URL && (
+        {overlayLayers.map(layer => (
           <WMSTileLayer
-            url={WMS_BASE}
-            layers={`${GEOSERVER_WORKSPACE}:WATERWAYS`}
+            key={`${layer.id}:${layer.geoserverUrl}:${layer.workspace}:${layer.layerName}:${layer.styleName}:${layer.opacity}`}
+            url={getWmsUrl(layer.geoserverUrl, layer.workspace)}
+            layers={layer.layerName.includes(":") ? layer.layerName : `${layer.workspace}:${layer.layerName}`}
+            styles={layer.styleName || ""}
             {...wmsParams}
-            opacity={0.7}
+            opacity={layer.opacity}
             attribution="&copy; BAFE GeoServer"
           />
-        )}
-
-        {/* Agricultural Production Areas — live GeoServer WMS */}
-        {agriZoneOverlay && GEOSERVER_URL && (
-          <WMSTileLayer
-            url={WMS_BASE}
-            layers={`${GEOSERVER_WORKSPACE}:BSWM_AGRI_PROD_AREA`}
-            {...wmsParams}
-            opacity={0.6}
-            attribution="&copy; BAFE GeoServer"
-          />
-        )}
-
-        {/* Postharvest Facilities (dryers, mills, processing) — live GeoServer WMS */}
-        {postharvestOverlay && GEOSERVER_URL && (
-          <WMSTileLayer
-            url={WMS_BASE}
-            layers={`${GEOSERVER_WORKSPACE}:infra_postharverst_facilities`}
-            {...wmsParams}
-            opacity={0.85}
-            attribution="&copy; BAFE GeoServer"
-          />
-        )}
-
-        {/* Rice Processing Centers — live GeoServer WMS */}
-        {riceProcessingOverlay && GEOSERVER_URL && (
-          <WMSTileLayer
-            url={WMS_BASE}
-            layers={`${GEOSERVER_WORKSPACE}:rice_processing_center`}
-            {...wmsParams}
-            opacity={0.85}
-            attribution="&copy; BAFE GeoServer"
-          />
-        )}
-
-        {/* Agri Trading Centers (AMAS) — live GeoServer WMS */}
-        {tradingCentersOverlay && GEOSERVER_URL && (
-          <WMSTileLayer
-            url={WMS_BASE}
-            layers={`${GEOSERVER_WORKSPACE}:AMAS_TRADING_CENTERS`}
-            {...wmsParams}
-            opacity={0.85}
-            attribution="&copy; BAFE GeoServer"
-          />
-        )}
-
-        {/* Agri Processing Centers — live GeoServer WMS */}
-        {agriProcessingOverlay && GEOSERVER_URL && (
-          <WMSTileLayer
-            url={WMS_BASE}
-            layers={`${GEOSERVER_WORKSPACE}:Agri Processing Centers`}
-            {...wmsParams}
-            opacity={0.85}
-            attribution="&copy; BAFE GeoServer"
-          />
-        )}
-
-        {/* Existing Agricultural Production Area (crop coverage) — live GeoServer WMS */}
-        {productionAreaOverlay && GEOSERVER_URL && (
-          <WMSTileLayer
-            url={WMS_BASE}
-            layers={`${GEOSERVER_WORKSPACE}:exisiting_agri_prod_area`}
-            {...wmsParams}
-            opacity={0.5}
-            attribution="&copy; BAFE GeoServer"
-          />
-        )}
+        ))}
 
         {/* Project marker pins */}
         {filteredPins.map((pin) => (

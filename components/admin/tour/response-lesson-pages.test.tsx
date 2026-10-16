@@ -8,6 +8,7 @@ import { ContactMessageList } from "@/components/admin/contact-messages/contact-
 import { TutorialSandboxContext } from "./tutorial-sandbox";
 import { createTutorialSms } from "@/lib/tours/sms-sandbox";
 import { createTutorialSandbox } from "@/lib/tours/sandbox";
+import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 test("SMS lesson reuses the actual list and reply controls without real-send or restore controls", () => {
   const record = createTutorialSms();
@@ -25,13 +26,16 @@ test("SMS lesson reuses the actual list and reply controls without real-send or 
 test("contact lesson replaces real messages and external email links with an isolated example", () => {
   const state = createTutorialSandbox("contact-attempt");
   const initialResult = { data: [{ ...state.contact, id: "real-contact", email: "real@example.com", message: "Real contact content" }], status: null, page: 1, pageSize: 25, total: 1, totalPages: 1, counts: { new: 1, in_progress: 0, resolved: 0 } };
-  const normal = renderToStaticMarkup(<ContactMessageList initialResult={initialResult} />);
+  const router = { back() {}, forward() {}, refresh() {}, push() {}, replace() {}, prefetch() {} } as unknown as AppRouterInstance;
+  const normal = renderToStaticMarkup(<AppRouterContext.Provider value={router}><ContactMessageList initialResult={initialResult} /></AppRouterContext.Provider>);
   assert.match(normal, /mailto:real@example.com/);
   assert.match(normal, /Real contact content/);
+  assert.match(normal, /Reply through INFRA Watch/);
   const tutorial = renderToStaticMarkup(<TutorialSandboxContext.Provider value={{ state, apply: () => {} }}><ContactMessageList initialResult={initialResult} /></TutorialSandboxContext.Provider>);
   assert.match(tutorial, /data-tour="contact-row"/);
   assert.match(tutorial, /data-tour="contact-email"/);
   assert.match(tutorial, /data-tour="contact-status"/);
   assert.match(tutorial, /href="#contact-email-preview"/);
   assert.doesNotMatch(tutorial, /mailto:|Real contact content|real@example.com/);
+  assert.doesNotMatch(tutorial, /Send email response/);
 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { eq, or } from "drizzle-orm";
+import { fetchKml, KmlSourceError } from "@/lib/kml-source";
 
 export const runtime = "nodejs";
 
@@ -66,28 +67,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const kmlResponse = await fetch(kmlUrl, {
-      signal: AbortSignal.timeout(15_000),
-    });
-
-    if (!kmlResponse.ok) {
-      return NextResponse.json(
-        { error: `Failed to fetch KML from source: ${kmlResponse.statusText}` },
-        { status: 502 },
-      );
-    }
-
-    const kmlContent = await kmlResponse.text();
+    const kmlContent = await fetchKml(kmlUrl);
 
     return new NextResponse(kmlContent, {
       status: 200,
       headers: {
         "Content-Type": "application/xml; charset=utf-8",
         "Cache-Control": "public, max-age=3600, s-maxage=3600",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "sandbox; default-src 'none'",
       },
     });
   } catch (error) {
     console.error("KML proxy error:", error);
+
+    if (error instanceof KmlSourceError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
 
     if (error instanceof DOMException && error.name === "TimeoutError") {
       return NextResponse.json(

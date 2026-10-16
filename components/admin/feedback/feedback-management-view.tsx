@@ -313,7 +313,10 @@ function FeedbackManagementContent({ initialData, sandbox }: FeedbackManagementV
     }),
     onSuccess: (result, feedbackId) => {
       notifyTutorialAction({ resource: "feedback", recordId: feedbackId, action: "delete", outcome: "success", simulated: result.simulated });
-      if (!result.simulated) invalidateFeedback();
+      if (!result.simulated) {
+        invalidateFeedback();
+        queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      }
       setDeleteFeedbackId(null);
       setSelectedFeedbackId(null);
       toast.success(result.data.message || "Feedback deleted successfully");

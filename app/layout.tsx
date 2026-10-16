@@ -9,6 +9,7 @@ import { LanguageDialog } from "@/components/language/language-dialog";
 import { CookieConsentBanner } from "@/components/cookie-consent/cookie-consent-banner";
 import { Toaster } from "@/components/ui/sonner";
 import { CitizenTourProvider } from "@/components/citizen/tour/citizen-tour-provider";
+import { MaintenanceGate } from "@/components/site-notices/maintenance-gate";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -49,6 +50,7 @@ export default function RootLayout({
               <LanguageDialog />
               <CitizenTourProvider>{children}</CitizenTourProvider>
               <CookieConsentBanner />
+              <MaintenanceGate />
               <Toaster />
               </NotificationProvider>
             </LanguageProvider>

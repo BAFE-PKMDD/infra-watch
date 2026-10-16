@@ -28,6 +28,7 @@ import { useTranslation } from "@/i18n";
 import type { Language } from "@/i18n/translations";
 import { useAuth } from "@/providers/auth-provider";
 import { useNotifications } from "@/providers/notification-provider";
+import { getNotificationDestination } from "@/lib/notification-destination";
 
 type NotificationItem = ReturnType<typeof useNotifications>["notifications"][number];
 
@@ -181,9 +182,9 @@ function NotificationCard({
   onClick: () => void;
 }) {
   const { t, language } = useTranslation();
-  const projectId = getMetadataString(notification, "projectId");
+  const { user } = useAuth();
   const projectName = getMetadataString(notification, "projectName");
-  const link = projectId ? `/projects/${projectId}` : null;
+  const link = getNotificationDestination(notification, user?.role);
 
   // With a project link the wrapping <Link> is already focusable, and activating it clicks this
   // div. Without one the card has to be a focusable control itself so keyboard users can mark it read.

@@ -2,6 +2,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { notificationRecipients, notifications } from "@/lib/db/schema";
+import { removeOrphanedNotificationsForUser } from "@/lib/submission-notifications";
 import {
   broadcastNotification,
   createRealtimeNotification,
@@ -61,6 +62,7 @@ export async function publishAndPersistNotification(
 export async function getNotificationsForUser(
   userId: string,
 ): Promise<StoredNotification[]> {
+  await removeOrphanedNotificationsForUser(userId);
   const rows = await db
     .select({
       id: notifications.id,

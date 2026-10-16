@@ -8,6 +8,7 @@ import { deleteFile } from "@/lib/minio";
 import { requirePermission } from "@/lib/permissions";
 import { checkModeratorScope } from "@/lib/scope";
 import { getCurrentUser } from "@/lib/session";
+import { deleteSubmissionWithNotifications } from "@/lib/submission-notifications";
 import { eq } from "drizzle-orm";
 
 type FeedbackModerationStatus = "approved" | "rejected";
@@ -148,7 +149,7 @@ export async function deleteFeedback(feedbackId: string): Promise<ActionResult> 
       media.map((item) => item?.url ? deleteFile(item.url) : Promise.resolve()),
     );
 
-    await db.delete(feedback).where(eq(feedback.id, feedbackId));
+    await deleteSubmissionWithNotifications({ kind: "feedback", id: feedbackId });
 
     revalidatePath("/feedbacks");
     revalidatePath(`/projects/${existing.projectId}`);

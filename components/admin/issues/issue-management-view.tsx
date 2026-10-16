@@ -190,6 +190,7 @@ function IssueManagementContent({ sandbox }: { sandbox: TutorialSandboxContextVa
       notifyTutorialAction({ resource: "issues", recordId: issueId, action: "delete", outcome: "success", simulated: result.simulated });
       setDeleteIssue(null);
       if (result.simulated) { toast.success("Tutorial deletion complete. No real report was deleted."); return; }
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["admin-issues"] });
       queryClient.invalidateQueries({ queryKey: ["admin-issue-stats"] });
       queryClient.invalidateQueries({ queryKey: ["public-issues"] });

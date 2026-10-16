@@ -20,6 +20,9 @@ export function DataPrivacyView({ language }: { language: Language }) {
       <h2>How information is used</h2>
       <p>Information is used to authenticate users, receive and moderate feedback, associate evidence with infrastructure projects, operate maps and analytics, prevent abuse, investigate technical problems, and meet applicable public-sector responsibilities.</p>
 
+      <h2>Website analytics</h2>
+      <p>With your permission, InfraWatch uses Google Analytics on its public pages to count visits and see which pages are used. Google Analytics receives usage information such as the pages viewed, approximate location, device and browser type, and how you reached the site. It does not receive what you type into reports or feedback, and advertising features are turned off. Analytics stays off until you accept it in the cookie notice, and you can decline and still use every feature. Google processes this information under its own terms.</p>
+
       <h2>Anonymous submissions</h2>
       <p>Selecting anonymous submission hides your identity from public display. It does not remove the submission from authorized moderation and security workflows.</p>
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "bun:test";
 
 import { DashboardScopeTooLargeError } from "@/lib/analytics/managerial-dashboard-query";
-import { createAnalyticsGetHandler } from "./route";
+import { createAnalyticsGetHandler } from "./handlers";
 
 const emptyData = {
   asOf: "2026-08-10",

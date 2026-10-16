@@ -4,6 +4,8 @@ import { mapInternalToPublicStage } from "@/constants/stage-mapping";
 import { isPhilippineCoordinatePair } from "@/lib/philippine-coordinates";
 import { getLastSuccessfulProjectSyncAt } from "@/lib/public-sync";
 import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
+import { publicStageCondition } from "@/lib/public-analytics/public-stage-condition";
+import { and } from "drizzle-orm";
 
 export interface StageStat {
   labelKey: string;
@@ -261,7 +263,7 @@ async function queryInfraAnalyticsRows(): Promise<InfraAnalyticsRow[]> {
       actualCompletionDate: projects.actualCompletionDate,
     })
     .from(projects)
-    .where(projectYearScopeCondition())
+    .where(and(projectYearScopeCondition(), publicStageCondition()))
     .limit(MAX_PUBLIC_ANALYTICS_ROWS + 1);
 }
 

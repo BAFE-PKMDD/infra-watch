@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { deleteFile } from "@/lib/minio";
 import { feedback } from "@/lib/db/schema";
 import { assertCleanText } from "@/lib/services/content-moderation";
+import { deleteSubmissionWithNotifications } from "@/lib/submission-notifications";
 import { eq } from "drizzle-orm";
 import type { FeedbackMedia } from "@/types/feedback.types";
 import type { GeoTrackPoint } from "@/types/geo-evidence.types";
@@ -262,7 +263,7 @@ export async function DELETE(
       media.map((item) => item?.url ? deleteFile(item.url) : Promise.resolve()),
     );
 
-    await db.delete(feedback).where(eq(feedback.id, feedbackId));
+    await deleteSubmissionWithNotifications({ kind: "feedback", id: feedbackId });
 
     await logAudit({
       tableName: "feedback",

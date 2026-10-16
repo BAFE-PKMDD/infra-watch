@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -30,6 +29,68 @@ const geometry = customType<{ data: string | null; driverData: string | null }>(
   fromDriver(value: string | null): string | null {
     return value;
   },
+});
+
+export const articles = pgTable("articles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  source: text("source").notNull(),
+  thumbnail: text("thumbnail"),
+  thumbnailAlt: text("thumbnail_alt"),
+  excerpt: text("excerpt"),
+  category: text("category").notNull(),
+  tags: jsonb("tags").$type<string[]>().notNull().default([]),
+  author: text("author"),
+  publishedDate: timestamp("published_date", { mode: "date" }),
+  projectId: text("project_id").references(() => projects.abemisId, { onDelete: "set null" }),
+  addedBy: text("added_by").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+}, table => [index("articles_project_id_idx").on(table.projectId)]);
+
+export const announcements = pgTable("announcements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  isActive: boolean("is_active").notNull().default(false),
+  startDate: timestamp("start_date", { mode: "date" }),
+  endDate: timestamp("end_date", { mode: "date" }),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export const mapLayers = pgTable("map_layers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  description: text("description"),
+  geoserverUrl: text("geoserver_url").notNull(),
+  workspace: text("workspace").notNull(),
+  layerName: text("layer_name").notNull(),
+  styleName: text("style_name"),
+  opacity: real("opacity").notNull().default(0.7),
+  legendShape: text("legend_shape").notNull().default("circle"),
+  legendColor: text("legend_color").notNull().default("#10b981"),
+  isActive: boolean("is_active").notNull().default(true),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export const emailTemplates = pgTable("email_templates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  variables: jsonb("variables").$type<string[]>().notNull().default([]),
+  category: text("category").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
 
 export const projects = pgTable(

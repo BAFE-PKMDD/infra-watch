@@ -9,6 +9,8 @@ import { requireAuth } from "@/lib/session";
 import { requirePermission } from "@/lib/permissions";
 import { logAudit, getAuditContextFromServerAction } from "@/lib/audit";
 import { AutoReplySettings } from "@/types/auto-reply.types";
+import { BannerSettingsSchema, type BannerSettings } from "@/types/banner.types";
+import { BANNER_SETTING_KEY, MAINTENANCE_SETTING_KEY, bannerContrastError } from "@/lib/site-notices";
 import { getAutoReplySettings } from "@/actions/query/settings.query";
 
 /**
@@ -81,5 +83,55 @@ export async function updateAutoReplySettings(data: AutoReplySettings) {
   } catch (error) {
     console.error("Error updating auto-reply settings", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to update auto-reply settings" };
+  }
+}
+
+/**
+ * Turn maintenance mode on or off. The public sees a maintenance notice; staff are not affected.
+ */
+export async function setMaintenanceMode(enabled: boolean) {
+  try {
+    if (typeof enabled !== "boolean") {
+      return { success: false, error: "Maintenance mode must be on or off." };
+    }
+
+    await updateSystemSetting(
+      MAINTENANCE_SETTING_KEY,
+      enabled,
+      "Site-wide maintenance mode. When on, public visitors and citizens see a maintenance notice; staff are not affected.",
+    );
+
+    return { success: true, data: enabled };
+  } catch (error) {
+    console.error("Error updating maintenance mode", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update maintenance mode" };
+  }
+}
+
+/**
+ * Update the public banner shown at the top of the public pages.
+ */
+export async function updateBannerSettings(data: BannerSettings) {
+  try {
+    const parsed = BannerSettingsSchema.safeParse(data);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid banner settings." };
+    }
+
+    const contrastError = bannerContrastError(parsed.data);
+    if (contrastError) {
+      return { success: false, error: contrastError };
+    }
+
+    await updateSystemSetting(
+      BANNER_SETTING_KEY,
+      parsed.data,
+      "Configurable banner shown at the top of the public pages.",
+    );
+
+    return { success: true, data: parsed.data };
+  } catch (error) {
+    console.error("Error updating banner settings", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update banner settings" };
   }
 }

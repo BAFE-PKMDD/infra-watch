@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 
-import { createCitizenEventPostHandler } from "./route";
+import { createCitizenEventPostHandler } from "./handlers";
 
 function request(body: unknown, origin = "https://infra-watch.bafe.gov.ph") {
   return new Request("https://infra-watch.bafe.gov.ph/api/analytics/events", {

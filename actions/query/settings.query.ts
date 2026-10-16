@@ -6,6 +6,13 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { systemSettings } from "@/lib/db/schema";
 import { AutoReplySettings, DEFAULT_AUTO_REPLY_SETTINGS } from "@/types/auto-reply.types";
+import type { BannerSettings } from "@/types/banner.types";
+import {
+  BANNER_SETTING_KEY,
+  MAINTENANCE_SETTING_KEY,
+  parseBannerSettings,
+  parseMaintenanceValue,
+} from "@/lib/site-notices";
 
 /**
  * Fetch a system setting by key.
@@ -49,4 +56,27 @@ export const getAutoReplySettings = cache(async (): Promise<{ success: boolean; 
     console.error("Error fetching auto-reply settings", error);
     return { success: false, error: "Failed to fetch auto-reply settings", data: DEFAULT_AUTO_REPLY_SETTINGS };
   }
+});
+
+/**
+ * Whether maintenance mode is on. Public (the site notice endpoint reads it), and a failed
+ * read counts as "off" so a database hiccup never locks everyone out.
+ */
+export const getMaintenanceMode = cache(async (): Promise<{ success: boolean; data: boolean; error?: string }> => {
+  const result = await getSystemSetting(MAINTENANCE_SETTING_KEY);
+  if (!result.success) {
+    return { success: false, data: false, error: "Failed to fetch maintenance mode" };
+  }
+  return { success: true, data: parseMaintenanceValue(result.data) };
+});
+
+/**
+ * Public banner settings, merged over the defaults. Public for the same reason as above.
+ */
+export const getBannerSettings = cache(async (): Promise<{ success: boolean; data: BannerSettings; error?: string }> => {
+  const result = await getSystemSetting(BANNER_SETTING_KEY);
+  if (!result.success) {
+    return { success: false, data: parseBannerSettings(null), error: "Failed to fetch banner settings" };
+  }
+  return { success: true, data: parseBannerSettings(result.data) };
 });

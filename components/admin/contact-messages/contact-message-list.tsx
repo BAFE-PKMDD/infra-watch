@@ -8,6 +8,7 @@ import { TutorialModeNotice, useTutorialSandbox } from "@/components/admin/tour/
 import { Button } from "@/components/ui/button";
 import { AdminPageWrapper } from "@/components/admin/admin-page-wrapper";
 import { ContactMessageStatusControl } from "@/components/admin/contact-messages/contact-message-status-control";
+import { ContactEmailReply } from "@/components/admin/contact-messages/contact-email-reply";
 import {
   CONTACT_MESSAGE_STATUSES,
   CONTACT_MESSAGE_STATUS_LABELS,
@@ -144,7 +145,7 @@ function ContactMessageListContent({ initialResult }: { initialResult: ContactRe
                       )}
                     </div>
                     <div className="w-full shrink-0 lg:w-48">
-                      <ContactMessageStatusControl id={message.id} status={status} />
+                      <ContactMessageStatusControl key={`${message.id}:${status}`} id={message.id} status={status} />
                     </div>
                   </div>
                   {sandbox && emailOpen ? <section id="contact-email-preview" data-tour="contact-email-preview" data-tour-record-id={message.id} className="mt-5 border-t border-slate-200 pt-4 dark:border-slate-800" aria-label="Example email reply">
@@ -156,6 +157,7 @@ function ContactMessageListContent({ initialResult }: { initialResult: ContactRe
                     <Button type="button" data-tour="contact-send" disabled={!reply.trim()} className="mt-3 min-h-11" onClick={() => sandbox.apply({ resource: "contact_messages", recordId: message.id, action: "reply", body: reply })}>Preview reply</Button>
                     {sandbox.state.contactReply ? <p role="status" data-tour="contact-email-sent" data-tour-record-id={message.id} className="mt-3 text-sm font-semibold text-emerald-800 dark:text-emerald-200">Example reply prepared. No email was sent. Update the message status to finish.</p> : null}
                   </section> : null}
+                  {!sandbox ? <ContactEmailReply id={message.id} /> : null}
                 </li>
               );
             })}

@@ -30,8 +30,18 @@ const navItems = [
   { label: "Citizen Reports Map", href: "/evidence-map", key: "evidence-map", isSecondary: true },
   { label: "Infra Analytics", href: "/infra-analytics", key: "infra-analytics", isSecondary: true },
   { label: "FAQ", href: "/faq", key: "faq", isSecondary: true },
+  { label: "Articles & Updates", href: "/articles-and-updates", key: "articles-and-updates", isSecondary: true },
+  { label: "Suggestions", href: "/suggestions", key: "suggestions", isSecondary: true },
   { label: "Contact Us", href: "/contact", key: "contact", isSecondary: true },
 ] as { label: string; href: string; key: string; requiresAuth?: boolean; isSecondary?: boolean }[];
+
+// Shared by the "More" and account dropdowns so both menus look identical.
+const MENU_PANEL =
+  "w-56 rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-[#1e3a5f]/30 dark:bg-[#0d1526]";
+const MENU_ITEM =
+  "flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm font-bold transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-primary dark:hover:bg-[#13233c]/60";
+const MENU_ITEM_TEXT = "text-slate-700 dark:text-slate-200";
+const MENU_ITEM_DANGER = "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40";
 
 type NavKey = (typeof navItems)[number]["key"];
 type ThemeMode = "light" | "dark";
@@ -225,17 +235,17 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                       </button>
                     }
                   />
-                  <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 [--accent-foreground:var(--foreground)]">
+                  <DropdownMenuContent align="end" sideOffset={8} className={cn(MENU_PANEL, "ring-0 [--accent-foreground:var(--foreground)]")}>
                     {translatedNavItems
                       .filter(item => item.isSecondary)
                       .map((item) => (
-                        <DropdownMenuItem key={item.key} className="focus:bg-slate-100 dark:focus:bg-[#13233c]/60">
+                        <DropdownMenuItem key={item.key} className="p-0 focus:bg-slate-100 dark:focus:bg-[#13233c]/60">
                           <Link
                             href={item.href}
                             data-citizen-nav={item.href}
                             className={cn(
-                              "w-full cursor-pointer font-bold block py-1",
-                              resolvedActiveItem === item.key ? "text-primary" : "text-slate-700 dark:text-slate-200"
+                              MENU_ITEM,
+                              resolvedActiveItem === item.key ? "text-primary" : MENU_ITEM_TEXT
                             )}
                           >
                             {item.label}
@@ -286,9 +296,9 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                     </div>
                   </button>
                   {showUserMenu && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#0d1526] rounded-lg shadow-lg border border-slate-200 dark:border-[#1e3a5f]/30 py-2 z-50">
-                      <div className="px-4 py-2 border-b border-slate-200 dark:border-[#1e3a5f]/20">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                    <div className={cn(MENU_PANEL, "absolute right-0 mt-2 z-50")}>
+                      <div className="mb-1 border-b border-slate-200 px-3 py-2 dark:border-[#1e3a5f]/20">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
                           {user.name}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
@@ -298,7 +308,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                       {user.role !== "citizen" && (
                         <Link
                           href="/dashboard"
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
+                          className={cn(MENU_ITEM, MENU_ITEM_TEXT)}
                           onClick={() => setOpenOverlay(null)}
                         >
                           <LayoutDashboard className="w-4 h-4" />
@@ -307,7 +317,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                       )}
                       <Link
                         href="/my-profile"
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
+                        className={cn(MENU_ITEM, MENU_ITEM_TEXT)}
                         onClick={() => setOpenOverlay(null)}
                       >
                         <UserRound className="w-4 h-4" />
@@ -315,7 +325,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                       </Link>
                       <Link
                         href="/my-feedbacks"
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
+                        className={cn(MENU_ITEM, MENU_ITEM_TEXT)}
                         onClick={() => setOpenOverlay(null)}
                       >
                         <MessageSquareDot className="w-4 h-4" />
@@ -323,7 +333,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                       </Link>
                       <Link
                         href="/my-issues"
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
+                        className={cn(MENU_ITEM, MENU_ITEM_TEXT)}
                         onClick={() => setOpenOverlay(null)}
                       >
                         <AlertCircle className="w-4 h-4" />
@@ -332,7 +342,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                       {user.role === "citizen" && (
                         <Link
                           href="/my-notifications"
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#13233c]/60 transition-colors"
+                          className={cn(MENU_ITEM, MENU_ITEM_TEXT)}
                           onClick={() => setOpenOverlay(null)}
                         >
                           <Bell className="w-4 h-4" />
@@ -344,7 +354,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                           setOpenOverlay(null);
                           await logout();
                         }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                        className={cn(MENU_ITEM, MENU_ITEM_DANGER)}
                         suppressHydrationWarning
                       >
                         <LogOut className="w-4 h-4" />

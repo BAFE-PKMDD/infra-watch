@@ -4,7 +4,7 @@ import {
   createWakeTokenPostHandler,
   verifyWakeToken,
   type WakeTokenDependencies,
-} from "./route";
+} from "./handlers";
 
 const secret = "test-secret-that-is-long-enough";
 function dependencies(overrides: Partial<WakeTokenDependencies> = {}): WakeTokenDependencies {

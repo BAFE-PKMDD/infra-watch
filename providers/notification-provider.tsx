@@ -3,6 +3,8 @@
 import { createContext, useCallback, useContext, ReactNode, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationQueryKey } from "@/lib/notification-query-key";
+import { getNotificationDestination } from "@/lib/notification-destination";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { toast } from "sonner";
 import { useTranslation } from "@/i18n";
@@ -37,6 +39,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const { user } = useAuth(); // Use auth context instead of useSession
   const { t } = useTranslation();
+  const router = useRouter();
+  const role = user?.role;
+  const dashboardLabel = t("nav.dashboard");
 
   // Only fetch if user is logged in
   const isLoggedIn = !!user;
@@ -100,10 +105,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["public-issues"] });
 
     toast.info(notification.title, {
+      id: notification.id,
       description: notification.message,
       duration: 6000,
+      ...(getNotificationDestination(notification, role) === "/dashboard" ? {
+        action: { label: dashboardLabel, onClick: () => router.push("/dashboard") },
+      } : {}),
     });
-  }, [notificationKey, queryClient]);
+  }, [notificationKey, queryClient, role, dashboardLabel, router]);
 
   // Setup SSE connection for realtime feedback/E-Report notifications.
   useEffect(() => {
@@ -114,6 +123,26 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     source.addEventListener("notification", (event) => {
       const notification = JSON.parse((event as MessageEvent).data) as Notification;
       handleIncomingNotification(notification);
+    });
+
+    source.addEventListener("notifications-removed", (event) => {
+      let ids: string[];
+      try {
+        ({ ids } = JSON.parse((event as MessageEvent).data) as { ids: string[] });
+      } catch {
+        void queryClient.invalidateQueries({ queryKey: notificationKey });
+        return;
+      }
+      const removedIds = new Set(ids);
+      ids.forEach(id => toast.dismiss(id));
+      queryClient.setQueryData<Notification[]>(notificationKey, (current = []) =>
+        current.filter(notification => !removedIds.has(notification.id)),
+      );
+      void queryClient.invalidateQueries({ queryKey: notificationKey });
+    });
+
+    source.addEventListener("connected", () => {
+      void queryClient.invalidateQueries({ queryKey: notificationKey });
     });
 
     source.onerror = () => {

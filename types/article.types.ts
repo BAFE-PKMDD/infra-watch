@@ -15,7 +15,7 @@ export interface Article {
   author?: string | null;
   publishedDate?: string | null;
   projectId?: string | null; // Foreign key to projects table
-  addedBy: string;
+  addedBy?: string;
   createdAt: string;
   updatedAt: string;
   projectDetails?: {

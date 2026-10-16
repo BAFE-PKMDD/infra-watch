@@ -6,7 +6,7 @@ import { DashboardSkeleton } from "@/components/admin/dashboard/dashboard-skelet
 import { ManagerialDashboardClient } from "@/components/admin/dashboard/managerial-dashboard-client";
 import { ResponseGuides } from "@/components/admin/tour/response-guides";
 
-export const DASHBOARD_TITLE = "Infrastructure Monitoring";
+const DASHBOARD_TITLE = "Infrastructure Monitoring";
 
 export default async function DashboardPage() {
   await connection();

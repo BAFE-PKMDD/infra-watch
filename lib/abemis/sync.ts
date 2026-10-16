@@ -13,6 +13,7 @@ import {
   projectYearScopeCondition,
   type AbemisSyncExclusionReason,
 } from "@/lib/abemis/year-scope";
+import { publicStageCondition } from "@/lib/public-analytics/public-stage-condition";
 
 import {
   captureProjectMetricSnapshots,
@@ -622,8 +623,16 @@ export async function hasRecentSuccessfulSync(withinHours = 20) {
   return Boolean(row);
 }
 
-export async function getAdminProjectStats(user?: ScopedUser) {
+// The admin catalog lists the same projects the public portal does, so its totals match
+// the public Projects page and landing statistics.
+function getAdminCatalogConditions(user?: ScopedUser) {
   const conditions = user ? getProjectScopeConditions(user) : [projectYearScopeCondition()];
+  conditions.push(publicStageCondition());
+  return conditions;
+}
+
+export async function getAdminProjectStats(user?: ScopedUser) {
+  const conditions = getAdminCatalogConditions(user);
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const [[budgetStats], statusRows] = await Promise.all([
@@ -662,7 +671,7 @@ export async function getAdminProjects(params: {
   const page = Math.max(1, params.page ?? 1);
   const pageSize = Math.min(100, Math.max(10, params.pageSize ?? 25));
   const offset = (page - 1) * pageSize;
-  const conditions = user ? getProjectScopeConditions(user) : [projectYearScopeCondition()];
+  const conditions = getAdminCatalogConditions(user);
 
   if (params.search) {
     const search = `%${params.search}%`;
