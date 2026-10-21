@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect, type FormEvent, type ReactNode } from "react";
-import { flushSync } from "react-dom";
 import {
   FileDown,
   Lock,
@@ -120,22 +119,30 @@ function RestrictedNotice() {
 }
 
 // Generic drag (by header) + resize (bottom-right handle) wrapper shared by both
-// chart and label elements on the canvas. Uses pointer capture + per-move deltas
-// (not absolute cursor position) and commits through a functional updater so
-// rapid pointer events never read stale element state.
+// chart and label elements on the canvas. Moving is owned by DesignerOverlay (an
+// element can be dropped on any page, which remounts it under a different canvas,
+// so the drag can't rely on pointer capture held by this component). Resizing stays
+// local: it never leaves the element's page. It uses pointer capture + per-move
+// deltas (not absolute cursor position) and commits through a functional updater
+// so rapid pointer events never read stale element state.
 // The selected chrome (header above, footer below) floats outside the element's own
 // box, so the content keeps the same (x, y, width, height) whether it's selected or
 // not -- nothing shifts when you click away.
 const OVERLAY_HEADER_HEIGHT = 36;
+const OVERLAY_HEADER_MIN_WIDTH = 280;
 
 function DraggableBox({
+  id,
   x,
   y,
   width,
   height,
   minWidth,
   minHeight,
-  onMoveBy,
+  pageIndex,
+  pageCount,
+  onDragStart,
+  onMoveToPage,
   onResizeBy,
   header,
   onRemove,
@@ -145,13 +152,17 @@ function DraggableBox({
   selected = true,
   onSelect,
 }: {
+  id: string;
   x: number;
   y: number;
   width: number;
   height: number;
   minWidth: number;
   minHeight: number;
-  onMoveBy: (dx: number, dy: number) => void;
+  pageIndex: number;
+  pageCount: number;
+  onDragStart: (event: React.PointerEvent) => void;
+  onMoveToPage: (pageIndex: number) => void;
   onResizeBy: (dx: number, dy: number) => void;
   header: ReactNode;
   onRemove: () => void;
@@ -161,61 +172,29 @@ function DraggableBox({
   selected?: boolean;
   onSelect?: () => void;
 }) {
-  const dragStart = useRef<{ x: number; y: number } | null>(null);
   const resizeStart = useRef<{ x: number; y: number } | null>(null);
 
   // Pointermove fires far faster than React (and Recharts' internal tick
   // measurement) can keep up with -- committing a setState per raw event
-  // during a fast drag trips React's nested-update guard ("Maximum update
+  // during a fast resize trips React's nested-update guard ("Maximum update
   // depth exceeded", surfacing from Recharts' RenderedTicksReporter inside
   // any chart on the canvas). Accumulate deltas and flush at most once per
   // animation frame instead.
-  const pendingMove = useRef<{ dx: number; dy: number } | null>(null);
-  const moveRafId = useRef<number | null>(null);
   const pendingResize = useRef<{ dx: number; dy: number } | null>(null);
   const resizeRafId = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
-      if (moveRafId.current != null) cancelAnimationFrame(moveRafId.current);
       if (resizeRafId.current != null) cancelAnimationFrame(resizeRafId.current);
     };
   }, []);
 
-  function flushMove() {
-    moveRafId.current = null;
-    const pending = pendingMove.current;
-    if (!pending) return;
-    pendingMove.current = null;
-    onMoveBy(pending.dx, pending.dy);
-  }
   function flushResize() {
     resizeRafId.current = null;
     const pending = pendingResize.current;
     if (!pending) return;
     pendingResize.current = null;
     onResizeBy(pending.dx, pending.dy);
-  }
-
-  function startDrag(event: React.PointerEvent) {
-    event.preventDefault();
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    dragStart.current = { x: event.clientX, y: event.clientY };
-  }
-  function onDragMove(event: React.PointerEvent) {
-    if (!dragStart.current) return;
-    const dx = event.clientX - dragStart.current.x;
-    const dy = event.clientY - dragStart.current.y;
-    dragStart.current = { x: event.clientX, y: event.clientY };
-    pendingMove.current = { dx: (pendingMove.current?.dx ?? 0) + dx, dy: (pendingMove.current?.dy ?? 0) + dy };
-    if (moveRafId.current == null) moveRafId.current = requestAnimationFrame(flushMove);
-  }
-  function endDrag() {
-    dragStart.current = null;
-    if (moveRafId.current != null) {
-      cancelAnimationFrame(moveRafId.current);
-      flushMove();
-    }
   }
 
   function startResize(event: React.PointerEvent) {
@@ -246,20 +225,35 @@ function DraggableBox({
   const headerBar = (
     <div
       data-capture-box="true"
-      onPointerDown={startDrag}
-      onPointerMove={onDragMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      className="flex min-h-9 shrink-0 cursor-move items-center gap-1 border-b border-slate-100 bg-slate-50 px-1.5 py-1.5 dark:border-slate-800 dark:bg-slate-800/60"
+      onPointerDown={onDragStart}
+      className="flex min-h-9 shrink-0 cursor-move touch-none items-center gap-1 border-b border-slate-100 bg-slate-50 px-1.5 py-1.5 dark:border-slate-800 dark:bg-slate-800/60"
     >
       {header}
+      {pageCount > 1 && (
+        <select
+          value={pageIndex}
+          onChange={(event) => onMoveToPage(Number(event.target.value))}
+          onPointerDown={(event) => event.stopPropagation()}
+          aria-label="Move to page"
+          title="Move to page"
+          data-move-page-for={id}
+          data-capture-hide="true"
+          className="min-h-9 shrink-0 rounded-lg border border-slate-200 bg-white px-1.5 text-[11px] font-medium text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+        >
+          {Array.from({ length: pageCount }, (_, index) => (
+            <option key={index} value={index}>
+              Page {index + 1}
+            </option>
+          ))}
+        </select>
+      )}
       <button
         type="button"
         onClick={onRemove}
         onPointerDown={(event) => event.stopPropagation()}
         aria-label={removeLabel}
         data-capture-hide="true"
-        className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+        className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-slate-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
       >
         <X aria-hidden="true" className="size-4" />
       </button>
@@ -274,7 +268,7 @@ function DraggableBox({
       onPointerCancel={endResize}
       title="Drag to resize"
       data-capture-hide="true"
-      className="absolute bottom-0 right-0 size-4 cursor-nwse-resize"
+      className="absolute bottom-0 right-0 size-4 cursor-nwse-resize touch-none"
       style={{ background: "linear-gradient(135deg, transparent 50%, #94a3b8 50%)" }}
     />
   );
@@ -284,12 +278,13 @@ function DraggableBox({
       <div
         role="button"
         tabIndex={0}
+        data-element-id={id}
         onClick={onSelect}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") onSelect?.();
         }}
         title="Click to edit"
-        className="absolute cursor-pointer overflow-hidden bg-white dark:bg-slate-900"
+        className="absolute cursor-pointer overflow-hidden bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-slate-900"
         style={{ left: x, top: y, width, height }}
       >
         {children}
@@ -302,12 +297,13 @@ function DraggableBox({
       <div
         data-capture-hide="true"
         className="absolute overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900"
-        style={{ left: x, top: y - OVERLAY_HEADER_HEIGHT, width }}
+        style={{ left: x, top: y - OVERLAY_HEADER_HEIGHT, width, minWidth: OVERLAY_HEADER_MIN_WIDTH }}
       >
         {headerBar}
       </div>
       <div
         data-capture-box="true"
+        data-element-id={id}
         className="absolute overflow-hidden rounded-sm bg-white ring-2 ring-primary/50 dark:bg-slate-900"
         style={{ left: x, top: y, width, height }}
       >
@@ -398,18 +394,24 @@ function WidgetDataEditor({
 
 function DesignerChart({
   element,
+  pageIndex,
+  pageCount,
   isSelected,
   onSelect,
   onRemove,
-  onMoveBy,
+  onDragStart,
+  onMoveToPage,
   onResizeBy,
   onUpdateChart,
 }: {
   element: ChartElement;
+  pageIndex: number;
+  pageCount: number;
   isSelected: boolean;
   onSelect: () => void;
   onRemove: () => void;
-  onMoveBy: (dx: number, dy: number) => void;
+  onDragStart: (event: React.PointerEvent) => void;
+  onMoveToPage: (pageIndex: number) => void;
   onResizeBy: (dx: number, dy: number) => void;
   onUpdateChart: (patch: Partial<ChartElement>) => void;
 }) {
@@ -481,13 +483,17 @@ function DesignerChart({
 
   return (
     <DraggableBox
+      id={element.id}
       x={element.x}
       y={element.y}
       width={element.width}
       height={element.height}
       minWidth={CHART_MIN_WIDTH}
       minHeight={CHART_MIN_HEIGHT}
-      onMoveBy={onMoveBy}
+      pageIndex={pageIndex}
+      pageCount={pageCount}
+      onDragStart={onDragStart}
+      onMoveToPage={onMoveToPage}
       onResizeBy={onResizeBy}
       onRemove={onRemove}
       removeLabel={`Remove "${element.chart.title}"`}
@@ -572,18 +578,24 @@ function DesignerChart({
 
 function DesignerLabel({
   element,
+  pageIndex,
+  pageCount,
   isSelected,
   onSelect,
   onRemove,
-  onMoveBy,
+  onDragStart,
+  onMoveToPage,
   onResizeBy,
   onUpdateLabel,
 }: {
   element: LabelElement;
+  pageIndex: number;
+  pageCount: number;
   isSelected: boolean;
   onSelect: () => void;
   onRemove: () => void;
-  onMoveBy: (dx: number, dy: number) => void;
+  onDragStart: (event: React.PointerEvent) => void;
+  onMoveToPage: (pageIndex: number) => void;
   onResizeBy: (dx: number, dy: number) => void;
   onUpdateLabel: (patch: Partial<LabelElement>) => void;
 }) {
@@ -609,13 +621,17 @@ function DesignerLabel({
 
   return (
     <DraggableBox
+      id={element.id}
       x={element.x}
       y={element.y}
       width={element.width}
       height={element.height}
       minWidth={LABEL_MIN_WIDTH}
       minHeight={LABEL_MIN_HEIGHT}
-      onMoveBy={onMoveBy}
+      pageIndex={pageIndex}
+      pageCount={pageCount}
+      onDragStart={onDragStart}
+      onMoveToPage={onMoveToPage}
       onResizeBy={onResizeBy}
       onRemove={onRemove}
       removeLabel="Remove label"
@@ -659,9 +675,28 @@ function DesignerLabel({
   );
 }
 
-// Full-viewport A4 design canvas. Built as a plain fixed overlay rather than the
+// Pointer within this many px of the scroll area's top/bottom edge scrolls it
+// while an element is being dragged; the speed ramps up toward the edge.
+const AUTOSCROLL_EDGE = 80;
+const AUTOSCROLL_MAX_SPEED = 20;
+
+function autoScrollSpeed(pointerY: number, area: DOMRect): number {
+  const fromTop = pointerY - area.top;
+  const fromBottom = area.bottom - pointerY;
+  if (fromTop < AUTOSCROLL_EDGE) return -Math.min(1, (AUTOSCROLL_EDGE - fromTop) / AUTOSCROLL_EDGE) * AUTOSCROLL_MAX_SPEED;
+  if (fromBottom < AUTOSCROLL_EDGE) return Math.min(1, (AUTOSCROLL_EDGE - fromBottom) / AUTOSCROLL_EDGE) * AUTOSCROLL_MAX_SPEED;
+  return 0;
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+// Full-viewport A4 design area. Built as a plain fixed overlay rather than the
 // real Fullscreen API — more reliable across browsers/embedded contexts, and all
 // we actually need is "take over the screen", not true OS-level fullscreen.
+// Every page is stacked in one scroll area, so an element can be dragged from one
+// page to another without switching anything.
 function DesignerOverlay({
   pages,
   activePageIndex,
@@ -671,11 +706,10 @@ function DesignerOverlay({
   onAddLabel,
   onClose,
   onRemoveElement,
-  onMoveElementBy,
+  onMoveElementTo,
   onResizeElementBy,
   onUpdateChart,
   onUpdateLabel,
-  canvasRef,
   isExporting,
   onExportPdf,
 }: {
@@ -687,15 +721,29 @@ function DesignerOverlay({
   onAddLabel: () => string;
   onClose: () => void;
   onRemoveElement: (id: string) => void;
-  onMoveElementBy: (id: string, dx: number, dy: number) => void;
+  onMoveElementTo: (id: string, pageIndex: number, position?: { x: number; y: number }) => void;
   onResizeElementBy: (id: string, dx: number, dy: number) => void;
   onUpdateChart: (id: string, patch: Partial<ChartElement>) => void;
   onUpdateLabel: (id: string, patch: Partial<LabelElement>) => void;
-  canvasRef: React.RefObject<HTMLDivElement | null>;
   isExporting: boolean;
   onExportPdf: () => void;
 }) {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [dropPageIndex, setDropPageIndex] = useState<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+  const previousPageCount = useRef(pages.length);
+
+  function scrollToPage(index: number, smooth: boolean) {
+    const section = scrollRef.current?.querySelectorAll<HTMLElement>("[data-mydas-page]")[index];
+    section?.scrollIntoView({ block: "start", behavior: smooth && !prefersReducedMotion() ? "smooth" : "auto" });
+  }
+
+  // The overlay is rendered only while open, so this runs once per open.
+  const initialPageIndex = useRef(activePageIndex);
+  useEffect(() => {
+    scrollToPage(initialPageIndex.current, false);
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -705,16 +753,141 @@ function DesignerOverlay({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
-  const activePage = pages[activePageIndex];
+  // A page added from "+ Page" scrolls itself into view.
+  useEffect(() => {
+    if (pages.length > previousPageCount.current) scrollToPage(pages.length - 1, true);
+    previousPageCount.current = pages.length;
+  }, [pages.length]);
+
+  useEffect(() => () => dragCleanupRef.current?.(), []);
+
+  function canvasElements(): HTMLElement[] {
+    return Array.from(scrollRef.current?.querySelectorAll<HTMLElement>("[data-mydas-page-canvas]") ?? []);
+  }
+
+  // The "current" page (where Add label and new MYDAS charts land) is whichever
+  // page fills most of the scroll area.
+  function syncActivePage() {
+    const area = scrollRef.current?.getBoundingClientRect();
+    if (!area) return;
+    let best = -1;
+    let bestVisible = 0;
+    canvasElements().forEach((canvas, index) => {
+      const rect = canvas.getBoundingClientRect();
+      const visible = Math.min(rect.bottom, area.bottom) - Math.max(rect.top, area.top);
+      if (visible > bestVisible) {
+        bestVisible = visible;
+        best = index;
+      }
+    });
+    if (best >= 0 && best !== activePageIndex) onSelectPage(best);
+  }
+
+  // Moves an element under the pointer, picking whichever page is nearest to it
+  // vertically, and scrolls the area while the pointer sits near its top/bottom
+  // edge. Window-level listeners (not pointer capture) because the element is
+  // remounted under another page's canvas when it crosses over.
+  function startElementDrag(id: string, event: React.PointerEvent) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const target = event.target as Element;
+    if (target.hasPointerCapture?.(event.pointerId)) target.releasePointerCapture(event.pointerId);
+
+    const box = scrollRef.current?.querySelector<HTMLElement>(`[data-element-id="${CSS.escape(id)}"]`);
+    const rect = box?.getBoundingClientRect();
+    const pointer = { x: event.clientX, y: event.clientY };
+    const offset = { x: rect ? event.clientX - rect.left : 0, y: rect ? event.clientY - rect.top : 0 };
+    let lastApplied = "";
+    let lastDropIndex: number | null = null;
+    let frameId = 0;
+
+    function onPointerMove(moveEvent: PointerEvent) {
+      pointer.x = moveEvent.clientX;
+      pointer.y = moveEvent.clientY;
+    }
+
+    function frame() {
+      const area = scrollRef.current;
+      if (area) {
+        const speed = autoScrollSpeed(pointer.y, area.getBoundingClientRect());
+        if (speed !== 0) area.scrollTop += speed;
+
+        const canvases = canvasElements();
+        let targetIndex = -1;
+        let nearest = Infinity;
+        canvases.forEach((canvas, index) => {
+          const bounds = canvas.getBoundingClientRect();
+          const distance = pointer.y < bounds.top ? bounds.top - pointer.y : pointer.y > bounds.bottom ? pointer.y - bounds.bottom : 0;
+          if (distance < nearest) {
+            nearest = distance;
+            targetIndex = index;
+          }
+        });
+        const key = `${pointer.x}|${pointer.y}|${area.scrollTop}|${area.scrollLeft}`;
+        if (targetIndex >= 0 && key !== lastApplied) {
+          lastApplied = key;
+          const bounds = canvases[targetIndex].getBoundingClientRect();
+          onMoveElementTo(id, targetIndex, { x: pointer.x - bounds.left - offset.x, y: pointer.y - bounds.top - offset.y });
+          if (targetIndex !== lastDropIndex) {
+            lastDropIndex = targetIndex;
+            setDropPageIndex(targetIndex);
+          }
+        }
+      }
+      frameId = requestAnimationFrame(frame);
+    }
+
+    function finish() {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      dragCleanupRef.current = null;
+      setDropPageIndex(null);
+    }
+
+    dragCleanupRef.current?.();
+    dragCleanupRef.current = finish;
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+    frameId = requestAnimationFrame(frame);
+    setSelectedElementId(id);
+  }
+
+  function moveToPage(id: string, pageIndex: number) {
+    onMoveElementTo(id, pageIndex);
+    scrollToPage(pageIndex, true);
+    // The element remounts under the new page; hand focus back to its page picker.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollRef.current?.querySelector<HTMLElement>(`[data-move-page-for="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+      });
+    });
+  }
 
   function handleAddLabel() {
     const id = onAddLabel();
     setSelectedElementId(id);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollRef.current?.querySelector<HTMLElement>(`[data-element-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest" });
+      });
+    });
   }
+
+  function handleRemovePage(index: number) {
+    if (pages.length <= 1) return;
+    const count = pages[index].elements.length;
+    if (count > 0 && !window.confirm(`Delete page ${index + 1} and its ${count} item${count === 1 ? "" : "s"}? This can't be undone.`)) return;
+    onRemovePage(index);
+  }
+
+  const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/70 backdrop-blur-sm">
-      {/* Toggled onto the canvas only while exporting — strips every editing
+      {/* Toggled onto each canvas only while exporting — strips every editing
           control and card border so the captured image reads as a clean,
           presentation-style dashboard instead of the live editor. */}
       <style>{`
@@ -729,99 +902,99 @@ function DesignerOverlay({
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-slate-800 dark:bg-slate-900">
         <p className="text-sm font-semibold text-slate-900 dark:text-white">Dashboard Designer</p>
 
-        <div className="flex flex-wrap items-center gap-1">
-          {pages.map((page, index) => (
-            <div key={page.id} className="flex items-center">
-              <button
-                type="button"
-                onClick={() => onSelectPage(index)}
-                className={`min-h-8 rounded-l-md px-3 text-xs font-semibold ${
-                  index === activePageIndex
-                    ? "bg-primary text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                }`}
-              >
-                Page {index + 1}
-              </button>
-              {pages.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => onRemovePage(index)}
-                  aria-label={`Delete page ${index + 1}`}
-                  className={`flex min-h-8 items-center rounded-r-md px-1.5 ${
-                    index === activePageIndex
-                      ? "bg-primary text-white/80 hover:text-white"
-                      : "bg-slate-100 text-slate-400 hover:text-slate-600 dark:bg-slate-800 dark:text-slate-500"
-                  }`}
-                >
-                  <X aria-hidden="true" className="size-3" />
-                </button>
-              )}
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={onAddPage}
-            aria-label="Add page"
-            title="Add page"
-            className="inline-flex min-h-8 items-center gap-1 rounded-md border border-dashed border-slate-300 px-2 text-xs font-semibold text-slate-500 hover:border-primary hover:text-primary dark:border-slate-700 dark:text-slate-400"
-          >
-            <Plus aria-hidden="true" className="size-3.5" /> Page
-          </button>
-        </div>
-
-        <Button type="button" variant="outline" size="sm" onClick={handleAddLabel}>
+        <Button type="button" variant="outline" className="h-11 px-3" onClick={onAddPage}>
+          <Plus className="size-3.5" /> Page
+        </Button>
+        <Button type="button" variant="outline" className="h-11 px-3" onClick={handleAddLabel} title={`Add a label to page ${activePageIndex + 1}`}>
           <TypeIcon className="size-3.5" /> Add label
         </Button>
+        <p className="text-xs text-slate-600 dark:text-slate-400" aria-live="polite">
+          Page {activePageIndex + 1} of {pages.length}
+        </p>
 
         <div className="ml-auto flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onExportPdf} disabled={isExporting}>
+          <Button type="button" variant="outline" className="h-11 px-3" onClick={onExportPdf} disabled={isExporting}>
             {isExporting ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />} PDF
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+          <Button type="button" variant="outline" className="h-11 px-3" onClick={onClose}>
             <X className="size-3.5" /> Close
           </Button>
         </div>
       </div>
-      <div className="flex flex-1 justify-center overflow-auto p-8">
-        <div
-          ref={canvasRef}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setSelectedElementId(null);
-          }}
-          className="relative shrink-0 rounded-sm bg-white shadow-2xl dark:bg-slate-950"
-          style={{ width: A4_CANVAS_WIDTH, height: A4_CANVAS_HEIGHT }}
-        >
-          {activePage.elements.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center p-8 text-center text-sm text-slate-400">
-              Ask MYDAS a question or add a label, then drag and resize it here.
-            </div>
-          )}
-          {activePage.elements.map((element) =>
-            element.kind === "chart" ? (
-              <DesignerChart
-                key={element.id}
-                element={element}
-                isSelected={selectedElementId === element.id}
-                onSelect={() => setSelectedElementId(element.id)}
-                onRemove={() => onRemoveElement(element.id)}
-                onMoveBy={(dx, dy) => onMoveElementBy(element.id, dx, dy)}
-                onResizeBy={(dx, dy) => onResizeElementBy(element.id, dx, dy)}
-                onUpdateChart={(patch) => onUpdateChart(element.id, patch)}
-              />
-            ) : (
-              <DesignerLabel
-                key={element.id}
-                element={element}
-                isSelected={selectedElementId === element.id}
-                onSelect={() => setSelectedElementId(element.id)}
-                onRemove={() => onRemoveElement(element.id)}
-                onMoveBy={(dx, dy) => onMoveElementBy(element.id, dx, dy)}
-                onResizeBy={(dx, dy) => onResizeElementBy(element.id, dx, dy)}
-                onUpdateLabel={(patch) => onUpdateLabel(element.id, patch)}
-              />
-            ),
-          )}
+      <div ref={scrollRef} onScroll={syncActivePage} className="flex-1 overflow-auto p-8">
+        <div className="mx-auto flex w-fit flex-col gap-12">
+          {pages.map((page, pageIndex) => (
+            <section
+              key={page.id}
+              data-mydas-page="true"
+              aria-label={`Page ${pageIndex + 1}`}
+              // The page holding the selected element sits above its neighbours so
+              // the floating header/footer aren't covered by the next page.
+              className={`flex shrink-0 flex-col gap-10 ${page.elements.some((el) => el.id === selectedElementId) ? "relative z-10" : ""}`}
+              style={{ width: A4_CANVAS_WIDTH }}
+            >
+              <div className="flex min-h-11 items-center justify-between rounded-md bg-white px-3 dark:bg-slate-900">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Page {pageIndex + 1} <span className="font-normal text-slate-600 dark:text-slate-400">of {pages.length}</span>
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => handleRemovePage(pageIndex)}
+                  disabled={pages.length <= 1}
+                  title={pages.length <= 1 ? "A dashboard needs at least one page" : `Delete page ${pageIndex + 1}`}
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-slate-700 dark:text-slate-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-300 ${focusRing}`}
+                >
+                  <Trash2 aria-hidden="true" className="size-4" /> Delete page
+                  <span className="sr-only"> {pageIndex + 1}</span>
+                </button>
+              </div>
+              <div
+                data-mydas-page-canvas="true"
+                onClick={(event) => {
+                  if (event.target === event.currentTarget) setSelectedElementId(null);
+                }}
+                className={`relative shrink-0 rounded-sm bg-white shadow-2xl dark:bg-slate-950 ${dropPageIndex === pageIndex ? "outline-4 outline-primary" : ""}`}
+                style={{ width: A4_CANVAS_WIDTH, height: A4_CANVAS_HEIGHT }}
+              >
+                {page.elements.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center p-8 text-center text-sm text-slate-600">
+                    Ask MYDAS a question or add a label, then drag and resize it here.
+                  </div>
+                )}
+                {page.elements.map((element) =>
+                  element.kind === "chart" ? (
+                    <DesignerChart
+                      key={element.id}
+                      element={element}
+                      pageIndex={pageIndex}
+                      pageCount={pages.length}
+                      isSelected={selectedElementId === element.id}
+                      onSelect={() => setSelectedElementId(element.id)}
+                      onRemove={() => onRemoveElement(element.id)}
+                      onDragStart={(event) => startElementDrag(element.id, event)}
+                      onMoveToPage={(target) => moveToPage(element.id, target)}
+                      onResizeBy={(dx, dy) => onResizeElementBy(element.id, dx, dy)}
+                      onUpdateChart={(patch) => onUpdateChart(element.id, patch)}
+                    />
+                  ) : (
+                    <DesignerLabel
+                      key={element.id}
+                      element={element}
+                      pageIndex={pageIndex}
+                      pageCount={pages.length}
+                      isSelected={selectedElementId === element.id}
+                      onSelect={() => setSelectedElementId(element.id)}
+                      onRemove={() => onRemoveElement(element.id)}
+                      onDragStart={(event) => startElementDrag(element.id, event)}
+                      onMoveToPage={(target) => moveToPage(element.id, target)}
+                      onResizeBy={(dx, dy) => onResizeElementBy(element.id, dx, dy)}
+                      onUpdateLabel={(patch) => onUpdateLabel(element.id, patch)}
+                    />
+                  ),
+                )}
+              </div>
+            </section>
+          ))}
         </div>
       </div>
     </div>
@@ -840,7 +1013,6 @@ export default function MydasPage() {
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
 
   const [dashboards, setDashboards] = useState<MydasDashboardSummary[]>([]);
   const [currentDashboardId, setCurrentDashboardId] = useState<string | null>(null);
@@ -1048,45 +1220,77 @@ export default function MydasPage() {
     setIsAsking(false);
   }
 
-  function removeElement(id: string) {
-    updatePageElements(activePageIndex, (elements) => elements.filter((el) => el.id !== id));
-  }
-
-  function moveElementBy(id: string, dx: number, dy: number) {
-    updatePageElements(activePageIndex, (elements) =>
-      elements.map((el) =>
-        el.id === id
-          ? {
-              ...el,
-              x: Math.min(Math.max(0, el.x + dx), A4_CANVAS_WIDTH - 60),
-              y: Math.min(Math.max(0, el.y + dy), A4_CANVAS_HEIGHT - 60),
-            }
-          : el,
-      ),
-    );
-  }
-
-  function resizeElementBy(id: string, dx: number, dy: number) {
-    updatePageElements(activePageIndex, (elements) =>
-      elements.map((el) => {
-        if (el.id !== id) return el;
-        const minWidth = el.kind === "chart" ? CHART_MIN_WIDTH : LABEL_MIN_WIDTH;
-        const minHeight = el.kind === "chart" ? CHART_MIN_HEIGHT : LABEL_MIN_HEIGHT;
-        return { ...el, width: Math.max(minWidth, el.width + dx), height: Math.max(minHeight, el.height + dy) };
+  // Elements are addressed by id across every page, since the designer shows all
+  // pages at once and any element can be touched from any of them.
+  function mapElements(updater: (element: CanvasElement) => CanvasElement) {
+    setPages((prev) =>
+      prev.map((page) => {
+        let changed = false;
+        const elements = page.elements.map((element) => {
+          const next = updater(element);
+          if (next !== element) changed = true;
+          return next;
+        });
+        return changed ? { ...page, elements } : page;
       }),
     );
   }
 
+  function removeElement(id: string) {
+    setPages((prev) => prev.map((page) => (page.elements.some((el) => el.id === id) ? { ...page, elements: page.elements.filter((el) => el.id !== id) } : page)));
+  }
+
+  // Puts an element on the given page (appended, so it sits on top), keeping its
+  // size. With a position it lands there, otherwise it keeps its current x/y.
+  // Either way it is clamped so the whole element stays inside the page.
+  function moveElementTo(id: string, pageIndex: number, position?: { x: number; y: number }) {
+    setPages((prev) => {
+      const targetPage = prev[pageIndex];
+      if (!targetPage) return prev;
+      let sourceIndex = -1;
+      let moving: CanvasElement | undefined;
+      for (let i = 0; i < prev.length && !moving; i++) {
+        moving = prev[i].elements.find((el) => el.id === id);
+        sourceIndex = i;
+      }
+      if (!moving) return prev;
+
+      const x = Math.min(Math.max(0, position?.x ?? moving.x), Math.max(0, A4_CANVAS_WIDTH - moving.width));
+      const y = Math.min(Math.max(0, position?.y ?? moving.y), Math.max(0, A4_CANVAS_HEIGHT - moving.height));
+      if (sourceIndex === pageIndex && x === moving.x && y === moving.y) return prev;
+
+      const moved = { ...moving, x, y };
+      return prev.map((page, i) => {
+        if (i === sourceIndex && i === pageIndex) return { ...page, elements: page.elements.map((el) => (el.id === id ? moved : el)) };
+        if (i === sourceIndex) return { ...page, elements: page.elements.filter((el) => el.id !== id) };
+        if (i === pageIndex) return { ...page, elements: [...page.elements, moved] };
+        return page;
+      });
+    });
+  }
+
+  function resizeElementBy(id: string, dx: number, dy: number) {
+    mapElements((el) => {
+      if (el.id !== id) return el;
+      const minWidth = el.kind === "chart" ? CHART_MIN_WIDTH : LABEL_MIN_WIDTH;
+      const minHeight = el.kind === "chart" ? CHART_MIN_HEIGHT : LABEL_MIN_HEIGHT;
+      // Grow no further than the page edge (an element already past it keeps its size).
+      const maxWidth = Math.max(el.width, A4_CANVAS_WIDTH - el.x);
+      const maxHeight = Math.max(el.height, A4_CANVAS_HEIGHT - el.y);
+      return {
+        ...el,
+        width: Math.min(maxWidth, Math.max(minWidth, el.width + dx)),
+        height: Math.min(maxHeight, Math.max(minHeight, el.height + dy)),
+      };
+    });
+  }
+
   function updateChart(id: string, patch: Partial<ChartElement>) {
-    updatePageElements(activePageIndex, (elements) =>
-      elements.map((el) => (el.id === id && el.kind === "chart" ? { ...el, ...patch } : el)),
-    );
+    mapElements((el) => (el.id === id && el.kind === "chart" ? { ...el, ...patch } : el));
   }
 
   function updateLabel(id: string, patch: Partial<LabelElement>) {
-    updatePageElements(activePageIndex, (elements) =>
-      elements.map((el) => (el.id === id && el.kind === "label" ? { ...el, ...patch } : el)),
-    );
+    mapElements((el) => (el.id === id && el.kind === "label" ? { ...el, ...patch } : el));
   }
 
   function addLabel() {
@@ -1114,24 +1318,19 @@ export default function MydasPage() {
     void ask(input);
   }
 
-  // Cycles through every page, capturing each one as a PNG before moving to the
-  // next — flushSync forces the page-switch to actually re-render and paint
-  // before we snapshot it, rather than racing React's normal async batching.
+  // Every page canvas is already on screen (stacked in the designer), so each one
+  // is captured as a PNG in turn, in page order.
   async function captureAllPages(): Promise<string[]> {
-    const originalIndex = activePageIndex;
+    const canvases = Array.from(document.querySelectorAll<HTMLElement>("[data-mydas-page-canvas]"));
     const images: string[] = [];
-    canvasRef.current?.classList.add("mydas-export-capture");
+    canvases.forEach((canvas) => canvas.classList.add("mydas-export-capture"));
     try {
-      for (let i = 0; i < pages.length; i++) {
-        flushSync(() => setActivePageIndex(i));
-        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-        if (canvasRef.current) {
-          images.push(await capturePageAsPng(canvasRef.current, A4_CANVAS_WIDTH, A4_CANVAS_HEIGHT));
-        }
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      for (const canvas of canvases) {
+        images.push(await capturePageAsPng(canvas, A4_CANVAS_WIDTH, A4_CANVAS_HEIGHT));
       }
     } finally {
-      canvasRef.current?.classList.remove("mydas-export-capture");
-      flushSync(() => setActivePageIndex(originalIndex));
+      canvases.forEach((canvas) => canvas.classList.remove("mydas-export-capture"));
     }
     return images;
   }
@@ -1374,11 +1573,10 @@ export default function MydasPage() {
           onAddLabel={addLabel}
           onClose={() => setIsDesignerOpen(false)}
           onRemoveElement={removeElement}
-          onMoveElementBy={moveElementBy}
+          onMoveElementTo={moveElementTo}
           onResizeElementBy={resizeElementBy}
           onUpdateChart={updateChart}
           onUpdateLabel={updateLabel}
-          canvasRef={canvasRef}
           isExporting={isExporting}
           onExportPdf={() => void handleExportPdf()}
         />

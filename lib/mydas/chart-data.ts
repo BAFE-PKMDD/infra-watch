@@ -40,9 +40,21 @@ export function normalizeMydasChart(raw: unknown, fallbackTitle: string): MydasC
 }
 
 export function normalizeMydasPages(pages: MydasPageData[]): MydasPageData[] {
+  // The designer addresses elements by id across all pages at once (so they can be
+  // dragged between pages). Older layouts only needed ids unique within a page, so
+  // rename any repeat across pages on load.
+  const seenIds = new Set<string>();
+  function uniqueId(id: string): string {
+    let candidate = id;
+    for (let n = 2; seenIds.has(candidate); n++) candidate = `${id}-${n}`;
+    seenIds.add(candidate);
+    return candidate;
+  }
+
   return pages.map((page) => ({
     ...page,
-    elements: page.elements.map((element): MydasCanvasElement => {
+    elements: page.elements.map((raw): MydasCanvasElement => {
+      const element = { ...raw, id: uniqueId(raw.id) };
       if (element.kind !== "chart") return element;
       const displayType = (MYDAS_DISPLAY_TYPES as readonly string[]).includes(element.displayType)
         ? element.displayType

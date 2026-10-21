@@ -121,3 +121,15 @@ test("requires exactly three value columns for a range chart", () => {
   assert.equal(checkChartShape("range", 3), null);
   assert.equal(checkChartShape("bar", 1), null);
 });
+
+test("renames element ids that repeat across pages so elements can move between pages", () => {
+  const label = (id: string) => ({ id, kind: "label", x: 0, y: 0, width: 100, height: 40, text: "Note", fontSize: 14 });
+  const pages = normalizeMydasPages([
+    { id: "page-1", elements: [label("a"), label("b")] },
+    { id: "page-2", elements: [label("a")] },
+  ] as never);
+
+  const ids = pages.flatMap((page) => page.elements.map((element) => element.id));
+  assert.equal(new Set(ids).size, 3);
+  assert.deepEqual(ids.slice(0, 2), ["a", "b"]);
+});
