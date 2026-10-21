@@ -8,7 +8,11 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 RUN bun run geoip:preload
 
-FROM base AS builder
+# next build runs on Node: under Bun's Node shim, Next 16.3.x finishes the build and then
+# crashes Bun on shutdown (SIGILL, exit 132). Bun is still copied in for the helper scripts.
+FROM node:24-slim AS builder
+WORKDIR /app
+COPY --from=base /usr/local/bin/bun /usr/local/bin/bun
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 
