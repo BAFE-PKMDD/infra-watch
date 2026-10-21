@@ -17,12 +17,10 @@ export async function GET() {
 
   if (!cached || Date.now() - cached.at > CACHE_MS) {
     const queue = await getSmsGrievanceQueue();
-    // The sample fallback shown during an outage isn't real work, so it isn't counted.
+    // During an outage the queue is empty, so nothing is counted until the line answers again.
     cached = {
       at: Date.now(),
-      items: queue.dataSource === "live"
-        ? queue.records.filter((record) => smsAttention(record) !== null).map((record) => ({ id: record.id, stamp: smsAttentionStamp(record) }))
-        : [],
+      items: queue.records.filter((record) => smsAttention(record) !== null).map((record) => ({ id: record.id, stamp: smsAttentionStamp(record) })),
     };
   }
 

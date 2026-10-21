@@ -5,6 +5,7 @@ import { test } from "bun:test";
 import ts from "typescript";
 import * as policy from "../lib/voice/runtime-policy";
 import * as voiceState from "../lib/voice/state";
+import * as voiceTiming from "../lib/voice/timing";
 import type { useVoiceAssistant } from "./use-voice-assistant";
 
 const hookCode = ts.transpileModule(
@@ -113,6 +114,7 @@ function createHarness(transcriptionStatus = 200) {
     sonner: { toast: { error: (...args: unknown[]) => errors.push(args) } },
     "@/lib/voice/runtime-policy": policy,
     "@/lib/voice/state": voiceState,
+    "@/lib/voice/timing": voiceTiming,
     "@/lib/voice/tts-worker-client": { createWorkerSpeechEngine: () => engine },
   };
   const hookModule = { exports: {} as { useVoiceAssistant: typeof useVoiceAssistant } };

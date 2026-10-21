@@ -13,7 +13,8 @@ const getMinioConfig = () => {
 };
 
 const FEEDBACK_UPLOAD_PATH_RE = /^feedback\/\d+-[a-f0-9]{32}\.(?:jpe?g|png|webp|gif|mp4|mov|webm)$/;
-const PRIVATE_STORAGE_PATH_RE = /^(?:knowledge-base|issue-evidence)\//;
+const ARTICLE_UPLOAD_PATH_RE = /^articles\/\d+-[a-f0-9]{32}\.(?:jpe?g|png|webp|gif)$/;
+const PRIVATE_STORAGE_PATH_RE = /^(?:knowledge-base|issue-evidence|upload-staging)\//;
 
 export function isFeedbackUploadPath(filePath: string): boolean {
   return FEEDBACK_UPLOAD_PATH_RE.test(filePath);
@@ -36,7 +37,7 @@ function isLocalMinioEndpoint(endpoint: string): boolean {
 export function getFileUrl(filePath: string): string {
   const { endpoint, useSSL, bucket } = getMinioConfig();
 
-  if (isPrivateStoragePath(filePath) || (isLocalMinioEndpoint(endpoint) && isFeedbackUploadPath(filePath))) {
+  if (isPrivateStoragePath(filePath) || (isLocalMinioEndpoint(endpoint) && (isFeedbackUploadPath(filePath) || ARTICLE_UPLOAD_PATH_RE.test(filePath)))) {
     return `/api/upload/preview?path=${encodeURIComponent(filePath)}`;
   }
 

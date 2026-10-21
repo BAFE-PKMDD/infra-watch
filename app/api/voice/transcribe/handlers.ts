@@ -200,7 +200,9 @@ export function createVoiceTranscriptionPostHandler(
     }
 
     try {
+      const transcribeStartedAt = performance.now();
       const text = (await dependencies.transcribe(parsed.data, request.signal)).trim();
+      const whisperMs = performance.now() - transcribeStartedAt;
       if (!text) return jsonError("No speech was detected. Please try again.", 422);
       return Response.json(
         { text },
@@ -208,6 +210,7 @@ export function createVoiceTranscriptionPostHandler(
           headers: {
             "Cache-Control": "no-store",
             "X-Content-Type-Options": "nosniff",
+            "Server-Timing": `whisper;dur=${whisperMs.toFixed(0)}`,
           },
         },
       );

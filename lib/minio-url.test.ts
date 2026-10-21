@@ -3,8 +3,28 @@ import { test } from "bun:test";
 
 import { getFileUrl, getFullUrl, isFeedbackUploadPath, isLocalMinIO } from "./minio-url";
 import nextConfig from "../next.config";
+import { articleInputSchema } from "./content-models";
 
 const generatedImage = "feedback/1789566130081-be081b09fd31b786f78f87b3319f2deb.jpg";
+const articleImage = "articles/1789566130081-be081b09fd31b786f78f87b3319f2deb.jpg";
+
+test("local article thumbnails use a public app preview that can be saved as a URL", () => {
+  const previousEndpoint = process.env.NEXT_PUBLIC_MINIO_ENDPOINT;
+  try {
+    for (const endpoint of ["localhost:9000", "127.0.0.1:9000"]) {
+      process.env.NEXT_PUBLIC_MINIO_ENDPOINT = endpoint;
+      const url = getFullUrl(articleImage);
+      assert.equal(url, `/api/upload/preview?path=${encodeURIComponent(articleImage)}`);
+      const thumbnail = new URL(url!, "http://localhost:3101").href;
+      assert.equal(articleInputSchema.safeParse({
+        title: "Article", url: "https://example.com/article", source: "Source", category: "news", thumbnail,
+      }).success, true);
+    }
+  } finally {
+    if (previousEndpoint === undefined) delete process.env.NEXT_PUBLIC_MINIO_ENDPOINT;
+    else process.env.NEXT_PUBLIC_MINIO_ENDPOINT = previousEndpoint;
+  }
+});
 
 test("recognizes only generated feedback media paths", () => {
   for (const path of [
@@ -83,6 +103,7 @@ test("keeps production feedback media on the configured object-storage origin", 
       getFileUrl(generatedImage),
       `https://storage.bafe.gov.ph/infra-watch/${generatedImage}`,
     );
+    assert.equal(getFileUrl(articleImage), `https://storage.bafe.gov.ph/infra-watch/${articleImage}`);
   } finally {
     process.env.NEXT_PUBLIC_MINIO_ENDPOINT = previousEndpoint;
     process.env.NEXT_PUBLIC_MINIO_USE_SSL = previousSsl;

@@ -44,6 +44,7 @@ ENV NODE_ENV=production \
 
 RUN groupadd --system nodejs \
     && useradd --system --gid nodejs nextjs
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

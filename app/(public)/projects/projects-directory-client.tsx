@@ -1,4 +1,5 @@
 "use client";
+import { ProjectExportButton } from "@/components/projects/project-export-button";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -601,9 +602,7 @@ export default function ProjectsCatalog() {
                 </button>
               </div>
 
-              <button disabled aria-label={t("directory.export.label")} className="p-2.5 rounded-lg border border-transparent text-slate-400 disabled:cursor-not-allowed disabled:opacity-60" title={t("directory.export.title")}>
-                <Download className="w-4 h-4" />
-              </button>
+              <ProjectExportButton params={directoryQueryString} />
             </div>
           </div>
 

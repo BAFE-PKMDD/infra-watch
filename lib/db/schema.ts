@@ -1,5 +1,6 @@
 import {
   boolean,
+  bigint,
   date,
   index,
   integer,
@@ -17,6 +18,7 @@ import type { GeoTrackPoint, StoredIssueEvidenceItem } from "@/types/geo-evidenc
 import type { FeedbackMedia } from "@/types/feedback.types";
 import type { MydasPageData } from "@/types/mydas.types";
 import type { SmsMockScenario } from "@/types/sms-grievance.types";
+import { sql } from "drizzle-orm";
 
 // PostGIS geometry type for spatial data
 const geometry = customType<{ data: string | null; driverData: string | null }>({
@@ -166,6 +168,78 @@ export const projects = pgTable(
   }),
 );
 
+export const accountPreferences = pgTable("account_preferences", {
+  userId: text("user_id").primaryKey(),
+  inApp: boolean("in_app").notNull().default(true),
+  email: boolean("email").notNull().default(false),
+  sms: boolean("sms").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const projectCommodityOverrides = pgTable("project_commodity_overrides", {
+  projectId: text("project_id").primaryKey().references(() => projects.abemisId, { onDelete: "cascade" }),
+  commodities: jsonb("commodities").$type<string[]>().notNull(),
+  sourceCommodities: jsonb("source_commodities").$type<string[]>().notNull().default([]),
+  reason: text("reason").notNull(),
+  updatedBy: text("updated_by").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const backgroundJobs = pgTable("background_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind").notNull(),
+  status: text("status").$type<"queued" | "running" | "completed" | "failed">().notNull().default("queued"),
+  requestedBy: text("requested_by").notNull(),
+  dedupeKey: text("dedupe_key").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  progress: jsonb("progress").$type<{ processed: number; total: number; message: string }>().notNull().default({ processed: 0, total: 0, message: "Queued" }),
+  result: jsonb("result").$type<Record<string, unknown>>(),
+  attempts: integer("attempts").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(3),
+  availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow(),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  leaseToken: uuid("lease_token"),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [
+  index("background_jobs_claim_idx").on(table.status, table.availableAt),
+  uniqueIndex("background_jobs_active_dedupe_uidx").on(table.dedupeKey).where(sql`${table.status} in ('queued', 'running')`),
+]);
+
+export const uploadSessions = pgTable("upload_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull(),
+  path: text("path").notNull().unique(),
+  uploadId: text("upload_id"),
+  contentType: text("content_type").notNull(),
+  size: bigint("size", { mode: "number" }).notNull(),
+  partSize: integer("part_size").notNull(),
+  status: text("status").$type<"uploading" | "completing" | "completed" | "aborted">().notNull().default("uploading"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [index("upload_sessions_owner_idx").on(table.userId, table.createdAt)]);
+
+export const regionalStatistics = pgTable("regional_statistics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  year: integer("year").notNull(),
+  region: text("region").notNull(),
+  program: text("program").notNull(),
+  fundedProjects: integer("funded_projects"),
+  completedProjects: integer("completed_projects"),
+  ongoingProjects: integer("ongoing_projects"),
+  notYetStartedProjects: integer("not_yet_started_projects"),
+  suspendedProjects: integer("suspended_projects"),
+  allocatedAmount: numeric("allocated_amount", { precision: 18, scale: 2 }),
+  lengthCompleted: numeric("length_completed", { precision: 14, scale: 3 }),
+  sourceName: text("source_name").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  asOf: date("as_of").notNull(),
+  isPublished: boolean("is_published").notNull().default(false),
+  updatedBy: text("updated_by").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [uniqueIndex("regional_statistics_region_year_program_uidx").on(table.region, table.year, table.program)]);
+
 export const projectDataCorrections = pgTable(
   "project_data_corrections",
   {
@@ -231,6 +305,32 @@ export const feedback = pgTable(
     sentimentIdx: index("feedback_sentiment_idx").on(table.sentiment),
   }),
 );
+
+export const feedbackComments = pgTable("feedback_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  feedbackId: uuid("feedback_id").notNull().references(() => feedback.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  comment: text("comment").notNull(),
+  media: jsonb("media").$type<FeedbackMedia[]>().default([]),
+  helpfulCount: integer("helpful_count").notNull().default(0),
+  unhelpfulCount: integer("unhelpful_count").notNull().default(0),
+  status: text("status").$type<"pending" | "published" | "rejected">().notNull().default("published"),
+  autoRejected: boolean("auto_rejected").notNull().default(false),
+  rejectionReason: text("rejection_reason"),
+  moderatedBy: text("moderated_by"),
+  moderatedAt: timestamp("moderated_at"),
+  revision: integer("revision").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, table => [index("feedback_comments_feedback_id_idx").on(table.feedbackId), index("feedback_comments_status_idx").on(table.status, table.createdAt)]);
+
+export const feedbackCommentVotes = pgTable("feedback_comment_votes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  commentId: uuid("comment_id").notNull().references(() => feedbackComments.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  voteType: text("vote_type").$type<"helpful" | "unhelpful">().notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, table => [uniqueIndex("feedback_comment_votes_user_comment_uidx").on(table.userId, table.commentId)]);
 
 export const issues = pgTable(
   "issues",
@@ -418,6 +518,16 @@ export const contactMessages = pgTable(
     senderKeyIdx: index("contact_messages_sender_key_idx").on(table.senderKey, table.createdAt),
   }),
 );
+
+export const contactResponses = pgTable("contact_responses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id").notNull().references(() => contactMessages.id, { onDelete: "cascade" }),
+  responderId: text("responder_id").notNull(),
+  body: text("body").notNull(),
+  status: text("status").$type<"sending" | "sent" | "failed">().notNull().default("sending"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [index("contact_responses_message_idx").on(table.messageId, table.sentAt)]);
 
 export type ContactMessage = typeof contactMessages.$inferSelect;
 export type NewContactMessage = typeof contactMessages.$inferInsert;

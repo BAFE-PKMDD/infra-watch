@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { createWriteStream, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
 import * as Minio from "minio";
 import path from "path";
@@ -11,7 +11,7 @@ export { getFileUrl, getFullUrl, isFullUrl } from "./minio-url";
 
 const publicBucketName = process.env.MINIO_BUCKET_NAME || "infra-watch";
 const privateBucketName = process.env.MINIO_PRIVATE_BUCKET_NAME || `${publicBucketName}-private`;
-const publicMediaPrefixes = ["feedback", "feedback-comment", "live-videos"] as const;
+const publicMediaPrefixes = ["articles", "feedback", "feedback-comment", "live-videos"] as const;
 
 type StorageAccess = "public" | "private";
 type StorageBuckets = { publicBucket?: string; privateBucket?: string };
@@ -66,9 +66,17 @@ type BucketCorsConfiguration = {
   }>;
 };
 
-type MinioClientWithCors = Minio.Client & {
-  setBucketCors(bucket: string, configuration: BucketCorsConfiguration): Promise<void>;
-};
+async function setBucketCors(bucket: string, configuration: BucketCorsConfiguration) {
+  const escape = (value: string) => value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[character]!);
+  const xml = `<CORSConfiguration>${configuration.CORSRules.map(rule => `<CORSRule>${rule.AllowedOrigins.map(value => `<AllowedOrigin>${escape(value)}</AllowedOrigin>`).join("")}${rule.AllowedMethods.map(value => `<AllowedMethod>${value}</AllowedMethod>`).join("")}${rule.AllowedHeaders.map(value => `<AllowedHeader>${escape(value)}</AllowedHeader>`).join("")}${rule.ExposeHeaders.map(value => `<ExposeHeader>${value}</ExposeHeader>`).join("")}<MaxAgeSeconds>${rule.MaxAgeSeconds}</MaxAgeSeconds></CORSRule>`).join("")}</CORSConfiguration>`;
+  try {
+    await minioClient.makeRequestAsyncOmit({ method: "PUT", bucketName: bucket, query: "cors", headers: { "Content-Type": "application/xml", "Content-MD5": createHash("md5").update(xml).digest("base64") } }, xml, [200, 204]);
+  } catch (error) {
+    // Some MinIO releases manage CORS at server level rather than per bucket.
+    if (getStorageErrorCode(error) !== "NotImplemented") throw error;
+    console.warn("Configure storage server CORS to allow the InfraWatch origin, PUT, and the ETag response header.");
+  }
+}
 
 function getStorageErrorCode(error: unknown): string | undefined {
   return typeof error === "object" && error !== null && "code" in error
@@ -141,11 +149,11 @@ async function ensurePublicBucket(): Promise<void> {
   );
 
   try {
-    await (minioClient as MinioClientWithCors).setBucketCors(publicBucketName, {
+    await setBucketCors(publicBucketName, {
       CORSRules: [
         {
           AllowedHeaders: ["*"],
-          AllowedMethods: ["GET", "HEAD"],
+          AllowedMethods: ["GET", "HEAD", "PUT"],
           AllowedOrigins: ["*"],
           ExposeHeaders: ["ETag"],
           MaxAgeSeconds: 3000,
@@ -162,8 +170,9 @@ async function ensurePrivateBucket(): Promise<void> {
   const exists = await minioClient.bucketExists(privateBucketName);
   if (!exists) {
     await minioClient.makeBucket(privateBucketName, "us-east-1");
-    return;
   }
+
+  await setBucketCors(privateBucketName, { CORSRules: [{ AllowedHeaders: ["*"], AllowedMethods: ["PUT"], AllowedOrigins: [process.env.BETTER_AUTH_URL || "http://localhost:3101"], ExposeHeaders: ["ETag"], MaxAgeSeconds: 3000 }] });
 
   try {
     const policy = await minioClient.getBucketPolicy(privateBucketName);

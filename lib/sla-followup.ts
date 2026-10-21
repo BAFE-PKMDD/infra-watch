@@ -1,11 +1,8 @@
-import { and, eq, exists, inArray, isNull, lte, not } from "drizzle-orm";
+import { and, eq, exists, isNull, lte, not } from "drizzle-orm";
 
-import { user } from "@/auth-schema";
 import { db } from "@/lib/db";
 import { feedback, issueResponses, issues } from "@/lib/db/schema";
-import { sendEmail } from "@/lib/email";
 import { publishAndPersistNotification } from "@/lib/notification-persistence";
-import { sendSMS } from "@/lib/sms";
 import {
   SLA_BREACH_HOURS,
   SLA_GENTLE_REMINDER_HOURS,
@@ -17,16 +14,7 @@ import {
 } from "@/lib/staff-notification-recipients";
 
 const HOUR_MS = 60 * 60 * 1000;
-const SMS_MESSAGE_MAX_LENGTH = 150;
-
-function toSmsText(title: string, message: string) {
-  const combined = `${title}: ${message}`;
-  return combined.length > SMS_MESSAGE_MAX_LENGTH ? `${combined.slice(0, SMS_MESSAGE_MAX_LENGTH - 1)}…` : combined;
-}
-
-// Single seam for every SLA follow-up notification: in-app (DB + SSE), email, and SMS.
-// SMS only reaches recipients who have set a phone number on their profile (My Profile);
-// everyone else still gets the in-app + email channels.
+// Channel selection and background delivery follow each recipient's saved preferences.
 async function notify(
   recipientIds: string[],
   input: { type: string; title: string; message: string; metadata: Record<string, unknown> },
@@ -43,25 +31,6 @@ async function notify(
     });
   }
 
-  const recipients = await db
-    .select({ id: user.id, email: user.email, phoneNumber: user.phoneNumber })
-    .from(user)
-    .where(inArray(user.id, recipientIds));
-
-  await Promise.all(
-    recipients.map(async (recipient) => {
-      const emailResult = await sendEmail({ to: recipient.email, subject: input.title, text: input.message });
-      if (!emailResult.success) {
-        console.error("Failed to send SLA follow-up email", { ...context, userId: recipient.id, error: emailResult.error });
-      }
-
-      if (!recipient.phoneNumber) return;
-      const smsResult = await sendSMS(recipient.phoneNumber, toSmsText(input.title, input.message));
-      if (!smsResult.success) {
-        console.error("Failed to send SLA follow-up SMS", { ...context, userId: recipient.id, error: smsResult.error });
-      }
-    }),
-  );
 }
 
 function excerpt(text: string | null, length = 60) {

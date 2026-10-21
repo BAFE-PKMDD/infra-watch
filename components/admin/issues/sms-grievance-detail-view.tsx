@@ -12,7 +12,7 @@ import { SmsGrievanceHeader, SmsGrievanceMessageCard, SmsGrievanceMetadataCard }
 import { SmsGrievanceMap } from "@/components/admin/issues/sms-grievance-map";
 import { SmsProjectTaggingWizard } from "@/components/admin/issues/sms-project-tagging-wizard";
 import type { IntakeDecision } from "@/components/admin/issues/sms-project-tagging-wizard";
-import { SmsPrototypeBanner } from "@/components/admin/issues/sms-prototype-banner";
+import { SmsFeedUnavailableNotice, SmsPrototypeBanner } from "@/components/admin/issues/sms-prototype-banner";
 import { Button } from "@/components/ui/button";
 import type { SelectedProject } from "@/components/ui/project-search-input";
 import { applyLiveSmsAction, linkLiveSmsToThread, sendSimulatedAcknowledgmentSms } from "@/actions/mutation/sms-grievance.mutation";
@@ -333,7 +333,7 @@ export function SmsGrievanceDetailView({
 
   return (
     <div className="space-y-5">
-      {tutorial ? <TutorialModeNotice /> : dataSource !== "live" && <SmsPrototypeBanner liveFetchError={liveFetchError} />}
+      {tutorial ? <TutorialModeNotice /> : dataSource === "live" ? liveFetchError && <SmsFeedUnavailableNotice /> : <SmsPrototypeBanner />}
 
       <Link href={tutorial ? "/learn/sms-grievances" : "/issues/sms-review"} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
         <ArrowLeft aria-hidden="true" className="size-4" /> {dataSource === "live" ? "Back to messages" : "Back to sample messages"}

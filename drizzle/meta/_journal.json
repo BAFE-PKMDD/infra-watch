@@ -260,6 +260,20 @@
       "when": 1791816710598,
       "tag": "0036_content_management",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792249134929,
+      "tag": "0037_operations_parity",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792249285933,
+      "tag": "0038_comment_votes",
+      "breakpoints": true
     }
   ]
 }

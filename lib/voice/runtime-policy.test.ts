@@ -10,6 +10,7 @@ import {
   createRecordingActivityMonitor,
   createStreamingSpeechRunner,
   extractCompleteSentences,
+  extractEarlyClause,
   getKokoroInferenceOptions,
   getRecordingDecision,
   canStartVoiceRecording,
@@ -23,6 +24,7 @@ import {
   shouldAutoEnableVoice,
   shouldReconnectWakeSocket,
   summarizeForSpeech,
+  VOICE_END_OF_SPEECH_SILENCE_MS,
   VOICE_PLAYBACK_COOLDOWN_MS,
 } from "./runtime-policy";
 
@@ -410,7 +412,7 @@ test("ends a spoken command after trailing silence instead of the initial five-s
     getRecordingDecision({
       elapsedMs: 2_000,
       heardSpeech: true,
-      trailingSilenceMs: 1_199,
+      trailingSilenceMs: VOICE_END_OF_SPEECH_SILENCE_MS - 1,
     }),
     "continue",
   );
@@ -418,10 +420,45 @@ test("ends a spoken command after trailing silence instead of the initial five-s
     getRecordingDecision({
       elapsedMs: 2_000,
       heardSpeech: true,
-      trailingSilenceMs: 1_200,
+      trailingSilenceMs: VOICE_END_OF_SPEECH_SILENCE_MS,
     }),
     "process",
   );
+});
+
+test("extracts an early clause only once the first chunk is long enough", () => {
+  assert.equal(extractEarlyClause("Sure, here"), null);
+  assert.equal(extractEarlyClause("There are twelve projects in Aklan"), null);
+  assert.deepEqual(
+    extractEarlyClause("There are twelve projects in Aklan, and three are delayed"),
+    { clause: "There are twelve projects in Aklan,", rest: "and three are delayed" },
+  );
+  // A comma inside a number is not a clause boundary.
+  assert.equal(extractEarlyClause("The allocated amount is 1,200,000 pesos in total"), null);
+});
+
+test("streaming speech starts on the first clause instead of waiting for a full sentence", async () => {
+  const generated: string[] = [];
+  const runner = createStreamingSpeechRunner({
+    generate: async (chunk) => {
+      generated.push(chunk);
+      return chunk;
+    },
+    play: async () => true,
+    shouldContinue: () => true,
+  });
+
+  runner.push("There are twelve projects in Aklan, and three ");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(generated, ["There are twelve projects in Aklan,"]);
+
+  runner.push("are delayed, so check them. Next sentence, with a clause that is long enough.");
+  await runner.end();
+  assert.deepEqual(generated, [
+    "There are twelve projects in Aklan,",
+    "and three are delayed, so check them.",
+    "Next sentence, with a clause that is long enough.",
+  ]);
 });
 
 test("recording timeout never uploads audio without sustained activity", () => {
@@ -442,8 +479,11 @@ test("sustained activity records a command and waits for trailing silence", () =
   const activity = createRecordingActivityMonitor();
   for (let now = 0; now <= 500; now += 20) activity(0.05, now);
   assert.equal(activity(0.001, 520).heardSpeech, true);
-  assert.equal(getRecordingDecision({ elapsedMs: 1_700, ...activity(0.001, 1_700) }), "continue");
-  assert.equal(getRecordingDecision({ elapsedMs: 1_720, ...activity(0.001, 1_720) }), "process");
+  const silenceStartedAt = 520;
+  const almost = silenceStartedAt + VOICE_END_OF_SPEECH_SILENCE_MS - 20;
+  const done = silenceStartedAt + VOICE_END_OF_SPEECH_SILENCE_MS;
+  assert.equal(getRecordingDecision({ elapsedMs: almost, ...activity(0.001, almost) }), "continue");
+  assert.equal(getRecordingDecision({ elapsedMs: done, ...activity(0.001, done) }), "process");
 });
 
 test("suspended monitoring does not count an unobserved interval as speech", () => {

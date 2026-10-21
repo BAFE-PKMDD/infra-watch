@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import { test } from "bun:test";
 
-import { SMS_MOCK_SCENARIOS } from "./mock-fixtures";
 import { createMemorySmsReviewStore } from "./review-store";
 import {
   fetchLiveSmsGrievanceRecords,
@@ -108,22 +107,22 @@ test("fetchLiveSmsGrievanceRecords maps every well-formed message from the live 
   }
 });
 
-test("getSmsGrievanceQueue falls back to sample messages when the live feed is unreachable", async () => {
+test("getSmsGrievanceQueue returns an empty flagged queue, never sample messages, when the live feed is unreachable", async () => {
   const previous = process.env.SMS_GRIEVANCE_API_URL;
   // Nothing is listening on this port.
   process.env.SMS_GRIEVANCE_API_URL = "http://127.0.0.1:1";
 
   try {
     const queue = await getSmsGrievanceQueue(createMemorySmsReviewStore());
-    assert.equal(queue.dataSource, "sample");
+    assert.equal(queue.dataSource, "live");
     assert.equal(queue.liveFetchError, true);
-    assert.deepEqual(queue.records, SMS_MOCK_SCENARIOS);
+    assert.deepEqual(queue.records, []);
   } finally {
     process.env.SMS_GRIEVANCE_API_URL = previous;
   }
 });
 
-test("getSmsGrievanceQueue falls back to sample messages on a malformed response body", async () => {
+test("getSmsGrievanceQueue returns an empty flagged queue on a malformed response body", async () => {
   const server = createServer((_request, response) => {
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({ notMessages: [] }));
@@ -134,8 +133,9 @@ test("getSmsGrievanceQueue falls back to sample messages on a malformed response
 
   try {
     const queue = await getSmsGrievanceQueue(createMemorySmsReviewStore());
-    assert.equal(queue.dataSource, "sample");
+    assert.equal(queue.dataSource, "live");
     assert.equal(queue.liveFetchError, true);
+    assert.deepEqual(queue.records, []);
   } finally {
     process.env.SMS_GRIEVANCE_API_URL = previous;
     await close(server);

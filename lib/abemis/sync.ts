@@ -454,8 +454,12 @@ function isForeignKeyViolation(error: unknown) {
   );
 }
 
-async function upsertProjectValues(values: ProjectInsert[]) {
+export async function upsertProjectValues(values: ProjectInsert[]) {
   await db.transaction(async (tx) => {
+    await tx.execute(sql`UPDATE project_commodity_overrides AS overrides
+      SET source_commodities = source.commodities
+      FROM jsonb_to_recordset(${JSON.stringify(values.map(value => ({ project_id: value.abemisId, commodities: value.commodities ?? [] })))}::jsonb) AS source(project_id text, commodities jsonb)
+      WHERE overrides.project_id = source.project_id`);
     await tx
       .insert(projects)
       .values(values)
@@ -510,7 +514,7 @@ async function upsertProjectValues(values: ProjectInsert[]) {
         procurementMode: sql`excluded.procurement_mode`,
         psgcCode: sql`excluded.psgc_code`,
         metadata: sql`excluded.metadata`,
-        commodities: sql`excluded.commodities`,
+        commodities: sql`coalesce((select overrides.commodities from project_commodity_overrides overrides where overrides.project_id = excluded.abemis_id), excluded.commodities)`,
         farmOperation: sql`excluded.farm_operation`,
         geom: sql`excluded.geom`,
         lastSyncedAt: sql`excluded.last_synced_at`,

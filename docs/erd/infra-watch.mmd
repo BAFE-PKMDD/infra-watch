@@ -1,0 +1,655 @@
+%% InfraWatch ERD - generated 2026-10-17
+%% Edit freely; render with any Mermaid viewer (VS Code, GitHub, mermaid.live)
+erDiagram
+  account {
+    text id PK
+    text account_id
+    text provider_id
+    text user_id FK
+    text access_token
+    text refresh_token
+    text id_token
+    timestamp_without_time_zone access_token_expires_at
+    timestamp_without_time_zone refresh_token_expires_at
+    text scope
+    text password
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+  }
+  account_preferences {
+    text user_id PK
+    boolean in_app
+    boolean email
+    boolean sms
+    timestamp_with_time_zone updated_at
+  }
+  ai_chat_history {
+    uuid id PK
+    uuid conversation_id
+    text user_id
+    text user_message
+    text assistant_message
+    text status
+    text provider
+    text model
+    jsonb tool_names
+    integer input_tokens
+    integer output_tokens
+    integer total_tokens
+    integer duration_ms
+    text finish_reason
+    text error_code
+    timestamp_without_time_zone expires_at
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+    text owner_key
+    text surface
+  }
+  ai_chat_rate_limits {
+    text key PK
+    timestamp_without_time_zone window_started_at
+    integer request_count
+    timestamp_without_time_zone updated_at
+  }
+  analytics_daily_aggregates {
+    uuid id PK
+    date aggregate_date
+    text metric_key
+    text dimension_key
+    text dimension_value
+    text resource_type
+    text resource_id
+    integer count
+    timestamp_with_time_zone updated_at
+  }
+  analytics_events {
+    uuid id PK
+    text event_name
+    timestamp_with_time_zone occurred_at
+    text route_template
+    text resource_type
+    text resource_id
+    text entry_surface
+    text result_count_band
+    text network_region_code
+  }
+  announcements {
+    uuid id PK
+    text title
+    text content
+    boolean is_active
+    timestamp_without_time_zone start_date
+    timestamp_without_time_zone end_date
+    text created_by
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+  }
+  articles {
+    uuid id PK
+    text title
+    text url
+    text source
+    text thumbnail
+    text thumbnail_alt
+    text excerpt
+    text category
+    jsonb tags
+    text author
+    timestamp_without_time_zone published_date
+    text project_id FK
+    text added_by
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+  }
+  audit_logs {
+    uuid id PK
+    text table_name
+    text record_id
+    text action
+    text user_id
+    text user_name
+    jsonb old_values
+    jsonb new_values
+    jsonb changed_fields
+    text ip_address
+    text user_agent
+    text notes
+    timestamp_without_time_zone created_at
+  }
+  background_jobs {
+    uuid id PK
+    text kind
+    text status
+    text requested_by
+    text dedupe_key
+    jsonb payload
+    jsonb progress
+    jsonb result
+    integer attempts
+    integer max_attempts
+    timestamp_with_time_zone available_at
+    timestamp_with_time_zone lease_until
+    uuid lease_token
+    text error
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+  }
+  contact_messages {
+    uuid id PK
+    text name
+    text email
+    text subject
+    text message
+    text status
+    text user_id
+    text sender_key
+    text handled_by
+    timestamp_with_time_zone handled_at
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+  }
+  contact_responses {
+    uuid id PK
+    uuid message_id FK
+    text responder_id
+    text body
+    text status
+    timestamp_with_time_zone sent_at
+    timestamp_with_time_zone created_at
+  }
+  email_templates {
+    uuid id PK
+    text slug UK
+    text name
+    text description
+    text subject
+    text body
+    jsonb variables
+    text category
+    boolean is_active
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+  }
+  feedback {
+    uuid id PK
+    text project_id FK
+    text user_id
+    integer rating
+    text comment
+    text category
+    jsonb media
+    boolean is_anonymous
+    integer helpful_count
+    text status
+    text moderated_by
+    timestamp_without_time_zone moderated_at
+    text moderation_note
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+    timestamp_without_time_zone auto_acknowledged_at
+    timestamp_without_time_zone sla_gentle_reminder_at
+    timestamp_without_time_zone sla_urgent_reminder_at
+    timestamp_without_time_zone sla_breach_notified_at
+    text sentiment
+    text issue_type
+  }
+  feedback_comment_votes {
+    uuid id PK
+    uuid comment_id FK
+    text user_id
+    text vote_type
+    timestamp_without_time_zone created_at
+  }
+  feedback_comments {
+    uuid id PK
+    uuid feedback_id FK
+    text user_id
+    text comment
+    jsonb media
+    integer helpful_count
+    integer unhelpful_count
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+    text status
+    boolean auto_rejected
+    text rejection_reason
+    text moderated_by
+    timestamp_without_time_zone moderated_at
+    integer revision
+  }
+  issue_responses {
+    uuid id PK
+    uuid issue_id FK
+    text responder_id
+    text responder_name
+    text responder_role
+    text message
+    text status_change
+    text new_status
+    text internal_notes
+    boolean is_internal_only
+    jsonb attachment_urls
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+  }
+  issues {
+    uuid id PK
+    text ticket_number UK
+    text project_id FK
+    text reporter_user_id
+    text reporter_name
+    text reporter_contact
+    text reporter_email
+    boolean is_anonymous
+    text category
+    text status
+    text priority
+    text description
+    text region
+    text province
+    text municipality
+    text barangay
+    text landmark
+    real latitude
+    real longitude
+    jsonb evidence
+    text assigned_to
+    timestamp_without_time_zone resolved_at
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+    jsonb geo_video_track
+    text geo_video_url
+    text public_description
+    timestamp_without_time_zone public_approved_at
+    text public_approved_by
+    timestamp_without_time_zone sla_gentle_reminder_at
+    timestamp_without_time_zone sla_urgent_reminder_at
+    timestamp_without_time_zone sla_breach_notified_at
+    text reported_farm_operation
+    text reported_project_type
+    text issue_type
+  }
+  kb_chunks {
+    uuid id PK
+    uuid document_id FK
+    integer chunk_index
+    text content
+    jsonb embedding
+    integer token_count
+    timestamp_without_time_zone created_at
+  }
+  kb_documents {
+    uuid id PK
+    text title
+    text category
+    text file_type
+    text file_name
+    text file_path
+    integer file_size
+    integer chunk_count
+    text status
+    text faq_question
+    text faq_answer
+    text content_preview
+    text error_message
+    text uploaded_by
+    text uploaded_by_name
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+    timestamp_without_time_zone archived_at
+    text archived_by
+    text visibility
+  }
+  live_videos {
+    uuid id PK
+    text title
+    text description
+    text facebook_video_url
+    boolean is_active
+    boolean is_live
+    timestamp_without_time_zone published_at
+    timestamp_without_time_zone expires_at
+    text created_by
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+    text video_type
+    text video_path
+    text thumbnail_path
+    integer duration
+    boolean is_featured
+    integer display_order
+    text region
+    text approval_status
+    text reviewed_by
+    timestamp_without_time_zone reviewed_at
+  }
+  map_layers {
+    uuid id PK
+    text name
+    text description
+    text geoserver_url
+    text workspace
+    text layer_name
+    text style_name
+    real opacity
+    text legend_shape
+    text legend_color
+    boolean is_active
+    integer display_order
+    text created_by
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+  }
+  mydas_dashboards {
+    uuid id PK
+    text name
+    jsonb pages
+    text created_by
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+  }
+  notification_reads {
+    uuid id PK
+    text user_id
+    text notification_id FK
+    timestamp_without_time_zone read_at
+  }
+  notification_recipients {
+    uuid id PK
+    text user_id
+    text notification_id FK
+    timestamp_without_time_zone read_at
+  }
+  notifications {
+    text id PK
+    text type
+    text title
+    text message
+    jsonb metadata
+    timestamp_without_time_zone created_at
+  }
+  post_subscriptions {
+    uuid id PK
+    text user_id
+    text user_email
+    text post_id
+    text post_type
+    timestamp_without_time_zone created_at
+  }
+  project_commodity_overrides {
+    text project_id PK,FK
+    jsonb commodities
+    jsonb source_commodities
+    text reason
+    text updated_by
+    timestamp_with_time_zone updated_at
+  }
+  project_data_corrections {
+    uuid id PK
+    text project_id FK
+    text field
+    jsonb source_value
+    jsonb corrected_value
+    text reason
+    text corrected_by
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+  }
+  project_metric_snapshots {
+    uuid id PK
+    text project_id FK
+    uuid sync_log_id FK
+    date capture_date
+    timestamp_without_time_zone captured_at
+    integer physical_progress
+    integer financial_progress
+    numeric_14_2 budget
+    numeric_14_2 abc
+    text status
+    timestamp_without_time_zone target_completion_date
+    timestamp_without_time_zone source_last_synced_at
+    timestamp_without_time_zone created_at
+    text program
+    text region
+    text province
+    text year_funded
+    text project_type
+  }
+  projects {
+    uuid id PK
+    text abemis_raw_id UK
+    text abemis_id UK
+    text project_code
+    text name
+    text description
+    text status
+    text province
+    text municipality
+    text barangay
+    real latitude
+    real longitude
+    numeric_14_2 budget
+    numeric_14_2 abc
+    numeric_14_2 contract_amount
+    integer calendar_days
+    integer physical_progress
+    integer financial_progress
+    text implementing_agency
+    text contractor_name
+    timestamp_without_time_zone start_date
+    timestamp_without_time_zone target_completion_date
+    timestamp_without_time_zone actual_completion_date
+    text operating_unit
+    text banner_program
+    text year_funded
+    text project_type
+    text region
+    text district
+    text stage
+    text program
+    text author
+    text quantity
+    text quantity_unit
+    text beneficiary
+    text prexc_program
+    text sub_program
+    text indicator_level1
+    text indicator_level3
+    text recipient_type
+    text budget_process
+    text date_turn_over
+    text road_class
+    text road_type
+    text road_used
+    text implementation_type
+    text proposed_length
+    text post_geotagged_length
+    text procurement_mode
+    text psgc_code
+    jsonb metadata
+    jsonb commodities
+    geometry_Point_4326 geom
+    timestamp_without_time_zone last_synced_at
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+    text farm_operation
+  }
+  psgc_locations {
+    uuid id PK
+    text geo_code UK
+    text geo_code1
+    text region_name
+    text reg_shortname
+    text province_name
+    text municipality_name
+    text barangay_name
+    text region_code
+    text province_code
+    text municipality_code
+    text barangay_code
+    text phcode_reg
+    text phcode_prov
+    text phcode_mun
+    text phcode_bgy
+    text reg_code1
+    text prov_code1
+    text mun_code1
+    text bgy_code1
+    text dist_code
+    text district
+    text city_class
+    real latitude
+    real longitude
+    timestamp_without_time_zone last_synced_at
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+  }
+  regional_statistics {
+    uuid id PK
+    integer year
+    text region
+    text program
+    integer funded_projects
+    integer completed_projects
+    integer ongoing_projects
+    integer not_yet_started_projects
+    integer suspended_projects
+    numeric_18_2 allocated_amount
+    numeric_14_3 length_completed
+    text source_name
+    text source_url
+    date as_of
+    boolean is_published
+    text updated_by
+    timestamp_with_time_zone updated_at
+  }
+  saved_posts {
+    uuid id PK
+    text user_id
+    text post_id
+    text post_type
+    timestamp_without_time_zone created_at
+  }
+  session {
+    text id PK
+    timestamp_without_time_zone expires_at
+    text token UK
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+    text ip_address
+    text user_agent
+    text user_id FK
+    text impersonated_by
+  }
+  sms_grievance_reviews {
+    text message_id PK
+    jsonb record
+    integer version
+    text updated_by
+    timestamp_with_time_zone created_at
+    timestamp_with_time_zone updated_at
+  }
+  spatial_ref_sys {
+    integer srid PK
+    character_varying_256 auth_name
+    integer auth_srid
+    character_varying_2048 srtext
+    character_varying_2048 proj4text
+  }
+  submission_surveys {
+    uuid id PK
+    text source_type
+    text source_id
+    text user_id
+    text name
+    integer age
+    text gender
+    text referral_source
+    timestamp_without_time_zone created_at
+    text respondent_type
+    boolean skipped
+  }
+  sync_logs {
+    uuid id PK
+    text sync_type
+    text resource
+    text status
+    integer records_added
+    integer records_updated
+    integer records_failed
+    integer total_processed
+    jsonb errors
+    text error_details
+    timestamp_without_time_zone started_at
+    timestamp_without_time_zone completed_at
+    integer duration
+    text triggered_by
+    timestamp_without_time_zone created_at
+  }
+  system_settings {
+    uuid id PK
+    text key UK
+    jsonb value
+    text description
+    text updated_by
+    timestamp_without_time_zone updated_at
+  }
+  upload_sessions {
+    uuid id PK
+    text user_id
+    text path UK
+    text upload_id
+    text content_type
+    bigint size
+    integer part_size
+    text status
+    timestamp_with_time_zone expires_at
+    timestamp_with_time_zone created_at
+  }
+  user {
+    text id PK
+    text name
+    text email UK
+    boolean email_verified
+    text image
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+    text role
+    text region
+    boolean banned
+    text ban_reason
+    timestamp_without_time_zone ban_expires
+    text assigned_agency
+    text phone_number
+  }
+  user_tour_progress {
+    text user_id PK
+    boolean automatic
+    jsonb seen
+    timestamp_without_time_zone updated_at
+  }
+  verification {
+    text id PK
+    text identifier
+    text value
+    timestamp_without_time_zone expires_at
+    timestamp_without_time_zone created_at
+    timestamp_without_time_zone updated_at
+  }
+
+  user |o--o{ account : "user_id"
+  projects |o--o{ articles : "project_id"
+  contact_messages |o--o{ contact_responses : "message_id"
+  projects |o--o{ feedback : "project_id"
+  feedback_comments |o--o{ feedback_comment_votes : "comment_id"
+  feedback |o--o{ feedback_comments : "feedback_id"
+  issues |o--o{ issue_responses : "issue_id"
+  projects |o--o{ issues : "project_id"
+  kb_documents |o--o{ kb_chunks : "document_id"
+  notifications |o--o{ notification_reads : "notification_id"
+  notifications |o--o{ notification_recipients : "notification_id"
+  projects |o--o| project_commodity_overrides : "project_id"
+  projects |o--o{ project_data_corrections : "project_id"
+  projects |o--o{ project_metric_snapshots : "project_id"
+  sync_logs |o--o{ project_metric_snapshots : "sync_log_id"
+  user |o--o{ session : "user_id"

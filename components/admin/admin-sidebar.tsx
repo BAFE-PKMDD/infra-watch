@@ -110,6 +110,7 @@ const menu = [
         resource: "reports",
         action: "view",
       },
+      { label: "Contact Reports", href: "/reports/contact", icon: BarChart3, resource: "reports", action: "view" },
     ],
   },
   ...adminSystemGroups,
@@ -152,11 +153,19 @@ export function AdminSidebar({
       <div className="border-b border-slate-200 p-4 dark:border-slate-800">
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src="/infra-watch-logo.png"
+            src="/infra-watch-logo-light.png"
             alt="INFRA Watch logo"
-            width={96}
-            height={64}
-            className="h-12 w-auto flex-shrink-0 object-contain"
+            width={400}
+            height={231}
+            className="h-12 w-auto flex-shrink-0 object-contain dark:hidden"
+            unoptimized
+          />
+          <Image
+            src="/infra-watch-logo-dark.png"
+            alt="INFRA Watch logo"
+            width={400}
+            height={237}
+            className="hidden h-12 w-auto flex-shrink-0 object-contain dark:block"
             unoptimized
           />
           <div className="min-w-0">

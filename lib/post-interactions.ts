@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { publishAndPersistNotification } from "@/lib/notification-persistence";
-import { sendEmail } from "@/lib/email";
 
 let tablesInitialized = false;
 
@@ -241,7 +240,6 @@ export async function notifyPostSubscribers(options: {
     const recipientUserIds = Array.from(recipientsMap.keys());
     const snippet = commentText.length > 80 ? `${commentText.slice(0, 80)}...` : commentText;
     const postLabel = postType === "feedback" ? "feedback post" : "issue report";
-    const projectSuffix = projectName ? ` on ${projectName}` : "";
 
     // 3. Send In-App Notifications
     await publishAndPersistNotification(
@@ -259,45 +257,6 @@ export async function notifyPostSubscribers(options: {
       recipientUserIds,
     );
 
-    // 4. Send Email Notifications (async, non-blocking)
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3101";
-    const postUrl = `${baseUrl}/citizen-feed#${postType}-${postId}`;
-
-    for (const [, email] of recipientsMap.entries()) {
-      if (!email || !email.includes("@")) continue;
-
-      sendEmail({
-        to: email,
-        subject: `New comment on ${postLabel}${projectSuffix} | Infra Watch`,
-        text: `Hello,\n\n${commenterName} commented on a ${postLabel} you are subscribed to${projectSuffix}:\n\n"${commentText}"\n\nView the post and reply here: ${postUrl}\n\n- The Infra Watch Team`,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1e293b;">
-            <div style="background: linear-gradient(135deg, #059669, #0d9488); padding: 16px 24px; border-radius: 12px 12px 0 0;">
-              <h2 style="color: #ffffff; margin: 0; font-size: 18px; font-weight: 700;">INFRA Watch Citizen Feed</h2>
-            </div>
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 15px; margin-top: 0;">Hello,</p>
-              <p style="font-size: 15px; color: #334155;">
-                <strong>${commenterName}</strong> added a comment on a ${postLabel} you are following${projectSuffix ? ` for <strong>${projectName}</strong>` : ""}:
-              </p>
-              <div style="background: #f8fafc; border-left: 4px solid #059669; padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-style: italic; color: #475569;">
-                &ldquo;${commentText}&rdquo;
-              </div>
-              <div style="margin-top: 24px;">
-                <a href="${postUrl}" style="display: inline-block; background: #059669; color: #ffffff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
-                  View Post &amp; Discussion
-                </a>
-              </div>
-              <p style="font-size: 12px; color: #94a3b8; margin-top: 32px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
-                You received this email because you turned on notifications for this post on INFRA Watch.
-              </p>
-            </div>
-          </div>
-        `,
-      }).catch((err) => {
-        console.warn(`Failed to send comment email to ${email}:`, err);
-      });
-    }
   } catch (error) {
     console.error("Error in notifyPostSubscribers:", error);
   }

@@ -7,6 +7,7 @@
 export async function register() {
   // Only run on the Node.js runtime (not Edge)
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { startBackgroundWorker } = await import("./lib/background-worker");
     const [{ initScheduler }, { initializeNodeRuntime, shouldReconcileStorageAtStartup }] = await Promise.all([
       import("./lib/scheduler"),
       import("./lib/server-startup"),
@@ -21,9 +22,11 @@ export async function register() {
         reconcileStorage: ensureStorageBuckets,
         startScheduler: initScheduler,
       });
+      startBackgroundWorker();
       return;
     }
 
     initScheduler();
+    startBackgroundWorker();
   }
 }

@@ -264,7 +264,8 @@ export async function POST(request: NextRequest) {
     const isAdminSurface = surface === "ania";
     const historySurface = isAdminSurface ? "ania" : "public_chat";
     const chatTools = createChatTools({ isAdminSurface });
-    const { provider, modelId } = getAIConfig();
+    const isVoiceRequest = responseMode === "voice";
+    const { provider, modelId } = getAIConfig({ voice: isVoiceRequest });
     try {
       historyId = await startChatHistoryTurn({
         conversationId,
@@ -302,7 +303,7 @@ export async function POST(request: NextRequest) {
 
     let model;
     try {
-      model = getAIModel();
+      model = getAIModel({ voice: isVoiceRequest });
     } catch (error) {
       await failChatHistoryTurn(
         historyId,

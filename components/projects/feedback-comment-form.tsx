@@ -175,6 +175,7 @@ export function FeedbackCommentForm({
       }
 
       notifyTutorialAction({ resource: "feedback", recordId: feedbackId, action: "reply", outcome: "success", simulated });
+      if (!simulated) toast.success(result.message);
       if (!simulated) onCommentAdded?.();
     } catch (error) {
       notifyTutorialAction({ resource: "feedback", recordId: feedbackId, action: "reply", outcome: "error", simulated: Boolean(sandbox) });

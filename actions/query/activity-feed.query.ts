@@ -3,14 +3,14 @@
 import { user as authUser } from "@/auth-schema";
 import { db } from "@/lib/db";
 import { formatPublicIssueActivity } from "@/lib/public-issue-activity";
-import { feedback, issues, projects } from "@/lib/db/schema";
+import { feedback, feedbackComments, issues, projects } from "@/lib/db/schema";
 import type {
   ActivityFeedFilter,
   ActivityFeedItem,
   FeedbackActivityItem,
   IssueActivityItem,
 } from "@/types/activity-feed.types";
-import { and, asc, desc, eq, ilike, isNotNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNotNull, or, sql } from "drizzle-orm";
 
 type ActivityFeedParams = {
   page?: number;
@@ -118,6 +118,7 @@ async function fetchFeedbackItems(params: ActivityFeedParams): Promise<FeedbackA
       media: feedback.media,
       isAnonymous: feedback.isAnonymous,
       helpfulCount: feedback.helpfulCount,
+      commentCount: sql<number>`(SELECT count(*)::int FROM ${feedbackComments} WHERE ${feedbackComments.feedbackId} = ${feedback.id} AND ${feedbackComments.status} = 'published')`,
       createdAt: feedback.createdAt,
       userName: authUser.name,
       userImage: authUser.image,
@@ -146,7 +147,7 @@ async function fetchFeedbackItems(params: ActivityFeedParams): Promise<FeedbackA
     isAnonymous: row.isAnonymous,
     helpfulCount: row.helpfulCount,
     unhelpfulCount: 0,
-    commentCount: 0,
+    commentCount: row.commentCount,
     createdAt: row.createdAt,
     user: !row.isAnonymous && row.userId
       ? {

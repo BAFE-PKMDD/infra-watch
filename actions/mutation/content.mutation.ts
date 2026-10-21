@@ -10,6 +10,7 @@ import {
   saveManagedContent,
 } from "@/lib/content-management";
 import { requireAuth } from "@/lib/session";
+import { clearPublicCache } from "@/lib/cache";
 
 export async function loadContent(
   kind: ContentKind,
@@ -22,7 +23,8 @@ export async function loadContent(
   );
 }
 
-function refreshContent(kind: ContentKind) {
+async function refreshContent(kind: ContentKind) {
+  await clearPublicCache();
   revalidatePath(`/${kind}`);
   revalidatePath("/articles-and-updates");
   revalidatePath("/map");
@@ -47,7 +49,7 @@ export async function saveContent(
       newValues: saved,
       context: await getAuditContextFromServerAction(user),
     });
-    refreshContent(kind);
+    await refreshContent(kind);
     return { success: true as const };
   } catch (error) {
     return {
@@ -77,7 +79,7 @@ export async function removeContent(kind: ContentKind, id: string) {
       oldValues: existing,
       context: await getAuditContextFromServerAction(user),
     });
-    refreshContent(kind);
+    await refreshContent(kind);
     return { success: true as const };
   } catch (error) {
     return {

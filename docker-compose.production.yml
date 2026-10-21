@@ -27,6 +27,19 @@ services:
     networks:
       - production
 
+  cache:
+    image: redis:7.4-alpine
+    profiles: ["cache"]
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - production
+
+volumes:
+  redis-data:
+
 networks:
   production:
     external: true

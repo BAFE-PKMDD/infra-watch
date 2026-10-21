@@ -58,7 +58,7 @@ function asciiAt(header: Uint8Array, offset: number, length: number) {
   return String.fromCharCode(...header.slice(offset, offset + length));
 }
 
-function hasValidMagicBytes(header: Uint8Array, mimeType: string) {
+export function hasValidMagicBytes(header: Uint8Array, mimeType: string) {
   switch (mimeType) {
     case "image/jpeg":
     case "image/jpg":

@@ -12,14 +12,21 @@ if (isProductionRuntime && !databaseUrl) {
   throw new Error("DATABASE_URL must be set in production.");
 }
 
-const sql = postgres(
-  databaseUrl ?? "postgres://postgres:postgres@localhost:5432/infra_watch",
-  {
-    max: Number(process.env.DATABASE_POOL_MAX ?? 10),
-    idle_timeout: Number(process.env.DATABASE_IDLE_TIMEOUT ?? 20),
-    max_lifetime: Number(process.env.DATABASE_MAX_LIFETIME ?? 1800),
-  },
-);
+function createSqlClient() {
+  return postgres(
+    databaseUrl ?? "postgres://postgres:postgres@localhost:5432/infra_watch",
+    {
+      max: Number(process.env.DATABASE_POOL_MAX ?? 10),
+      idle_timeout: Number(process.env.DATABASE_IDLE_TIMEOUT ?? 20),
+      max_lifetime: Number(process.env.DATABASE_MAX_LIFETIME ?? 1800),
+    },
+  );
+}
+
+// In development every hot reload re-evaluates this module; reuse one pool instead of leaking a new one each time.
+const globalForDb = globalThis as typeof globalThis & { __infraSql?: ReturnType<typeof createSqlClient> };
+const sql = globalForDb.__infraSql ?? createSqlClient();
+if (process.env.NODE_ENV !== "production") globalForDb.__infraSql = sql;
 
 export const db = drizzle(sql, { schema: { ...schema, ...authSchema } });
 

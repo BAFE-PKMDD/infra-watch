@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 import { parseReportRange } from "./date-range";
-import { buildFeedbackSlaReport, buildIssueSlaReport } from "./sla";
+import { buildContactSlaReport, buildFeedbackSlaReport, buildIssueSlaReport } from "./sla";
 
 const hour = 3_600_000;
 const createdAt = new Date("2026-10-01T08:00:00+08:00");
@@ -10,6 +10,19 @@ const range = parseReportRange({ from: "2026-10-01", to: "2026-10-05" });
 const issue = { id: "i", ticketNumber: "TEST-1", status: "reviewing", category: "quality", farmOperation: null, createdAt, resolvedAt: null };
 const reply = { issueId: "i", createdAt: new Date(createdAt.getTime() + hour), isInternalOnly: false, responderId: "staff-1", responderRole: "admin" };
 const feedback = { id: "f", comment: "A concern", status: "approved", category: "concerns", createdAt, moderatedAt: new Date(createdAt.getTime() + hour), moderatedBy: "staff-1" };
+
+test("contact SLA uses a delivered reply independently of workflow status and preserves unavailable timestamps", () => {
+  const contact = { id: "contact", subject: "A concern", status: "in_progress", createdAt, firstResponseAt: null, handledAt: new Date(createdAt.getTime() + hour) };
+  const missing = buildContactSlaReport([contact], range, now);
+  assert.equal(missing.summary.respondedItems, 0);
+  assert.equal(missing.tableData[0].isSlaBreach, true);
+  const replied = buildContactSlaReport([{ ...contact, firstResponseAt: createdAt }], range, now);
+  assert.equal(replied.tableData[0].responseTimeMs, 0);
+  assert.equal(replied.tableData[0].resolvedAt, null);
+  const resolved = buildContactSlaReport([{ ...contact, status: "resolved", firstResponseAt: new Date(createdAt.getTime() - hour), handledAt: new Date(createdAt.getTime() - hour) }], range, now);
+  assert.equal(resolved.tableData[0].firstResponseAt, null);
+  assert.equal(resolved.tableData[0].resolvedAt, null);
+});
 
 test("excludes automated replies, internal notes, and invalid earlier timestamps from first response", () => {
   const replies = [

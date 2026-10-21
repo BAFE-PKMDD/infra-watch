@@ -17,11 +17,11 @@ export function AppFooter() {
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
               <Image
-                src="/infra-watch-logo.png"
+                src="/infra-with-bafe-dark.png"
                 alt={t("nav.logoAlt")}
-                width={88}
-                height={59}
-                className="h-11 w-auto flex-shrink-0 object-contain"
+                width={800}
+                height={283}
+                className="h-12 w-auto flex-shrink-0 object-contain"
                 unoptimized
               />
               <div>

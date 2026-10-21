@@ -6,6 +6,13 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    name: "commonjs-erd-generator",
+    files: ["docs/erd/generate-erd.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
     name: "legacy-root-commonjs-maintenance-scripts",
     files: [
       "add_env.js",

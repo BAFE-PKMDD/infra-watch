@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,6 +38,7 @@ import {
 import { getVideoEmbedUrl } from "@/lib/video-utils";
 import { canSelectVideoRegion, normalizeVideoRegion } from "@/lib/live-video-region";
 import { PHILIPPINE_REGIONS } from "@/lib/philippines-regions";
+import { uploadLargeVideo } from "@/lib/direct-video-upload-client";
 
 interface LiveVideoFormProps {
   initialData?: LiveVideo | null;
@@ -73,6 +74,9 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
   );
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const uploadController = useRef<AbortController | null>(null);
+  useEffect(() => () => uploadController.current?.abort(), []);
 
   const embedUrl = videoType === "recorded"
     ? null
@@ -94,9 +98,10 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
     if (!file) return;
 
     setUploading(true);
-
+    setUploadProgress(0);
+    uploadController.current = new AbortController();
     try {
-      const path = await uploadLiveVideoAsset(file);
+      const path = await uploadLargeVideo(file, setUploadProgress, uploadController.current.signal);
       setVideoPath(path);
       toast.success("Video uploaded successfully");
     } catch (error) {
@@ -104,6 +109,8 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
       toast.error(error instanceof Error ? error.message : "Failed to upload video");
     } finally {
       setUploading(false);
+      setUploadProgress(null);
+      uploadController.current = null;
     }
   };
 
@@ -189,6 +196,7 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
     <div className="w-full space-y-6">
       {!canReview && normalizeVideoRegion(userRegion) && <p className="text-sm text-slate-600 dark:text-slate-300">NCR approval is required before publication.</p>}
       <form data-tour="video-form" onSubmit={handleSubmit} className="w-full space-y-6">
+        {uploadProgress !== null && <div className="space-y-2 border-b border-border pb-4"><label htmlFor="video-upload-progress" className="text-sm font-semibold">{uploadProgress === 100 ? "Validating and finalizing recording…" : `Uploading recording: ${uploadProgress}%`}</label><progress id="video-upload-progress" value={uploadProgress} max={100} className="h-3 w-full accent-primary" /><Button type="button" variant="outline" className="min-h-11" disabled={uploadProgress === 100} onClick={() => uploadController.current?.abort()}>Cancel upload</Button></div>}
         <Card className="w-full overflow-hidden border-slate-200/60 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <CardContent className="p-0">
             <div className="p-6 md:p-8 space-y-8">
@@ -442,10 +450,10 @@ export function LiveVideoForm({ initialData, userRegion, canReview = false }: Li
                               <p className="text-sm text-slate-600 dark:text-slate-400">
                                 Drag and drop or click to upload
                               </p>
-                              <p className="text-xs text-slate-500">MP4, MOV, WebM, or MKV</p>
+                              <p className="text-sm text-muted-foreground">MP4, MOV, or WebM. Up to 20 GB.</p>
                               <input
                                 type="file"
-                                accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mkv"
+                                accept="video/mp4,video/quicktime,video/webm"
                                 onChange={handleVideoUpload}
                                 disabled={uploading}
                                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"

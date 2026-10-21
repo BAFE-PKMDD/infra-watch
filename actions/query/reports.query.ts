@@ -3,11 +3,19 @@
 import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { feedback, issueResponses, issues, projects } from "@/lib/db/schema";
+import { feedback, issueResponses, issues, projects, contactMessages, contactResponses } from "@/lib/db/schema";
 import { requireAdminOrRegionalAdmin } from "@/lib/session";
 import { parseReportRange, type ReportRangeInput } from "@/lib/reports/date-range";
-import { buildFeedbackSlaReport, buildIssueSlaReport } from "@/lib/reports/sla";
+import { buildFeedbackSlaReport, buildIssueSlaReport, buildContactSlaReport } from "@/lib/reports/sla";
 import type { SlaReportData } from "@/types/reports.types";
+
+export async function getContactSlaReport(params: ReportRangeInput): Promise<SlaReportData> {
+  await requireAdminOrRegionalAdmin();
+  const range = parseReportRange(params);
+  const messages = await db.select({ id: contactMessages.id, subject: contactMessages.subject, status: contactMessages.status, createdAt: contactMessages.createdAt, handledAt: contactMessages.handledAt }).from(contactMessages).where(and(gte(contactMessages.createdAt, range.start), lt(contactMessages.createdAt, range.endExclusive)));
+  const responses = messages.length ? await db.select({ messageId: contactResponses.messageId, sentAt: contactResponses.sentAt }).from(contactResponses).where(and(inArray(contactResponses.messageId, messages.map(row => row.id)), eq(contactResponses.status, "sent"))) : [];
+  return buildContactSlaReport(messages.map(message => ({ ...message, firstResponseAt: responses.filter(response => response.messageId === message.id && response.sentAt).reduce<Date | null>((earliest, response) => !earliest || response.sentAt! < earliest ? response.sentAt : earliest, null) })), range);
+}
 
 /**
  * Get Issue SLA Report.

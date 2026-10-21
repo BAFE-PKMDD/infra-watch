@@ -25,6 +25,7 @@ import {
 } from "@/components/admin/sms-attention-badge";
 
 const items = [
+  { label: "Contact Reports", href: "/reports/contact", icon: BarChart3, resource: "reports", action: "view", roles: ["admin", "regional_admin"] },
   {
     label: "Analytics",
     href: "/dashboard",

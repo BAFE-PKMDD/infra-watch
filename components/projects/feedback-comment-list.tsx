@@ -238,6 +238,7 @@ export function FeedbackCommentList({
 
       setEditingCommentId(null);
       setEditText("");
+      toast.success(result.message);
       onCommentUpdated?.();
     } catch (error) {
       console.error("Error updating comment:", error);

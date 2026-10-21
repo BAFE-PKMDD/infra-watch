@@ -34,7 +34,7 @@ export default function AdminProjectsPage() {
     <AdminPageWrapper
       breadcrumbs={[{ label: "Admin" }, { label: "Projects" }]}
       title="Synced Project Catalog"
-      description="Read-only AMEFIP and INS project records mirrored from ABEMIS for search, reporting, and public feedback."
+      description="AMEFIP and INS project records mirrored from ABEMIS. Authorized staff can maintain local commodity overrides while other source fields remain synchronized."
     >
       <ResponseGuides fallbackOnly />
       {statsData?.statistics && <ProjectStatsCard statistics={statsData.statistics} />}

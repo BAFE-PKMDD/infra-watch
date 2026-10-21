@@ -1,0 +1,866 @@
+// InfraWatch ERD - generated 2026-10-17 from database "infra_watch"
+// Edit freely, or paste into https://dbdiagram.io to render. Regenerate: node docs/erd/generate-erd.cjs
+
+Project infra_watch {
+  database_type: 'PostgreSQL'
+}
+
+Table "account" {
+  id text [pk]
+  account_id text
+  provider_id text
+  user_id text
+  access_token text
+  refresh_token text
+  id_token text
+  access_token_expires_at timestamp
+  refresh_token_expires_at timestamp
+  scope text
+  password text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Table "account_preferences" {
+  user_id text [pk]
+  in_app boolean [default: true]
+  email boolean [default: false]
+  sms boolean [default: false]
+  updated_at timestamptz [default: `now()`]
+}
+
+Table "ai_chat_history" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  conversation_id uuid
+  user_id text
+  user_message text
+  assistant_message text
+  status text [default: 'processing']
+  provider text
+  model text
+  tool_names jsonb [default: '[]']
+  input_tokens integer
+  output_tokens integer
+  total_tokens integer
+  duration_ms integer
+  finish_reason text
+  error_code text
+  expires_at timestamp
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  owner_key text
+  surface text [default: 'public_chat']
+
+  indexes {
+    conversation_id [name: 'ai_chat_history_conversation_id_idx']
+    created_at [name: 'ai_chat_history_created_at_idx']
+    expires_at [name: 'ai_chat_history_expires_at_idx']
+    (owner_key, conversation_id) [name: 'ai_chat_history_owner_conversation_idx']
+    status [name: 'ai_chat_history_status_idx']
+    user_id [name: 'ai_chat_history_user_id_idx']
+  }
+}
+
+Table "ai_chat_rate_limits" {
+  key text [pk]
+  window_started_at timestamp
+  request_count integer [default: 1]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    updated_at [name: 'ai_chat_rate_limits_updated_at_idx']
+  }
+}
+
+Table "analytics_daily_aggregates" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  aggregate_date date
+  metric_key text
+  dimension_key text [default: 'all']
+  dimension_value text [default: 'all']
+  resource_type text [default: 'all']
+  resource_id text [default: 'all']
+  count integer [default: 0]
+  updated_at timestamptz [default: `now()`]
+
+  indexes {
+    (aggregate_date, metric_key) [name: 'analytics_daily_aggregates_date_metric_idx']
+    (aggregate_date, metric_key, dimension_key, dimension_value, resource_type, resource_id) [name: 'analytics_daily_aggregates_key_uidx', unique]
+  }
+}
+
+Table "analytics_events" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  event_name text
+  occurred_at timestamptz [default: `now()`]
+  route_template text
+  resource_type text
+  resource_id text
+  entry_surface text
+  result_count_band text
+  network_region_code text
+
+  indexes {
+    (event_name, occurred_at) [name: 'analytics_events_event_occurred_at_idx']
+    occurred_at [name: 'analytics_events_occurred_at_idx']
+    (resource_type, resource_id, occurred_at) [name: 'analytics_events_resource_occurred_at_idx']
+  }
+}
+
+Table "announcements" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  title text
+  content text
+  is_active boolean [default: false]
+  start_date timestamp
+  end_date timestamp
+  created_by text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table "articles" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  title text
+  url text
+  source text
+  thumbnail text
+  thumbnail_alt text
+  excerpt text
+  category text
+  tags jsonb [default: '[]']
+  author text
+  published_date timestamp
+  project_id text
+  added_by text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    project_id [name: 'articles_project_id_idx']
+  }
+}
+
+Table "audit_logs" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  table_name text
+  record_id text
+  action text
+  user_id text
+  user_name text
+  old_values jsonb
+  new_values jsonb
+  changed_fields jsonb
+  ip_address text
+  user_agent text
+  notes text
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    action [name: 'audit_logs_action_idx']
+    created_at [name: 'audit_logs_created_at_idx']
+    table_name [name: 'audit_logs_table_name_idx']
+    user_id [name: 'audit_logs_user_id_idx']
+  }
+}
+
+Table "background_jobs" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  kind text
+  status text [default: 'queued']
+  requested_by text
+  dedupe_key text
+  payload jsonb [default: '{}']
+  progress jsonb [default: '{"total": 0, "message": "Queued", "processed": 0}']
+  result jsonb
+  attempts integer [default: 0]
+  max_attempts integer [default: 3]
+  available_at timestamptz [default: `now()`]
+  lease_until timestamptz
+  lease_token uuid
+  error text
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+
+  indexes {
+    dedupe_key [name: 'background_jobs_active_dedupe_uidx', unique]
+    (status, available_at) [name: 'background_jobs_claim_idx']
+  }
+}
+
+Table "contact_messages" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name text
+  email text
+  subject text
+  message text
+  status text [default: 'new']
+  user_id text
+  sender_key text
+  handled_by text
+  handled_at timestamptz
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+
+  indexes {
+    created_at [name: 'contact_messages_created_at_idx']
+    (sender_key, created_at) [name: 'contact_messages_sender_key_idx']
+    (status, created_at) [name: 'contact_messages_status_idx']
+  }
+}
+
+Table "contact_responses" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  message_id uuid
+  responder_id text
+  body text
+  status text [default: 'sending']
+  sent_at timestamptz
+  created_at timestamptz [default: `now()`]
+
+  indexes {
+    (message_id, sent_at) [name: 'contact_responses_message_idx']
+  }
+}
+
+Table "email_templates" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  slug text [unique]
+  name text
+  description text
+  subject text
+  body text
+  variables jsonb [default: '[]']
+  category text
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table "feedback" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  project_id text
+  user_id text
+  rating integer
+  comment text
+  category text
+  media jsonb [default: '[]']
+  is_anonymous boolean [default: false]
+  helpful_count integer [default: 0]
+  status text [default: 'pending']
+  moderated_by text
+  moderated_at timestamp
+  moderation_note text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  auto_acknowledged_at timestamp
+  sla_gentle_reminder_at timestamp
+  sla_urgent_reminder_at timestamp
+  sla_breach_notified_at timestamp
+  sentiment text
+  issue_type text
+
+  indexes {
+    project_id [name: 'feedback_project_id_idx']
+    sentiment [name: 'feedback_sentiment_idx']
+    status [name: 'feedback_status_idx']
+  }
+}
+
+Table "feedback_comment_votes" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  comment_id uuid
+  user_id text
+  vote_type text
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    (user_id, comment_id) [name: 'feedback_comment_votes_user_comment_uidx', unique]
+  }
+}
+
+Table "feedback_comments" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  feedback_id uuid
+  user_id text
+  comment text
+  media jsonb [default: '[]']
+  helpful_count integer [default: 0]
+  unhelpful_count integer [default: 0]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  status text [default: 'published']
+  auto_rejected boolean [default: false]
+  rejection_reason text
+  moderated_by text
+  moderated_at timestamp
+  revision integer [default: 1]
+
+  indexes {
+    created_at [name: 'feedback_comments_created_at_idx']
+    feedback_id [name: 'feedback_comments_feedback_id_idx']
+    (status, created_at) [name: 'feedback_comments_status_idx']
+  }
+}
+
+Table "issue_responses" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  issue_id uuid
+  responder_id text
+  responder_name text
+  responder_role text
+  message text
+  status_change text
+  new_status text
+  internal_notes text
+  is_internal_only boolean [default: false]
+  attachment_urls jsonb [default: '[]']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    issue_id [name: 'issue_responses_issue_id_idx']
+    responder_id [name: 'issue_responses_responder_id_idx']
+  }
+}
+
+Table "issues" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  ticket_number text [unique]
+  project_id text
+  reporter_user_id text
+  reporter_name text
+  reporter_contact text
+  reporter_email text
+  is_anonymous boolean [default: false]
+  category text
+  status text [default: 'submitted']
+  priority text [default: 'normal']
+  description text
+  region text
+  province text
+  municipality text
+  barangay text
+  landmark text
+  latitude real
+  longitude real
+  evidence jsonb [default: '[]']
+  assigned_to text
+  resolved_at timestamp
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  geo_video_track jsonb
+  geo_video_url text
+  public_description text
+  public_approved_at timestamp
+  public_approved_by text
+  sla_gentle_reminder_at timestamp
+  sla_urgent_reminder_at timestamp
+  sla_breach_notified_at timestamp
+  reported_farm_operation text
+  reported_project_type text
+  issue_type text
+
+  indexes {
+    project_id [name: 'issues_project_id_idx']
+    status [name: 'issues_status_idx']
+    ticket_number [name: 'issues_ticket_number_idx']
+  }
+}
+
+Table "kb_chunks" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  document_id uuid
+  chunk_index integer
+  content text
+  embedding jsonb
+  token_count integer
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    (document_id, chunk_index) [unique]
+    (document_id, chunk_index) [name: 'kb_chunks_document_chunk_uidx', unique]
+    document_id [name: 'kb_chunks_document_id_idx']
+  }
+}
+
+Table "kb_documents" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  title text
+  category text
+  file_type text
+  file_name text
+  file_path text
+  file_size integer
+  chunk_count integer [default: 0]
+  status text [default: 'pending']
+  faq_question text
+  faq_answer text
+  content_preview text
+  error_message text
+  uploaded_by text
+  uploaded_by_name text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  archived_at timestamp
+  archived_by text
+  visibility text [default: 'public']
+
+  indexes {
+    archived_at [name: 'kb_documents_archived_at_idx']
+    category [name: 'kb_documents_category_idx']
+    created_at [name: 'kb_documents_created_at_idx']
+    status [name: 'kb_documents_status_idx']
+    visibility [name: 'kb_documents_visibility_idx']
+  }
+}
+
+Table "live_videos" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  title text
+  description text
+  facebook_video_url text
+  is_active boolean [default: false]
+  is_live boolean [default: false]
+  published_at timestamp
+  expires_at timestamp
+  created_by text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  video_type text [default: 'facebook_live']
+  video_path text
+  thumbnail_path text
+  duration integer
+  is_featured boolean [default: false]
+  display_order integer [default: 0]
+  region text
+  approval_status text [default: 'pending']
+  reviewed_by text
+  reviewed_at timestamp
+
+  indexes {
+    (is_active, published_at, expires_at) [name: 'live_videos_active_schedule_idx']
+    created_at [name: 'live_videos_created_at_idx']
+  }
+}
+
+Table "map_layers" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name text
+  description text
+  geoserver_url text
+  workspace text
+  layer_name text
+  style_name text
+  opacity real [default: 0.7]
+  legend_shape text [default: 'circle']
+  legend_color text [default: '#10b981']
+  is_active boolean [default: true]
+  display_order integer [default: 0]
+  created_by text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table "mydas_dashboards" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name text [default: 'Untitled Dashboard']
+  pages jsonb
+  created_by text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    created_by [name: 'mydas_dashboards_created_by_idx']
+  }
+}
+
+Table "notification_reads" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id text
+  notification_id text
+  read_at timestamp [default: `now()`]
+
+  indexes {
+    user_id [name: 'notification_reads_user_id_idx']
+    (user_id, notification_id) [name: 'notification_reads_user_notification_idx', unique]
+  }
+}
+
+Table "notification_recipients" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id text
+  notification_id text
+  read_at timestamp
+
+  indexes {
+    notification_id [name: 'notification_recipients_notification_id_idx']
+    user_id [name: 'notification_recipients_user_id_idx']
+    (user_id, notification_id) [name: 'notification_recipients_user_notification_idx', unique]
+  }
+}
+
+Table "notifications" {
+  id text [pk]
+  type text
+  title text
+  message text
+  metadata jsonb [default: '{}']
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    created_at [name: 'notifications_created_at_idx']
+  }
+}
+
+Table "post_subscriptions" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id text
+  user_email text
+  post_id text
+  post_type text [default: 'feedback']
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    post_id [name: 'post_subscriptions_post_id_idx']
+    (user_id, post_id) [name: 'post_subscriptions_user_post_uidx', unique]
+  }
+}
+
+Table "project_commodity_overrides" {
+  project_id text [pk]
+  commodities jsonb
+  source_commodities jsonb [default: '[]']
+  reason text
+  updated_by text
+  updated_at timestamptz [default: `now()`]
+}
+
+Table "project_data_corrections" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  project_id text
+  field text
+  source_value jsonb
+  corrected_value jsonb
+  reason text
+  corrected_by text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    (project_id, field) [name: 'project_data_corrections_project_field_uidx', unique]
+    project_id [name: 'project_data_corrections_project_id_idx']
+  }
+}
+
+Table "project_metric_snapshots" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  project_id text
+  sync_log_id uuid
+  capture_date date
+  captured_at timestamp
+  physical_progress integer
+  financial_progress integer
+  budget numeric(14,2)
+  abc numeric(14,2)
+  status text
+  target_completion_date timestamp
+  source_last_synced_at timestamp
+  created_at timestamp [default: `now()`]
+  program text
+  region text
+  province text
+  year_funded text
+  project_type text
+
+  indexes {
+    capture_date [name: 'project_metric_snapshots_capture_date_idx']
+    (project_id, capture_date) [name: 'project_metric_snapshots_project_capture_date_idx']
+    (project_id, capture_date) [name: 'project_metric_snapshots_project_day_uidx', unique]
+    (status, capture_date) [name: 'project_metric_snapshots_status_capture_date_idx']
+  }
+}
+
+Table "projects" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  abemis_raw_id text [unique]
+  abemis_id text [unique]
+  project_code text
+  name text
+  description text
+  status text
+  province text
+  municipality text
+  barangay text
+  latitude real
+  longitude real
+  budget numeric(14,2)
+  abc numeric(14,2)
+  contract_amount numeric(14,2)
+  calendar_days integer
+  physical_progress integer [default: 0]
+  financial_progress integer [default: 0]
+  implementing_agency text
+  contractor_name text
+  start_date timestamp
+  target_completion_date timestamp
+  actual_completion_date timestamp
+  operating_unit text
+  banner_program text
+  year_funded text
+  project_type text
+  region text
+  district text
+  stage text
+  program text [default: 'AMEFIP']
+  author text
+  quantity text
+  quantity_unit text
+  beneficiary text
+  prexc_program text
+  sub_program text
+  indicator_level1 text
+  indicator_level3 text
+  recipient_type text
+  budget_process text
+  date_turn_over text
+  road_class text
+  road_type text
+  road_used text
+  implementation_type text
+  proposed_length text
+  post_geotagged_length text
+  procurement_mode text
+  psgc_code text
+  metadata jsonb
+  commodities jsonb [default: '[]']
+  geom "geometry(Point,4326)"
+  last_synced_at timestamp [default: `now()`]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  farm_operation text
+
+  indexes {
+    abemis_id [name: 'projects_abemis_id_idx']
+    province [name: 'projects_province_idx']
+    region [name: 'projects_region_idx']
+    status [name: 'projects_status_idx']
+    year_funded [name: 'projects_year_funded_idx']
+  }
+}
+
+Table "psgc_locations" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  geo_code text [unique]
+  geo_code1 text
+  region_name text
+  reg_shortname text
+  province_name text
+  municipality_name text
+  barangay_name text
+  region_code text
+  province_code text
+  municipality_code text
+  barangay_code text
+  phcode_reg text
+  phcode_prov text
+  phcode_mun text
+  phcode_bgy text
+  reg_code1 text
+  prov_code1 text
+  mun_code1 text
+  bgy_code1 text
+  dist_code text
+  district text
+  city_class text
+  latitude real
+  longitude real
+  last_synced_at timestamp [default: `now()`]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table "regional_statistics" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  year integer
+  region text
+  program text
+  funded_projects integer
+  completed_projects integer
+  ongoing_projects integer
+  not_yet_started_projects integer
+  suspended_projects integer
+  allocated_amount numeric(18,2)
+  length_completed numeric(14,3)
+  source_name text
+  source_url text
+  as_of date
+  is_published boolean [default: false]
+  updated_by text
+  updated_at timestamptz [default: `now()`]
+
+  indexes {
+    (region, year, program) [name: 'regional_statistics_region_year_program_uidx', unique]
+  }
+}
+
+Table "saved_posts" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id text
+  post_id text
+  post_type text [default: 'feedback']
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    user_id [name: 'saved_posts_user_id_idx']
+    (user_id, post_id) [name: 'saved_posts_user_post_uidx', unique]
+  }
+}
+
+Table "session" {
+  id text [pk]
+  expires_at timestamp
+  token text [unique]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  ip_address text
+  user_agent text
+  user_id text
+  impersonated_by text
+}
+
+Table "sms_grievance_reviews" {
+  message_id text [pk]
+  record jsonb
+  version integer [default: 1]
+  updated_by text
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+
+  indexes {
+    updated_at [name: 'sms_grievance_reviews_updated_at_idx']
+  }
+}
+
+Table "spatial_ref_sys" {
+  srid integer [pk]
+  auth_name varchar(256)
+  auth_srid integer
+  srtext varchar(2048)
+  proj4text varchar(2048)
+}
+
+Table "submission_surveys" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  source_type text
+  source_id text
+  user_id text
+  name text
+  age integer
+  gender text
+  referral_source text
+  created_at timestamp [default: `now()`]
+  respondent_type text
+  skipped boolean [default: false]
+
+  indexes {
+    created_at [name: 'submission_surveys_created_at_idx']
+    referral_source [name: 'submission_surveys_referral_source_idx']
+    source_type [name: 'submission_surveys_source_type_idx']
+    user_id [name: 'submission_surveys_user_id_idx']
+  }
+}
+
+Table "sync_logs" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  sync_type text
+  resource text [default: 'project']
+  status text
+  records_added integer [default: 0]
+  records_updated integer [default: 0]
+  records_failed integer [default: 0]
+  total_processed integer [default: 0]
+  errors jsonb [default: '[]']
+  error_details text
+  started_at timestamp [default: `now()`]
+  completed_at timestamp
+  duration integer
+  triggered_by text
+  created_at timestamp [default: `now()`]
+}
+
+Table "system_settings" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  key text [unique]
+  value jsonb
+  description text
+  updated_by text
+  updated_at timestamp [default: `now()`]
+}
+
+Table "upload_sessions" {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id text
+  path text [unique]
+  upload_id text
+  content_type text
+  size bigint
+  part_size integer
+  status text [default: 'uploading']
+  expires_at timestamptz
+  created_at timestamptz [default: `now()`]
+
+  indexes {
+    (user_id, created_at) [name: 'upload_sessions_owner_idx']
+  }
+}
+
+Table "user" {
+  id text [pk]
+  name text
+  email text [unique]
+  email_verified boolean [default: false]
+  image text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  role text [default: 'citizen']
+  region text
+  banned boolean [default: false]
+  ban_reason text
+  ban_expires timestamp
+  assigned_agency text
+  phone_number text
+}
+
+Table "user_tour_progress" {
+  user_id text [pk]
+  automatic boolean [default: true]
+  seen jsonb [default: '{}']
+  updated_at timestamp [default: `now()`]
+}
+
+Table "verification" {
+  id text [pk]
+  identifier text
+  value text
+  expires_at timestamp
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Ref account_user_id_user_id_fk: "account".user_id > "user".id [delete: cascade]
+Ref articles_project_id_projects_abemis_id_fk: "articles".project_id > "projects".abemis_id [delete: set null]
+Ref contact_responses_message_id_contact_messages_id_fk: "contact_responses".message_id > "contact_messages".id [delete: cascade]
+Ref feedback_project_id_projects_abemis_id_fk: "feedback".project_id > "projects".abemis_id [delete: cascade]
+Ref feedback_comment_votes_comment_id_feedback_comments_id_fk: "feedback_comment_votes".comment_id > "feedback_comments".id [delete: cascade]
+Ref feedback_comments_feedback_id_fkey: "feedback_comments".feedback_id > "feedback".id [delete: cascade]
+Ref issue_responses_issue_id_fkey: "issue_responses".issue_id > "issues".id [delete: cascade]
+Ref issues_project_id_projects_abemis_id_fk: "issues".project_id > "projects".abemis_id [delete: set null]
+Ref kb_chunks_document_id_fkey: "kb_chunks".document_id > "kb_documents".id [delete: cascade]
+Ref notification_reads_notification_id_fkey: "notification_reads".notification_id > "notifications".id [delete: cascade]
+Ref notification_recipients_notification_id_notifications_id_fk: "notification_recipients".notification_id > "notifications".id [delete: cascade]
+Ref project_commodity_overrides_project_id_projects_abemis_id_fk: "project_commodity_overrides".project_id - "projects".abemis_id [delete: cascade]
+Ref project_data_corrections_project_id_projects_abemis_id_fk: "project_data_corrections".project_id > "projects".abemis_id [delete: restrict]
+Ref project_metric_snapshots_project_id_projects_abemis_id_fk: "project_metric_snapshots".project_id > "projects".abemis_id [delete: cascade]
+Ref project_metric_snapshots_sync_log_id_sync_logs_id_fk: "project_metric_snapshots".sync_log_id > "sync_logs".id [delete: cascade]
+Ref session_user_id_user_id_fk: "session".user_id > "user".id [delete: cascade]

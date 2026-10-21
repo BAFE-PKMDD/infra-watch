@@ -16,8 +16,8 @@ export function ContactMessageStatusControl({ id, status }: { id: string; status
   const selectId = `contact-status-${id}`;
 
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={selectId} className="text-sm font-medium text-slate-700 dark:text-slate-300">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={selectId} className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
         Status
       </label>
       <select
@@ -52,7 +52,7 @@ export function ContactMessageStatusControl({ id, status }: { id: string; status
             }
           });
         }}
-        className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
       >
         {CONTACT_MESSAGE_STATUSES.map((option) => (
           <option key={option} value={option}>

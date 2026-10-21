@@ -182,7 +182,9 @@ function ContentEditor({
         throw new Error(result.error || "Thumbnail upload failed");
       const url = getFullUrl(result.path);
       if (!url) throw new Error("Thumbnail URL is unavailable");
-      if (thumbnailInput.current) thumbnailInput.current.value = url;
+      if (thumbnailInput.current) {
+        thumbnailInput.current.value = new URL(url, window.location.origin).href;
+      }
     } catch (error) {
       setError(
         error instanceof Error

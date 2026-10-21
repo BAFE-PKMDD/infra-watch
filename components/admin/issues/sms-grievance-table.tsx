@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Ban, RotateCcw, Send } from "lucide-react";
 
-import { SmsPrototypeBanner } from "@/components/admin/issues/sms-prototype-banner";
+import { SmsFeedUnavailableNotice, SmsPrototypeBanner } from "@/components/admin/issues/sms-prototype-banner";
 import { SmsGrievanceMap } from "@/components/admin/issues/sms-grievance-map";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -285,7 +285,7 @@ export function SmsGrievanceTable({
 
   return (
     <div className="space-y-6">
-      {tutorial ? <TutorialModeNotice /> : !isLive && <SmsPrototypeBanner liveFetchError={liveFetchError} />}
+      {tutorial ? <TutorialModeNotice /> : isLive ? liveFetchError && <SmsFeedUnavailableNotice /> : <SmsPrototypeBanner />}
 
       <section aria-labelledby="sms-queue-heading" className="border border-slate-200 bg-white px-4 py-5 sm:px-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

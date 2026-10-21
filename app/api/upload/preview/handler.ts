@@ -1,6 +1,6 @@
 const GENERATED_NAME = "\\d+-[a-f0-9]{32}";
 const PUBLIC_PREVIEW_PATH = new RegExp(
-  `^(?:feedback|feedback-comment|live-videos)/${GENERATED_NAME}\\.(?:jpe?g|png|webp|gif|mp4|mov|webm)$`,
+  `^(?:articles|feedback|feedback-comment|live-videos)/${GENERATED_NAME}\\.(?:jpe?g|png|webp|gif|mp4|mov|webm)$`,
   "i",
 );
 const ISSUE_EVIDENCE_PATH = new RegExp(
@@ -59,7 +59,7 @@ export function createUploadPreviewGetHandler(dependencies: UploadPreviewDepende
       return jsonError("Invalid upload preview path.", 400);
     }
 
-    // Feedback, feedback-comment, and live-video media are already shown on
+    // Article, feedback, feedback-comment, and live-video media are already shown on
     // public pages to signed-out visitors - only the private storage classes
     // (knowledge base, issue evidence) require a session at all.
     if (!isPublicPreview) {

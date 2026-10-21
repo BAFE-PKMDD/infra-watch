@@ -13,7 +13,8 @@ import {
 } from "@/lib/contact-messages";
 import { getContactSenderKey } from "@/lib/contact-message-sender";
 import { db } from "@/lib/db";
-import { contactMessages } from "@/lib/db/schema";
+import { contactMessages, contactResponses } from "@/lib/db/schema";
+import { z } from "zod";
 import { requirePermission } from "@/lib/permissions";
 import { getCurrentUser, requireAuth } from "@/lib/session";
 import { sendTemplatedEmail } from "@/lib/email-templates";
@@ -93,17 +94,31 @@ export async function createContactMessage(data: ContactMessageInput): Promise<C
   }
 }
 
-export async function replyToContactMessage(id: string, response: string) {
+export async function replyToContactMessage(id: string, response: string, responseId = crypto.randomUUID()) {
   try {
     const user = await requireAuth();
     requirePermission(user.role, "contact_messages", "update");
+    z.uuid().parse(id);
+    z.uuid().parse(responseId);
     const body = response.trim();
     if (body.length < 10 || body.length > 10000) throw new Error("Response must contain 10 to 10,000 characters");
     const [message] = await db.select().from(contactMessages).where(eq(contactMessages.id, id)).limit(1);
     if (!message) throw new Error("Message not found");
+    const [created] = await db.insert(contactResponses).values({ id: responseId, messageId: id, responderId: user.id, body }).onConflictDoNothing().returning();
+    if (!created) {
+      const [existing] = await db.select().from(contactResponses).where(eq(contactResponses.id, responseId)).limit(1);
+      if (existing?.messageId === id && existing.status === "sent") return { success: true as const };
+      throw new Error("This reply has already been submitted. Refresh to check its delivery status.");
+    }
     const result = await sendTemplatedEmail("contact-response", message.email, { recipientName: message.name, originalSubject: message.subject, originalMessage: message.message, adminResponse: body });
-    if (!result.success) throw new Error(result.error || "Email could not be sent");
-    await db.update(contactMessages).set({ status: "in_progress", handledBy: user.id, handledAt: new Date(), updatedAt: new Date() }).where(eq(contactMessages.id, id));
+    if (!result.success) {
+      await db.update(contactResponses).set({ status: "failed" }).where(eq(contactResponses.id, responseId));
+      return { success: false as const, retryable: true, error: "Email could not be sent. The failed attempt is saved in the reply history." };
+    }
+    await db.transaction(async tx => {
+      await tx.update(contactResponses).set({ status: "sent", sentAt: new Date() }).where(eq(contactResponses.id, responseId));
+      await tx.update(contactMessages).set({ status: "in_progress", handledBy: user.id, handledAt: new Date(), updatedAt: new Date() }).where(eq(contactMessages.id, id));
+    });
     await logAudit({ tableName: "contact_messages", recordId: id, action: "UPDATE", notes: "Staff email response sent using the contact-response template", context: await getAuditContextFromServerAction(user) });
     revalidatePath("/contact-messages");
     return { success: true as const };

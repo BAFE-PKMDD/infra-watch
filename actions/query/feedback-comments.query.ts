@@ -1,6 +1,10 @@
 "use server";
 
-import { sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { feedbackCommentVotes, feedbackComments } from "@/lib/db/schema";
+import { user } from "@/auth-schema";
+import { getCurrentUser } from "@/lib/session";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { ensurePostInteractionsTables } from "@/lib/post-interactions";
 import type { FeedbackFeedComment } from "@/types/feedback.types";
@@ -45,6 +49,8 @@ export async function getFeedbackComments(
       FROM feedback_comments c
       LEFT JOIN "user" u ON u.id = c.user_id
       WHERE c.feedback_id = ${feedbackId}::uuid
+        AND c.status = 'published'
+        AND EXISTS (SELECT 1 FROM feedback f WHERE f.id = c.feedback_id AND f.status = 'approved')
       ORDER BY c.created_at ASC
     `);
 
@@ -82,17 +88,20 @@ export async function getFeedbackComments(
 }
 
 export async function getUserCommentVotes(
-  _commentIds: string[],
+  commentIds: string[],
 ): Promise<{ success: true; data: Record<string, VoteType> }> {
-  void _commentIds;
+  const actor = await getCurrentUser();
+  if (!actor || !commentIds.length) return { success: true, data: {} };
+  const ids = z.array(z.uuid()).max(500).parse(commentIds);
+  const rows = await db.select().from(feedbackCommentVotes).where(and(eq(feedbackCommentVotes.userId, actor.id), inArray(feedbackCommentVotes.commentId, ids)));
   return {
     success: true,
-    data: {},
+    data: Object.fromEntries(rows.map(row => [row.commentId, row.voteType])),
   };
 }
 
 export async function getCommentVoters(
-  _commentId: string,
+  commentId: string,
 ): Promise<{
   success: true;
   data: {
@@ -100,12 +109,12 @@ export async function getCommentVoters(
     unhelpfulVoters: CommentVoter[];
   };
 }> {
-  void _commentId;
+  const rows = await db.select({ userId: feedbackCommentVotes.userId, name: user.name, image: user.image, votedAt: feedbackCommentVotes.createdAt, voteType: feedbackCommentVotes.voteType }).from(feedbackCommentVotes).innerJoin(feedbackComments, eq(feedbackComments.id, feedbackCommentVotes.commentId)).leftJoin(user, eq(user.id, feedbackCommentVotes.userId)).where(and(eq(feedbackCommentVotes.commentId, z.uuid().parse(commentId)), eq(feedbackComments.status, "published"))).limit(200);
   return {
     success: true,
     data: {
-      helpfulVoters: [],
-      unhelpfulVoters: [],
+      helpfulVoters: rows.filter(row => row.voteType === "helpful"),
+      unhelpfulVoters: rows.filter(row => row.voteType === "unhelpful"),
     },
   };
 }

@@ -72,9 +72,10 @@ test("denies issue evidence to an authenticated user who does not own or manage 
   assert.equal(loadCalls, 0);
 });
 
-test("public feedback/feedback-comment/live-video previews load without any session", async () => {
+test("public article/feedback/feedback-comment/live-video previews load without any session", async () => {
   let sessionChecks = 0;
   for (const path of [
+    "articles/1730000000000-0123456789abcdef0123456789abcdef.jpg",
     "feedback/1730000000000-0123456789abcdef0123456789abcdef.jpg",
     "feedback-comment/1730000000000-0123456789abcdef0123456789abcdef.png",
     "live-videos/1730000000000-0123456789abcdef0123456789abcdef.mp4",
@@ -106,6 +107,8 @@ test("rejects malformed or unsupported preview paths before storage access", asy
   let loadCalls = 0;
   for (const path of [
     "../.env",
+    "articles/not-generated.jpg",
+    "articles/1730000000000-0123456789abcdef0123456789abcdef.svg",
     "issue-evidence/not-generated.jpg",
     "knowledge-base/1730000000000-0123456789abcdef0123456789abcdef.exe",
   ]) {

@@ -23,22 +23,28 @@ const DEFAULT_MODELS: Record<string, string> = {
   kimi: "moonshot-v1-8k",
 };
 
-export function getAIConfig() {
+type AIConfigOptions = {
+  /** Spoken (ANIA voice) requests may use a faster model via VOICE_AI_MODEL. */
+  voice?: boolean;
+};
+
+export function getAIConfig({ voice = false }: AIConfigOptions = {}) {
   const provider = (process.env.AI_PROVIDER ?? "google").toLowerCase();
   const defaultModelId =
     process.env.AI_MODEL?.trim() ||
     DEFAULT_MODELS[provider] ||
     DEFAULT_MODELS.google;
-  const modelId =
+  const configuredModelId =
     provider === "google" || provider === "gemini"
       ? process.env.GEMINI_MODEL?.trim() || defaultModelId
       : defaultModelId;
+  const modelId = (voice && process.env.VOICE_AI_MODEL?.trim()) || configuredModelId;
 
   return { provider, modelId };
 }
 
-export function getAIModel(): LanguageModel {
-  const { provider, modelId } = getAIConfig();
+export function getAIModel(options: AIConfigOptions = {}): LanguageModel {
+  const { provider, modelId } = getAIConfig(options);
 
   switch (provider) {
     case "google":

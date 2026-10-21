@@ -66,9 +66,9 @@ async function loadPsgcNames(): Promise<Map<string, PsgcNames>> {
 
 async function readVersion() {
   const [row] = await db
-    .select({ lastSynced: max(projects.lastSyncedAt), total: sql<number>`count(*)::int` })
+    .select({ lastSynced: max(projects.lastSyncedAt), lastUpdated: max(projects.updatedAt), total: sql<number>`count(*)::int` })
     .from(projects);
-  return { version: `${row?.lastSynced?.toISOString() ?? "none"}:${row?.total ?? 0}`, dataAsOf: row?.lastSynced ?? null };
+  return { version: `${row?.lastSynced?.toISOString() ?? "none"}:${row?.lastUpdated?.toISOString() ?? "none"}:${row?.total ?? 0}`, dataAsOf: row?.lastSynced ?? null };
 }
 
 async function loadSnapshot(version: string, dataAsOf: Date | null): Promise<Snapshot> {

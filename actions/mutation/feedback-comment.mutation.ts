@@ -1,193 +1,68 @@
 "use server";
 
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/lib/db";
-import { getSession } from "@/lib/session";
+import { feedback, feedbackComments, feedbackCommentVotes } from "@/lib/db/schema";
+import { requireAuth } from "@/lib/session";
 import { assertCleanText } from "@/lib/services/content-moderation";
-import { ensurePostInteractionsTables, notifyPostSubscribers } from "@/lib/post-interactions";
+import { notifyPostSubscribers } from "@/lib/post-interactions";
+import { enqueueJob } from "@/lib/background-jobs";
+import { commentInputSchema } from "@/lib/comment-moderation";
 import type { CommentMedia, FeedbackFeedComment } from "@/types/feedback.types";
 
-type VoteType = "helpful" | "unhelpful";
-
-interface CommentPayload {
-  feedbackId: string;
-  comment: string;
-  media?: CommentMedia[];
-}
-
-interface UpdateCommentPayload {
-  commentId: string;
-  comment: string;
-  media?: CommentMedia[];
-}
-
-export async function createFeedbackComment(data: CommentPayload): Promise<{
-  success: boolean;
-  data: FeedbackFeedComment | null;
-  message: string;
-}> {
-  const comment = data.comment.trim();
-
-  if (!comment) {
-    return {
-      success: false,
-      data: null,
-      message: "Comment cannot be empty.",
-    };
-  }
-
+type CommentPayload = { feedbackId: string; comment: string; media?: CommentMedia[] };
+export async function createFeedbackComment(input: CommentPayload): Promise<{ success: boolean; data: FeedbackFeedComment | null; message: string }> {
   try {
-    assertCleanText(comment);
-  } catch (error) {
-    return {
-      success: false,
-      data: null,
-      message: error instanceof Error ? error.message : "Your comment contains inappropriate language.",
-    };
-  }
-
-  const session = await getSession();
-  const userId = session?.user?.id;
-  if (!userId) {
-    return {
-      success: false,
-      data: null,
-      message: "You must be logged in to comment.",
-    };
-  }
-
-  const commentId = crypto.randomUUID();
-  const userName = session.user.name || "Citizen";
-  const userImage = session.user.image || null;
-
-  try {
-    await ensurePostInteractionsTables();
-    await db.execute(sql`
-      INSERT INTO feedback_comments (id, feedback_id, user_id, comment, media)
-      VALUES (
-        ${commentId}::uuid,
-        ${data.feedbackId}::uuid,
-        ${userId},
-        ${comment},
-        ${JSON.stringify(data.media || [])}::jsonb
-      )
-    `);
-
-    // Lookup project name for the notification
-    let projectName: string | null = null;
-    try {
-      const projectRows = await db.execute<{ name: string | null }>(sql`
-        SELECT p.name
-        FROM feedback f
-        LEFT JOIN projects p ON p.abemis_id = f.project_id
-        WHERE f.id = ${data.feedbackId}::uuid
-      `);
-      projectName = Array.from(projectRows)[0]?.name || null;
-    } catch {
-      // Ignore project lookup error
-    }
-
-    // Broadcast in-app & email notification to post subscribers & feedback author
-    notifyPostSubscribers({
-      postId: data.feedbackId,
-      postType: "feedback",
-      commenterId: userId,
-      commenterName: userName,
-      commentText: comment,
-      projectName,
-    }).catch((err) => {
-      console.warn("Failed to notify post subscribers:", err);
+    const actor = await requireAuth(); const data = commentInputSchema.parse(input);
+    const [parent] = await db.select({ id: feedback.id }).from(feedback).where(and(eq(feedback.id, data.feedbackId), eq(feedback.status, "approved"))).limit(1);
+    if (!parent) throw new Error("This feedback is unavailable for comments");
+    let rejectionReason: string | null = null;
+    try { assertCleanText(data.comment); } catch { rejectionReason = "Text contains inappropriate language"; }
+    const status = rejectionReason ? "rejected" : data.media.length ? "pending" : "published";
+    const saved = await db.transaction(async tx => {
+      const [row] = await tx.insert(feedbackComments).values({ ...data, userId: actor.id, status, autoRejected: Boolean(rejectionReason), rejectionReason }).returning();
+      if (status === "pending") await enqueueJob("media-moderation", actor.id, { commentId: row.id, revision: row.revision }, `comment:${row.id}:${row.revision}`, tx);
+      return row;
     });
+    if (status === "rejected") return { success: false, data: null, message: "Your comment was held for review because it contains inappropriate language." };
+    if (status === "published") await notifyPostSubscribers({ postId: data.feedbackId, postType: "feedback", commenterId: actor.id, commenterName: actor.name ?? "Citizen", commentText: data.comment });
+    return { success: true, data: status === "pending" ? null : { ...saved, media: saved.media ?? [], user: { id: actor.id, name: actor.name ?? "Citizen", image: typeof actor.image === "string" ? actor.image : null } }, message: status === "pending" ? "Your comment is awaiting media review." : "Comment posted successfully." };
+  } catch (error) { return { success: false, data: null, message: error instanceof z.ZodError ? error.issues[0].message : error instanceof Error ? error.message : "Comment could not be posted." }; }
+}
+export async function addFeedbackComment(data: CommentPayload) { return createFeedbackComment(data); }
 
-    return {
-      success: true,
-      data: {
-        id: commentId,
-        feedbackId: data.feedbackId,
-        userId,
-        comment,
-        media: data.media ?? [],
-        helpfulCount: 0,
-        unhelpfulCount: 0,
-        createdAt: new Date(),
-        user: {
-          id: userId,
-          name: userName,
-          image: userImage,
-        },
-      },
-      message: "Comment posted successfully.",
-    };
-  } catch (error) {
-    console.error("Failed to insert feedback comment:", error);
-    return {
-      success: false,
-      data: null,
-      message: "Failed to post comment. Please try again.",
-    };
-  }
+export async function updateFeedbackComment(input: { commentId: string; comment: string; media?: CommentMedia[] }) {
+  const actor = await requireAuth();
+  const [old] = await db.select().from(feedbackComments).where(and(eq(feedbackComments.id, z.uuid().parse(input.commentId)), eq(feedbackComments.userId, actor.id))).limit(1);
+  if (!old) return { success: false, message: "Comment not found" };
+  const data = commentInputSchema.parse({ ...input, feedbackId: old.feedbackId, media: input.media ?? old.media ?? [] });
+  assertCleanText(data.comment);
+  await db.transaction(async tx => {
+    const [saved] = await tx.update(feedbackComments).set({ comment: data.comment, media: data.media, status: data.media.length ? "pending" : "published", rejectionReason: null, autoRejected: false, moderatedBy: null, moderatedAt: null, revision: sql`${feedbackComments.revision} + 1`, updatedAt: new Date() }).where(and(eq(feedbackComments.id, old.id), eq(feedbackComments.userId, actor.id), eq(feedbackComments.revision, old.revision))).returning();
+    if (!saved) throw new Error("This comment changed. Refresh and try again.");
+    if (data.media.length) await enqueueJob("media-moderation", actor.id, { commentId: old.id, revision: saved.revision }, `comment:${old.id}:${saved.revision}`, tx);
+  });
+  return { success: true, message: data.media.length ? "Comment updated and awaiting media review." : "Comment updated." };
 }
 
-export async function addFeedbackComment(data: CommentPayload) {
-  return createFeedbackComment(data);
+export async function deleteFeedbackComment(commentId: string) {
+  const actor = await requireAuth();
+  const rows = await db.delete(feedbackComments).where(and(eq(feedbackComments.id, z.uuid().parse(commentId)), eq(feedbackComments.userId, actor.id))).returning({ id: feedbackComments.id });
+  if (!rows.length) throw new Error("Comment not found");
+  return { success: true as const, message: "Comment deleted." };
 }
 
-export async function voteComment(data: {
-  commentId: string;
-  voteType: VoteType;
-}): Promise<{
-  success: true;
-  data: {
-    helpfulCount: number;
-    unhelpfulCount: number;
-    userVote: VoteType;
-  };
-  message: string;
-}> {
-  return {
-    success: true,
-    data: {
-      helpfulCount: data.voteType === "helpful" ? 1 : 0,
-      unhelpfulCount: data.voteType === "unhelpful" ? 1 : 0,
-      userVote: data.voteType,
-    },
-    message: `Marked as ${data.voteType}.`,
-  };
-}
-
-export async function updateFeedbackComment(
-  data: UpdateCommentPayload,
-): Promise<{ success: boolean; message: string }> {
-  const comment = data.comment.trim();
-
-  if (!comment) {
-    return {
-      success: false,
-      message: "Comment cannot be empty.",
-    };
-  }
-
-  try {
-    assertCleanText(comment);
-  } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Your comment contains inappropriate language.",
-    };
-  }
-
-  return {
-    success: true,
-    message: "Comment updated.",
-  };
-}
-
-export async function deleteFeedbackComment(
-  _commentId: string,
-): Promise<{ success: true; message: string }> {
-  void _commentId;
-  return {
-    success: true,
-    message: "Comment deleted.",
-  };
+export async function voteComment(data: { commentId: string; voteType: "helpful" | "unhelpful" }) {
+  const actor = await requireAuth(); const id = z.uuid().parse(data.commentId); const voteType = z.enum(["helpful", "unhelpful"]).parse(data.voteType);
+  return db.transaction(async tx => {
+    const [comment] = await tx.select().from(feedbackComments).where(and(eq(feedbackComments.id, id), eq(feedbackComments.status, "published"))).limit(1).for("update");
+    if (!comment) throw new Error("Comment not found");
+    const [old] = await tx.select().from(feedbackCommentVotes).where(and(eq(feedbackCommentVotes.commentId, id), eq(feedbackCommentVotes.userId, actor.id))).limit(1);
+    if (old?.voteType === voteType) await tx.delete(feedbackCommentVotes).where(eq(feedbackCommentVotes.id, old.id));
+    else await tx.insert(feedbackCommentVotes).values({ commentId: id, userId: actor.id, voteType }).onConflictDoUpdate({ target: [feedbackCommentVotes.userId, feedbackCommentVotes.commentId], set: { voteType } });
+    const [{ helpful, unhelpful }] = await tx.select({ helpful: sql<number>`count(*) filter (where ${feedbackCommentVotes.voteType} = 'helpful')::int`, unhelpful: sql<number>`count(*) filter (where ${feedbackCommentVotes.voteType} = 'unhelpful')::int` }).from(feedbackCommentVotes).where(eq(feedbackCommentVotes.commentId, id));
+    await tx.update(feedbackComments).set({ helpfulCount: helpful, unhelpfulCount: unhelpful }).where(eq(feedbackComments.id, id));
+    return { success: true as const, data: { helpfulCount: helpful, unhelpfulCount: unhelpful, userVote: old?.voteType === voteType ? null : voteType }, message: "Vote saved." };
+  });
 }

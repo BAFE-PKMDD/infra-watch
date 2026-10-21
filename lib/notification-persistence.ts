@@ -3,6 +3,8 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { notificationRecipients, notifications } from "@/lib/db/schema";
 import { removeOrphanedNotificationsForUser } from "@/lib/submission-notifications";
+import { notificationRecipientsForChannel } from "@/lib/account-preferences";
+import { enqueueJob } from "@/lib/background-jobs";
 import {
   broadcastNotification,
   createRealtimeNotification,
@@ -50,12 +52,21 @@ export async function publishAndPersistNotification(
   input: Omit<RealtimeNotification, "id" | "createdAt" | "isRead">,
   recipientUserIds: string[],
 ) {
-  const recipients = uniqueRecipientIds(recipientUserIds);
-  if (recipients.length === 0) return null;
-
+  const allRecipients = uniqueRecipientIds(recipientUserIds);
+  if (!allRecipients.length) return null;
+  const [recipients, emailRecipients, smsRecipients] = await Promise.all([
+    notificationRecipientsForChannel(allRecipients, "inApp"),
+    notificationRecipientsForChannel(allRecipients, "email"),
+    notificationRecipientsForChannel(allRecipients, "sms"),
+  ]);
   const notification = createRealtimeNotification(input);
-  await persistNotification(notification, recipients);
-  broadcastNotification(notification, recipients);
+  if (recipients.length) {
+    await persistNotification(notification, recipients);
+    broadcastNotification(notification, recipients);
+  }
+  if (emailRecipients.length || smsRecipients.length) {
+    await enqueueJob("notification-delivery", "system", { notification, emailRecipients, smsRecipients }, `notification:${notification.id}`);
+  }
   return notification;
 }
 

@@ -1,11 +1,11 @@
 "use server";
 
-import { count, desc, eq } from "drizzle-orm";
+import { count, desc, eq, inArray } from "drizzle-orm";
 
 import { user as authUser } from "@/auth-schema";
 import { isContactMessageStatus, type ContactMessageStatus } from "@/lib/contact-messages";
 import { db } from "@/lib/db";
-import { contactMessages } from "@/lib/db/schema";
+import { contactMessages, contactResponses } from "@/lib/db/schema";
 import { requirePermission } from "@/lib/permissions";
 import { requireAuth } from "@/lib/session";
 
@@ -44,12 +44,13 @@ export async function getContactMessages(filters: { status?: string; page?: numb
   ]);
 
   const counts: Record<ContactMessageStatus, number> = { new: 0, in_progress: 0, resolved: 0 };
+  const responses = rows.length ? await db.select({ id: contactResponses.id, messageId: contactResponses.messageId, body: contactResponses.body, status: contactResponses.status, sentAt: contactResponses.sentAt, createdAt: contactResponses.createdAt, responderName: authUser.name }).from(contactResponses).leftJoin(authUser, eq(authUser.id, contactResponses.responderId)).where(inArray(contactResponses.messageId, rows.map(row => row.id))).orderBy(desc(contactResponses.createdAt)) : [];
   for (const row of statusCounts) {
     if (isContactMessageStatus(row.status)) counts[row.status] = row.total;
   }
 
   return {
-    data: rows,
+    data: rows.map(row => ({ ...row, responses: responses.filter(response => response.messageId === row.id) })),
     status,
     page,
     pageSize: PAGE_SIZE,

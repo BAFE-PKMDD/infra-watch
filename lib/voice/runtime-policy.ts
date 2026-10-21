@@ -79,7 +79,30 @@ export function extractCompleteSentences(buffer: string) {
       start = index + 1;
     }
   }
-  return { sentences, rest: buffer.slice(start).trim() };
+  // trimStart only: a delta may end on a space that the next delta continues from.
+  return { sentences, rest: buffer.slice(start).trimStart() };
+}
+
+// The first spoken chunk gates time-to-first-audio, so it may break at a clause
+// boundary (", " / "; " / ": ") instead of waiting for a full sentence.
+export const FIRST_CHUNK_MIN_CHARS = 40;
+const FIRST_CHUNK_MIN_CLAUSE_CHARS = 20;
+
+export function extractEarlyClause(buffer: string) {
+  if (buffer.length < FIRST_CHUNK_MIN_CHARS) return null;
+  let boundary = -1;
+  for (let index = FIRST_CHUNK_MIN_CLAUSE_CHARS; index < buffer.length - 1; index += 1) {
+    const char = buffer[index];
+    if ((char === "," || char === ";" || char === ":") && buffer[index + 1] === " ") {
+      boundary = index;
+    }
+  }
+  if (boundary < 0) return null;
+  return {
+    clause: buffer.slice(0, boundary + 1).trim(),
+    // Keep trailing whitespace: the next delta may continue mid-phrase.
+    rest: buffer.slice(boundary + 1).trimStart(),
+  };
 }
 
 export type SpokenBudget = {
@@ -123,6 +146,7 @@ export function createStreamingSpeechRunner<T>({
   let playbackChain = Promise.resolve();
   let lastSettled = playbackChain;
   let truncated = false;
+  let firstDelivered = false;
   let streamEnded = false;
   let stopped = false;
   let failure: unknown = null;
@@ -159,6 +183,7 @@ export function createStreamingSpeechRunner<T>({
       truncated = true;
       return;
     }
+    firstDelivered = true;
     enqueue(piece);
   };
 
@@ -168,6 +193,13 @@ export function createStreamingSpeechRunner<T>({
     const extracted = extractCompleteSentences(buffer);
     buffer = extracted.rest;
     for (const sentence of extracted.sentences) deliver(sentence);
+    if (!firstDelivered) {
+      const early = extractEarlyClause(buffer);
+      if (early) {
+        buffer = early.rest;
+        deliver(early.clause);
+      }
+    }
     if (buffer.length >= maxChars) {
       deliver(buffer);
       buffer = "";
@@ -277,6 +309,11 @@ export function isVoiceExplicitlyDisabled(persistedPreference: string | null) {
 
 export const VOICE_PLAYBACK_COOLDOWN_MS = 750;
 
+// Silence that ends a spoken command. Whisper's server-side VAD still rejects
+// non-speech, so this only trades a little tolerance for mid-sentence pauses
+// against ~600 ms less dead air before every answer.
+export const VOICE_END_OF_SPEECH_SILENCE_MS = 600;
+
 export function isVoiceInputBlocked({
   playbackActive,
   blockedUntil,
@@ -371,7 +408,9 @@ export function getRecordingDecision({
   maxDurationMs?: number;
 }): RecordingDecision {
   if (elapsedMs >= maxDurationMs) return heardSpeech ? "process" : "return_to_wake";
-  if (heardSpeech) return trailingSilenceMs >= 1_200 ? "process" : "continue";
+  if (heardSpeech) {
+    return trailingSilenceMs >= VOICE_END_OF_SPEECH_SILENCE_MS ? "process" : "continue";
+  }
   if (elapsedMs < 5_000) return "continue";
   return "return_to_wake";
 }

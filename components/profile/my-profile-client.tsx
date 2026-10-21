@@ -9,14 +9,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/i18n";
 import { updateMyPhoneNumber } from "@/actions/mutation/profile.mutation";
+import { AccountControls } from "./account-controls";
+import type { NotificationPreferences } from "@/lib/operations-models";
 
 // Roles with a label under account.profile.roles; any other role is shown as stored.
 const LABELED_ROLES = ["citizen", "moderator", "admin"];
 
 export function MyProfileClient({
   user,
+  preferences,
+  hasPassword,
 }: {
   user: { name: string; email: string; role: string; phoneNumber: string | null };
+  preferences: NotificationPreferences;
+  hasPassword: boolean;
 }) {
   const { t } = useTranslation();
   const [phoneInput, setPhoneInput] = useState(user.phoneNumber ?? "");
@@ -43,7 +49,7 @@ export function MyProfileClient({
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+      <main className="mx-auto min-w-0 w-full max-w-2xl px-4 py-10 sm:px-6">
         <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{t("account.profile.title")}</h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           {t("account.profile.subtitle")}
@@ -96,6 +102,7 @@ export function MyProfileClient({
             {showsSmsNote ? t("account.profile.smsNote") : t("account.profile.formatNote")}
           </p>
         </div>
+        <AccountControls preferences={preferences} hasPassword={hasPassword} />
       </main>
     </>
   );

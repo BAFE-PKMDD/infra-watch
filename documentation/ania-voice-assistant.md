@@ -88,6 +88,14 @@ Production must reverse-proxy `/voice/wake` to the sidecar with WebSocket upgrad
 8. Security: inspect Network—no API key is sent to the browser, wake audio uses WSS in production, and transcription responses use `Cache-Control: no-store`.
 9. Browser matrix: test current Chrome and Edge, denied microphone permission, autoplay restrictions, and an unavailable sidecar for user-friendly errors.
 
+## Latency tuning
+
+- A command ends after 600 ms of trailing silence (`VOICE_END_OF_SPEECH_SILENCE_MS` in `lib/voice/runtime-policy.ts`). Raise it if mid-sentence pauses cut commands short.
+- Whisper decodes greedily (`beam_size: 1`) in `services/ania-whisper/decoding.py`. Rebuild/restart the Whisper service after changing it.
+- Set `VOICE_AI_MODEL` to use a faster model, with the same provider as `AI_PROVIDER`, for spoken replies only. Typed chat keeps `AI_MODEL`. When unset, voice uses the normal model.
+- The first spoken chunk may break at a clause (`, ` / `; ` / `: `) once it reaches 40 characters, so speech starts before the first full sentence is written.
+- Each completed voice turn logs `[ANIA timing]` to the browser console (development, or `NEXT_PUBLIC_VOICE_TIMING=true`) with cumulative `stages` and per-hop `gaps` for recording stop, transcript, first token, first audio and speech end. `serverTranscribeMs` is the Whisper time reported by the `Server-Timing` header of `/api/voice/transcribe`.
+
 ## Operational notes
 
 - The worker bundle (`public/ania/tts-worker.js`, 2.1 MB minified) is committed so the running dev server can serve it immediately; `npm run dev`/`npm run build` regenerate it first. Rebuild after editing `lib/voice/tts-worker.ts`. Standalone deployments must copy the `public/` directory alongside `.next/standalone` (standard Next.js standalone requirement).

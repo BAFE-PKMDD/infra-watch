@@ -32,6 +32,7 @@ export function createTutorialSandbox(id: string, kind?: TutorialKind): Tutorial
   return {
     id,
     contact: {
+      responses: [],
       id: TUTORIAL_CONTACT_ID, name: "Tutorial citizen", email: "citizen@example.invalid", subject: "Request for a project update",
       message: "Tutorial example: where can I find the latest update on the irrigation canal inspection?", status: "new", userId: null,
       handledAt: null, handledByName: null, createdAt: new Date(date),

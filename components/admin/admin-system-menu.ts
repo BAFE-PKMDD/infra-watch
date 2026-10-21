@@ -20,6 +20,7 @@ export const adminSystemGroups = [
     label: "Content & Communication",
     collapsible: true,
     items: [
+      { label: "Comment Moderation", href: "/comment-moderation", icon: FileText, resource: "feedback", action: "list" },
       {
         label: "Articles & Publications",
         href: "/articles",
@@ -66,6 +67,8 @@ export const adminSystemGroups = [
     label: "Data & Mapping",
     collapsible: true,
     items: [
+      { label: "Location Sync", href: "/locations/sync", icon: RefreshCw, resource: "abemis_sync", action: "trigger", roles: ["admin"] },
+      { label: "Regional Statistics", href: "/regional-statistics", icon: DatabaseZap, resource: "system_settings", action: "update", roles: ["admin"] },
       {
         label: "Map Layers",
         href: "/map-layers",
@@ -105,6 +108,7 @@ export const adminSystemGroups = [
     label: "Administration",
     collapsible: true,
     items: [
+      { label: "System Health", href: "/health-check", icon: Settings, resource: "system_settings", action: "update", roles: ["admin"] },
       {
         label: "Audit Logs",
         href: "/audit-logs",

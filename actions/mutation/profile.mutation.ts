@@ -7,6 +7,8 @@ import { user } from "@/auth-schema";
 import { getAuditContextFromServerAction, logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
+import { accountPreferences } from "@/lib/db/schema";
+import { notificationPreferencesSchema } from "@/lib/operations-models";
 
 const PH_MOBILE_LOCAL = /^09\d{9}$/;
 const PH_MOBILE_INTL = /^\+639\d{9}$/;
@@ -46,4 +48,19 @@ export async function updateMyPhoneNumber(rawPhoneNumber: string | null) {
   });
 
   return { success: true, phoneNumber };
+}
+
+export async function updateMyNotificationPreferences(input: unknown) {
+  const currentUser = await requireAuth();
+  const parsed = notificationPreferencesSchema.safeParse(input);
+  if (!parsed.success) return { success: false as const, error: "Check the notification preferences and try again." };
+  const values = parsed.data;
+  if (values.sms) {
+    const [profile] = await db.select({ phoneNumber: user.phoneNumber }).from(user).where(eq(user.id, currentUser.id)).limit(1);
+    if (!profile?.phoneNumber) return { success: false as const, error: "Save a mobile number before enabling SMS notifications" };
+  }
+  await db.insert(accountPreferences).values({ userId: currentUser.id, ...values }).onConflictDoUpdate({ target: accountPreferences.userId, set: { ...values, updatedAt: new Date() } });
+  revalidatePath("/my-profile");
+  revalidatePath("/account-settings");
+  return { success: true as const, preferences: values };
 }

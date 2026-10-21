@@ -14,6 +14,7 @@ const privatePaths = [
 ];
 
 const publicPaths = [
+  "articles/1730000000000-0123456789abcdef0123456789abcdef.jpg",
   "feedback/1730000000000-0123456789abcdef0123456789abcdef.jpg",
   "live-videos/1730000000000-0123456789abcdef0123456789abcdef.mp4",
 ];
@@ -50,6 +51,7 @@ test("public bucket policy exposes only approved public-media prefixes", () => {
   const resources = policy.Statement.flatMap((statement) => statement.Resource);
 
   assert.deepEqual(resources.sort(), [
+    "arn:aws:s3:::infra-watch/articles/*",
     "arn:aws:s3:::infra-watch/feedback-comment/*",
     "arn:aws:s3:::infra-watch/feedback/*",
     "arn:aws:s3:::infra-watch/live-videos/*",

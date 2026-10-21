@@ -3,7 +3,9 @@
   "configurations": [
     {
       "name": "infra-watch-dev",
-      "url": "http://localhost:3101"
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3101
     }
   ]
 }

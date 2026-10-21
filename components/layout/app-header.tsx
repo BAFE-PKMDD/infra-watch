@@ -150,11 +150,20 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-3">
               <Image
-                src="/infra-watch-logo.png"
+                src="/infra-watch-logo-light.png"
                 alt={t("nav.logoAlt")}
-                width={96}
-                height={64}
-                className="h-10 w-auto flex-shrink-0 object-contain sm:h-12"
+                width={400}
+                height={231}
+                className="h-10 w-auto flex-shrink-0 object-contain sm:h-12 dark:hidden"
+                priority
+                unoptimized
+              />
+              <Image
+                src="/infra-watch-logo-dark.png"
+                alt={t("nav.logoAlt")}
+                width={400}
+                height={237}
+                className="hidden h-10 w-auto flex-shrink-0 object-contain sm:h-12 dark:block"
                 priority
                 unoptimized
               />
@@ -316,7 +325,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                         </Link>
                       )}
                       <Link
-                        href="/my-profile"
+                        href="/account-settings"
                         className={cn(MENU_ITEM, MENU_ITEM_TEXT)}
                         onClick={() => setOpenOverlay(null)}
                       >
@@ -456,7 +465,7 @@ export function AppHeader({ activeItem, actionLabel }: AppHeaderProps) {
                   </Link>
                 )}
                 <Link
-                  href="/my-profile"
+                  href="/account-settings"
                   className="flex min-h-11 items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                   onClick={() => setMobileOpen(false)}
                 >

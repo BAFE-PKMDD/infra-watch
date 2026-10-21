@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CommodityEditor } from "@/components/admin/operations/commodity-editor";
 
 import {
   Table,
@@ -11,7 +12,7 @@ import {
 
 type AdminProject = {
   id: string;
-  sourceProjectId: string;
+  abemisId: string;
   projectCode: string | null;
   name: string;
   program: string;
@@ -22,6 +23,7 @@ type AdminProject = {
   budget: string | null;
   physicalProgress: number;
   lastSyncedAt: string | Date;
+  commodities?: string[] | null;
 };
 
 function formatCurrency(value: string | null) {
@@ -77,10 +79,11 @@ export function ProjectsTable({ projects, isLoading }: { projects: AdminProject[
           {projects.map((project) => (
             <TableRow key={project.id}>
               <TableCell className="max-w-sm whitespace-normal">
-                <Link href={`/projects/${project.sourceProjectId}`} className="font-extrabold text-slate-950 hover:text-primary dark:text-white">
+                <Link href={`/projects/${project.abemisId}`} className="font-extrabold text-slate-950 hover:text-primary dark:text-white">
                   {project.name}
                 </Link>
-                <p className="mt-1 font-mono text-xs text-slate-500">{project.projectCode ?? project.sourceProjectId}</p>
+                <p className="mt-1 font-mono text-xs text-slate-500">{project.projectCode ?? project.abemisId}</p>
+                <CommodityEditor id={project.id} commodities={project.commodities ?? []} />
               </TableCell>
               <TableCell>
                 <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-bold text-primary">{project.program}</span>

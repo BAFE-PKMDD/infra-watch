@@ -21,6 +21,11 @@ import {
   VOICE_PLAYBACK_COOLDOWN_MS,
 } from "@/lib/voice/runtime-policy";
 import {
+  createVoiceTurnTimer,
+  logVoiceTurnTiming,
+  parseServerTimingMs,
+} from "@/lib/voice/timing";
+import {
   createWorkerSpeechEngine,
   type SpeechSynthesisEngine,
 } from "@/lib/voice/tts-worker-client";
@@ -57,6 +62,13 @@ function recordingMimeType() {
   if (typeof MediaRecorder === "undefined") return "";
   return ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
     .find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
+}
+
+function closeAudioContext(context: AudioContext | null | undefined) {
+  if (!context || context.state === "closed") return;
+  context.close().catch(() => {
+    // Already closed by a concurrent teardown.
+  });
 }
 
 function downsampleTo16Khz(input: Float32Array, sampleRate: number) {
@@ -178,7 +190,7 @@ export function useVoiceAssistant({
       processorRef.current.disconnect();
     }
     processorRef.current = null;
-    void audioContextRef.current?.close();
+    closeAudioContext(audioContextRef.current);
     audioContextRef.current = null;
     socketRef.current?.close();
     socketRef.current = null;
@@ -313,9 +325,12 @@ export function useVoiceAssistant({
   );
 
   const beginStreamingSpeech = useCallback(
-    (operation: number) => {
+    (operation: number, timer: ReturnType<typeof createVoiceTurnTimer>) => {
       const engine = getSpeechEngine();
-      const play = makePlay(operation, () => dispatch({ type: "SPEECH_STARTED" }));
+      const play = makePlay(operation, () => {
+        timer.mark("first_audio");
+        dispatch({ type: "SPEECH_STARTED" });
+      });
       return createStreamingSpeechRunner({
         generate: (speech) => engine.generate(speech),
         play,
@@ -328,6 +343,8 @@ export function useVoiceAssistant({
   const processRecording = useCallback(
     async (blob: Blob, operation: number, isFollowup: boolean) => {
       if (operationRef.current !== operation) return;
+      const timer = createVoiceTurnTimer();
+      timer.mark("recording_stopped");
       dispatch({ type: "RECORDING_STOPPED" });
       const form = new FormData();
       form.set("audio", blob, blob.type.includes("mp4") ? "command.mp4" : "command.webm");
@@ -357,17 +374,24 @@ export function useVoiceAssistant({
         dispatch({ type: "RESET" });
         return;
       }
+      timer.mark("transcript_ready");
+      timer.setServerTranscribeMs(
+        parseServerTimingMs(response.headers.get("Server-Timing"), "whisper"),
+      );
       onTranscriptionRef.current?.(payload.text);
       dispatch({ type: "TRANSCRIPTION_READY" });
-      const speech = beginStreamingSpeech(operation);
-      const answer = await submitCommandRef.current(payload.text, (delta) =>
-        speech.push(delta),
-      );
+      const speech = beginStreamingSpeech(operation, timer);
+      const answer = await submitCommandRef.current(payload.text, (delta) => {
+        if (delta) timer.mark("first_token");
+        speech.push(delta);
+      });
       if (operationRef.current !== operation) return;
       if (!answer?.trim()) throw new Error("ANIA did not receive a complete response.");
       dispatch({ type: "RESPONSE_READY" });
       const spoken = await speech.end();
       if (!spoken || operationRef.current !== operation) return;
+      timer.mark("speech_ended");
+      logVoiceTurnTiming(timer.report());
       dispatch({ type: "SPEECH_ENDED" });
       if (
         shouldStartConversationalFollowup({
@@ -690,7 +714,7 @@ export function useVoiceAssistant({
     } finally {
       enablingRef.current = false;
       if (operationRef.current !== operation) {
-        void context?.close();
+        closeAudioContext(context);
         stream?.getTracks().forEach((track) => track.stop());
       }
     }

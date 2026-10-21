@@ -65,7 +65,9 @@ test("with the live line there is no prototype notice and no simulation controls
   assert.match(html, /Messages to check/);
 });
 
-test("when the live feed is unreachable the sample-data warning is still shown", () => {
-  const html = renderToStaticMarkup(<SmsGrievanceTable initialRecords={SMS_MOCK_SCENARIOS} dataSource="sample" liveFetchError />);
-  assert.match(html, /live SMS grievance feed could not be reached/);
+test("when the live feed is unreachable an unavailable notice is shown instead of sample data", () => {
+  const html = renderToStaticMarkup(<SmsGrievanceTable initialRecords={[]} dataSource="live" liveFetchError />);
+  assert.match(html, /SMS grievance feed unavailable/);
+  assert.match(html, /not an empty inbox/);
+  assert.doesNotMatch(html, /sample/i);
 });

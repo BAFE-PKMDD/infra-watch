@@ -48,7 +48,13 @@ export async function GET(request: NextRequest) {
   // for the `type` browse mode below) — used by staff-facing search UIs that let someone
   // pick an exact province from a dropdown and expect results actually limited to it.
   const provinceExact = request.nextUrl.searchParams.get("provinceExact")?.trim();
-  const limit = Math.min(Number(request.nextUrl.searchParams.get("limit") ?? 10), 25);
+  const limit = Number(request.nextUrl.searchParams.get("limit") ?? 10);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 25) {
+    return NextResponse.json(
+      { error: "limit must be an integer between 1 and 25." },
+      { status: 400 },
+    );
+  }
   const tokens = search ? tokenize(search) : [];
 
   // Same standardized project type, when there's no search text at all — biased toward

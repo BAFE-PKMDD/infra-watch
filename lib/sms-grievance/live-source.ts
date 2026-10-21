@@ -1,4 +1,3 @@
-import { SMS_MOCK_SCENARIOS } from "@/lib/sms-grievance/mock-fixtures";
 import { parseSmsCoordinates } from "@/lib/sms-grievance/location";
 import { drizzleSmsReviewStore, type SmsReviewStore, type StoredSmsReview } from "@/lib/sms-grievance/review-store";
 import type { SmsMockScenario } from "@/types/sms-grievance.types";
@@ -183,16 +182,16 @@ export function overlaySavedReviews(liveRecords: SmsMockScenario[], saved: Map<s
   });
 }
 
-// Falls back to the deterministic sample set on any failure (unreachable host, non-2xx,
-// malformed body) so the review page still renders something coherent during an outage,
-// while telling staff plainly that what they're looking at is not real.
+// When the line cannot be read (unreachable host, non-2xx, malformed body) the queue is
+// returned empty with `liveFetchError` set, so the page can say the feed is unavailable
+// instead of presenting invented messages as if they were real.
 export async function getSmsGrievanceQueue(store: SmsReviewStore = drizzleSmsReviewStore): Promise<SmsGrievanceQueue> {
   let liveRecords: SmsMockScenario[];
   try {
     liveRecords = await fetchLiveSmsGrievanceRecords();
   } catch (error) {
-    console.error("[SMS Grievance] Falling back to sample messages:", error instanceof Error ? error.message : error);
-    return { records: SMS_MOCK_SCENARIOS, dataSource: "sample", liveFetchError: true };
+    console.error("[SMS Grievance] Live feed unavailable:", error instanceof Error ? error.message : error);
+    return { records: [], dataSource: "live", liveFetchError: true };
   }
 
   try {

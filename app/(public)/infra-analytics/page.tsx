@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 import { publicAnalyticsFontClassName } from "@/components/public-analytics/fonts";
 import { PublicAnalyticsView } from "@/components/public-analytics/public-analytics-view";
@@ -41,5 +42,5 @@ export default async function InfraAnalyticsPage({ searchParams }: { searchParam
       ? <p role="status" className="mx-auto max-w-3xl px-4 py-16 text-center text-base text-pa-ink-2">{t.page.noData}</p>
       : <p role="alert" className="mx-auto max-w-3xl px-4 py-16 text-center text-base text-pa-ink-2">{t.page.unavailable}</p>;
 
-  return <div className={`public-analytics ${publicAnalyticsFontClassName} min-h-screen`}>{content}</div>;
+  return <div className={`public-analytics ${publicAnalyticsFontClassName} min-h-screen`}><div className="mx-auto max-w-7xl px-4 pt-4"><Link className="inline-flex min-h-11 items-center text-sm font-semibold text-primary underline" href="/statistics">Reported regional figures and source documents</Link></div>{content}</div>;
 }

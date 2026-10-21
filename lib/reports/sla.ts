@@ -100,6 +100,15 @@ function assembleReport(tableData: SlaTableRow[], range: ReportRange): SlaReport
   };
 }
 
+export function buildContactSlaReport(records: { id: string; subject: string; status: string; createdAt: Date; firstResponseAt: Date | null; handledAt: Date | null }[], range: ReportRange, now = new Date()): SlaReportData {
+  return assembleReport(records.map(record => {
+    const responseTimeMs = duration(record.createdAt, record.firstResponseAt);
+    const resolutionTimeMs = record.status === "resolved" ? duration(record.createdAt, record.handledAt) : null;
+    const resolvedAt = resolutionTimeMs === null ? null : record.handledAt;
+    return { id: record.id, referenceId: record.subject, status: record.status, createdAt: record.createdAt, firstResponseAt: responseTimeMs === null ? null : record.firstResponseAt, responseTimeMs, resolvedAt, resolutionTimeMs, isSlaBreach: isBreach(record.createdAt, responseTimeMs, now) };
+  }), range);
+}
+
 export function buildIssueSlaReport(records: IssueRecord[], responses: IssueResponseRecord[], range: ReportRange, now = new Date()): SlaReportData {
   const createdByIssue = new Map(records.map((record) => [record.id, record.createdAt]));
   const firstResponseByIssue = new Map<string, Date>();

@@ -4,7 +4,8 @@
  */
 
 import cron from "node-cron";
-import { hasRecentSuccessfulSync, syncAbemisProjects } from "./abemis/sync";
+import { hasRecentSuccessfulSync } from "./abemis/sync";
+import { enqueueJob } from "./background-jobs";
 import { purgeExpiredChatHistory } from "./chat-history";
 import { runSlaFollowUpReminders } from "./sla-followup";
 import { runCitizenAnalyticsMaintenance } from "./analytics/citizen-analytics-maintenance";
@@ -58,23 +59,8 @@ export function initScheduler() {
       console.log("[Scheduler] Starting scheduled ABEMIS sync...");
 
       try {
-        const result = await syncAbemisProjects({
-          syncType: "scheduled",
-          triggeredBy: "cron-scheduler",
-        });
-
-        if (result.status === "skipped") {
-          console.log("[Scheduler] ABEMIS sync skipped; another sync was already running.");
-        } else if (result.success) {
-          console.log(
-            `[Scheduler] ABEMIS sync ${result.status} in ${result.duration}ms. Added ${result.statistics.projectsAdded}, updated ${result.statistics.projectsUpdated}, failed ${result.statistics.projectsFailed}.`
-          );
-        } else {
-          console.error(
-            `[Scheduler] ABEMIS sync completed with errors.`,
-            JSON.stringify(result.errors, null, 2)
-          );
-        }
+        const job = await enqueueJob("abemis-sync", "cron-scheduler", { syncType: "scheduled" });
+        console.log("[Scheduler] Queued ABEMIS synchronization", { jobId: job.id });
       } catch (error) {
         console.error(
           "[Scheduler] Scheduled ABEMIS sync failed to execute:",

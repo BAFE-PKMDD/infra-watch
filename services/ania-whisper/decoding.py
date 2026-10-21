@@ -63,8 +63,10 @@ def verified_transcript(
 def transcription_options(language: str) -> dict[str, Any]:
     return {
         "language": language,
-        "beam_size": 5,
-        "best_of": 5,
+        # Greedy decoding: short spoken commands gain little from beam search,
+        # and the initial prompt/hotwords already bias domain terms.
+        "beam_size": 1,
+        "best_of": 1,
         "temperature": 0.0,
         "vad_filter": True,
         "vad_parameters": {

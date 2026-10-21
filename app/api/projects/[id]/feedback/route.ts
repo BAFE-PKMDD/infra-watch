@@ -3,7 +3,7 @@ import { user as authUser } from "@/auth-schema";
 import { auth } from "@/lib/auth";
 import { getAuditContextFromRequest, logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
-import { feedback, projects } from "@/lib/db/schema";
+import { feedback, feedbackComments, projects } from "@/lib/db/schema";
 import { publishAndPersistNotification } from "@/lib/notification-persistence";
 import { getProjectNotificationRecipientIds } from "@/lib/staff-notification-recipients";
 import { assertCleanText } from "@/lib/services/content-moderation";
@@ -280,7 +280,7 @@ export async function GET(
         updatedAt: feedback.updatedAt,
         userName: authUser.name,
         userImage: authUser.image,
-        commentCount: sql<number>`0`,
+        commentCount: sql<number>`(SELECT count(*)::int FROM ${feedbackComments} WHERE ${feedbackComments.feedbackId} = ${feedback.id} AND ${feedbackComments.status} = 'published')`,
       })
       .from(feedback)
       .leftJoin(authUser, eq(authUser.id, feedback.userId))
