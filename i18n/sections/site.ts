@@ -35,8 +35,8 @@ export const site = {
       suggestions: [
         "Show ongoing projects in Aklan",
         "Summarize projects by status",
-        "Show AMEFIP projects in Region VI",
-        "Show 10 ongoing projects with contractors",
+        "Which projects have the highest budgets?",
+        "Show completed projects in Aklan",
       ],
       launcherTitle: "Click to chat • Drag to move anywhere • Double-click to reset",
       open: "Open ANIA",
@@ -477,8 +477,8 @@ export const site = {
       suggestions: [
         "Ipakita ang mga ongoing na project sa Aklan",
         "I-summarize ang mga project ayon sa status",
-        "Ipakita ang mga AMEFIP project sa Region VI",
-        "Ipakita ang 10 ongoing na project at contractor nila",
+        "Aling mga project ang may pinakamataas na budget?",
+        "Ipakita ang mga natapos na project sa Aklan",
       ],
       launcherTitle: "I-click para mag-chat • I-drag para ilipat kahit saan • I-double-click para ibalik sa dati",
       open: "Buksan ang ANIA",

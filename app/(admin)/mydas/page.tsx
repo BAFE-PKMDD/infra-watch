@@ -99,9 +99,9 @@ type MydasMessage = {
 
 
 const SUGGESTIONS = [
-  "Which regions have the most delayed projects?",
-  "Show the top 10 municipalities by approved budget.",
-  "Compare AMEFIP vs INS completion rates by year.",
+  "Summarize project progress in Region VI.",
+  "How many projects were completed this year?",
+  "What is the total approved budget for AMEFIP projects?",
 ];
 
 const DISCLAIMER = "AI-generated analysis. Verify against the source data before making official decisions.";

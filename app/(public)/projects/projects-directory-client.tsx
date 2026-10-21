@@ -1,5 +1,4 @@
 "use client";
-import { ProjectExportButton } from "@/components/projects/project-export-button";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -601,8 +600,6 @@ export default function ProjectsCatalog() {
                   <MapIcon className="w-4 h-4" />
                 </button>
               </div>
-
-              <ProjectExportButton params={directoryQueryString} />
             </div>
           </div>
 
