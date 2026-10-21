@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import Image from "next/image";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ExternalLink, FileText, SquarePen, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadContent,
@@ -23,8 +25,7 @@ import {
   type ManagedRecord,
 } from "@/lib/content-models";
 import { CONTENT_CONFIG } from "./content-form-config";
-import { getFullUrl } from "@/lib/minio-url";
-import { useAuth } from "@/providers/auth-provider";
+import { ArticleEditor } from "./article-editor";
 import { MarkdownContent } from "./markdown-content";
 import { contentControlClass, contentButtonClass } from "./content-controls";
 
@@ -39,162 +40,23 @@ function formatDate(value: unknown, withTime = false) {
     : "Not set";
 }
 
-function ProjectPicker({
-  initialCode,
-  required,
-}: {
-  initialCode: string;
-  required: boolean;
-}) {
-  const { user } = useAuth();
-  const [code, setCode] = useState(initialCode);
-  const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
-  useEffect(() => {
-    const timer = setTimeout(() => setQuery(search), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-  const { data, isFetching, isError } = useQuery({
-    queryKey: [
-      "article-project-search",
-      user?.id,
-      user?.role,
-      user?.region,
-      user?.assignedAgency,
-      query,
-    ],
-    enabled: Boolean(user?.id) && query.trim().length >= 2,
-    queryFn: async () => {
-      const response = await fetch(
-        `/api/admin/projects?search=${encodeURIComponent(query)}&pageSize=10`,
-      );
-      if (!response.ok) throw new Error("Project search unavailable");
-      return response.json() as Promise<{
-        projects: { abemisId: string; name: string }[];
-      }>;
-    },
-  });
-  return (
-    <div className="space-y-2">
-      <input type="hidden" name="projectId" value={code} />
-      {code ? (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-slate-300 px-3 dark:border-slate-600">
-          <span className="break-all text-sm">{code}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            className={contentButtonClass}
-            onClick={() => {
-              setCode("");
-              setSearch("");
-            }}
-          >
-            Clear
-          </Button>
-        </div>
-      ) : (
-        <>
-          <label htmlFor="article-project-search" className="sr-only">
-            Search related project
-          </label>
-          <input
-            id="article-project-search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            required={required && !code}
-            placeholder="Search project name or code"
-            className={contentControlClass}
-            autoComplete="off"
-          />
-          {isFetching ? (
-            <p role="status" className="text-sm">
-              Searching projects…
-            </p>
-          ) : isError ? (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-300">
-              Project search is unavailable. Try again.
-            </p>
-          ) : query.length >= 2 && data?.projects.length === 0 ? (
-            <p className="text-sm">No projects match this search.</p>
-          ) : null}
-          {search && data?.projects.length ? (
-            <ul className="max-h-56 overflow-y-auto rounded-md border border-slate-300 dark:border-slate-600">
-              {data.projects.map((project) => (
-                <li key={project.abemisId}>
-                  <button
-                    type="button"
-                    className="min-h-11 w-full px-3 py-2 text-left text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
-                    onClick={() => {
-                      setCode(project.abemisId);
-                      setSearch("");
-                    }}
-                  >
-                    <span className="block font-semibold">{project.name}</span>
-                    <span className="block">{project.abemisId}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </>
-      )}
-    </div>
-  );
-}
-
 function ContentEditor({
   kind,
   record,
-  moderator,
   onSaved,
   onClose,
 }: {
   kind: ContentKind;
   record: ManagedRecord | null;
-  moderator: boolean;
   onSaved: () => void;
   onClose: () => void;
 }) {
   const config = CONTENT_CONFIG[kind];
   const [pending, setPending] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState(String(record?.content || ""));
   const busy = useRef(false);
-  const thumbnailInput = useRef<HTMLInputElement>(null);
   const contentInput = useRef<HTMLTextAreaElement>(null);
-  async function uploadThumbnail(file: File) {
-    setUploading(true);
-    setError(null);
-    try {
-      const data = new FormData();
-      data.set("file", file);
-      const response = await fetch("/api/upload?folder=articles", {
-        method: "POST",
-        body: data,
-      });
-      const result = (await response.json()) as {
-        path?: string;
-        kind?: string;
-        error?: string;
-      };
-      if (!response.ok || !result.path || result.kind !== "image")
-        throw new Error(result.error || "Thumbnail upload failed");
-      const url = getFullUrl(result.path);
-      if (!url) throw new Error("Thumbnail URL is unavailable");
-      if (thumbnailInput.current) {
-        thumbnailInput.current.value = new URL(url, window.location.origin).href;
-      }
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Thumbnail could not be uploaded. Try again.",
-      );
-    } finally {
-      setUploading(false);
-    }
-  }
   function formatAnnouncement(before: string, after = "") {
     const area = contentInput.current;
     if (!area) return;
@@ -211,7 +73,7 @@ function ContentEditor({
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy.current || uploading) return;
+    if (busy.current) return;
     const form = event.currentTarget;
     const data: Record<string, unknown> = Object.fromEntries(
       new FormData(form),
@@ -245,10 +107,7 @@ function ContentEditor({
   }
   return (
     <form onSubmit={submit} className="space-y-5">
-      <fieldset
-        disabled={pending || uploading}
-        className="grid gap-5 sm:grid-cols-2"
-      >
+      <fieldset disabled={pending} className="grid gap-5 sm:grid-cols-2">
         {config.fields.map((field) => {
           const initial = record?.[field.name] ?? field.defaultValue ?? "";
           const value = Array.isArray(initial)
@@ -293,9 +152,7 @@ function ContentEditor({
                     {field.label}
                     {field.required ? " *" : ""}
                   </label>
-                  {field.type === "project" ? (
-                    <ProjectPicker initialCode={value} required={moderator} />
-                  ) : field.options ? (
+                  {field.options ? (
                     <select
                       id={`content-${field.name}`}
                       name={field.name}
@@ -328,9 +185,6 @@ function ContentEditor({
                     <input
                       id={`content-${field.name}`}
                       name={field.name}
-                      ref={
-                        field.name === "thumbnail" ? thumbnailInput : undefined
-                      }
                       type={field.type || "text"}
                       defaultValue={value}
                       required={field.required}
@@ -341,26 +195,6 @@ function ContentEditor({
                       className={contentControlClass}
                     />
                   )}
-                  {field.name === "thumbnail" ? (
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="article-thumbnail-upload"
-                        className="block text-sm font-semibold"
-                      >
-                        Or upload a thumbnail
-                      </label>
-                      <input
-                        id="article-thumbnail-upload"
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        className={contentControlClass}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (file) void uploadThumbnail(file);
-                        }}
-                      />
-                    </div>
-                  ) : null}
                   {field.name === "content" ? (
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -420,16 +254,12 @@ function ContentEditor({
           variant="outline"
           className={contentButtonClass}
           onClick={onClose}
-          disabled={pending || uploading}
+          disabled={pending}
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          className={contentButtonClass}
-          disabled={pending || uploading}
-        >
-          {uploading ? "Uploading…" : pending ? "Saving…" : "Save"}
+        <Button type="submit" className={contentButtonClass} disabled={pending}>
+          {pending ? "Saving…" : "Save"}
         </Button>
       </div>
     </form>
@@ -505,9 +335,10 @@ export function ContentManager({
       setBusy(false);
     }
   }
+  const articlesView = kind === "articles";
   const columns =
     kind === "articles"
-      ? ["Title", "Category", "Source", "Project"]
+      ? ["Title", "Source", "Category", "Projects", "Date added"]
       : kind === "announcements"
         ? ["Title", "Status", "Display from", "Display until"]
         : ["Name", "Workspace / layer", "Opacity / order", "Status"];
@@ -559,117 +390,228 @@ export function ContentManager({
             Scroll the table horizontally to see all columns.
           </p>
           <div
-            tabIndex={0}
-            role="region"
-            aria-label={`${config.title} table`}
-            className="overflow-x-auto rounded-lg border border-slate-300 bg-background focus-visible:outline-2 focus-visible:outline-primary dark:border-slate-700"
+            className={
+              articlesView
+                ? "overflow-hidden rounded-xl border border-slate-300 bg-background dark:border-slate-700"
+                : undefined
+            }
           >
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="border-b border-slate-300 bg-muted dark:border-slate-700">
-                <tr>
-                  {[...columns, "Actions"].map((column) => (
-                    <th key={column} className="px-4 py-3 font-semibold">
-                      {column}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.data.map((record) => (
-                  <tr
-                    key={record.id}
-                    className="border-b border-slate-200 last:border-0 dark:border-slate-800"
-                  >
-                    <td className="max-w-xs px-4 py-3">
-                      <p className="break-words font-semibold">
-                        {String(record.title || record.name)}
-                      </p>
-                      {kind === "articles" ? (
-                        <a
-                          href={String(record.url)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex min-h-11 items-center text-primary underline dark:text-indigo-300"
-                        >
-                          Open article
-                        </a>
-                      ) : null}
-                    </td>
-                    {kind === "articles" ? (
-                      <>
-                        <td className="px-4 py-3 capitalize">
-                          {String(record.category)}
-                        </td>
-                        <td className="max-w-48 break-words px-4 py-3">
-                          {String(record.source)}
-                        </td>
-                        <td className="max-w-48 break-all px-4 py-3">
-                          {String(record.projectId || "General article")}
-                        </td>
-                      </>
-                    ) : kind === "announcements" ? (
-                      <>
-                        <td className="px-4 py-3">
-                          {getAnnouncementStatus({
-                            isActive: Boolean(record.isActive),
-                            startDate: record.startDate as Date | null,
-                            endDate: record.endDate as Date | null,
-                          })}
-                        </td>
-                        <td className="px-4 py-3">
-                          {formatDate(record.startDate, true)}
-                        </td>
-                        <td className="px-4 py-3">
-                          {formatDate(record.endDate, true)}
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-4 py-3">
-                          {String(record.workspace)}
-                          <br />
-                          {String(record.layerName)}
-                        </td>
-                        <td className="px-4 py-3">
-                          {Math.round(Number(record.opacity) * 100)}% /{" "}
-                          {String(record.displayOrder)}
-                        </td>
-                        <td className="px-4 py-3">
-                          {record.isActive ? "Active" : "Inactive"}
-                        </td>
-                      </>
-                    )}
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        {permissions.update ? (
-                          <Button
-                            variant="outline"
-                            className={contentButtonClass}
-                            onClick={() => setEditor({ record })}
-                            disabled={!ready}
-                          >
-                            Edit
-                          </Button>
-                        ) : null}
-                        {permissions.delete ? (
-                          <Button
-                            variant="outline"
-                            className={`${contentButtonClass} text-red-700 dark:text-red-300`}
-                            onClick={() => {
-                              setDeleting(record);
-                              setDeleteError(null);
-                            }}
-                            disabled={!ready}
-                          >
-                            Delete
-                          </Button>
-                        ) : null}
-                      </div>
-                    </td>
+            {articlesView ? (
+              <div className="border-b border-slate-300 p-4 sm:p-6 dark:border-slate-700">
+                <h2 className="text-lg font-semibold">All Articles</h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  {data.total} result{data.total === 1 ? "" : "s"} found
+                </p>
+              </div>
+            ) : null}
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label={`${config.title} table`}
+              className={
+                articlesView
+                  ? "overflow-x-auto focus-visible:outline-2 focus-visible:outline-primary"
+                  : "overflow-x-auto rounded-lg border border-slate-300 bg-background focus-visible:outline-2 focus-visible:outline-primary dark:border-slate-700"
+              }
+            >
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead
+                  className={
+                    articlesView
+                      ? "border-b border-slate-300 bg-muted/60 dark:border-slate-700"
+                      : "border-b border-slate-300 bg-muted dark:border-slate-700"
+                  }
+                >
+                  <tr>
+                    {[...columns, "Actions"].map((column) => (
+                      <th
+                        key={column}
+                        className={
+                          articlesView
+                            ? "px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300"
+                            : "px-4 py-3 font-semibold"
+                        }
+                      >
+                        {column}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.data.map((record) => (
+                    <tr
+                      key={record.id}
+                      className="border-b border-slate-200 last:border-0 hover:bg-muted/40 dark:border-slate-800"
+                    >
+                      <td
+                        className={
+                          articlesView
+                            ? "max-w-md px-6 py-4"
+                            : "max-w-xs px-4 py-3"
+                        }
+                      >
+                        <div className="flex items-start gap-3">
+                          {articlesView ? (
+                            record.thumbnail ? (
+                              <Image
+                                src={String(record.thumbnail)}
+                                alt=""
+                                width={64}
+                                height={64}
+                                unoptimized
+                                className="size-16 shrink-0 rounded-lg object-cover"
+                              />
+                            ) : (
+                              <div className="flex size-16 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                <FileText
+                                  className="size-7 text-muted-foreground"
+                                  aria-hidden="true"
+                                />
+                              </div>
+                            )
+                          ) : null}
+                          <div className="min-w-0">
+                            <p className="break-words font-semibold">
+                              {String(record.title || record.name)}
+                            </p>
+                            {kind === "articles" ? (
+                              <a
+                                href={String(record.url)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex min-h-11 items-center gap-1 text-primary hover:underline dark:text-indigo-300"
+                              >
+                                View Article
+                                <ExternalLink
+                                  className="size-3.5"
+                                  aria-hidden="true"
+                                />
+                                <span className="sr-only">
+                                  (opens in a new tab)
+                                </span>
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      {kind === "articles" ? (
+                        <>
+                          <td className="max-w-48 break-words px-6 py-4">
+                            {String(record.source)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="rounded-md bg-secondary px-2 py-1 text-sm font-medium capitalize text-secondary-foreground">
+                              {String(record.category)}
+                            </span>
+                          </td>
+                          <td className="max-w-48 break-all px-6 py-4">
+                            {record.projectId ? (
+                              <span className="font-mono text-sm">
+                                {String(record.projectId)}
+                              </span>
+                            ) : (
+                              <span className="italic text-slate-600 dark:text-slate-300">
+                                No project
+                              </span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            {formatDate(record.createdAt)}
+                          </td>
+                        </>
+                      ) : kind === "announcements" ? (
+                        <>
+                          <td className="px-4 py-3">
+                            {getAnnouncementStatus({
+                              isActive: Boolean(record.isActive),
+                              startDate: record.startDate as Date | null,
+                              endDate: record.endDate as Date | null,
+                            })}
+                          </td>
+                          <td className="px-4 py-3">
+                            {formatDate(record.startDate, true)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {formatDate(record.endDate, true)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-3">
+                            {String(record.workspace)}
+                            <br />
+                            {String(record.layerName)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {Math.round(Number(record.opacity) * 100)}% /{" "}
+                            {String(record.displayOrder)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {record.isActive ? "Active" : "Inactive"}
+                          </td>
+                        </>
+                      )}
+                      <td className={articlesView ? "px-6 py-4" : "px-4 py-3"}>
+                        <div className="flex gap-2">
+                          {permissions.update ? (
+                            articlesView ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`${contentButtonClass} size-11 text-primary dark:text-indigo-300`}
+                                aria-label={`Edit ${String(record.title)}`}
+                                onClick={() => setEditor({ record })}
+                                disabled={!ready}
+                              >
+                                <SquarePen aria-hidden="true" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                className={contentButtonClass}
+                                onClick={() => setEditor({ record })}
+                                disabled={!ready}
+                              >
+                                Edit
+                              </Button>
+                            )
+                          ) : null}
+                          {permissions.delete ? (
+                            articlesView ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`${contentButtonClass} size-11 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40`}
+                                aria-label={`Delete ${String(record.title)}`}
+                                onClick={() => {
+                                  setDeleting(record);
+                                  setDeleteError(null);
+                                }}
+                                disabled={!ready}
+                              >
+                                <Trash2 aria-hidden="true" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                className={`${contentButtonClass} text-red-700 dark:text-red-300`}
+                                onClick={() => {
+                                  setDeleting(record);
+                                  setDeleteError(null);
+                                }}
+                                disabled={!ready}
+                              >
+                                Delete
+                              </Button>
+                            )
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm">
@@ -709,29 +651,54 @@ export function ContentManager({
           if (!open) setEditor(null);
         }}
       >
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editor?.record ? "Edit" : "Add"} {config.singular}
-            </DialogTitle>
-            <DialogDescription>
-              Required fields are marked with an asterisk.
-            </DialogDescription>
-          </DialogHeader>
-          {editor ? (
-            <ContentEditor
-              key={editor.record?.id || "new"}
-              kind={kind}
-              record={editor.record}
-              moderator={moderator}
-              onClose={() => setEditor(null)}
-              onSaved={() => {
-                setEditor(null);
-                void refresh();
-              }}
-            />
-          ) : null}
-        </DialogContent>
+        {kind === "articles" ? (
+          <DialogContent className="flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+            <DialogHeader className="border-b p-6 pr-16">
+              <DialogTitle className="text-base font-semibold">
+                {editor?.record ? "Edit Article" : "Add New Article"}
+              </DialogTitle>
+              <DialogDescription>
+                Link an external article or publication to INFRA Watch projects.
+                Required fields are marked with an asterisk.
+              </DialogDescription>
+            </DialogHeader>
+            {editor ? (
+              <ArticleEditor
+                key={editor.record?.id || "new"}
+                record={editor.record}
+                moderator={moderator}
+                onClose={() => setEditor(null)}
+                onSaved={() => {
+                  setEditor(null);
+                  void refresh();
+                }}
+              />
+            ) : null}
+          </DialogContent>
+        ) : (
+          <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editor?.record ? "Edit" : "Add"} {config.singular}
+              </DialogTitle>
+              <DialogDescription>
+                Required fields are marked with an asterisk.
+              </DialogDescription>
+            </DialogHeader>
+            {editor ? (
+              <ContentEditor
+                key={editor.record?.id || "new"}
+                kind={kind}
+                record={editor.record}
+                onClose={() => setEditor(null)}
+                onSaved={() => {
+                  setEditor(null);
+                  void refresh();
+                }}
+              />
+            ) : null}
+          </DialogContent>
+        )}
       </Dialog>
       <Dialog
         open={Boolean(deleting)}

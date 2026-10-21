@@ -7,6 +7,7 @@ import {
   exists,
   gte,
   ilike,
+  inArray,
   isNull,
   lte,
   or,
@@ -321,7 +322,36 @@ export async function getPublicArticles(
       .offset((page - 1) * pageSize),
     database.select({ total: count() }).from(articles).where(condition),
   ]);
-  return { data, total: total.total, page, pageSize };
+  // Every listed article already passed publicArticleCondition, so any linked
+  // project it names is one the public may see.
+  const projectIds = [
+    ...new Set(
+      data
+        .map((row) => row.projectId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const projectNames = new Map(
+    projectIds.length
+      ? (
+          await database
+            .select({ abemisId: projects.abemisId, name: projects.name })
+            .from(projects)
+            .where(inArray(projects.abemisId, projectIds))
+        ).map((row) => [row.abemisId, row.name] as const)
+      : [],
+  );
+  return {
+    data: data.map((row) => ({
+      ...row,
+      projectName: row.projectId
+        ? (projectNames.get(row.projectId) ?? null)
+        : null,
+    })),
+    total: total.total,
+    page,
+    pageSize,
+  };
 }
 
 export async function getPublicProjectArticles(
