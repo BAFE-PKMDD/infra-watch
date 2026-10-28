@@ -5,11 +5,13 @@ import { sql as drizzleSql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
-import { getAIModel } from "@/lib/ai-provider";
+import { getAIConfig, getAIModel } from "@/lib/ai-provider";
+import { getGenerationProviderOptions } from "@/lib/chat-generation";
 import type { MydasChartData, MydasDisplayType } from "@/types/mydas.types";
 import { MYDAS_DISPLAY_TYPES } from "@/types/mydas.types";
 import { MYDAS_ANALYTICS_CATALOG } from "./analytics-catalog";
 import { checkChartShape, MAX_VALUE_FIELDS, projectTrend, rowsToChartData } from "./chart-data";
+import { MydasUserError } from "./errors";
 import { MYDAS_SCHEMA_DESCRIPTION } from "./schema-description";
 import { validateMydasSql } from "./sql-guardrails";
 
@@ -24,10 +26,10 @@ const mydasReplySchema = z.object({
   kind: z.enum(["chart", "text", "catalog"]),
   sql: z.string().min(1).describe("When kind is \"chart\": a single read-only PostgreSQL SELECT statement answering the question. Otherwise: the literal string \"n/a\"."),
   chartType: z.enum(MYDAS_DISPLAY_TYPES).describe("When kind is \"chart\": the chart type from the list in the instructions. Otherwise: \"bar\"."),
-  title: z.string().min(1).max(100).describe("When kind is \"chart\": short, human-readable chart title. Otherwise: the literal string \"n/a\"."),
+  title: z.string().min(1).max(300).describe("When kind is \"chart\": short, human-readable chart title. Otherwise: the literal string \"n/a\"."),
   labelField: z.string().min(1).describe("When kind is \"chart\": the exact column alias in the query result to use as each row's label. Otherwise: the literal string \"n/a\"."),
   valueFields: z.array(z.string().min(1)).min(1).max(MAX_VALUE_FIELDS).describe("When kind is \"chart\": the exact column aliases in the query result to use as numeric values, in the order the chart type requires. Otherwise: [\"n/a\"]."),
-  message: z.string().min(1).max(600).describe("When kind is \"text\": a short, plain-language reply, no chart is being generated. When kind is \"chart\": a one-sentence summary of what the chart shows. When kind is \"catalog\": the literal string \"n/a\"."),
+  message: z.string().min(1).max(3_000).describe("When kind is \"text\": a short, plain-language reply, no chart is being generated. When kind is \"chart\": a one-sentence summary of what the chart shows. When kind is \"catalog\": the literal string \"n/a\"."),
 });
 
 const chartTypeGuidance = MYDAS_ANALYTICS_CATALOG.map(
@@ -77,47 +79,65 @@ export type MydasReply =
   | { kind: "text"; message: string }
   | { kind: "catalog" };
 
+// The structured reply is a small JSON object, but hidden reasoning tokens count
+// against the output limit, so leave headroom for them (see chat-generation.ts).
+const MYDAS_MAX_OUTPUT_TOKENS = 3_000;
+const MYDAS_MODEL_TIMEOUT_MS = 60_000;
+// Aggregations over the full project table can legitimately take a few seconds.
+const MYDAS_QUERY_TIMEOUT_MS = 15_000;
+const MYDAS_TITLE_MAX_CHARS = 100;
+const MYDAS_MESSAGE_MAX_CHARS = 600;
+
+function clip(text: string, maxChars: number) {
+  return text.length <= maxChars ? text : `${text.slice(0, maxChars - 1).trimEnd()}…`;
+}
+
 export async function generateMydasWidget(question: string): Promise<MydasReply> {
   const { object } = await generateObject({
     model: getAIModel(),
     schema: mydasReplySchema,
     system: SYSTEM_PROMPT,
     prompt: question,
+    maxOutputTokens: MYDAS_MAX_OUTPUT_TOKENS,
+    maxRetries: 1,
+    providerOptions: getGenerationProviderOptions(getAIConfig().provider),
+    abortSignal: AbortSignal.timeout(MYDAS_MODEL_TIMEOUT_MS),
   });
 
   if (object.kind === "text") {
-    return { kind: "text", message: object.message };
+    return { kind: "text", message: clip(object.message, MYDAS_MESSAGE_MAX_CHARS) };
   }
 
   if (object.kind === "catalog") {
     return { kind: "catalog" };
   }
 
-  const { sql: generatedSql, chartType, title, labelField, valueFields } = object;
+  const { sql: generatedSql, chartType, labelField, valueFields } = object;
+  const title = clip(object.title, MYDAS_TITLE_MAX_CHARS);
 
   const shapeError = checkChartShape(chartType, valueFields.length);
   if (shapeError) {
-    throw new Error(shapeError);
+    throw new MydasUserError(shapeError);
   }
 
   const validated = validateMydasSql(generatedSql);
   if (!validated.ok) {
-    throw new Error(`The generated query failed a safety check (${validated.reason}). Try rephrasing your question.`);
+    throw new MydasUserError(`The generated query failed a safety check (${validated.reason}). Try rephrasing your question.`);
   }
 
   const rows = await db.transaction(async (tx) => {
-    await tx.execute(drizzleSql.raw(`SET LOCAL statement_timeout = '5000'`));
+    await tx.execute(drizzleSql.raw(`SET LOCAL statement_timeout = '${MYDAS_QUERY_TIMEOUT_MS}'`));
     return (await tx.execute(drizzleSql.raw(validated.sql))) as unknown as Record<string, unknown>[];
   });
 
   if (!rows || rows.length === 0) {
-    throw new Error("That query didn't return any data — try rephrasing or broadening your question.");
+    throw new MydasUserError("That query didn't return any data — try rephrasing or broadening your question.");
   }
 
   const columnNames = Object.keys(rows[0]);
   const missingField = [labelField, ...valueFields].find((field) => !columnNames.includes(field));
   if (missingField) {
-    throw new Error(`The query didn't return a column named "${missingField}". Try rephrasing your question.`);
+    throw new MydasUserError(`The query didn't return a column named "${missingField}". Try rephrasing your question.`);
   }
 
   const seriesNames = valueFields.map(humanizeField);
@@ -126,13 +146,13 @@ export async function generateMydasWidget(question: string): Promise<MydasReply>
   if (chartType === "trend") {
     const projection = projectTrend(built);
     if (!projection.ok) {
-      throw new Error(projection.reason);
+      throw new MydasUserError(projection.reason);
     }
     chart = projection.chart;
   }
   const allEmpty = chart.data.every((row) => row.label === "Unknown" && row.values.every((value) => value === 0));
   if (allEmpty) {
-    throw new Error("Couldn't match the query results to a chart — try rephrasing your question.");
+    throw new MydasUserError("Couldn't match the query results to a chart — try rephrasing your question.");
   }
 
   return { kind: "chart", displayType: chartType, chart, sql: validated.sql };

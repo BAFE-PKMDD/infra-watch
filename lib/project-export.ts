@@ -4,6 +4,7 @@ import { projects } from "@/lib/db/schema";
 import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
 import { publicStageCondition } from "@/lib/public-analytics/public-stage-condition";
 import { mapPublicToInternalStages } from "@/constants/stage-mapping";
+import { projectPsgcPrefixCondition, projectPsgcPrefixListCondition } from "@/lib/psgc-code";
 import type { PublicProjectDirectoryState } from "@/lib/public-project-directory";
 
 export function projectExportConditions(filters: PublicProjectDirectoryState) {
@@ -29,16 +30,9 @@ export function projectExportConditions(filters: PublicProjectDirectoryState) {
         : filters.province !== "all"
           ? filters.province
           : null;
-  if (location) conditions.push(ilike(projects.psgcCode, `${location}%`));
+  if (location) conditions.push(projectPsgcPrefixCondition(location));
   else if (filters.region !== "all")
-    conditions.push(
-      or(
-        ...filters.region
-          .split(",")
-          .filter(Boolean)
-          .map((prefix) => ilike(projects.psgcCode, `${prefix}%`)),
-      )!,
-    );
+    conditions.push(projectPsgcPrefixListCondition(filters.region));
   if (filters.status !== "all") {
     const stages = mapPublicToInternalStages(filters.status);
     conditions.push(

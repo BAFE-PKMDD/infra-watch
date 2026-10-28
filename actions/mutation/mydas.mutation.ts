@@ -1,6 +1,7 @@
 "use server";
 
 import { generateMydasWidget, type MydasReply } from "@/lib/mydas/generate-widget";
+import { describeMydasError } from "@/lib/mydas/errors";
 import { checkChatRateLimits } from "@/lib/chat-rate-limit";
 import { requireAdmin } from "@/lib/session";
 
@@ -36,7 +37,7 @@ export async function askMydas(question: string): Promise<AskMydasResult> {
     console.error("[MYDAS] Failed to generate widget:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "MYDAS couldn't answer that question.",
+      error: describeMydasError(error),
     };
   }
 }

@@ -23,6 +23,11 @@ import type { VoiceAssistantClientConfig } from "@/lib/voice/config";
 import { useTranslation } from "@/i18n";
 import { translate } from "@/i18n/translate";
 
+// Client waits slightly longer than the server response budgets (public 55s,
+// admin 100s) so the server's own timeout notice is shown first.
+const PUBLIC_REQUEST_TIMEOUT_MS = 58_000;
+const ADMIN_REQUEST_TIMEOUT_MS = 105_000;
+
 const botImages = {
   closed: "/b-bot-close-eye.png",
   open: "/b-bot-open-eye.png",
@@ -216,7 +221,7 @@ export function AiAssistantWidget({
       const timeoutId = window.setTimeout(() => {
         timedOut = true;
         controller.abort();
-      }, 58_000);
+      }, adminMode ? ADMIN_REQUEST_TIMEOUT_MS : PUBLIC_REQUEST_TIMEOUT_MS);
 
       let assistantText = "";
       try {
@@ -265,9 +270,11 @@ export function AiAssistantWidget({
           ? timedOut
             ? translate(language, "site.aria.errors.timeout")
             : translate(language, "site.aria.errors.cancelled")
-          : error instanceof Error
-            ? error.message
-            : translate(language, "site.aria.errors.generic");
+          : error instanceof TypeError
+            ? translate(language, "site.aria.errors.interrupted")
+            : error instanceof Error
+              ? error.message
+              : translate(language, "site.aria.errors.generic");
         setMessages((prev) => ensureAssistantMessage(prev, errorMessage));
       } finally {
         window.clearTimeout(timeoutId);
@@ -378,7 +385,7 @@ export function AiAssistantWidget({
               }
             }}
             title={t("site.aria.launcherTitle")}
-            className="group/fab fixed bottom-6 right-6 z-50 flex h-16 w-16 cursor-grab active:cursor-grabbing touch-none select-none items-center justify-center rounded-full bg-white shadow-[0_10px_25px_-5px_rgba(0,0,0,0.16),0_8px_10px_-6px_rgba(0,0,0,0.1)] hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.22)] dark:shadow-[0_12px_28px_-5px_rgba(0,0,0,0.6)] border border-slate-200/90 hover:bg-slate-50 transition-colors p-1 ring-2 ring-white/90 dark:ring-slate-800/90"
+            className="group/fab fixed bottom-[calc(1.5rem+var(--floating-banner-offset,0px))] right-6 z-50 flex h-16 w-16 cursor-grab active:cursor-grabbing touch-none select-none items-center justify-center rounded-full bg-white shadow-[0_10px_25px_-5px_rgba(0,0,0,0.16),0_8px_10px_-6px_rgba(0,0,0,0.1)] hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.22)] dark:shadow-[0_12px_28px_-5px_rgba(0,0,0,0.6)] border border-slate-200/90 hover:bg-slate-50 transition-colors p-1 ring-2 ring-white/90 dark:ring-slate-800/90"
             aria-label={
               adminMode && safeVoiceConfig.enabled
                 ? t("site.aria.openWithStatus", { status: voice.statusLabel })

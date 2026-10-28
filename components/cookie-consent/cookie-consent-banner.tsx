@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Cookie, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,10 @@ function storeConsent(analytics: boolean) {
   }
 }
 
+// Floating controls (the ANIA launcher) lift themselves above the banner by this
+// amount so the two never overlap. Cleared whenever the banner is not showing.
+export const FLOATING_BANNER_OFFSET_VAR = "--floating-banner-offset";
+
 export function CookieConsentBanner() {
   const { t } = useTranslation();
   const storedConsent = useSyncExternalStore(
@@ -57,6 +61,21 @@ export function CookieConsentBanner() {
   const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
 
   const isOpen = storedConsent === null && !dismissedThisVisit;
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const banner = bannerRef.current;
+    if (!isOpen || !banner) return;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty(FLOATING_BANNER_OFFSET_VAR, `${banner.offsetHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(banner);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty(FLOATING_BANNER_OFFSET_VAR);
+    };
+  }, [isOpen, isCustomizing]);
 
   const finish = (analytics: boolean) => {
     storeConsent(analytics);
@@ -68,13 +87,14 @@ export function CookieConsentBanner() {
 
   return (
     <div
+      ref={bannerRef}
       role="region"
       aria-label={t("site.cookies.regionLabel")}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.08)] dark:border-slate-800 dark:bg-slate-950"
+      className="fixed inset-x-0 bottom-0 z-40 max-h-[60dvh] overflow-y-auto border-t border-slate-200 bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.08)] dark:border-slate-800 dark:bg-slate-950"
     >
-      <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6">
+      <div className="mx-auto max-w-4xl px-3 py-3 sm:px-6 sm:py-4">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+          <div className="mt-0.5 hidden size-9 shrink-0 items-center sm:flex justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
             <Cookie className="size-5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
@@ -89,7 +109,7 @@ export function CookieConsentBanner() {
                 <X className="size-4" aria-hidden="true" />
               </button>
             </div>
-            <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
+            <p className="mt-1 text-[11px] leading-4 text-slate-600 sm:text-xs sm:leading-5 dark:text-slate-400">
               {t("site.cookies.body")}
             </p>
 
@@ -120,7 +140,7 @@ export function CookieConsentBanner() {
               </div>
             )}
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-3">
               <Button
                 type="button"
                 size="sm"
@@ -164,7 +184,7 @@ export function CookieConsentBanner() {
               )}
             </div>
 
-            <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
+            <p className="mt-1.5 text-[11px] text-slate-400 sm:mt-2 dark:text-slate-500">
               {t("site.cookies.privacyLead")}{" "}
               <Link href="/data-privacy" className="underline hover:text-slate-600 dark:hover:text-slate-300">
                 {t("site.cookies.privacyLink")}

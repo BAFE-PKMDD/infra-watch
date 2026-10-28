@@ -9,6 +9,7 @@ import type { PublicProjectSort } from "@/lib/public-project-directory";
 import { calculateProjectPassportCoverage, formatPublicSyncDate } from "@/lib/project-passport";
 import { formatPublicProjectRecord } from "@/lib/public-project-record";
 import { projectYearScopeCondition } from "@/lib/abemis/year-scope";
+import { projectPsgcPrefixCondition, projectPsgcPrefixListCondition } from "@/lib/psgc-code";
 import {
   sanitizePublicProjectMetadata,
   sanitizePublicSourceGeotags,
@@ -21,8 +22,7 @@ import { normalizePublicProjectFacts } from "@/lib/public-project-detail";
 // getRegions() returns the latter for regions like NIR whose provinces don't share a
 // single numeric region prefix with the rest of their psgc_locations region code.
 function regionPrefixCondition(region: string) {
-  const prefixes = region.split(",").filter(Boolean);
-  return or(...prefixes.map((prefix) => ilike(projects.psgcCode, `${prefix}%`)));
+  return projectPsgcPrefixListCondition(region);
 }
 
 export type PublicProjectFilters = {
@@ -72,11 +72,11 @@ export async function getPublicProjects({
 
     // Location filters - match against psgcCode prefix using most specific filter
     if (barangay && barangay !== "all") {
-      conditions.push(ilike(projects.psgcCode, `${barangay}%`));
+      conditions.push(projectPsgcPrefixCondition(barangay));
     } else if (municipality && municipality !== "all") {
-      conditions.push(ilike(projects.psgcCode, `${municipality}%`));
+      conditions.push(projectPsgcPrefixCondition(municipality));
     } else if (province && province !== "all") {
-      conditions.push(ilike(projects.psgcCode, `${province}%`));
+      conditions.push(projectPsgcPrefixCondition(province));
     } else if (region && region !== "all") {
       conditions.push(regionPrefixCondition(region)!);
     }
@@ -172,11 +172,11 @@ export async function getPublicMapPins({
     }
 
     if (barangay && barangay !== "all") {
-      conditions.push(ilike(projects.psgcCode, `${barangay}%`));
+      conditions.push(projectPsgcPrefixCondition(barangay));
     } else if (municipality && municipality !== "all") {
-      conditions.push(ilike(projects.psgcCode, `${municipality}%`));
+      conditions.push(projectPsgcPrefixCondition(municipality));
     } else if (province && province !== "all") {
-      conditions.push(ilike(projects.psgcCode, `${province}%`));
+      conditions.push(projectPsgcPrefixCondition(province));
     } else if (region && region !== "all") {
       conditions.push(regionPrefixCondition(region)!);
     }

@@ -1,6 +1,30 @@
 export const GENERIC_CHAT_ERROR =
   "Sorry, the AI service is temporarily unavailable. Please try again.";
 
+import { getIncompleteAnswerNotice } from "./chat-generation";
+
+const FINISH_REASON_WAIT_MS = 2_000;
+
+async function resolveIncompleteAnswerNotice(
+  getFinishReason: (() => PromiseLike<string>) | undefined,
+) {
+  if (!getFinishReason) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const finishReason = await Promise.race([
+      Promise.resolve(getFinishReason()),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), FINISH_REASON_WAIT_MS);
+      }),
+    ]);
+    return getIncompleteAnswerNotice(finishReason);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export type ChatStreamTerminalState = {
   getNotice(): string | null;
   markProviderError(): void;
@@ -34,6 +58,7 @@ export function createChatStreamTerminalState(): ChatStreamTerminalState {
 export function createChatResponseStream({
   textStream,
   terminalState,
+  getFinishReason,
   onError,
   onFinally,
   onCancel,
@@ -41,6 +66,8 @@ export function createChatResponseStream({
 }: {
   textStream: AsyncIterable<string>;
   terminalState: ChatStreamTerminalState;
+  /** Resolves to the provider finish reason; "length" appends a cut-off notice. */
+  getFinishReason?: () => PromiseLike<string>;
   onError?: (error: unknown) => void;
   onFinally?: () => void;
   onCancel?: () => void;
@@ -73,8 +100,15 @@ export function createChatResponseStream({
 
         if (cancelled) return;
         const terminalNotice = terminalState.getNotice();
+        const incompleteNotice =
+          terminalNotice || terminalState.shouldSuppressFallbackNotice()
+            ? null
+            : await resolveIncompleteAnswerNotice(getFinishReason);
+        if (cancelled) return;
         if (terminalNotice) {
           enqueueTerminalNotice(terminalNotice);
+        } else if (incompleteNotice) {
+          enqueueTerminalNotice(incompleteNotice);
         } else if (
           !emittedText &&
           !terminalState.shouldSuppressFallbackNotice()

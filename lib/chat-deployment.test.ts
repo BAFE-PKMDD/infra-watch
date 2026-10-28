@@ -22,6 +22,19 @@ test("production Nginx disables buffering for the chat stream", async () => {
   assert.match(chatLocation, /proxy_buffering\s+off\s*;/);
 });
 
+test("production Nginx streams the admin assistant route without buffering and outlasts the admin timeout", async () => {
+  const config = await readFile(nginxConfigUrl, "utf8");
+  for (const route of ["/api/chat", "/api/admin/analytics/assistant"]) {
+    const start = config.indexOf(`location = ${route} {`);
+    const location = start < 0 ? undefined : config.slice(start, config.indexOf("\n    }", start));
+    assert.ok(location, `missing dedicated ${route} location`);
+    assert.match(location, /proxy_buffering\s+off\s*;/);
+    const readTimeout = Number(location.match(/proxy_read_timeout\s+(\d+)s\s*;/)?.[1]);
+    // Longer than the 110s admin response ceiling so the app reports its own timeout.
+    assert.ok(readTimeout > 110, `${route} proxy_read_timeout must exceed 110s`);
+  }
+});
+
 test("default migration generation preserves auth tables", async () => {
   const packageJson = JSON.parse(await readFile(packageJsonUrl, "utf8")) as {
     scripts: Record<string, string>;

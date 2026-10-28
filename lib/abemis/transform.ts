@@ -1,5 +1,6 @@
 import type { AbemisProject } from "@/types/api.types";
 import { buildProjectGeometry } from "@/lib/data-quality/project-quality";
+import { normalizePsgcCode } from "@/lib/psgc-code";
 import { getProjectTypeMapping, normalizeProjectType } from "./project-type-map";
 
 
@@ -155,7 +156,7 @@ export function transformAbemisProject(project: AbemisProject) {
     proposedLength: project.proposed_length || null,
     postGeotaggedLength: project.post_geotagged_length || null,
     procurementMode: project.procurement_mode || null,
-    psgcCode: project.psgc?.psgc_code || null,
+    psgcCode: normalizePsgcCode(project.psgc?.psgc_code) ?? (project.psgc?.psgc_code || null),
     metadata: {
       geotag: project.geotag ?? [],
       proposalDocuments: project.proposalDocuments ?? project.proposal_documents ?? [],

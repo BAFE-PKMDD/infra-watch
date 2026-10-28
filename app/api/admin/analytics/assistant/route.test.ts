@@ -33,7 +33,8 @@ function dependencies(overrides: Record<string, unknown> = {}) {
 }
 
 test("bounds provider output and reserves a final text-only step", () => {
-  assert.equal(MANAGERIAL_AI_MAX_OUTPUT_TOKENS, 2_000);
+  // Includes headroom for capped Gemini reasoning tokens (see chat-generation.ts).
+  assert.equal(MANAGERIAL_AI_MAX_OUTPUT_TOKENS, 3_500);
   assert.equal(MANAGERIAL_AI_TOOL_STEPS, 3);
   assert.equal(MANAGERIAL_AI_MAX_STEPS, 5);
   assert.ok(MANAGERIAL_AI_TOOL_STEPS < MANAGERIAL_AI_MAX_STEPS);
@@ -44,7 +45,7 @@ test("gives executive briefs a larger bounded generation budget without changing
     maxOutputTokens: MANAGERIAL_AI_MAX_OUTPUT_TOKENS,
     toolSteps: MANAGERIAL_AI_TOOL_STEPS,
     maxSteps: MANAGERIAL_AI_MAX_STEPS,
-    timeoutMs: 55_000,
+    timeoutMs: 100_000,
   });
   assert.deepEqual(assistantGenerationLimits("executive-brief"), {
     maxOutputTokens: EXECUTIVE_BRIEF_MAX_OUTPUT_TOKENS,

@@ -9,6 +9,7 @@ import {
   createChatResponseStream,
   createChatStreamTerminalState,
 } from "./chat-stream";
+import { TRUNCATED_ANSWER_NOTICE } from "./chat-generation";
 
 async function readTextStream(stream: ReadableStream<Uint8Array>) {
   const reader = stream.getReader();
@@ -179,4 +180,61 @@ test("cancels upstream generation when the response reader is cancelled", async 
   assert.equal(iteratorReturned, true);
   assert.equal(emittedAfterCancellation, false);
   assert.equal(completed, false);
+});
+
+test("appends a continue notice when the provider stops at the length limit", async () => {
+  const responseStream = createChatResponseStream({
+    textStream: (async function* () {
+      yield "Half an answ";
+    })(),
+    terminalState: createChatStreamTerminalState(),
+    getFinishReason: async () => "length",
+  });
+
+  assert.equal(
+    await readTextStream(responseStream),
+    `Half an answ\n\n${TRUNCATED_ANSWER_NOTICE}`,
+  );
+});
+
+test("shows the cut-off notice instead of a generic error when reasoning used the whole budget", async () => {
+  const responseStream = createChatResponseStream({
+    textStream: (async function* () {})(),
+    terminalState: createChatStreamTerminalState(),
+    getFinishReason: async () => "length",
+  });
+
+  assert.equal(await readTextStream(responseStream), TRUNCATED_ANSWER_NOTICE);
+});
+
+test("adds no notice for a normal stop or an unavailable finish reason", async () => {
+  for (const getFinishReason of [
+    async () => "stop",
+    async () => {
+      throw new Error("no finish reason");
+    },
+  ]) {
+    const responseStream = createChatResponseStream({
+      textStream: (async function* () {
+        yield "Complete answer.";
+      })(),
+      terminalState: createChatStreamTerminalState(),
+      getFinishReason,
+    });
+    assert.equal(await readTextStream(responseStream), "Complete answer.");
+  }
+});
+
+test("a timeout notice takes precedence over the length notice", async () => {
+  const terminalState = createChatStreamTerminalState();
+  terminalState.markTimeout("The response timed out.");
+  const responseStream = createChatResponseStream({
+    textStream: (async function* () {
+      yield "Partial";
+    })(),
+    terminalState,
+    getFinishReason: async () => "length",
+  });
+
+  assert.equal(await readTextStream(responseStream), "Partial\n\nThe response timed out.");
 });

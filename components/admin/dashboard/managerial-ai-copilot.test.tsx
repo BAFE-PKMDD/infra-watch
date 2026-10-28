@@ -9,6 +9,7 @@ import {
   OptionalManagerialAiCopilot,
   formatManagerialFilterContext,
   isManagerialAiFeatureEnabled,
+  AssistantRequestError,
   managerialCopilotErrorMessage,
   managerialFilterContextKey,
 } from "./managerial-ai-copilot";
@@ -101,4 +102,9 @@ test("cancel, timeout, and provider-unavailable states are visible and retryable
   assert.equal(managerialCopilotErrorMessage(true, false, null), "Response cancelled. You can retry the last question.");
   assert.equal(managerialCopilotErrorMessage(true, true, null), "The response timed out. You can retry the last question.");
   assert.equal(managerialCopilotErrorMessage(false, false, new Error("offline")), "ANIA is temporarily unavailable. You can retry the last question.");
+  assert.equal(managerialCopilotErrorMessage(false, false, new TypeError("network error")), "The connection dropped before the answer finished. You can retry the last question.");
+  assert.equal(
+    managerialCopilotErrorMessage(false, false, new AssistantRequestError("Too many requests. Please wait before retrying.")),
+    "Too many requests. Please wait before retrying.",
+  );
 });

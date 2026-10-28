@@ -345,8 +345,8 @@ export default function GISMapPage() {
 
         {/* Region / Project Type filter */}
         {!isLoading && !isError && (
-          <div className="absolute bottom-24 right-4 z-20 grid w-[min(20rem,calc(100%-2rem))] gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-200 sm:w-72">
-            <label className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2">
+          <div className="absolute bottom-4 left-4 right-20 z-20 grid gap-1.5 rounded-xl border border-slate-200 bg-white/95 p-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-200 sm:bottom-40 sm:left-auto sm:right-4 sm:w-72 sm:gap-2 sm:p-3">
+            <label className="grid grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]">
               <span>{t("directory.filters.region")}</span>
               <select
                 aria-label={t("directory.map.regionAria")}
@@ -363,7 +363,7 @@ export default function GISMapPage() {
                 ))}
               </select>
             </label>
-            <label className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2">
+            <label className="grid grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]">
               <span>{t("directory.filters.projectType")}</span>
               <select
                 aria-label={t("directory.filters.projectType")}
@@ -384,9 +384,9 @@ export default function GISMapPage() {
         )}
 
         {!isLoading && !isError && (
-          <div className="absolute left-4 top-4 z-20 rounded-xl border border-slate-200 bg-white/95 px-4 py-3 text-xs text-slate-700 shadow backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-200">
+          <div className="absolute left-4 top-4 z-20 max-w-[calc(100%-5.5rem)] rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs sm:max-w-md sm:px-4 sm:py-3 text-slate-700 shadow backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-200">
             <p className="font-extrabold">{t("directory.infraMap.coordinateBacked", { count: mapProjects.length.toLocaleString() })}</p>
-            <p className="mt-1 text-[10px] text-slate-500">{t("directory.infraMap.sourceNote")}</p>
+            <p className="mt-1 line-clamp-2 text-[10px] text-slate-500 sm:line-clamp-none" title={t("directory.infraMap.sourceNote")}>{t("directory.infraMap.sourceNote")}</p>
           </div>
         )}
 
@@ -455,7 +455,7 @@ export default function GISMapPage() {
         )}
 
         {/* Map Controls HUD */}
-        <div className="absolute right-6 bottom-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 rounded-xl shadow-lg flex flex-col gap-1.5 z-20">
+        <div className="absolute right-2.5 top-28 sm:right-6 sm:top-auto sm:bottom-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 rounded-xl shadow-lg flex flex-col gap-1.5 z-20">
           <button
             onClick={handleZoomIn}
             className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center bg-white dark:bg-slate-900 transition-colors shadow-sm"

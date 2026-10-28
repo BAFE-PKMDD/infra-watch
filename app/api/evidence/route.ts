@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, lte, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
-import { feedback, projects } from "@/lib/db/schema";
+import { feedback, issues, projects } from "@/lib/db/schema";
+import { buildPublicIssueMapEntry } from "@/lib/public-issue-map";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -205,7 +206,45 @@ export async function GET(request: NextRequest) {
   if (query.startDate) feedbackConditions.push(gte(feedback.createdAt, new Date(`${query.startDate}T00:00:00.000Z`)));
   if (query.endDate) feedbackConditions.push(lte(feedback.createdAt, new Date(`${query.endDate}T23:59:59.999Z`)));
 
+  // Online E-Reports appear only after staff publish a reviewed summary (the same
+  // approval the public report page and citizen feed use); workflow status alone
+  // never makes a report public. Only photos are mapped, so a video-only filter has none.
+  const issueConditions: SQL[] = [
+    isNotNull(issues.publicApprovedAt),
+    isNotNull(issues.publicDescription),
+  ];
+  if (status === "approved" || mediaFilter === "video") issueConditions.push(sql<boolean>`false`);
+  else if (status) issueConditions.push(eq(issues.status, status));
+  if (query.category) issueConditions.push(eq(issues.category, query.category));
+  if (query.startDate) issueConditions.push(gte(issues.createdAt, new Date(`${query.startDate}T00:00:00.000Z`)));
+  if (query.endDate) issueConditions.push(lte(issues.createdAt, new Date(`${query.endDate}T23:59:59.999Z`)));
+
   try {
+    const issueRows = await db
+      .select({
+        id: issues.id,
+        ticketNumber: issues.ticketNumber,
+        category: issues.category,
+        status: issues.status,
+        publicDescription: issues.publicDescription,
+        publicApprovedAt: issues.publicApprovedAt,
+        region: issues.region,
+        province: issues.province,
+        municipality: issues.municipality,
+        barangay: issues.barangay,
+        latitude: issues.latitude,
+        longitude: issues.longitude,
+        evidence: issues.evidence,
+        createdAt: issues.createdAt,
+      })
+      .from(issues)
+      .where(and(...issueConditions))
+      .orderBy(desc(issues.createdAt));
+    const issueData = issueRows.flatMap((row) => {
+      const entry = buildPublicIssueMapEntry(row);
+      return entry ? [entry] : [];
+    });
+
     const feedbackRows = await db
       .select({
         id: feedback.id,
@@ -272,7 +311,7 @@ export async function GET(request: NextRequest) {
       }];
     });
 
-    const data = feedbackData
+    const data = [...feedbackData, ...issueData]
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
     return NextResponse.json(

@@ -20,7 +20,11 @@ import {
 } from "@/lib/chat-history";
 import { createChatHistoryLifecycle } from "@/lib/chat-history-lifecycle";
 import { checkChatRateLimits, getChatOwnerKey } from "@/lib/chat-rate-limit";
-import { getChatResponseTimeoutMs, readBoundedJsonBody } from "@/lib/chat-request";
+import {
+  getAdminChatResponseTimeoutMs,
+  getGenerationProviderOptions,
+} from "@/lib/chat-generation";
+import { readBoundedJsonBody } from "@/lib/chat-request";
 import {
   GENERIC_CHAT_ERROR,
   createChatResponseStream,
@@ -31,10 +35,10 @@ import { hasAssignedModeratorScope, type ScopedUser } from "@/lib/scope";
 import { getCurrentUser } from "@/lib/session";
 import type { ManagerialDashboardFilters } from "@/types/managerial-dashboard.types";
 
-export const MANAGERIAL_AI_MAX_OUTPUT_TOKENS = 2_000;
+export const MANAGERIAL_AI_MAX_OUTPUT_TOKENS = 3_500;
 export const MANAGERIAL_AI_TOOL_STEPS = 3;
 export const MANAGERIAL_AI_MAX_STEPS = 5;
-export const EXECUTIVE_BRIEF_MAX_OUTPUT_TOKENS = 4_000;
+export const EXECUTIVE_BRIEF_MAX_OUTPUT_TOKENS = 6_000;
 export const EXECUTIVE_BRIEF_TOOL_STEPS = 5;
 export const EXECUTIVE_BRIEF_MAX_STEPS = 7;
 const EXECUTIVE_BRIEF_TIMEOUT_MS = 110_000;
@@ -51,7 +55,7 @@ export function assistantGenerationLimits(purpose: "chat" | "executive-brief") {
         maxOutputTokens: MANAGERIAL_AI_MAX_OUTPUT_TOKENS,
         toolSteps: MANAGERIAL_AI_TOOL_STEPS,
         maxSteps: MANAGERIAL_AI_MAX_STEPS,
-        timeoutMs: getChatResponseTimeoutMs(),
+        timeoutMs: getAdminChatResponseTimeoutMs(),
       };
 }
 
@@ -239,6 +243,7 @@ async function invokeManagerialAssistant(
       getDashboardData: async () => dashboardData,
     }),
     maxOutputTokens: limits.maxOutputTokens,
+    providerOptions: getGenerationProviderOptions(provider),
     prepareStep: ({ stepNumber }) => managerialAiStepPreparation(stepNumber, limits.toolSteps),
     stopWhen: isStepCount(limits.maxSteps),
     abortSignal: AbortSignal.any([requestSignal, timeoutController.signal]),
@@ -274,6 +279,7 @@ async function invokeManagerialAssistant(
 
   const stream = createChatResponseStream({
     textStream: result.textStream,
+    getFinishReason: () => result.finishReason,
     terminalState,
     onCancel: () => {
       terminalState.markRequestAborted();

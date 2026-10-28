@@ -25,6 +25,10 @@ import {
   getChatClientIdentity,
   getChatOwnerKey,
 } from "@/lib/chat-rate-limit";
+import {
+  getAdminChatResponseTimeoutMs,
+  getGenerationProviderOptions,
+} from "@/lib/chat-generation";
 import { createChatTools, type ChatToolName } from "@/lib/chat-tools";
 import {
   KNOWLEDGE_BASE_GROUNDING_INSTRUCTION,
@@ -44,7 +48,9 @@ import {
 } from "@/lib/voice/runtime-policy";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Admin ANIA requests may analyse larger data and get a longer response budget
+// than the public surface; the public timeout stays under 60 seconds.
+export const maxDuration = 120;
 
 const SYSTEM_INSTRUCTION = `You are ANIA (Agricultural Network Intelligence Assistant), an assistant for the Philippine Bureau of Agriculture and Fisheries Engineering (BAFE) infrastructure monitoring platform.
 
@@ -358,7 +364,7 @@ export async function POST(request: NextRequest) {
       );
       void settleHistoryFailure("response_timeout");
       timeoutController.abort();
-    }, getChatResponseTimeoutMs());
+    }, isAdminSurface ? getAdminChatResponseTimeoutMs() : getChatResponseTimeoutMs());
 
     const result = streamText({
       model,
@@ -379,6 +385,7 @@ export async function POST(request: NextRequest) {
         isAdminSurface,
       ),
       maxOutputTokens: responseMode === "voice" ? VOICE_MAX_OUTPUT_TOKENS : undefined,
+      providerOptions: getGenerationProviderOptions(provider),
       prepareStep: ({ stepNumber }) =>
         stepNumber >= 3 ? { toolChoice: "none" as const } : undefined,
       stopWhen: isStepCount(5),
@@ -421,6 +428,7 @@ export async function POST(request: NextRequest) {
 
     const responseStream = createChatResponseStream({
       textStream: result.textStream,
+      getFinishReason: () => result.finishReason,
       terminalState,
       onError: (error) => {
         logChatError(requestId, "text_stream_failed", error);

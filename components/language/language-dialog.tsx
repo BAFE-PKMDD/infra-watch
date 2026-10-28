@@ -58,10 +58,10 @@ export function LanguageDialog() {
             {t("languageDialog.subtitle")}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 gap-4 py-4">
+        <div className="grid grid-cols-1 gap-3 py-2 sm:gap-4 sm:py-4">
           <Button
             variant="outline"
-            className={`justify-start gap-4 h-16 text-base border-2 transition-all ${selectedLanguage === "en"
+            className={`justify-start gap-4 h-14 sm:h-16 text-base border-2 transition-all ${selectedLanguage === "en"
               ? "border-primary bg-primary/10 dark:bg-primary/20"
               : "border-slate-200 dark:border-slate-800"
               }`}
@@ -78,7 +78,7 @@ export function LanguageDialog() {
           </Button>
           <Button
             variant="outline"
-            className={`justify-start gap-4 h-16 text-base border-2 transition-all ${selectedLanguage === "tl"
+            className={`justify-start gap-4 h-14 sm:h-16 text-base border-2 transition-all ${selectedLanguage === "tl"
               ? "border-primary bg-primary/10 dark:bg-primary/20"
               : "border-slate-200 dark:border-slate-800"
               }`}

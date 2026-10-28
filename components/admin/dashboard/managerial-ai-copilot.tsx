@@ -66,16 +66,29 @@ export function managerialFilterContextKey(filters: ManagerialDashboardFilters) 
   return JSON.stringify(FILTER_LABELS.map(([key]) => filters[key] ?? null));
 }
 
+// Slightly longer than the server-side admin response budget (100s) so the
+// server's own timeout notice is shown before the client gives up.
+const COPILOT_REQUEST_TIMEOUT_MS = 105_000;
+
+// A request the server rejected with its own explanation (rate limit, stale
+// dashboard, daily limit), as opposed to a transport or provider failure.
+export class AssistantRequestError extends Error {}
+
 export function managerialCopilotErrorMessage(
   aborted: boolean,
   timedOut: boolean,
   error: unknown,
 ) {
-  void error;
   if (aborted) {
     return timedOut
       ? "The response timed out. You can retry the last question."
       : "Response cancelled. You can retry the last question.";
+  }
+  if (error instanceof AssistantRequestError && error.message) {
+    return error.message;
+  }
+  if (error instanceof TypeError) {
+    return "The connection dropped before the answer finished. You can retry the last question.";
   }
   return "ANIA is temporarily unavailable. You can retry the last question.";
 }
@@ -248,7 +261,7 @@ export const ManagerialAiCopilot = forwardRef<ManagerialAiCopilotHandle, Manager
       const timeout = window.setTimeout(() => {
         timedOut = true;
         controller.abort();
-      }, 58_000);
+      }, COPILOT_REQUEST_TIMEOUT_MS);
 
       try {
         const response = await fetch("/api/admin/analytics/assistant", {
@@ -264,7 +277,13 @@ export const ManagerialAiCopilot = forwardRef<ManagerialAiCopilotHandle, Manager
           signal: controller.signal,
         });
         if (activeRequestRef.current !== requestId) return;
-        if (!response.ok) throw new Error("provider unavailable");
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as { error?: unknown } | null;
+          const explained = [409, 429, 503].includes(response.status);
+          throw new AssistantRequestError(
+            explained && typeof body?.error === "string" ? body.error : "",
+          );
+        }
         const reader = response.body?.getReader();
         if (!reader) throw new Error("provider unavailable");
         setMessages((current) => [
