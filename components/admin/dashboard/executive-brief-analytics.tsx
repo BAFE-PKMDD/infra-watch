@@ -85,7 +85,7 @@ export function ExecutiveBriefAnalytics({ data }: { data: ManagerialDashboardDat
           title="Where does delivery evidence require review?"
           description="Regional comparisons and reported-versus-expected project progress show where delivery may need closer review."
         />
-        <div id="brief-diagnostic-heading" className="grid gap-4 xl:grid-cols-2">
+        <div id="brief-diagnostic-heading" className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <RegionalPerformanceChart data={data.regions} />
           <ProgressVarianceChart data={data.progressVariance} />
         </div>
@@ -98,7 +98,7 @@ export function ExecutiveBriefAnalytics({ data }: { data: ManagerialDashboardDat
           title="Which projects have evidence-backed completion projections?"
           description="Forecasts appear only where approved snapshot history supports a projection. Current on-schedule and at-risk labels are based on rules, not a trained prediction."
         />
-        <div id="brief-predictive-heading" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div id="brief-predictive-heading" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <ForecastCard label="Projected dates available" value={forecasts.projected} detail={projectedLabel} />
           <ForecastCard label="Projected target risk" value={forecasts.targetRisk} detail="Projected projects whose evidence-backed completion date falls beyond the target." tone="warning" />
           <ForecastCard label="Stalled" value={forecasts.stalled} detail="Projects with no observed progress velocity for a completion projection." tone="warning" />

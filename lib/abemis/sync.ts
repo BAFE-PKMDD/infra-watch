@@ -432,9 +432,10 @@ async function renameProjectByRawId(rawId: string, value: ProjectInsert) {
     if (!isForeignKeyViolation(error)) throw error;
 
     // Never delete and recreate a project to force an external-ID correction. Dependent
-    // feedback, snapshots, and issue links may cascade or become detached. Preserve the
-    // existing project and let this record fail visibly until its foreign keys can be
-    // migrated transactionally to an immutable local project identity.
+    // feedback, snapshots, and issue links may cascade or become detached. Migration 0039
+    // makes the foreign keys to projects.abemis_id ON UPDATE CASCADE so the relabel above
+    // carries them along; this branch only fires on a database that has not applied it,
+    // and then the record fails visibly instead of being recreated.
     throw new Error(
       `Cannot relabel project with abemis_raw_id ${rawId} while dependent records still reference its current ABEMIS ID`,
       { cause: error },
@@ -620,7 +621,7 @@ export async function hasRecentSuccessfulSync(withinHours = 20) {
     .from(syncLogs)
     .where(and(
       eq(syncLogs.resource, "project"),
-      eq(syncLogs.status, "completed"),
+      inArray(syncLogs.status, ["completed", "completed_with_warnings"]),
       gte(syncLogs.completedAt, cutoff),
     ))
     .limit(1);

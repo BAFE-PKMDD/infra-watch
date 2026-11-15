@@ -137,7 +137,7 @@ function BriefKpiStrip({ data }: { data: ManagerialDashboardData }) {
 
   return (
     <section aria-label="Brief key metrics" className="mb-6">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Total Projects"
           value={formatDashboardCount(data.kpis.totalProjects)}
@@ -183,7 +183,7 @@ function BriefGeneratingSkeleton() {
   return (
     <div className="space-y-6">
       {/* KPI strip skeleton */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}

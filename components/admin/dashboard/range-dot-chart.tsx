@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useCategoryAxisWidth } from "@/hooks/use-category-axis-width";
 import { Bar, BarChart, CartesianGrid, ReferenceDot, ReferenceLine, XAxis, YAxis } from "recharts";
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -18,6 +20,7 @@ export function RangeDotChart({
   ariaLabel: string;
   referenceValue?: number;
 }) {
+  const yAxisWidth = useCategoryAxisWidth(150);
   const chartData = rows.map((row) => ({ ...row, offset: row.p25, range: Math.max(row.p75 - row.p25, 0) }));
 
   return (
@@ -31,7 +34,7 @@ export function RangeDotChart({
       <BarChart data={chartData} layout="vertical" margin={{ left: 12, right: 40 }}>
         <CartesianGrid horizontal={false} />
         <XAxis type="number" tickFormatter={(value) => valueFormatter(Number(value))} />
-        <YAxis type="category" dataKey="label" width={150} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+        <YAxis type="category" dataKey="label" width={yAxisWidth} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
         {referenceValue !== undefined && (
           <ReferenceLine x={referenceValue} stroke="var(--foreground)" strokeOpacity={0.4} strokeDasharray="4 4" />
         )}

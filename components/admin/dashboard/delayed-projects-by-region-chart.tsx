@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useCategoryAxisWidth } from "@/hooks/use-category-axis-width";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ArrowUp } from "lucide-react";
 import { useState } from "react";
@@ -52,6 +54,7 @@ export function DelayedProjectsByRegionChart({
   viewerKey?: string;
   onDrillthrough?: (region: string, province?: string) => void;
 }) {
+  const yAxisWidth = useCategoryAxisWidth(175);
   const drilldown = useChartDrilldown({
     filters,
     parentField: "region",
@@ -156,7 +159,7 @@ export function DelayedProjectsByRegionChart({
             <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 20 }}>
               <CartesianGrid horizontal={false} />
               <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} label={{ value: "Projects", position: "insideBottom", offset: -4, fontSize: 12 }} />
-              <YAxis type="category" dataKey="label" width={175} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+              <YAxis type="category" dataKey="label" width={yAxisWidth} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
               <ChartTooltip
                 content={<ChartTooltipContent formatter={(value, _name, item) => (
                   <div className="grid gap-0.5">

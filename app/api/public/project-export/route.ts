@@ -1,27 +1,12 @@
-import { parsePublicProjectDirectoryState } from "@/lib/public-project-directory";
-import { exportPublicProjects, projectExportCsv } from "@/lib/project-export";
-import { apiError } from "@/lib/staff-api";
+import { NextResponse } from "next/server";
 
-export async function GET(request: Request) {
-  try {
-    const params = new URL(request.url).searchParams;
-    const rows = await exportPublicProjects(
-      parsePublicProjectDirectoryState(params),
-    );
-    if (params.get("format") === "csv")
-      return new Response(projectExportCsv(rows), {
-        headers: {
-          "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition":
-            'attachment; filename="infrawatch-projects.csv"',
-          "Cache-Control": "no-store",
-        },
-      });
-    return Response.json(
-      { data: rows, exportedAt: new Date().toISOString() },
-      { headers: { "Cache-Control": "no-store" } },
-    );
-  } catch (error) {
-    return apiError(error);
-  }
+// Public project export is switched off while the project data is still being cleansed.
+// To re-enable it, restore the previous handler: it parsed the directory filters with
+// parsePublicProjectDirectoryState, called exportPublicProjects, and returned CSV
+// (projectExportCsv) or JSON. The helpers in lib/project-export.ts are unchanged.
+export async function GET() {
+  return NextResponse.json(
+    { error: "Project export is not available yet." },
+    { status: 503, headers: { "Cache-Control": "no-store" } },
+  );
 }

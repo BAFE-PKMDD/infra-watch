@@ -153,13 +153,6 @@ export function PublicAnalyticsView({ dashboard, t }: { dashboard: Dashboard; t:
           </OtherMetrics>
         </>
       )}
-
-      <footer className="rounded-lg border border-pa-hair bg-pa-surface p-4 sm:p-6">
-        <h2 className="pa-heading text-xl font-semibold text-pa-ink">{t.howWeCount.title}</h2>
-        <div className="mt-2 space-y-2 text-base text-pa-ink-2">
-          {t.howWeCount.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-        </div>
-      </footer>
     </div>
   );
 }

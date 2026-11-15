@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useCategoryAxisWidth } from "@/hooks/use-category-axis-width";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -14,6 +16,7 @@ export function LateDaysByDimensionChart({
   data: LateDaysRow[] | undefined;
   dimensionLabel: "region" | "type of facility";
 }) {
+  const yAxisWidth = useCategoryAxisWidth(150);
   const title = `How late projects usually finish, per ${dimensionLabel}`;
 
   if (!data) {
@@ -56,7 +59,7 @@ export function LateDaysByDimensionChart({
           <BarChart data={chartData} layout="vertical" margin={{ left: 12, right: 40 }}>
             <CartesianGrid horizontal={false} />
             <XAxis type="number" tickFormatter={(value) => `${Number(value)} days`} />
-            <YAxis type="category" dataKey="key" width={150} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+            <YAxis type="category" dataKey="key" width={yAxisWidth} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
             <ChartTooltip content={<ChartTooltipContent formatter={(value, _name, item) => (
               <span>{Number(value)} days typical · {item.payload?.lateCount} of {item.payload?.totalWithDates} late</span>
             )} />} />

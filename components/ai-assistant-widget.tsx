@@ -385,14 +385,14 @@ export function AiAssistantWidget({
               }
             }}
             title={t("site.aria.launcherTitle")}
-            className="group/fab fixed bottom-[calc(1.5rem+var(--floating-banner-offset,0px))] right-6 z-50 flex h-16 w-16 cursor-grab active:cursor-grabbing touch-none select-none items-center justify-center rounded-full bg-white shadow-[0_10px_25px_-5px_rgba(0,0,0,0.16),0_8px_10px_-6px_rgba(0,0,0,0.1)] hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.22)] dark:shadow-[0_12px_28px_-5px_rgba(0,0,0,0.6)] border border-slate-200/90 hover:bg-slate-50 transition-colors p-1 ring-2 ring-white/90 dark:ring-slate-800/90"
+            className="group/fab fixed bottom-[calc(1rem+var(--floating-banner-offset,0px))] right-3 sm:bottom-[calc(1.5rem+var(--floating-banner-offset,0px))] sm:right-6 z-50 flex h-12 w-12 sm:h-16 sm:w-16 cursor-grab active:cursor-grabbing touch-none select-none items-center justify-center rounded-full bg-white shadow-[0_10px_25px_-5px_rgba(0,0,0,0.16),0_8px_10px_-6px_rgba(0,0,0,0.1)] hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.22)] dark:shadow-[0_12px_28px_-5px_rgba(0,0,0,0.6)] border border-slate-200/90 hover:bg-slate-50 transition-colors p-1 ring-2 ring-white/90 dark:ring-slate-800/90"
             aria-label={
               adminMode && safeVoiceConfig.enabled
                 ? t("site.aria.openWithStatus", { status: voice.statusLabel })
                 : t("site.aria.open")
             }
           >
-            <BotFace className="h-14 w-14" sizes="56px" priority />
+            <BotFace className="h-10 w-10 sm:h-14 sm:w-14" sizes="56px" priority />
             {adminMode && safeVoiceConfig.enabled && (
               <span
                 className="absolute -bottom-7 right-0 flex min-w-max items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-medium text-slate-600 shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 pointer-events-none"

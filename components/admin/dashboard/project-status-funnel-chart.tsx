@@ -63,7 +63,7 @@ export function ProjectStatusFunnelChart({ data }: { data: ManagerialDashboardDa
           </div>
           <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{total.toLocaleString("en-PH")} total projects</p>
 
-          <ul className="mt-4 grid list-none gap-x-6 gap-y-1 p-0 sm:grid-cols-2">
+          <ul className="mt-4 grid grid-cols-1 list-none gap-x-6 gap-y-1 p-0 sm:grid-cols-2">
             {rows.map((row) => {
               const pct = (row.count / Math.max(total, 1)) * 100;
               return (

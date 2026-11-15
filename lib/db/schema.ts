@@ -45,7 +45,7 @@ export const articles = pgTable("articles", {
   tags: jsonb("tags").$type<string[]>().notNull().default([]),
   author: text("author"),
   publishedDate: timestamp("published_date", { mode: "date" }),
-  projectId: text("project_id").references(() => projects.abemisId, { onDelete: "set null" }),
+  projectId: text("project_id").references(() => projects.abemisId, { onDelete: "set null", onUpdate: "cascade" }),
   addedBy: text("added_by").notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
@@ -177,7 +177,7 @@ export const accountPreferences = pgTable("account_preferences", {
 });
 
 export const projectCommodityOverrides = pgTable("project_commodity_overrides", {
-  projectId: text("project_id").primaryKey().references(() => projects.abemisId, { onDelete: "cascade" }),
+  projectId: text("project_id").primaryKey().references(() => projects.abemisId, { onDelete: "cascade", onUpdate: "cascade" }),
   commodities: jsonb("commodities").$type<string[]>().notNull(),
   sourceCommodities: jsonb("source_commodities").$type<string[]>().notNull().default([]),
   reason: text("reason").notNull(),
@@ -246,7 +246,7 @@ export const projectDataCorrections = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     projectId: text("project_id")
       .notNull()
-      .references(() => projects.abemisId, { onDelete: "restrict" }),
+      .references(() => projects.abemisId, { onDelete: "restrict", onUpdate: "cascade" }),
     field: text("field").notNull(),
     sourceValue: jsonb("source_value"),
     correctedValue: jsonb("corrected_value").notNull(),
@@ -270,7 +270,7 @@ export const feedback = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     projectId: text("project_id")
       .notNull()
-      .references(() => projects.abemisId, { onDelete: "cascade" }),
+      .references(() => projects.abemisId, { onDelete: "cascade", onUpdate: "cascade" }),
     userId: text("user_id"),
     rating: integer("rating"),
     comment: text("comment"),
@@ -337,7 +337,7 @@ export const issues = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     ticketNumber: text("ticket_number").notNull().unique(),
-    projectId: text("project_id").references(() => projects.abemisId, { onDelete: "set null" }),
+    projectId: text("project_id").references(() => projects.abemisId, { onDelete: "set null", onUpdate: "cascade" }),
     reporterUserId: text("reporter_user_id"),
     reporterName: text("reporter_name"),
     reporterContact: text("reporter_contact"),
@@ -435,7 +435,7 @@ export const projectMetricSnapshots = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     projectId: text("project_id")
       .notNull()
-      .references(() => projects.abemisId, { onDelete: "cascade" }),
+      .references(() => projects.abemisId, { onDelete: "cascade", onUpdate: "cascade" }),
     syncLogId: uuid("sync_log_id")
       .notNull()
       .references(() => syncLogs.id, { onDelete: "cascade" }),

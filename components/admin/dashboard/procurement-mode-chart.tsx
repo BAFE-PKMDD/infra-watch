@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useCategoryAxisWidth } from "@/hooks/use-category-axis-width";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -8,6 +10,7 @@ import { ChartEmptyState, ChartPanel } from "./chart-panel";
 import { formatDashboardCompactCurrency, formatDashboardCurrency } from "./executive-kpis";
 
 export function ProcurementModeChart({ data }: { data: ManagerialDashboardData["procurementModes"] }) {
+  const yAxisWidth = useCategoryAxisWidth(150);
   if (!data) {
     return (
       <ChartPanel
@@ -39,7 +42,7 @@ export function ProcurementModeChart({ data }: { data: ManagerialDashboardData["
           <BarChart data={chartData} layout="vertical" margin={{ left: 12, right: 16 }}>
             <CartesianGrid horizontal={false} />
             <XAxis type="number" tickFormatter={(value) => formatDashboardCompactCurrency(Number(value))} />
-            <YAxis type="category" dataKey="mode" width={150} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+            <YAxis type="category" dataKey="mode" width={yAxisWidth} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
             <ChartTooltip content={<ChartTooltipContent formatter={(value, _name, item) => (
               <span>{formatDashboardCurrency(Number(value))} across {item.payload?.total} projects</span>
             )} />} />

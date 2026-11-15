@@ -1140,7 +1140,7 @@ export async function getManagerialDashboardData(
     db
       .select({ completedAt: syncLogs.completedAt })
       .from(syncLogs)
-      .where(and(eq(syncLogs.resource, "project"), eq(syncLogs.status, "completed")))
+      .where(and(eq(syncLogs.resource, "project"), inArray(syncLogs.status, ["completed", "completed_with_warnings"])))
       .orderBy(desc(syncLogs.completedAt))
       .limit(1),
     buildPortfolioTrendQuery(filters, user, asOf),

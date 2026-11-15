@@ -198,13 +198,13 @@ export function FeedbackFeedClient() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("community.feed.searchPlaceholder")}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 min-h-11 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-[#1e3a5f]/30 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
             />
           </div>
 
           {/* Type filter pills */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:pb-0">
               {TYPE_FILTERS.map((tf) => {
                 const isSelected = typeFilter === tf.value;
                 const countBadge =
@@ -226,7 +226,7 @@ export function FeedbackFeedClient() {
                     onClick={() => {
                       setTypeFilter(tf.value);
                     }}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    className={`inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-11 sm:min-h-0 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                       isSelected
                         ? "bg-emerald-700 text-white shadow-sm"
                         : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -242,7 +242,7 @@ export function FeedbackFeedClient() {
 
             <button
               onClick={() => setSort(sort === "newest" ? "oldest" : "newest")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors self-start sm:self-auto cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 min-h-11 sm:min-h-0 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors self-start sm:self-auto cursor-pointer"
             >
               <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               {sort === "newest" ? t("community.feed.sortNewest") : t("community.feed.sortOldest")}

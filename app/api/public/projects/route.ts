@@ -1,11 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { applyFilters, listProjects, parseFilters, toCsv } from "@/lib/public-analytics/aggregate";
+import { applyFilters, listProjects, parseFilters } from "@/lib/public-analytics/aggregate";
 import { getPublicProjectSnapshot } from "@/lib/public-analytics/service";
-import { publicAnalyticsStrings } from "@/lib/public-analytics/strings";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
+
+  // CSV export is switched off while the project data is still being cleansed. To
+  // re-enable it, return toCsv(result.all, ...) here again (toCsv is still in
+  // lib/public-analytics/aggregate.ts).
+  if (searchParams.get("format") === "csv") {
+    return NextResponse.json(
+      { error: "CSV export is not available yet." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   try {
     const { rows } = await getPublicProjectSnapshot();
     const filtered = applyFilters(rows, parseFilters(searchParams));
@@ -16,17 +26,6 @@ export async function GET(request: NextRequest) {
       page: Number.parseInt(searchParams.get("page") ?? "1", 10) || 1,
       pageSize: Number.parseInt(searchParams.get("pageSize") ?? "25", 10) || 25,
     });
-
-    if (searchParams.get("format") === "csv") {
-      const stages = publicAnalyticsStrings.en.stages;
-      return new NextResponse(toCsv(result.all, (stage) => stages[stage]), {
-        headers: {
-          "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": `attachment; filename="infrawatch-projects-${new Date().toISOString().slice(0, 10)}.csv"`,
-          "Cache-Control": "no-store",
-        },
-      });
-    }
 
     const { all: _all, ...page } = result;
     void _all;

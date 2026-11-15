@@ -11,7 +11,7 @@ export function DataCoverage({
         <h2 id="data-coverage-heading" className="text-xl font-semibold text-slate-950 dark:text-white">Data coverage</h2>
         <p className="text-[15px] text-slate-600 dark:text-slate-300">Known values are reported separately from missing data.</p>
       </div>
-      <div className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
         <CoverageItem label="Allocated Budget" value={coverage.withBudget} total={coverage.total} />
         <CoverageItem label="Supplier Actual Bid Amount" value={coverage.withActualBidAmount} total={coverage.total} />
         <CoverageItem label="Schedule Dates" value={coverage.withSchedule} total={coverage.total} />

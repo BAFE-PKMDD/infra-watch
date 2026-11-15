@@ -101,7 +101,7 @@ export function DashboardFilters({ filters, options, onChange }: DashboardFilter
             {activeFilters.length === 0 ? "No active filters" : `${activeFilters.length} active ${activeFilters.length === 1 ? "filter" : "filters"}`}
           </span>
         </summary>
-        <div className="grid gap-3 border-t border-slate-200 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800">
+        <div className="grid grid-cols-1 gap-3 border-t border-slate-200 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800">
           <Filter label="Program" value={filters.program} options={options.programs} onChange={update("program")} />
           <Filter label="Funding year" value={filters.year} options={options.years} onChange={update("year")} />
           <Filter label="Region" value={filters.region} options={options.regions} onChange={update("region")} />

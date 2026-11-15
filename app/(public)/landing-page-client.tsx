@@ -85,8 +85,8 @@ export function LandingPageClient({
           <motion.div
             className="absolute left-0 bottom-0 w-[45%] md:w-[50%] lg:w-[55%] h-[75%] md:h-[90%] opacity-20 md:opacity-25 pointer-events-none select-none z-0 hidden sm:block bg-blue-950/40 dark:bg-slate-950/40"
             style={{
-              maskImage: "linear-gradient(to right, black 15%, transparent 80%), linear-gradient(to top, black 20%, transparent 80%)",
-              WebkitMaskImage: "linear-gradient(to right, black 15%, transparent 80%), linear-gradient(to top, black 20%, transparent 80%)",
+              maskImage: "linear-gradient(to right, black 40%, transparent 100%), linear-gradient(to top, black 45%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to right, black 40%, transparent 100%), linear-gradient(to top, black 45%, transparent 100%)",
               maskComposite: "intersect",
               WebkitMaskComposite: "source-in",
             }}
@@ -95,10 +95,16 @@ export function LandingPageClient({
             transition={{ duration: 2.5, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
             <Image
-              src="/hero/lower_left.jpg"
+              src="/hero/lower-left-v5.jpg"
               alt=""
               fill
-              className="object-contain object-left-bottom grayscale-[0.5] contrast-[1.2] brightness-[0.7] mix-blend-overlay -scale-x-100"
+              className="object-cover object-right-bottom -translate-x-[16%] translate-y-[28%] grayscale-[0.5] contrast-[1.2] brightness-[0.82] mix-blend-overlay"
+              style={{
+                maskImage: "linear-gradient(to right, black 60%, transparent 100%), linear-gradient(to top, black 60%, transparent 100%)",
+                WebkitMaskImage: "linear-gradient(to right, black 60%, transparent 100%), linear-gradient(to top, black 60%, transparent 100%)",
+                maskComposite: "intersect",
+                WebkitMaskComposite: "source-in",
+              }}
               loading="eager"
               quality={70}
               sizes="(min-width: 1024px) 55vw, (min-width: 768px) 50vw, (min-width: 640px) 45vw, 1px"
@@ -143,10 +149,10 @@ export function LandingPageClient({
             transition={{ duration: 2.5, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
             <Image
-              src="/hero/lower_right.jpg"
+              src="/hero/lower-right-v4.jpg"
               alt=""
               fill
-              className="object-cover object-right-bottom grayscale-[0.5] contrast-[1.2] brightness-[0.7] mix-blend-overlay"
+              className="object-cover object-right-bottom grayscale-[0.5] contrast-[1.2] brightness-[0.82] mix-blend-overlay"
               loading="eager"
               quality={90}
               sizes="(min-width: 1024px) 55vw, (min-width: 768px) 50vw, (min-width: 640px) 45vw, 1px"

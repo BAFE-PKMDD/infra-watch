@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useCategoryAxisWidth } from "@/hooks/use-category-axis-width";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useState } from "react";
 
@@ -13,6 +15,7 @@ type Measure = "allocatedBudget" | "total";
 type RegionRow = ManagerialDashboardData["regions"][number];
 
 export function RegionTotalsChart({ data }: { data: ManagerialDashboardData["regions"] }) {
+  const yAxisWidth = useCategoryAxisWidth(150);
   const [measure, setMeasure] = useState<Measure>("total");
 
   const ranked = [...data].sort((a, b) => b[measure] - a[measure] || a.region.localeCompare(b.region));
@@ -64,7 +67,7 @@ export function RegionTotalsChart({ data }: { data: ManagerialDashboardData["reg
           <BarChart data={chartData} layout="vertical" margin={{ left: 12, right: 16 }}>
             <CartesianGrid horizontal={false} />
             <XAxis type="number" tickFormatter={(value) => measure === "allocatedBudget" ? formatDashboardCompactCurrency(Number(value)) : Number(value).toLocaleString("en-PH")} />
-            <YAxis type="category" dataKey="label" width={150} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+            <YAxis type="category" dataKey="label" width={yAxisWidth} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
             <ChartTooltip content={<ChartTooltipContent formatter={(value) => measure === "allocatedBudget" ? formatDashboardCurrency(Number(value)) : `${Number(value).toLocaleString("en-PH")} projects`} />} />
             <Bar dataKey={measure} fill={`var(--color-${measure})`} radius={[0, 5, 5, 0]} />
           </BarChart>

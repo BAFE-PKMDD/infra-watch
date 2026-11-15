@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { syncLogs } from "@/lib/db/schema";
@@ -7,7 +7,7 @@ export async function getLastSuccessfulProjectSyncAt(): Promise<Date | null> {
   const [row] = await db
     .select({ completedAt: syncLogs.completedAt })
     .from(syncLogs)
-    .where(and(eq(syncLogs.resource, "project"), eq(syncLogs.status, "completed")))
+    .where(and(eq(syncLogs.resource, "project"), inArray(syncLogs.status, ["completed", "completed_with_warnings"])))
     .orderBy(desc(syncLogs.completedAt))
     .limit(1);
 

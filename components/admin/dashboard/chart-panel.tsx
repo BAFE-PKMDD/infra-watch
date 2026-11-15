@@ -24,9 +24,9 @@ export function ChartPanel({
   const id = `chart-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
     <section aria-labelledby={id} className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-500 rounded-md border border-slate-200 bg-white transition-shadow hover:shadow-sm motion-reduce:animate-none dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5 dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-slate-100 px-5 py-3.5 sm:flex-nowrap dark:border-slate-800">
         <div className="flex min-w-0 items-center gap-1">
-          <h2 id={id} className="truncate text-lg font-semibold text-slate-950 dark:text-white">{title}</h2>
+          <h2 id={id} className="text-lg font-semibold text-slate-950 sm:truncate dark:text-white">{title}</h2>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger

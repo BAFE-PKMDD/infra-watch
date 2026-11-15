@@ -91,7 +91,7 @@ export function ExecutiveKpis({
   return (
     <section aria-labelledby="executive-kpis-heading">
       <h2 id="executive-kpis-heading" className="sr-only">Project overview</h2>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-12 [&>*:nth-child(1)]:xl:col-span-2 [&>*:nth-child(2)]:xl:col-span-4 [&>*:nth-child(3)]:xl:col-span-3 [&>*:nth-child(4)]:xl:col-span-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-12 [&>*:nth-child(1)]:xl:col-span-2 [&>*:nth-child(2)]:xl:col-span-4 [&>*:nth-child(3)]:xl:col-span-3 [&>*:nth-child(4)]:xl:col-span-3">
         <KpiCard
           label="Total Projects"
           value={formatDashboardCount(kpis.totalProjects)}
@@ -132,7 +132,7 @@ export function ExecutiveKpis({
             Other key metrics
           </span>
         </summary>
-        <div className="grid border-t border-slate-100 sm:grid-cols-3 dark:border-slate-800">
+        <div className="grid grid-cols-1 border-t border-slate-100 sm:grid-cols-3 dark:border-slate-800">
           <SecondaryMetric
             label="Supplier Actual Bid Amount"
             value={coverage.withActualBidAmount === 0 ? "Unavailable" : formatDashboardCompactCurrency(kpis.actualBidAmount)}

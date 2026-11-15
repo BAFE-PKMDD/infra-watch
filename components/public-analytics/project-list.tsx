@@ -86,9 +86,6 @@ export function ProjectList({ query }: { query: string }) {
     setPage(1);
   };
 
-  const csvParams = new URLSearchParams(listParams);
-  csvParams.set("format", "csv");
-
   return (
     <Section title={t.list.title}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -102,13 +99,6 @@ export function ProjectList({ query }: { query: string }) {
             className="mt-1 min-h-11 w-full rounded-md border border-pa-axis bg-pa-surface-2 px-3 text-base text-pa-ink"
           />
         </div>
-        <a
-          href={`/api/public/projects?${csvParams.toString()}`}
-          className="inline-flex min-h-11 items-center justify-center rounded-md bg-pa-accent px-4 text-base font-medium text-pa-surface hover:opacity-90"
-          download
-        >
-          {t.list.download}
-        </a>
       </div>
 
       <p className="mt-3 text-base text-pa-ink-2" aria-live="polite">

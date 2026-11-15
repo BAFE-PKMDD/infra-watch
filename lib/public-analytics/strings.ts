@@ -100,7 +100,6 @@ const en = {
   list: {
     title: "All projects",
     searchLabel: "Search by project name, type or place",
-    download: "Download CSV",
     scrollHint: "Scroll right to see more columns.",
     columns: {
       name: "Project",
@@ -132,14 +131,6 @@ const en = {
     tablePesos: "Budget (₱)",
     outOf: "{part} out of every 100",
     lessThanOne: "less than 1",
-  },
-  howWeCount: {
-    title: "How we count",
-    body: [
-      "We only count projects that have reached bidding or later. Proposals still being reviewed are left out of every number, chart, map and list on this page.",
-      "Budgets that are clearly typing errors (zero, ₱1 billion or more, or over 20 times the contract budget) are left out of peso totals, but the project is still counted. Dates before 2000 or in the far future are treated as unknown.",
-      "A project appears on the map only if its recorded location is inside the Philippines. Projects without a usable location are still counted and listed.",
-    ],
   },
   stages: {
     bidding: "Bidding",
@@ -309,7 +300,6 @@ const tl: PublicAnalyticsStrings = {
   list: {
     title: "Lahat ng project",
     searchLabel: "Maghanap ayon sa pangalan ng project, uri o lugar",
-    download: "I-download ang CSV",
     scrollHint: "Mag-scroll pakanan para makita ang iba pang column.",
     columns: {
       name: "Project",
@@ -341,14 +331,6 @@ const tl: PublicAnalyticsStrings = {
     tablePesos: "Budget (₱)",
     outOf: "{part} sa bawat 100",
     lessThanOne: "mas mababa sa 1",
-  },
-  howWeCount: {
-    title: "Paano kami nagbibilang",
-    body: [
-      "Binibilang lang namin ang mga project na umabot na sa bidding o lampas pa. Ang mga proposal na nire-review pa ay hindi kasama sa kahit anong numero, chart, mapa o listahan sa page na ito.",
-      "Ang mga budget na halatang mali ang pagkaka-type (zero, ₱1 bilyon o higit pa, o higit sa 20 beses ng contract budget) ay hindi isinasama sa kabuuang piso, pero bilang pa rin ang project. Ang mga petsang bago mag-2000 o sobrang layo pa sa hinaharap ay tinuturing naming hindi alam.",
-      "Lumalabas lang sa mapa ang isang project kung nasa loob ng Pilipinas ang naka-record na lokasyon nito. Bilang pa rin at nasa listahan pa rin ang mga project na walang magagamit na lokasyon.",
-    ],
   },
   stages: {
     bidding: "Nasa bidding",

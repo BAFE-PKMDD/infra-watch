@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useCategoryAxisWidth } from "@/hooks/use-category-axis-width";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ArrowUp } from "lucide-react";
 import { useState } from "react";
@@ -59,6 +61,7 @@ export function ProjectTypeBudgetChart({
   viewerKey?: string;
   onDrillthrough?: (projectType: string, options?: { excludedProjectTypes?: string[]; program?: string }) => void;
 }) {
+  const yAxisWidth = useCategoryAxisWidth(150);
   const drilldown = useChartDrilldown({
     filters,
     parentField: "projectType",
@@ -156,7 +159,7 @@ export function ProjectTypeBudgetChart({
             <BarChart data={chartData} layout="vertical" margin={{ left: 12, right: 16 }}>
               <CartesianGrid horizontal={false} />
               <XAxis type="number" tickFormatter={(value) => measure === "allocatedBudget" ? formatDashboardCompactCurrency(Number(value)) : Number(value).toLocaleString("en-PH")} />
-              <YAxis type="category" dataKey="label" width={150} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+              <YAxis type="category" dataKey="label" width={yAxisWidth} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
               <ChartTooltip content={<ChartTooltipContent formatter={(value) => measure === "allocatedBudget" ? formatDashboardCurrency(Number(value)) : `${Number(value).toLocaleString("en-PH")} projects`} />} />
               <Bar
                 dataKey={measure}

@@ -1,4 +1,4 @@
-import { and, eq, ilike, or, sql } from "drizzle-orm";
+import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { projects, syncLogs } from "@/lib/db/schema";
@@ -101,7 +101,7 @@ async function analyzeFilteredIssues(
     db
       .select({ startedAt: syncLogs.startedAt })
       .from(syncLogs)
-      .where(and(eq(syncLogs.resource, "project"), eq(syncLogs.status, "completed")))
+      .where(and(eq(syncLogs.resource, "project"), inArray(syncLogs.status, ["completed", "completed_with_warnings"])))
       .orderBy(sql`${syncLogs.startedAt} desc`)
       .limit(1),
   ]);

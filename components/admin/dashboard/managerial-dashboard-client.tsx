@@ -173,7 +173,7 @@ export function ManagerialDashboardClient({
             />
           </div>
 
-          <section data-tour="dashboard-charts" aria-label="Primary charts" className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-300 duration-500 grid items-start gap-4 motion-reduce:animate-none lg:grid-cols-2">
+          <section data-tour="dashboard-charts" aria-label="Primary charts" className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both delay-300 duration-500 grid grid-cols-1 items-start gap-4 motion-reduce:animate-none lg:grid-cols-2">
             <DelayedProjectsByRegionChart
               data={data.regions}
               filters={filters}
@@ -196,7 +196,7 @@ export function ManagerialDashboardClient({
                 <span className="text-sm text-slate-500 dark:text-slate-400">Project timing, reported progress, and regional comparisons</span>
               </span>
             </summary>
-            <div className="grid items-start gap-4 border-t border-slate-100 p-4 lg:grid-cols-2 dark:border-slate-800">
+            <div className="grid grid-cols-1 items-start gap-4 border-t border-slate-100 p-4 lg:grid-cols-2 dark:border-slate-800">
               <ScheduleHealthChart
                 data={data.scheduleHealth}
                 onSelect={(health) => updateFilters(mergeDashboardFilter(filters, "health", health))}
@@ -230,7 +230,7 @@ export function ManagerialDashboardClient({
                 <span className="text-sm text-slate-500 dark:text-slate-400">Project stages, spread across regions, and what gets built, by facility type</span>
               </span>
             </summary>
-            <div className="grid items-start gap-4 border-t border-slate-100 p-4 dark:border-slate-800">
+            <div className="grid grid-cols-1 items-start gap-4 border-t border-slate-100 p-4 dark:border-slate-800">
               <ProjectStatusFunnelChart data={data.statusBreakdown} />
               <RegionTotalsChart data={data.regions} />
               <RegionCategoryHeatTable data={data.regionCategories} />
@@ -246,7 +246,7 @@ export function ManagerialDashboardClient({
                 <span className="text-sm text-slate-500 dark:text-slate-400">Procurement, schedule performance, contractors, and turn-over</span>
               </span>
             </summary>
-            <div className="grid items-start gap-4 border-t border-slate-100 p-4 dark:border-slate-800">
+            <div className="grid grid-cols-1 items-start gap-4 border-t border-slate-100 p-4 dark:border-slate-800">
               <ProcurementModeChart data={data.procurementModes} />
               <RegionCostByTypeChart
                 projectTypes={data.projectTypes}
@@ -254,16 +254,16 @@ export function ManagerialDashboardClient({
                 viewerKey={user?.id}
               />
               <CompletionDelayHistogram data={data.completionDelayBuckets} />
-              <div className="grid items-start gap-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
                 <LateDaysByDimensionChart data={data.lateDaysByRegion} dimensionLabel="region" />
                 <LateDaysByDimensionChart data={data.lateDaysByProjectType} dimensionLabel="type of facility" />
               </div>
-              <div className="grid items-start gap-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
                 <LateRateByContractLengthChart data={data.lateRateByContractLength} />
                 <LateRateByYearChart data={data.lateRateByYear} />
               </div>
               <NtpLagChart data={data.ntpLagByProcurementMode} />
-              <div className="grid items-start gap-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
                 <OngoingOverdueBucketsChart data={data.ongoingOverdueBuckets} />
                 <OngoingByYearChart data={data.ongoingByYear} />
               </div>

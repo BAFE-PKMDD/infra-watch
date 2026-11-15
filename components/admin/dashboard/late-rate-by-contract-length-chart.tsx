@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useCategoryAxisWidth } from "@/hooks/use-category-axis-width";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -15,6 +17,7 @@ const BUCKET_LABELS: Record<ContractLengthBucket, string> = {
 };
 
 export function LateRateByContractLengthChart({ data }: { data: ManagerialDashboardData["lateRateByContractLength"] }) {
+  const yAxisWidth = useCategoryAxisWidth(150);
   if (!data) {
     return (
       <ChartPanel
@@ -49,7 +52,7 @@ export function LateRateByContractLengthChart({ data }: { data: ManagerialDashbo
           <BarChart data={chartData} layout="vertical" margin={{ left: 12, right: 40 }}>
             <CartesianGrid horizontal={false} />
             <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}`} />
-            <YAxis type="category" dataKey="label" width={150} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+            <YAxis type="category" dataKey="label" width={yAxisWidth} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
             <ChartTooltip content={<ChartTooltipContent formatter={(value, _name, item) => (
               <span>{Number(value)} of 100 late · {item.payload?.lateCount} of {item.payload?.total} projects</span>
             )} />} />

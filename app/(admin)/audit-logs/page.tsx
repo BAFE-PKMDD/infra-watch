@@ -127,8 +127,8 @@ export default async function AuditLogsPage({
                 href={`/audit-logs?${quickFilterQuery(item.params)}`}
                 className={
                   active
-                    ? "inline-flex h-8 items-center gap-2 rounded-lg bg-slate-950 px-3 text-xs font-extrabold text-white dark:bg-white dark:text-slate-950"
-                    : "inline-flex h-8 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+                    ? "inline-flex h-11 items-center gap-2 rounded-lg sm:h-8 bg-slate-950 px-3 text-xs font-extrabold text-white dark:bg-white dark:text-slate-950"
+                    : "inline-flex h-11 items-center gap-2 rounded-lg sm:h-8 border border-slate-200 px-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
                 }
               >
                 <Icon className="size-3.5" />
@@ -139,7 +139,7 @@ export default async function AuditLogsPage({
         </div>
 
         <details open={activeFilters.length > 0} className="group border-t border-slate-100 pt-3 dark:border-slate-800">
-          <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-bold text-primary [&::-webkit-details-marker]:hidden">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-xs font-bold text-primary [&::-webkit-details-marker]:hidden">
             <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
             More filters
             {activeFilters.length > 0 && (
@@ -261,9 +261,9 @@ function AuditTrailRow({ log }: { log: AuditLogRow }) {
         <span className={getActionTextClass(log.action)}>{log.action}</span>
         <span className="flex min-w-0 items-center gap-2">
           <span className={getGroupDotClass(log.eventGroup)} aria-hidden="true" />
-          <span className="truncate font-semibold text-slate-900 dark:text-slate-100">{log.displayTitle}</span>
+          <span className="break-words font-semibold text-slate-900 sm:truncate dark:text-slate-100">{log.displayTitle}</span>
         </span>
-        <span className="truncate text-xs font-semibold text-slate-500 dark:text-slate-400">{log.userName || "System"}</span>
+        <span className="break-words text-xs font-semibold text-slate-500 sm:truncate dark:text-slate-400">{log.userName || "System"}</span>
         <ChevronRight className="hidden size-3.5 shrink-0 text-slate-400 transition-transform group-open:rotate-90 sm:block" />
       </summary>
 
@@ -349,7 +349,7 @@ function EmptyState({ activeFilters }: { activeFilters: string[] }) {
           </p>
         </div>
         {activeFilters.length > 0 && (
-          <Link href="/audit-logs" className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-3 text-sm font-bold text-white hover:bg-primary/90">
+          <Link href="/audit-logs" className="inline-flex h-11 items-center justify-center rounded-lg sm:h-9 bg-primary px-3 text-sm font-bold text-white hover:bg-primary/90">
             Clear filters
           </Link>
         )}
@@ -386,7 +386,7 @@ function PageLink({
   page: number;
   params: SearchParams;
 }) {
-  const className = "inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-100 dark:hover:bg-slate-800";
+  const className = "inline-flex h-11 items-center justify-center rounded-lg sm:h-9 border border-slate-200 px-3 text-sm font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-100 dark:hover:bg-slate-800";
 
   if (disabled) {
     return <span className={`${className} pointer-events-none opacity-50`}>{children}</span>;
