@@ -95,7 +95,7 @@ export function ExecutiveKpis({
         <KpiCard
           label="Total Projects"
           value={formatDashboardCount(kpis.totalProjects)}
-          definition="Count of projects in the signed-in user’s authorized scope after dashboard filters."
+          definition="Count of projects in the signed-in user’s authorized scope after dashboard filters. This includes proposals still under review. The public site counts only projects that have reached bidding or later, so its total is lower."
           detail="Projects in the current authorized scope"
           className="delay-0"
         />

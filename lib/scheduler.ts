@@ -13,6 +13,11 @@ import { runScheduledSmsAcknowledgments, runScheduledSmsAutoLink } from "./sms-g
 
 let isSchedulerInitialized = false;
 
+// The sync runs every 3 hours. A scheduled run is skipped only if a sync (for example one
+// started by hand) already finished in the last 2 hours, so the 3-hour rhythm is kept
+// without running twice back to back.
+const SKIP_IF_SYNCED_WITHIN_HOURS = 2;
+
 /**
  * Initialize the scheduler
  * Sets up cron jobs for automated tasks
@@ -33,10 +38,9 @@ export function initScheduler() {
     return;
   }
 
-  // Runs every 3 hours rather than once nightly: ABEMIS's upstream server has shown
-  // recurring outages (HTTP 526) at a fixed hour, so a single daily attempt can miss
-  // an entire day. Each tick skips if a sync already succeeded recently, so a healthy
-  // day still only hits ABEMIS once.
+  // Runs every 3 hours so the portal data stays fresh. ABEMIS's upstream server has shown
+  // recurring outages (HTTP 526), so a failed sync is retried one hour later by the
+  // background worker (3 attempts), and the administrator is emailed if all 3 fail.
   const cronSchedule = process.env.SYNC_CRON_SCHEDULE || "0 */3 * * *";
 
   // Validate cron expression
@@ -51,8 +55,8 @@ export function initScheduler() {
   cron.schedule(
     cronSchedule,
     async () => {
-      if (await hasRecentSuccessfulSync()) {
-        console.log("[Scheduler] Skipping ABEMIS sync; a sync already completed within the last 20 hours.");
+      if (await hasRecentSuccessfulSync(SKIP_IF_SYNCED_WITHIN_HOURS)) {
+        console.log(`[Scheduler] Skipping ABEMIS sync; a sync already completed within the last ${SKIP_IF_SYNCED_WITHIN_HOURS} hours.`);
         return;
       }
 

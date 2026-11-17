@@ -13,6 +13,16 @@ import {
 import { getNotificationPreferences } from "@/lib/account-preferences";
 import { clearPublicCache } from "@/lib/cache";
 
+async function buildNotificationEmailHtml(title: string, message: string) {
+  const { escapeHtml, paragraphsToHtml, wrapEmailHtml } = await import("@/lib/email-layout");
+  return wrapEmailHtml({
+    preheader: title,
+    bodyHtml:
+      `<h1 style="margin:0 0 16px;font-size:20px;color:#14305f">${escapeHtml(title)}</h1>` +
+      paragraphsToHtml(message),
+  });
+}
+
 let running = false;
 let lastUploadCleanup = 0;
 async function executeJob(
@@ -177,6 +187,10 @@ async function executeJob(
                 to: recipient.email,
                 subject: payload.notification.title,
                 text: payload.notification.message,
+                html: await buildNotificationEmailHtml(
+                  payload.notification.title,
+                  payload.notification.message,
+                ),
               })
             : recipient.phoneNumber
               ? await sendSMS(
@@ -237,7 +251,16 @@ export async function runNextBackgroundJob() {
         jobId: job.id,
         error: error instanceof Error ? error.name : "UnknownError",
       });
-      if (!leaseLost) await failJob(job);
+      if (!leaseLost) {
+        const wasFinalAttempt = await failJob(job);
+        // After the last allowed attempt of an ABEMIS sync, tell the administrator by email.
+        if (wasFinalAttempt && job.kind === "abemis-sync") {
+          const { sendSyncFailureAlert } = await import("@/lib/sync-failure-alert");
+          await sendSyncFailureAlert(job.attempts).catch(() =>
+            console.error("[Sync alert] Sending the failure email threw an error."),
+          );
+        }
+      }
     } finally {
       clearInterval(heartbeat);
     }

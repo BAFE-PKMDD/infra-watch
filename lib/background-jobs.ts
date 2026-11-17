@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { backgroundJobs } from "@/lib/db/schema";
-import { retryDelay, type JobKind } from "@/lib/operations-models";
+import { jobRetryDelay, type JobKind } from "@/lib/operations-models";
 
 export type BackgroundJob = typeof backgroundJobs.$inferSelect;
 export async function enqueueJob(
@@ -110,16 +110,19 @@ export async function finishJob(
     .where(ownedJob(job));
 }
 
-export async function failJob(job: BackgroundJob) {
+// Returns true when this was the final attempt, so the job is now permanently failed.
+export async function failJob(job: BackgroundJob): Promise<boolean> {
+  const isFinalAttempt = job.attempts >= job.maxAttempts;
   await db
     .update(backgroundJobs)
     .set({
-      status: job.attempts < job.maxAttempts ? "queued" : "failed",
+      status: isFinalAttempt ? "failed" : "queued",
       error:
         "Processing failed. Retry from the operations screen or contact an administrator.",
       leaseUntil: null,
-      availableAt: new Date(Date.now() + retryDelay(job.attempts)),
+      availableAt: new Date(Date.now() + jobRetryDelay(job.kind, job.attempts)),
       updatedAt: new Date(),
     })
     .where(ownedJob(job));
+  return isFinalAttempt;
 }

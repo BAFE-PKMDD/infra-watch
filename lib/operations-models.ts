@@ -100,6 +100,14 @@ export function retryDelay(attempt: number) {
   return Math.min(60_000 * 2 ** Math.max(0, attempt - 1), 15 * 60_000);
 }
 
+// A failed ABEMIS sync is retried one hour later, not within minutes, because an ABEMIS outage
+// usually lasts longer than that. With 3 attempts in total, the last one runs about 2 hours
+// after the first failure, and only then is the failure reported.
+export const ABEMIS_SYNC_RETRY_DELAY_MS = 60 * 60_000;
+export function jobRetryDelay(kind: string, attempt: number) {
+  return kind === "abemis-sync" ? ABEMIS_SYNC_RETRY_DELAY_MS : retryDelay(attempt);
+}
+
 export const UPLOAD_PART_SIZE = 50 * 1024 * 1024;
 export const MAX_DIRECT_UPLOAD_SIZE = 20 * 1024 * 1024 * 1024;
 export const directUploadSchema = z

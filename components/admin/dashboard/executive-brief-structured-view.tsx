@@ -141,7 +141,7 @@ function BriefKpiStrip({ data }: { data: ManagerialDashboardData }) {
         <KpiCard
           label="Total Projects"
           value={formatDashboardCount(data.kpis.totalProjects)}
-          definition="Count of projects in the authorized scope after dashboard filters."
+          definition="Count of projects in the authorized scope after dashboard filters. This includes proposals still under review. The public site counts only projects that have reached bidding or later, so its total is lower."
           icon={<FolderKanban className="size-4" />}
         />
         <KpiCard

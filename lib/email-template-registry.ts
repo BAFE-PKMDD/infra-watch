@@ -1,3 +1,5 @@
+import { codeBoxHtml, paragraphsToHtml, wrapEmailHtml } from "@/lib/email-layout";
+
 export type EmailTemplateDefinition = {
   slug: string;
   name: string;
@@ -38,16 +40,19 @@ export const EMAIL_TEMPLATE_REGISTRY: EmailTemplateDefinition[] = [
       slug: "otp-email-verification",
       name: "OTP - Email Verification",
       subject: "Verify your INFRA Watch email",
+      purpose: "Use this code to verify your email address.",
     },
     {
       slug: "otp-sign-in",
       name: "OTP - Sign In",
       subject: "Your INFRA Watch sign-in code",
+      purpose: "Use this code to sign in to INFRA Watch.",
     },
     {
       slug: "otp-forget-password",
       name: "OTP - Password Reset",
       subject: "Your INFRA Watch password reset code",
+      purpose: "Use this code to reset your INFRA Watch password.",
     },
   ].map((template) => ({
     slug: template.slug,
@@ -59,7 +64,13 @@ export const EMAIL_TEMPLATE_REGISTRY: EmailTemplateDefinition[] = [
     requiredVariables: ["otp"],
     defaultSubject: template.subject,
     defaultBody:
-      "Your INFRA Watch code is {{otp}}.\n\nIt expires in {{expiryMinutes}} minutes.\n\nIf you did not request this code, ignore this email.",
+      `${template.purpose}
+
+Your code is {{otp}}. It expires in {{expiryMinutes}} minutes.
+
+Never share this code with anyone. INFRA Watch staff will never ask for it.
+
+If you did not request this code, you can ignore this email.`,
     sampleProps: {
       otp: "123456",
       recipientEmail: "sample@example.invalid",
@@ -144,24 +155,27 @@ export function renderEmailTemplate(
     " ",
   );
   const text = replaceTemplateVariables(template.body, values);
-  const escape = (value: string) =>
-    value.replace(
-      /[&<>"']/g,
-      (char) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;",
-        })[char]!,
-    );
-  const html = `<div style="max-width:600px;margin:auto;font-family:Arial,sans-serif;color:#172033"><h1 style="font-size:20px">INFRA Watch</h1>${text
+  // One-time code emails get the code in a large box, using the minutes the caller supplied.
+  const code = values.otp?.trim();
+  const minutes = values.expiryMinutes?.trim();
+  // The box already shows the code and the expiry, so a short line that only repeats the code
+  // is left out of the visual version. The plain-text version keeps the full body.
+  // The layout adds its own "Best regards" sign-off, so a closing line that only names the
+  // bureau is dropped from the visual version to avoid saying it twice.
+  const withoutSignature = text
     .split(/\n\s*\n/)
-    .map(
-      (paragraph) =>
-        `<p style="font-size:16px;line-height:1.6">${escape(paragraph).replaceAll("\n", "<br>")}</p>`,
-    )
-    .join("")}</div>`;
+    .filter((paragraph, index, all) => !(index === all.length - 1 && /^(INFRA Watch,\s*)?Bureau of Agricultural and Fisheries Engineering\.?$/i.test(paragraph.trim())))
+    .join("\n\n");
+  const visualText = code
+    ? withoutSignature
+        .split(/\n\s*\n/)
+        .filter((paragraph) => !(paragraph.includes(code) && paragraph.length < 120))
+        .join("\n\n")
+    : withoutSignature;
+  const bodyHtml = code
+    ? codeBoxHtml(code, minutes ? `Expires in ${minutes} minute${minutes === "1" ? "" : "s"}` : undefined) +
+      paragraphsToHtml(visualText)
+    : paragraphsToHtml(withoutSignature);
+  const html = wrapEmailHtml({ bodyHtml, preheader: code ? `Your code is ${code}` : subject });
   return { subject, text, html };
 }

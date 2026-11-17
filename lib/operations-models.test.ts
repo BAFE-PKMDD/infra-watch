@@ -8,6 +8,7 @@ import {
   validateUploadParts,
   UPLOAD_PART_SIZE,
   retryDelay,
+  jobRetryDelay,
   videoSampleTimes,
 } from "./operations-models";
 import { escapeExportCell } from "./project-export";
@@ -137,4 +138,10 @@ test("health checks settle within their deadline and never disclose service erro
     (await timedHealth("Test", () => new Promise(() => {}), 10)).status,
     "unavailable",
   );
+});
+
+test("ABEMIS sync failures are retried one hour apart, other jobs keep the short backoff", () => {
+  assert.equal(jobRetryDelay("abemis-sync", 1), 3_600_000);
+  assert.equal(jobRetryDelay("abemis-sync", 2), 3_600_000);
+  assert.equal(jobRetryDelay("location-sync", 1), 60_000);
 });

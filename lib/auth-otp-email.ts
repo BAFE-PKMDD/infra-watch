@@ -1,6 +1,7 @@
 import { sendEmail } from "@/lib/email";
 import { getEmailTemplateContent } from "@/lib/email-templates";
 import { renderEmailTemplate } from "@/lib/email-template-registry";
+import { codeBoxHtml, paragraphsToHtml, wrapEmailHtml } from "@/lib/email-layout";
 
 type SendEmail = typeof sendEmail;
 
@@ -29,6 +30,12 @@ export async function deliverAuthCode(
       `It expires in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
       "If you did not request this code, ignore this email.",
     ].join("\n\n"),
+    html: wrapEmailHtml({
+      preheader: `Your code is ${input.otp}`,
+      bodyHtml:
+        codeBoxHtml(input.otp, `Expires in ${minutes} minute${minutes === 1 ? "" : "s"}`) +
+        paragraphsToHtml("Never share this code with anyone. INFRA Watch staff will never ask for it.\n\nIf you did not request this code, you can ignore this email."),
+    }),
     }),
   });
 

@@ -95,10 +95,10 @@ export function LandingPageClient({
             transition={{ duration: 2.5, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
             <Image
-              src="/hero/lower-left-v5.jpg"
+              src="/hero/lower-left-v7.jpg"
               alt=""
               fill
-              className="object-cover object-right-bottom -translate-x-[16%] translate-y-[28%] grayscale-[0.5] contrast-[1.2] brightness-[0.82] mix-blend-overlay"
+              className="object-cover object-left-bottom -translate-x-[4%] translate-y-[8%] grayscale-[0.5] contrast-[1.2] brightness-[0.82] mix-blend-overlay"
               style={{
                 maskImage: "linear-gradient(to right, black 60%, transparent 100%), linear-gradient(to top, black 60%, transparent 100%)",
                 WebkitMaskImage: "linear-gradient(to right, black 60%, transparent 100%), linear-gradient(to top, black 60%, transparent 100%)",
