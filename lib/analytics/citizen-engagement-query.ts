@@ -3,6 +3,7 @@ import { and, count, eq, gte, isNotNull, isNull, lt, ne, or, sql } from "drizzle
 import { user as authUser } from "@/auth-schema";
 import { db } from "@/lib/db";
 import { analyticsEvents, feedback, issues, projects } from "@/lib/db/schema";
+import { getSurveyDemographics, type SurveyDemographics } from "./survey-demographics";
 
 export function buildManilaEventDayExpression() {
   return sql<string>`to_char(timezone('Asia/Manila', ${analyticsEvents.occurredAt}), 'YYYY-MM-DD')`;
@@ -74,6 +75,7 @@ export type CitizenEngagementAnalytics = {
     minimumEventCount: 5;
     regions: Array<{ code: string; count: number }>;
   };
+  demographics: SurveyDemographics;
 };
 
 type RankedProject = { projectId: string; projectName: string; count: number };
@@ -253,6 +255,7 @@ export async function getCitizenEngagementAnalytics(
     visitTotalRows,
     visitTrend,
     visitRegionRows,
+    demographics,
   ] = await Promise.all([
     db.select({ eventName: analyticsEvents.eventName, value: count() })
       .from(analyticsEvents).where(eventWhere).groupBy(analyticsEvents.eventName),
@@ -296,6 +299,7 @@ export async function getCitizenEngagementAnalytics(
       .where(and(eventWhere, eq(analyticsEvents.eventName, "site_visit"), isNotNull(analyticsEvents.visitKey)))
       .groupBy(manilaEventDay),
     buildVisibleVisitRegionQuery(range),
+    getSurveyDemographics(range),
   ]);
 
   const eventTotalMap = new Map(eventTotals.map((row) => [row.eventName as EventName, asNumber(row.value)]));
@@ -373,5 +377,6 @@ export async function getCitizenEngagementAnalytics(
     visitGeography: summarizeApproximateNetworkRegions(
       visitRegionRows.map((row) => ({ code: row.code, count: asNumber(row.value) })),
     ),
+    demographics,
   };
 }

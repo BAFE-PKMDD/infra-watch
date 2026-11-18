@@ -2,6 +2,7 @@ import { Activity, Globe, Info, Map, MessageSquare, Search, Star } from "lucide-
 
 import type { CitizenEngagementAnalytics } from "@/lib/analytics/citizen-engagement-query";
 import { CitizenActivityChart } from "./citizen-activity-chart";
+import { CitizenDemographics } from "./citizen-demographics";
 import { CitizenNetworkRegionMapLoader } from "./citizen-network-region-map-loader";
 
 function formatNumber(value: number) {
@@ -113,6 +114,7 @@ const resultBandLabels: Record<string, string> = {
 export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAnalytics }) {
   const hasActivity = Object.values(data.overview).some((value) => typeof value === "number" && value > 0)
     || data.visitGeography.regions.length > 0
+    || data.demographics.asked > 0
     || data.projectDiscovery.mostOpenedFromSearch.length > 0
     || data.projectDiscovery.mostOpenedFromMap.length > 0
     || data.projectDiscovery.mostViewed.length > 0
@@ -156,6 +158,8 @@ export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAn
         </div>
       </section>
 
+      <CitizenDemographics data={data.demographics} />
+
       <section aria-labelledby="daily-activity-heading" className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
         <h2 id="daily-activity-heading" className="text-lg font-semibold text-slate-950 dark:text-white">Daily activity graph</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Recorded visits and actions by Asia/Manila calendar date. Visits count browser sessions, not unique people.</p>
@@ -184,13 +188,13 @@ export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAn
 
       <section aria-labelledby="visit-geography-heading" className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
         <h2 id="visit-geography-heading" className="text-lg font-semibold text-slate-950 dark:text-white">Site visits by approximate region</h2>
-        <p className="mt-1 max-w-5xl text-sm leading-6 text-slate-600 dark:text-slate-300">Each visit is one browser session, identified by a random token that is cleared when the tab closes. A person using several browsers or tabs counts more than once. Regions with fewer than five visits are omitted. IP addresses are processed transiently and are not stored. Network location can be inaccurate and does not represent a visitor’s residence.</p>
+        <p className="mt-1 max-w-5xl text-sm leading-6 text-slate-600 dark:text-slate-300">One visit is one browser session, so someone on several browsers counts more than once. Regions under 5 visits are hidden. Location is approximate and not a home address.</p>
         <CitizenNetworkRegionMapLoader geography={data.visitGeography} unit="visits" />
       </section>
 
       <section aria-labelledby="network-geography-heading" className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
         <h2 id="network-geography-heading" className="text-lg font-semibold text-slate-950 dark:text-white">Approximate network-region activity</h2>
-        <p className="mt-1 max-w-5xl text-sm leading-6 text-slate-600 dark:text-slate-300">Counts represent actions, not people. Regions with fewer than five actions are omitted. IP addresses are processed transiently and are not stored. Network location can be inaccurate and does not represent a reporter’s residence.</p>
+        <p className="mt-1 max-w-5xl text-sm leading-6 text-slate-600 dark:text-slate-300">Counts are actions, not people. Regions under 5 actions are hidden. Location is approximate and not a home address.</p>
         <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">GeoLite2 data created by MaxMind. Region polygons use the portal’s simplified PSGC boundary dataset.</p>
         <CitizenNetworkRegionMapLoader geography={data.networkGeography} />
       </section>

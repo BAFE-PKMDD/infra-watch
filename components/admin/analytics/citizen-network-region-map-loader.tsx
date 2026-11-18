@@ -20,7 +20,7 @@ export function CitizenNetworkRegionMapLoader({
   unit?: "actions" | "visits";
 }) {
   if (geography.regions.length === 0) {
-    return <p role="status" className="mt-4 border-l-2 border-slate-200 py-3 pl-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">No reportable region data is available for this period. Region tracking may be disabled or unavailable. Regions with fewer than {geography.minimumEventCount} recorded {unit} are omitted.</p>;
+    return <p role="status" className="mt-4 border-l-2 border-slate-200 py-3 pl-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">No region data for this period. Region tracking may be disabled or unavailable.</p>;
   }
   return <CitizenNetworkRegionMap geography={geography} unit={unit} />;
 }

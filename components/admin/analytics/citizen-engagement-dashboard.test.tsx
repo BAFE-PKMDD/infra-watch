@@ -4,6 +4,33 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { CitizenEngagementDashboard } from "./citizen-engagement-dashboard";
 import type { CitizenEngagementAnalytics } from "@/lib/analytics/citizen-engagement-query";
+import type { SurveyDemographics } from "@/lib/analytics/survey-demographics";
+
+const noGroups = { rows: [], hasHiddenGroups: false };
+const emptyDemographics: SurveyDemographics = {
+  minimumGroupSize: 5,
+  asked: 0,
+  answered: 0,
+  skipped: 0,
+  responseRate: null,
+  respondentTypes: noGroups,
+  ageBands: noGroups,
+  genders: noGroups,
+  referralSources: noGroups,
+  surveySources: noGroups,
+};
+const demographics: SurveyDemographics = {
+  ...emptyDemographics,
+  asked: 40,
+  answered: 30,
+  skipped: 10,
+  responseRate: 75,
+  respondentTypes: { rows: [{ key: "farmer", label: "Farmer", count: 18 }, { key: "student", label: "Student", count: 12 }], hasHiddenGroups: true },
+  ageBands: { rows: [{ key: "25_34", label: "25–34", count: 14 }], hasHiddenGroups: false },
+  genders: { rows: [{ key: "Female", label: "Female", count: 16 }], hasHiddenGroups: false },
+  referralSources: { rows: [{ key: "facebook", label: "Facebook", count: 22 }], hasHiddenGroups: false },
+  surveySources: { rows: [{ key: "feedback", label: "Feedback", count: 20 }], hasHiddenGroups: false },
+};
 
 const data: CitizenEngagementAnalytics = {
   range: { from: "2026-09-01", to: "2026-09-22", earliestAvailable: "2026-06-25", timeZone: "Asia/Manila", maximumDays: 90 },
@@ -36,6 +63,7 @@ const data: CitizenEngagementAnalytics = {
     minimumEventCount: 5,
     regions: [{ code: "PH130000000", count: 6 }],
   },
+  demographics,
 };
 
 test("renders truthful metric labels, reporting context, and separate issue taxonomies", () => {
@@ -52,8 +80,8 @@ test("renders truthful metric labels, reporting context, and separate issue taxo
   assert.match(html, /Farm-to-market road/);
   assert.match(html, /Daily activity graph/);
   assert.match(html, /Approximate network-region activity/);
-  assert.match(html, /Counts represent actions, not people/);
-  assert.match(html, /fewer than five actions are omitted/);
+  assert.match(html, /Counts are actions, not people/);
+  assert.match(html, /Regions under 5 actions are hidden/);
 });
 
 test("shows site visits as browser sessions with their own approximate-region section", () => {
@@ -62,8 +90,29 @@ test("shows site visits as browser sessions with their own approximate-region se
   assert.match(html, />21</);
   assert.match(html, /Browser sessions that loaded the public site/);
   assert.match(html, /Site visits by approximate region/);
-  assert.match(html, /A person using several browsers or tabs counts more than once/);
-  assert.match(html, /IP addresses are processed transiently and are not stored/);
+  assert.match(html, /someone on several browsers counts more than once/);
+  assert.match(html, /Regions under 5 visits are hidden/);
+});
+
+test("shows survey demographics with response coverage and small-group notice", () => {
+  const html = renderToStaticMarkup(<CitizenEngagementDashboard data={data} />);
+  assert.match(html, /Who is using InfraWatch/);
+  assert.match(html, /Percentages are of people who answered, not of all visitors/);
+  assert.match(html, /Asked/);
+  assert.match(html, /Answered/);
+  assert.match(html, />75%</);
+  assert.match(html, /Respondent type/);
+  assert.match(html, /Farmer/);
+  assert.match(html, /Age range/);
+  assert.match(html, /25–34/);
+  assert.match(html, /Groups under 5 are not shown/);
+});
+
+test("explains an empty survey period and an all-skipped period", () => {
+  const none = renderToStaticMarkup(<CitizenEngagementDashboard data={{ ...data, demographics: emptyDemographics }} />);
+  assert.match(none, /No survey responses recorded for this period/);
+  const skipped = renderToStaticMarkup(<CitizenEngagementDashboard data={{ ...data, demographics: { ...emptyDemographics, asked: 12, skipped: 12, responseRate: 0 } }} />);
+  assert.match(skipped, /Everyone skipped the survey in this period/);
 });
 
 test("renders a report-level empty state instead of a zero-filled dashboard", () => {
@@ -87,6 +136,7 @@ test("renders a report-level empty state instead of a zero-filled dashboard", ()
     commonIssues: { feedbackThemes: [], eReportTypes: [] },
     networkGeography: { minimumEventCount: 5, regions: [] },
     visitGeography: { minimumEventCount: 5, regions: [] },
+    demographics: emptyDemographics,
   };
   const html = renderToStaticMarkup(<CitizenEngagementDashboard data={emptyData} />);
   assert.match(html, /No citizen activity recorded/);
@@ -107,6 +157,7 @@ test("shows recorded project selections even when all overview metrics are zero"
     commonIssues: { feedbackThemes: [], eReportTypes: [] },
     networkGeography: { minimumEventCount: 5, regions: [] },
     visitGeography: { minimumEventCount: 5, regions: [] },
+    demographics: emptyDemographics,
   }} />);
   assert.doesNotMatch(html, /No citizen activity recorded/);
   assert.match(html, /Selected from map/);
