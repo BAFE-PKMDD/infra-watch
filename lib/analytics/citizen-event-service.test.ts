@@ -140,3 +140,34 @@ test("contains persistence failures so analytics cannot block public flows", asy
 
   assert.equal(result, "unavailable");
 });
+
+test("records a site visit with its session token and server-derived region, and skips staff", async () => {
+  const visitKey = "3f1c2a9e-8b4d-4e6a-9c1f-2b7d5a0e4c11";
+  const input = { eventName: "site_visit", routeTemplate: "/", entrySurface: "landing", visitKey };
+  const inserted: unknown[] = [];
+
+  const visitor = await recordCitizenEngagementEvent({
+    input,
+    role: null,
+    resolveNetworkRegion: async () => ({ code: "PH070000000", label: "Central Visayas" }),
+    insertEvent: async (event) => { inserted.push(event); },
+  });
+  const staff = await recordCitizenEngagementEvent({
+    input,
+    role: "admin",
+    insertEvent: async () => { throw new Error("must not run"); },
+  });
+
+  assert.equal(visitor, "recorded");
+  assert.equal(staff, "excluded");
+  assert.deepEqual(inserted, [{
+    eventName: "site_visit",
+    routeTemplate: "/",
+    resourceType: null,
+    resourceId: null,
+    entrySurface: "landing",
+    resultCountBand: null,
+    visitKey,
+    networkRegionCode: "PH070000000",
+  }]);
+});

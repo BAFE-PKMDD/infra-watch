@@ -1,4 +1,4 @@
-import { Activity, Info, Map, MessageSquare, Search, Star } from "lucide-react";
+import { Activity, Globe, Info, Map, MessageSquare, Search, Star } from "lucide-react";
 
 import type { CitizenEngagementAnalytics } from "@/lib/analytics/citizen-engagement-query";
 import { CitizenActivityChart } from "./citizen-activity-chart";
@@ -112,6 +112,7 @@ const resultBandLabels: Record<string, string> = {
 
 export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAnalytics }) {
   const hasActivity = Object.values(data.overview).some((value) => typeof value === "number" && value > 0)
+    || data.visitGeography.regions.length > 0
     || data.projectDiscovery.mostOpenedFromSearch.length > 0
     || data.projectDiscovery.mostOpenedFromMap.length > 0
     || data.projectDiscovery.mostViewed.length > 0
@@ -124,7 +125,7 @@ export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAn
       <section aria-label="Reporting context" className="flex flex-col gap-3 border-y border-slate-200 py-4 text-sm text-slate-600 md:flex-row md:items-start md:justify-between dark:border-slate-800 dark:text-slate-300">
         <div>
           <p className="font-medium text-slate-950 dark:text-white">{data.range.from} to {data.range.to}</p>
-          <p className="mt-1">Reporting timezone: {data.range.timeZone}. Activity metrics count actions, not unique people. Activity events are retained for {data.freshness.eventRetentionDays} days.</p>
+          <p className="mt-1">Reporting timezone: {data.range.timeZone}. Site visits count browser sessions (one per session, not per person); every other metric counts actions. Activity events are retained for {data.freshness.eventRetentionDays} days.</p>
         </div>
         <div className="md:text-right">
           <p>Generated {formatGeneratedAt(data.freshness.generatedAt)}</p>
@@ -144,7 +145,8 @@ export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAn
           <Activity className="size-5 text-primary" aria-hidden="true" />
           <h2 id="engagement-summary-heading" className="text-lg font-semibold text-slate-950 dark:text-white">Citizen engagement</h2>
         </div>
-        <div className="grid overflow-hidden rounded-lg border border-slate-200 bg-white sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className="grid overflow-hidden rounded-lg border border-slate-200 bg-white sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-7 dark:border-slate-800 dark:bg-slate-900">
+          <Metric icon={Globe} label="Site visits" value={formatNumber(data.overview.siteVisits)} note="Browser sessions that loaded the public site" />
           <Metric icon={Search} label="Completed searches" value={formatNumber(data.overview.searches)} note="Settled query or filter result" />
           <Metric icon={Activity} label="Project detail views" value={formatNumber(data.overview.projectViews)} note="Detail page mounted in a browser" />
           <Metric icon={Map} label="Map views" value={formatNumber(data.overview.mapViews)} note="Catalog or project map opened" />
@@ -156,7 +158,7 @@ export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAn
 
       <section aria-labelledby="daily-activity-heading" className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
         <h2 id="daily-activity-heading" className="text-lg font-semibold text-slate-950 dark:text-white">Daily activity graph</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Recorded actions by Asia/Manila calendar date. Counts are actions, not unique people.</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Recorded visits and actions by Asia/Manila calendar date. Visits count browser sessions, not unique people.</p>
         <CitizenActivityChart trend={data.trend} />
         <details className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-800">
           <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">View daily totals</summary>
@@ -164,20 +166,26 @@ export function CitizenEngagementDashboard({ data }: { data: CitizenEngagementAn
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="sticky top-0 border-b border-slate-200 bg-white text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
               <tr>
-                <th className="py-2 pr-4 font-medium">Date</th><th className="px-3 py-2 text-right font-medium">Searches</th><th className="px-3 py-2 text-right font-medium">Project views</th><th className="px-3 py-2 text-right font-medium">Map views</th><th className="px-3 py-2 text-right font-medium">Ratings</th><th className="pl-3 py-2 text-right font-medium">Comments</th>
+                <th className="py-2 pr-4 font-medium">Date</th><th className="px-3 py-2 text-right font-medium">Visits</th><th className="px-3 py-2 text-right font-medium">Searches</th><th className="px-3 py-2 text-right font-medium">Project views</th><th className="px-3 py-2 text-right font-medium">Map views</th><th className="px-3 py-2 text-right font-medium">Ratings</th><th className="pl-3 py-2 text-right font-medium">Comments</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {[...data.trend].reverse().map((row) => (
                 <tr key={row.date}>
                   <td className="py-2.5 pr-4 font-medium text-slate-800 dark:text-slate-200">{row.date}</td>
-                  {[row.searches, row.projectViews, row.mapViews, row.ratingsSubmitted, row.commentsSubmitted].map((value, index) => <td key={index} className="px-3 py-2.5 text-right tabular-nums text-slate-700 last:pl-3 last:pr-0 dark:text-slate-300">{formatNumber(value)}</td>)}
+                  {[row.visits, row.searches, row.projectViews, row.mapViews, row.ratingsSubmitted, row.commentsSubmitted].map((value, index) => <td key={index} className="px-3 py-2.5 text-right tabular-nums text-slate-700 last:pl-3 last:pr-0 dark:text-slate-300">{formatNumber(value)}</td>)}
                 </tr>
               ))}
             </tbody>
           </table>
           </div>
         </details>
+      </section>
+
+      <section aria-labelledby="visit-geography-heading" className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+        <h2 id="visit-geography-heading" className="text-lg font-semibold text-slate-950 dark:text-white">Site visits by approximate region</h2>
+        <p className="mt-1 max-w-5xl text-sm leading-6 text-slate-600 dark:text-slate-300">Each visit is one browser session, identified by a random token that is cleared when the tab closes. A person using several browsers or tabs counts more than once. Regions with fewer than five visits are omitted. IP addresses are processed transiently and are not stored. Network location can be inaccurate and does not represent a visitor’s residence.</p>
+        <CitizenNetworkRegionMapLoader geography={data.visitGeography} unit="visits" />
       </section>
 
       <section aria-labelledby="network-geography-heading" className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">

@@ -99,6 +99,7 @@ Table "analytics_events" {
   entry_surface text
   result_count_band text
   network_region_code text
+  visit_key text
 
   indexes {
     (event_name, occurred_at) [name: 'analytics_events_event_occurred_at_idx']

@@ -124,3 +124,57 @@ test("excludes known staff roles but keeps anonymous and citizen activity", () =
   assert.equal(shouldExcludeAnalyticsRole("citizen"), false);
   assert.equal(shouldExcludeAnalyticsRole(null), false);
 });
+
+const VISIT_KEY = "3f1c2a9e-8b4d-4e6a-9c1f-2b7d5a0e4c11";
+
+test("accepts an anonymous site visit with a random session token", () => {
+  assert.deepEqual(normalizeCitizenEngagementEvent({
+    eventName: "site_visit",
+    routeTemplate: "/",
+    entrySurface: "landing",
+    visitKey: VISIT_KEY.toUpperCase(),
+  }), {
+    eventName: "site_visit",
+    routeTemplate: "/",
+    resourceType: null,
+    resourceId: null,
+    entrySurface: "landing",
+    resultCountBand: null,
+    visitKey: VISIT_KEY,
+  });
+  assert.equal(normalizeCitizenEngagementEvent({
+    eventName: "site_visit",
+    routeTemplate: "other",
+    entrySurface: "landing",
+    visitKey: VISIT_KEY,
+  }).routeTemplate, "other");
+});
+
+test("site visits require a well-formed token and the landing surface", () => {
+  const base = { eventName: "site_visit", routeTemplate: "/", entrySurface: "landing" };
+  assert.throws(() => normalizeCitizenEngagementEvent(base), /visitKey/i);
+  assert.throws(() => normalizeCitizenEngagementEvent({ ...base, visitKey: "192.0.2.1" }), /invalid|visitKey/i);
+  assert.throws(() => normalizeCitizenEngagementEvent({ ...base, visitKey: "user@example.com" }), /invalid|visitKey/i);
+  assert.throws(() => normalizeCitizenEngagementEvent({ ...base, entrySurface: "direct", visitKey: VISIT_KEY }), /surface/i);
+  assert.throws(() => normalizeCitizenEngagementEvent({ ...base, resourceId: "P-1", visitKey: VISIT_KEY }), /resource/i);
+});
+
+test("only site visits may carry a visit token or a generic route template", () => {
+  assert.throws(() => normalizeCitizenEngagementEvent({
+    eventName: "map_viewed",
+    routeTemplate: "/map",
+    entrySurface: "map",
+    visitKey: VISIT_KEY,
+  }), /visitKey/i);
+  assert.throws(() => normalizeCitizenEngagementEvent({
+    eventName: "map_viewed",
+    routeTemplate: "other",
+    entrySurface: "map",
+  }), /route/i);
+  assert.throws(() => normalizeCitizenEngagementEvent({
+    eventName: "project_search_completed",
+    routeTemplate: "/",
+    entrySurface: "directory",
+    resultCount: 1,
+  }), /route/i);
+});

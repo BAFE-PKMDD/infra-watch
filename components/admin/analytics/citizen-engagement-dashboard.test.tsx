@@ -9,6 +9,7 @@ const data: CitizenEngagementAnalytics = {
   range: { from: "2026-09-01", to: "2026-09-22", earliestAvailable: "2026-06-25", timeZone: "Asia/Manila", maximumDays: 90 },
   freshness: { generatedAt: "2026-09-22T10:00:00.000Z", eventRetentionDays: 90 },
   overview: {
+    siteVisits: 21,
     searches: 12,
     projectViews: 34,
     mapViews: 8,
@@ -16,7 +17,7 @@ const data: CitizenEngagementAnalytics = {
     commentsSubmitted: 7,
     averageRating: 4.2,
   },
-  trend: [{ date: "2026-09-22", searches: 2, projectViews: 3, mapViews: 1, ratingsSubmitted: 1, commentsSubmitted: 1 }],
+  trend: [{ date: "2026-09-22", visits: 4, searches: 2, projectViews: 3, mapViews: 1, ratingsSubmitted: 1, commentsSubmitted: 1 }],
   projectDiscovery: {
     mostViewed: [{ projectId: "AMEFIP-1", projectName: "Farm-to-market road", count: 9 }],
     mostOpenedFromSearch: [],
@@ -31,6 +32,10 @@ const data: CitizenEngagementAnalytics = {
     minimumEventCount: 5,
     regions: [{ code: "PH130000000", count: 8 }],
   },
+  visitGeography: {
+    minimumEventCount: 5,
+    regions: [{ code: "PH130000000", count: 6 }],
+  },
 };
 
 test("renders truthful metric labels, reporting context, and separate issue taxonomies", () => {
@@ -40,7 +45,7 @@ test("renders truthful metric labels, reporting context, and separate issue taxo
   assert.match(html, /Opened from search/);
   assert.doesNotMatch(html, /Most searched projects/);
   assert.match(html, /Asia\/Manila/);
-  assert.match(html, /Activity metrics count actions, not unique people/);
+  assert.match(html, /Site visits count browser sessions \(one per session, not per person\)/);
   assert.match(html, /90 days/);
   assert.match(html, /Feedback themes/);
   assert.match(html, /E-Report issue types/);
@@ -51,10 +56,21 @@ test("renders truthful metric labels, reporting context, and separate issue taxo
   assert.match(html, /fewer than five actions are omitted/);
 });
 
+test("shows site visits as browser sessions with their own approximate-region section", () => {
+  const html = renderToStaticMarkup(<CitizenEngagementDashboard data={data} />);
+  assert.match(html, /Site visits/);
+  assert.match(html, />21</);
+  assert.match(html, /Browser sessions that loaded the public site/);
+  assert.match(html, /Site visits by approximate region/);
+  assert.match(html, /A person using several browsers or tabs counts more than once/);
+  assert.match(html, /IP addresses are processed transiently and are not stored/);
+});
+
 test("renders a report-level empty state instead of a zero-filled dashboard", () => {
   const emptyData: CitizenEngagementAnalytics = {
     ...data,
     overview: {
+      siteVisits: 0,
       searches: 0,
       projectViews: 0,
       mapViews: 0,
@@ -70,6 +86,7 @@ test("renders a report-level empty state instead of a zero-filled dashboard", ()
     },
     commonIssues: { feedbackThemes: [], eReportTypes: [] },
     networkGeography: { minimumEventCount: 5, regions: [] },
+    visitGeography: { minimumEventCount: 5, regions: [] },
   };
   const html = renderToStaticMarkup(<CitizenEngagementDashboard data={emptyData} />);
   assert.match(html, /No citizen activity recorded/);
@@ -85,10 +102,11 @@ test("renders explicit empty states instead of blank rankings", () => {
 test("shows recorded project selections even when all overview metrics are zero", () => {
   const html = renderToStaticMarkup(<CitizenEngagementDashboard data={{
     ...data,
-    overview: { searches: 0, projectViews: 0, mapViews: 0, ratingsSubmitted: 0, commentsSubmitted: 0, averageRating: null },
+    overview: { siteVisits: 0, searches: 0, projectViews: 0, mapViews: 0, ratingsSubmitted: 0, commentsSubmitted: 0, averageRating: null },
     projectDiscovery: { mostViewed: [], mostOpenedFromSearch: [], mostOpenedFromMap: [{ projectId: "test-1", projectName: "Selected from map", count: 1 }], searchResultBands: [] },
     commonIssues: { feedbackThemes: [], eReportTypes: [] },
     networkGeography: { minimumEventCount: 5, regions: [] },
+    visitGeography: { minimumEventCount: 5, regions: [] },
   }} />);
   assert.doesNotMatch(html, /No citizen activity recorded/);
   assert.match(html, /Selected from map/);

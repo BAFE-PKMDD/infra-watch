@@ -847,6 +847,8 @@ export const analyticsEvents = pgTable(
     entrySurface: text("entry_surface").notNull(),
     resultCountBand: text("result_count_band"),
     networkRegionCode: text("network_region_code"),
+    // Random per-browser-session token on site_visit events only; never derived from IP or device.
+    visitKey: text("visit_key"),
   },
   (table) => ({
     occurredAtIdx: index("analytics_events_occurred_at_idx").on(table.occurredAt),

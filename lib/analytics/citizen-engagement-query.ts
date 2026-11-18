@@ -15,6 +15,7 @@ export function buildManilaFeedbackDayExpression() {
 const MANILA_TIME_ZONE = "Asia/Manila" as const;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const CITIZEN_ANALYTICS_EVENT_NAMES = [
+  "site_visit",
   "project_search_completed",
   "project_viewed",
   "project_opened_from_search",
@@ -38,6 +39,7 @@ export type CitizenEngagementAnalytics = {
   range: { from: string; to: string; earliestAvailable: string; timeZone: typeof MANILA_TIME_ZONE; maximumDays: 90 };
   freshness: { generatedAt: string; eventRetentionDays: 90 };
   overview: {
+    siteVisits: number;
     searches: number;
     projectViews: number;
     mapViews: number;
@@ -47,6 +49,7 @@ export type CitizenEngagementAnalytics = {
   };
   trend: Array<{
     date: string;
+    visits: number;
     searches: number;
     projectViews: number;
     mapViews: number;
@@ -64,6 +67,10 @@ export type CitizenEngagementAnalytics = {
     eReportTypes: Array<{ key: string; label: string; count: number }>;
   };
   networkGeography: {
+    minimumEventCount: 5;
+    regions: Array<{ code: string; count: number }>;
+  };
+  visitGeography: {
     minimumEventCount: 5;
     regions: Array<{ code: string; count: number }>;
   };
@@ -166,6 +173,8 @@ export function summarizeApproximateNetworkRegions(
   };
 }
 
+// Engagement actions only: site visits are reported separately so a single visit is not
+// counted twice in the "actions by region" view.
 export function buildVisibleNetworkRegionQuery(range: CitizenAnalyticsRange) {
   return db.select({ code: analyticsEvents.networkRegionCode, value: count() })
     .from(analyticsEvents)
@@ -173,9 +182,26 @@ export function buildVisibleNetworkRegionQuery(range: CitizenAnalyticsRange) {
       gte(analyticsEvents.occurredAt, range.start),
       lt(analyticsEvents.occurredAt, range.endExclusive),
       isNotNull(analyticsEvents.networkRegionCode),
+      ne(analyticsEvents.eventName, "site_visit"),
     ))
     .groupBy(analyticsEvents.networkRegionCode)
     .having(sql`count(*) >= 5`);
+}
+
+// Distinct visit tokens per approximate region; regions under five visits are dropped in SQL.
+export function buildVisibleVisitRegionQuery(range: CitizenAnalyticsRange) {
+  const distinctVisits = sql<number>`count(distinct ${analyticsEvents.visitKey})`;
+  return db.select({ code: analyticsEvents.networkRegionCode, value: distinctVisits })
+    .from(analyticsEvents)
+    .where(and(
+      gte(analyticsEvents.occurredAt, range.start),
+      lt(analyticsEvents.occurredAt, range.endExclusive),
+      eq(analyticsEvents.eventName, "site_visit"),
+      isNotNull(analyticsEvents.visitKey),
+      isNotNull(analyticsEvents.networkRegionCode),
+    ))
+    .groupBy(analyticsEvents.networkRegionCode)
+    .having(sql`count(distinct ${analyticsEvents.visitKey}) >= 5`);
 }
 
 function dateSeries(from: string, to: string) {
@@ -224,6 +250,9 @@ export async function getCitizenEngagementAnalytics(
     feedbackCategories,
     issueTypes,
     networkRegionRows,
+    visitTotalRows,
+    visitTrend,
+    visitRegionRows,
   ] = await Promise.all([
     db.select({ eventName: analyticsEvents.eventName, value: count() })
       .from(analyticsEvents).where(eventWhere).groupBy(analyticsEvents.eventName),
@@ -259,6 +288,14 @@ export async function getCitizenEngagementAnalytics(
     db.select({ issueType: issues.issueType, value: count() })
       .from(issues).leftJoin(authUser, eq(authUser.id, issues.reporterUserId)).where(issueWhere).groupBy(issues.issueType),
     buildVisibleNetworkRegionQuery(range),
+    db.select({ value: sql<number>`count(distinct ${analyticsEvents.visitKey})` })
+      .from(analyticsEvents)
+      .where(and(eventWhere, eq(analyticsEvents.eventName, "site_visit"), isNotNull(analyticsEvents.visitKey))),
+    db.select({ day: manilaEventDay, value: sql<number>`count(distinct ${analyticsEvents.visitKey})` })
+      .from(analyticsEvents)
+      .where(and(eventWhere, eq(analyticsEvents.eventName, "site_visit"), isNotNull(analyticsEvents.visitKey)))
+      .groupBy(manilaEventDay),
+    buildVisibleVisitRegionQuery(range),
   ]);
 
   const eventTotalMap = new Map(eventTotals.map((row) => [row.eventName as EventName, asNumber(row.value)]));
@@ -270,6 +307,7 @@ export async function getCitizenEngagementAnalytics(
     eventTrendMap.set(row.day, day);
   }
   const feedbackTrendMap = new Map(feedbackTrend.map((row) => [row.day, row]));
+  const visitTrendMap = new Map(visitTrend.map((row) => [row.day, asNumber(row.value)]));
 
   const ranked = (eventName: EventName): RankedProject[] => projectRankings
     .filter((row) => row.eventName === eventName && row.projectId)
@@ -291,6 +329,7 @@ export async function getCitizenEngagementAnalytics(
     },
     freshness: { generatedAt: new Date().toISOString(), eventRetentionDays: 90 },
     overview: {
+      siteVisits: asNumber(visitTotalRows[0]?.value),
       searches: eventTotalMap.get("project_search_completed") ?? 0,
       projectViews: eventTotalMap.get("project_viewed") ?? 0,
       mapViews: eventTotalMap.get("map_viewed") ?? 0,
@@ -305,6 +344,7 @@ export async function getCitizenEngagementAnalytics(
       const feedbackDay = feedbackTrendMap.get(date);
       return {
         date,
+        visits: visitTrendMap.get(date) ?? 0,
         searches: events?.get("project_search_completed") ?? 0,
         projectViews: events?.get("project_viewed") ?? 0,
         mapViews: events?.get("map_viewed") ?? 0,
@@ -329,6 +369,9 @@ export async function getCitizenEngagementAnalytics(
     },
     networkGeography: summarizeApproximateNetworkRegions(
       networkRegionRows.map((row) => ({ code: row.code, count: asNumber(row.value) })),
+    ),
+    visitGeography: summarizeApproximateNetworkRegions(
+      visitRegionRows.map((row) => ({ code: row.code, count: asNumber(row.value) })),
     ),
   };
 }

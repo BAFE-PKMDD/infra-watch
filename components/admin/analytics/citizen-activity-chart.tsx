@@ -13,6 +13,7 @@ import {
 import type { CitizenEngagementAnalytics } from "@/lib/analytics/citizen-engagement-query";
 
 const chartConfig = {
+  visits: { label: "Site visits", color: "#059669" },
   searches: { label: "Searches", color: "#2563eb" },
   projectViews: { label: "Project views", color: "#7c3aed" },
   mapViews: { label: "Map views", color: "#0891b2" },
@@ -22,12 +23,12 @@ const chartConfig = {
 
 export function CitizenActivityChart({ trend }: { trend: CitizenEngagementAnalytics["trend"] }) {
   const total = trend.reduce(
-    (sum, day) => sum + day.searches + day.projectViews + day.mapViews + day.ratingsSubmitted + day.commentsSubmitted,
+    (sum, day) => sum + day.visits + day.searches + day.projectViews + day.mapViews + day.ratingsSubmitted + day.commentsSubmitted,
     0,
   );
   const summary = total === 0
     ? "No recorded citizen actions in the selected period."
-    : `${total.toLocaleString("en-PH")} recorded actions across ${trend.length} calendar days. Counts are actions, not unique people.`;
+    : `${total.toLocaleString("en-PH")} recorded actions and visits across ${trend.length} calendar days. Visits count browser sessions; other counts are actions.`;
 
   return (
     <>
@@ -36,7 +37,7 @@ export function CitizenActivityChart({ trend }: { trend: CitizenEngagementAnalyt
         config={chartConfig}
         className="mt-4 h-72 w-full aspect-auto"
         role="img"
-        aria-label="Daily activity graph showing searches, project views, map views, ratings, and comments"
+        aria-label="Daily activity graph showing site visits, searches, project views, map views, ratings, and comments"
       >
         <LineChart data={trend} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
           <CartesianGrid vertical={false} />

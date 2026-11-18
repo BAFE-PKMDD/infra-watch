@@ -32,7 +32,15 @@ type MapViewEventInput = {
   entrySurface: "map";
 };
 
+type SiteVisitEventInput = {
+  eventName: "site_visit";
+  routeTemplate: "/" | "/projects" | "/projects/[id]" | "/map" | "other";
+  entrySurface: "landing";
+  visitKey: string;
+};
+
 export type CitizenEngagementEventInput =
+  | SiteVisitEventInput
   | ProjectViewEventInput
   | SearchProjectOpenEventInput
   | MapProjectOpenEventInput

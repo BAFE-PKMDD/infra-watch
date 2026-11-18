@@ -29,7 +29,7 @@ function fillForCount(count: number, maximum: number) {
   return "#1e3a8a";
 }
 
-export function CitizenNetworkRegionMap({ geography }: { geography: Geography }) {
+export function CitizenNetworkRegionMap({ geography, unit = "actions" }: { geography: Geography; unit?: "actions" | "visits" }) {
   const [boundaries, setBoundaries] = useState<RegionsGeoJson | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -56,10 +56,10 @@ export function CitizenNetworkRegionMap({ geography }: { geography: Geography })
   );
 
   if (geography.regions.length === 0) {
-    return <p className="mt-4 border-l-2 border-slate-200 py-3 pl-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">No region meets the minimum of {geography.minimumEventCount} recorded actions for this period.</p>;
+    return <p className="mt-4 border-l-2 border-slate-200 py-3 pl-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">No region meets the minimum of {geography.minimumEventCount} recorded {unit} for this period.</p>;
   }
   if (loadError) {
-    return <p role="alert" className="mt-4 text-sm text-red-700 dark:text-red-300">The region boundary map is unavailable. The regional action list remains available below.</p>;
+    return <p role="alert" className="mt-4 text-sm text-red-700 dark:text-red-300">The region boundary map is unavailable. The regional list remains available below.</p>;
   }
 
   return (
@@ -67,7 +67,7 @@ export function CitizenNetworkRegionMap({ geography }: { geography: Geography })
       {!boundaries ? (
         <div className="flex h-[420px] items-center justify-center rounded-md bg-slate-100 text-sm text-slate-500 dark:bg-slate-800 dark:text-slate-400">Loading region boundaries…</div>
       ) : (
-        <div className="h-[420px] overflow-hidden rounded-md border border-slate-200 dark:border-slate-700" role="img" aria-label="Map of the Philippines shaded by approximate network-region action count">
+        <div className="h-[420px] overflow-hidden rounded-md border border-slate-200 dark:border-slate-700" role="img" aria-label={`Map of the Philippines shaded by approximate network-region ${unit} count`}>
           <MapContainer center={PH_CENTER} zoom={5} scrollWheelZoom={false} className="h-full w-full">
             <EvidenceBasemapLayer basemapId={DEFAULT_EVIDENCE_BASEMAP_ID} />
             <GeoJSON
@@ -87,7 +87,7 @@ export function CitizenNetworkRegionMap({ geography }: { geography: Geography })
                 const name = (feature.properties?.name as string) ?? "Region";
                 const count = counts.get(code);
                 layer.bindTooltip(count
-                  ? `<strong>${name}</strong><br/>${count.toLocaleString("en-PH")} recorded actions`
+                  ? `<strong>${name}</strong><br/>${count.toLocaleString("en-PH")} recorded ${unit}`
                   : `<strong>${name}</strong><br/>No displayed data`, { sticky: true });
               }}
             />

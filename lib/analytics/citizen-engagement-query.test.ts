@@ -5,6 +5,7 @@ import {
   buildManilaEventDayExpression,
   buildManilaFeedbackDayExpression,
   buildVisibleNetworkRegionQuery,
+  buildVisibleVisitRegionQuery,
   summarizeApproximateNetworkRegions,
   parseCitizenAnalyticsRange,
   toIssueCategoryLabel,
@@ -86,6 +87,18 @@ test("suppresses network-region rows in SQL before serialization", () => {
   const range = parseCitizenAnalyticsRange({}, new Date("2026-09-22T04:00:00.000Z"));
   const query = buildVisibleNetworkRegionQuery(range).toSQL();
   assert.match(query.sql, /having count\(\*\) >= 5/i);
+});
+
+test("keeps site visits out of the actions-by-region query and counts distinct visit tokens by region", () => {
+  const range = parseCitizenAnalyticsRange({}, new Date("2026-09-22T04:00:00.000Z"));
+  const actions = buildVisibleNetworkRegionQuery(range).toSQL();
+  assert.match(actions.sql, /"event_name" <> \$/i);
+  assert.ok(actions.params.includes("site_visit"));
+
+  const visits = buildVisibleVisitRegionQuery(range).toSQL();
+  assert.match(visits.sql, /count\(distinct "analytics_events"\."visit_key"\)/i);
+  assert.match(visits.sql, /having count\(distinct "analytics_events"\."visit_key"\) >= 5/i);
+  assert.ok(visits.params.includes("site_visit"));
 });
 
 test("counts each selected E-Report issue type independently and retains unclassified reports", () => {

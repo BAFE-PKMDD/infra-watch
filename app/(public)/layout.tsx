@@ -4,6 +4,7 @@ import { AppFooter } from "@/components/layout/app-footer";
 import { AiAssistantWidget } from "@/components/ai-assistant-widget";
 import { AnnouncementDialog } from "@/components/announcements/announcement-dialog";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import { SiteVisitTracker } from "@/components/analytics/site-visit-tracker";
 import { PublicBanner } from "@/components/site-notices/public-banner";
 
 export default function PublicLayout({
@@ -22,6 +23,8 @@ export default function PublicLayout({
       <AnnouncementDialog />
       {/* Public pages only: sign-in, citizen, and admin pages are never reported. */}
       <GoogleAnalytics />
+      {/* One anonymous visit per browser session; staff roles are excluded server-side. */}
+      <SiteVisitTracker />
     </div>
   );
 }
