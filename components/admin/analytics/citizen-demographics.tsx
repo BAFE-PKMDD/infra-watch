@@ -6,10 +6,11 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("en-PH").format(value);
 }
 
-function DistributionList({ title, distribution, total }: {
+function DistributionList({ title, distribution, total, minimumGroupSize }: {
   title: string;
   distribution: DemographicDistribution;
   total: number;
+  minimumGroupSize: number;
 }) {
   const maximum = Math.max(...distribution.rows.map((row) => row.count), 1);
   return (
@@ -36,7 +37,7 @@ function DistributionList({ title, distribution, total }: {
         </ol>
       )}
       {distribution.hasHiddenGroups ? (
-        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Groups under 5 are not shown.</p>
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Groups under {minimumGroupSize} are not shown.</p>
       ) : null}
     </section>
   );
@@ -83,11 +84,11 @@ export function CitizenDemographics({ data }: { data: SurveyDemographics }) {
             </p>
           ) : (
             <div className="mt-6 grid gap-8 md:grid-cols-2 xl:grid-cols-3">
-              <DistributionList title="Respondent type" distribution={data.respondentTypes} total={data.answered} />
-              <DistributionList title="Age range" distribution={data.ageBands} total={data.answered} />
-              <DistributionList title="Gender" distribution={data.genders} total={data.answered} />
-              <DistributionList title="How they found InfraWatch" distribution={data.referralSources} total={data.answered} />
-              <DistributionList title="Answered while submitting" distribution={data.surveySources} total={data.answered} />
+              <DistributionList title="Respondent type" distribution={data.respondentTypes} total={data.answered} minimumGroupSize={data.minimumGroupSize} />
+              <DistributionList title="Age range" distribution={data.ageBands} total={data.answered} minimumGroupSize={data.minimumGroupSize} />
+              <DistributionList title="Gender" distribution={data.genders} total={data.answered} minimumGroupSize={data.minimumGroupSize} />
+              <DistributionList title="How they found InfraWatch" distribution={data.referralSources} total={data.answered} minimumGroupSize={data.minimumGroupSize} />
+              <DistributionList title="Answered while submitting" distribution={data.surveySources} total={data.answered} minimumGroupSize={data.minimumGroupSize} />
             </div>
           )}
         </>

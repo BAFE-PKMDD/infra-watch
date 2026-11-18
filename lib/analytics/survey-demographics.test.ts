@@ -19,12 +19,12 @@ test("places ages into fixed bands and treats missing or invalid ages as not pro
   assert.equal(ageToBandKey(120), "65_plus");
 });
 
-test("hides groups under five and says so without revealing how many were hidden", () => {
+test("hides groups under two and says so without revealing how many were hidden", () => {
   const result = summarizeDistribution(
     [
       { key: "farmer", count: 9 },
-      { key: "student", count: 5 },
-      { key: "raed_staff", count: 4 },
+      { key: "student", count: 2 },
+      { key: "raed_staff", count: 1 },
       { key: "other", count: 1 },
     ],
     (key) => key,
@@ -61,7 +61,7 @@ test("builds coverage, ordered age bands and labels without exposing individual 
       { age: 30, count: 6 },
       { age: 22, count: 7 },
       { age: 28, count: 5 },
-      { age: 70, count: 2 },
+      { age: 70, count: 1 },
       { age: null, count: 10 },
     ],
     genders: [{ key: "Female", count: 18 }, { key: "Prefer not to say", count: 12 }],

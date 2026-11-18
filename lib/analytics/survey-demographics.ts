@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { submissionSurveys } from "@/lib/db/schema";
 
 /** Groups smaller than this are never shown, so a small group cannot point to one person. */
-export const MINIMUM_DEMOGRAPHIC_GROUP = 5 as const;
+export const MINIMUM_DEMOGRAPHIC_GROUP = 2 as const;
 
 export type DemographicRow = { key: string; label: string; count: number };
 export type DemographicDistribution = {

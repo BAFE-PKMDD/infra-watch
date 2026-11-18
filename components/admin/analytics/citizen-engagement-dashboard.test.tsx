@@ -8,7 +8,7 @@ import type { SurveyDemographics } from "@/lib/analytics/survey-demographics";
 
 const noGroups = { rows: [], hasHiddenGroups: false };
 const emptyDemographics: SurveyDemographics = {
-  minimumGroupSize: 5,
+  minimumGroupSize: 2,
   asked: 0,
   answered: 0,
   skipped: 0,
@@ -105,7 +105,7 @@ test("shows survey demographics with response coverage and small-group notice", 
   assert.match(html, /Farmer/);
   assert.match(html, /Age range/);
   assert.match(html, /25–34/);
-  assert.match(html, /Groups under 5 are not shown/);
+  assert.match(html, /Groups under 2 are not shown/);
 });
 
 test("explains an empty survey period and an all-skipped period", () => {
